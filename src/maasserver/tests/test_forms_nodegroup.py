@@ -20,21 +20,21 @@ from random import randint
 from django.forms import (
     CheckboxInput,
     HiddenInput,
-    )
+)
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.forms import (
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     NodeGroupDefineForm,
     NodeGroupEdit,
-    )
+)
 from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -44,7 +44,7 @@ from testtools.matchers import (
     HasLength,
     MatchesStructure,
     StartsWith,
-    )
+)
 
 
 class TestNodeGroupDefineForm(MAASServerTestCase):

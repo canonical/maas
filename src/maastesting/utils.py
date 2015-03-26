@@ -30,7 +30,7 @@ import signal
 from sys import (
     stderr,
     stdout,
-    )
+)
 from traceback import print_exc
 
 import subunit

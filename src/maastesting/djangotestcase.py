@@ -29,7 +29,7 @@ from django.db import (
     connections,
     DEFAULT_DB_ALIAS,
     reset_queries,
-    )
+)
 from django.db.models import loading
 from django.db.utils import DatabaseError
 import django.test

@@ -21,7 +21,7 @@ import collections
 from itertools import (
     chain,
     groupby,
-    )
+)
 import socket
 
 from maasserver import logger
@@ -32,11 +32,11 @@ from maasserver.server_address import get_maas_facing_server_address
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    )
+)
 
 
 class lazydict(dict):

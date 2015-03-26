@@ -17,7 +17,7 @@ __all__ = []
 from django.conf.urls import (
     patterns,
     url,
-    )
+)
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.boot_images import BootImagesHandler
@@ -25,89 +25,89 @@ from maasserver.api.boot_resources import (
     BootResourceFileUploadHandler,
     BootResourceHandler,
     BootResourcesHandler,
-    )
+)
 from maasserver.api.boot_source_selections import (
     BootSourceSelectionBackwardHandler,
     BootSourceSelectionHandler,
     BootSourceSelectionsBackwardHandler,
     BootSourceSelectionsHandler,
-    )
+)
 from maasserver.api.boot_sources import (
     BootSourceBackwardHandler,
     BootSourceHandler,
     BootSourcesBackwardHandler,
     BootSourcesHandler,
-    )
+)
 from maasserver.api.commissioning_scripts import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
-    )
+)
 from maasserver.api.devices import (
     DeviceHandler,
     DevicesHandler,
-    )
+)
 from maasserver.api.doc_handler import (
     api_doc,
     describe,
-    )
+)
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
-    )
+)
 from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.api.license_keys import (
     LicenseKeyHandler,
     LicenseKeysHandler,
-    )
+)
 from maasserver.api.maas import MaasHandler
 from maasserver.api.networks import (
     NetworkHandler,
     NetworksHandler,
-    )
+)
 from maasserver.api.node_group_interfaces import (
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
-    )
+)
 from maasserver.api.node_macs import (
     NodeMacHandler,
     NodeMacsHandler,
-    )
+)
 from maasserver.api.nodegroups import (
     NodeGroupHandler,
     NodeGroupsHandler,
-    )
+)
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
-    )
+)
 from maasserver.api.physicalblockdevices import PhysicalBlockDeviceHandler
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,
     SSHKeysHandler,
-    )
+)
 from maasserver.api.ssl_keys import (
     SSLKeyHandler,
     SSLKeysHandler,
-    )
+)
 from maasserver.api.support import (
     AdminRestrictedResource,
     RestrictedResource,
-    )
+)
 from maasserver.api.tags import (
     TagHandler,
     TagsHandler,
-    )
+)
 from maasserver.api.users import (
     UserHandler,
     UsersHandler,
-    )
+)
 from maasserver.api.version import VersionHandler
 from maasserver.api.zones import (
     ZoneHandler,
     ZonesHandler,
-    )
+)
 
 
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)

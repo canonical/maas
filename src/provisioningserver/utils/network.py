@@ -32,13 +32,13 @@ from socket import (
     EAI_NONAME,
     gaierror,
     getaddrinfo,
-    )
+)
 
 from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
-    )
+)
 import netifaces
 from provisioningserver.utils.shell import call_and_check
 

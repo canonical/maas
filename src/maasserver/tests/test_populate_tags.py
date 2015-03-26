@@ -25,12 +25,12 @@ from maasserver.populate_tags import (
     _get_clients_for_populating_tags,
     populate_tags,
     populate_tags_for_single_node,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
@@ -39,13 +39,13 @@ from mock import (
     ANY,
     create_autospec,
     sentinel,
-    )
+)
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
 from provisioningserver.rpc.testing import (
     always_fail_with,
     always_succeed_with,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
 from testtools.monkey import MonkeyPatcher

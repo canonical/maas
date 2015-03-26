@@ -24,12 +24,12 @@ import provisioningserver.path
 from provisioningserver.path import (
     get_path,
     get_tentative_path,
-    )
+)
 from testtools.matchers import (
     DirExists,
     Not,
     StartsWith,
-    )
+)
 
 
 class TestGetPathFunctions(MAASTestCase):

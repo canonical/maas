@@ -40,7 +40,7 @@ from django.db.models import (
     CharField,
     Manager,
     Model,
-    )
+)
 from lxml import etree
 from maasserver.fields import MAC
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -50,7 +50,7 @@ from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import (
     Bin,
     BinaryField,
-    )
+)
 from metadataserver.models.noderesult import NodeResult
 
 

@@ -17,7 +17,7 @@ __all__ = []
 from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
-    )
+)
 from maastesting.testcase import MAASTestCase
 
 

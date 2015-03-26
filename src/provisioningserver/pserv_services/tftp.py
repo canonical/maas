@@ -23,24 +23,24 @@ import json
 from socket import (
     AF_INET,
     AF_INET6,
-    )
+)
 from urllib import urlencode
 from urlparse import (
     parse_qsl,
     urlparse,
-    )
+)
 
 from netaddr import IPAddress
 from provisioningserver.boot import (
     BootMethodRegistry,
     get_remote_mac,
-    )
+)
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node_mac_address,
-    )
+)
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.utils import tftp
 from provisioningserver.utils.network import get_all_interface_addresses
@@ -55,12 +55,12 @@ from twisted.internet.abstract import isIPv6Address
 from twisted.internet.address import (
     IPv4Address,
     IPv6Address,
-    )
+)
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
     returnValue,
-    )
+)
 from twisted.web.client import getPage
 import twisted.web.error
 

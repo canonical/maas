@@ -24,14 +24,14 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractproperty,
-    )
+)
 
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
-    )
+)
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase

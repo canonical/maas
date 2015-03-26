@@ -26,7 +26,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
-    )
+)
 from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
@@ -37,10 +37,10 @@ from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
-    )
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
-    )
+)
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from provisioningserver.tags import merge_details_cleanly

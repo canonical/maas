@@ -24,7 +24,7 @@ import provisioningserver.upgrade_cluster
 from provisioningserver.utils.script import (
     AtomicWriteScript,
     MainScript,
-    )
+)
 
 
 script_commands = {

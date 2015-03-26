@@ -21,31 +21,31 @@ from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
-    )
+)
 from maasserver.clusterrpc.dhcp import (
     remove_host_maps,
     update_host_maps,
-    )
+)
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     StaticIPAlreadyExistsForMACAddress,
-    )
+)
 from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.utils.orm import (
     commit_within_atomic_block,
     transactional,
-    )
+)
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from netaddr.core import AddrFormatError
 from provisioningserver.logger import get_maas_logger
 

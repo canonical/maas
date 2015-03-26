@@ -29,12 +29,12 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
-    )
+)
 from maasserver.exceptions import (
     ClusterUnavailable,
     MissingBootImage,
     PreseedError,
-    )
+)
 from maasserver.models import Config
 from maasserver.preseed import (
     compose_curtin_maas_reporter,
@@ -66,7 +66,7 @@ from maasserver.preseed import (
     render_preseed,
     split_subarch,
     TemplateNotFoundError,
-    )
+)
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -91,7 +91,7 @@ from testtools.matchers import (
     MatchesAll,
     Not,
     StartsWith,
-    )
+)
 from twisted.internet import defer
 import yaml
 

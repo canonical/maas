@@ -20,7 +20,7 @@ from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import (
     get_node_init_user,
     user_name,
-    )
+)
 
 
 class TestNodeInitUser(MAASTestCase):

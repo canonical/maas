@@ -19,7 +19,7 @@ from maasserver.support.pertenant.utils import (
     extract_bootstrap_node_system_id,
     get_bootstrap_node_owner,
     PROVIDER_STATE_FILENAME,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data

@@ -29,7 +29,7 @@ from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
     set_up_options_conf,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.shell import ExternalProcessError
 

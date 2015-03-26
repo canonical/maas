@@ -26,17 +26,17 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     Config,
     NodeGroup,
     nodegroup as nodegroup_module,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -44,13 +44,13 @@ from maasserver.worker_user import get_worker_user
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import (
     ANY,
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddESXi,
@@ -61,7 +61,7 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
-    )
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
@@ -69,7 +69,7 @@ from testtools.matchers import (
     Equals,
     GreaterThan,
     IsInstance,
-    )
+)
 from twisted.internet import defer
 
 

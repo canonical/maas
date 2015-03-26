@@ -22,13 +22,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from mock import (
     ANY,
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver import services
 from provisioningserver.dhcp.leases import check_lease_changes
 from provisioningserver.pserv_services import lease_upload_service
@@ -36,13 +36,13 @@ from provisioningserver.pserv_services.lease_upload_service import (
     convert_leases_to_mappings,
     convert_mappings_to_leases,
     LeaseUploadService,
-    )
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLeases
 from provisioningserver.rpc.testing import (
     MockClusterToRegionRPCFixture,
     TwistedLoggerFixture,
-    )
+)
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService

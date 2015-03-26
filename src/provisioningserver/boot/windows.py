@@ -27,7 +27,7 @@ from provisioningserver.boot import (
     BootMethodError,
     BytesReader,
     get_remote_mac,
-    )
+)
 from provisioningserver.config import Config
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
@@ -38,13 +38,13 @@ from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferred,
-    )
+)
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     succeed,
-    )
+)
 from twisted.python.filepath import FilePath
 
 

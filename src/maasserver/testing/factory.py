@@ -37,11 +37,11 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     PARTITION_TABLE_TYPE,
     POWER_STATE,
-    )
+)
 from maasserver.fields import (
     LargeObjectFile,
     MAC,
-    )
+)
 from maasserver.models import (
     BlockDevice,
     BootResource,
@@ -74,12 +74,12 @@ from maasserver.models import (
     Tag,
     VirtualBlockDevice,
     Zone,
-    )
+)
 from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
     INSTALL_SET,
     XINSTALL_TYPES,
-    )
+)
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
@@ -90,11 +90,11 @@ from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
     NodeResult,
-    )
+)
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.utils.enum import map_enum
 
 # We have a limited number of public keys:

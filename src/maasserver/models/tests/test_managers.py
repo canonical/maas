@@ -18,7 +18,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     BulkManagerParentTestModel,
     BulkManagerTestModel,
-    )
+)
 from maastesting.djangotestcase import TestModelMixin
 
 

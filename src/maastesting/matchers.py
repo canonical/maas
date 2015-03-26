@@ -44,7 +44,7 @@ from testtools.matchers import (
     MatchesPredicate,
     MatchesStructure,
     Mismatch,
-    )
+)
 from twisted.internet import defer
 
 

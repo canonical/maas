@@ -26,12 +26,12 @@ from django.db.models import (
     ForeignKey,
     Manager,
     TextField,
-    )
+)
 from django.utils.safestring import mark_safe
 from maasserver import (
     DefaultMeta,
     logger,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from OpenSSL import crypto

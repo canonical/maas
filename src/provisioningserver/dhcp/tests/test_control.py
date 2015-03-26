@@ -18,7 +18,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import ANY
 from provisioningserver.dhcp import control
@@ -29,7 +29,7 @@ from provisioningserver.dhcp.control import (
     stop_dhcp_server,
     stop_dhcpv4,
     stop_dhcpv6,
-    )
+)
 from provisioningserver.utils.shell import ExternalProcessError
 
 

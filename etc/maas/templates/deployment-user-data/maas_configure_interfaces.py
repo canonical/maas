@@ -31,7 +31,7 @@ from logging import getLogger
 from os import (
     listdir,
     rename,
-    )
+)
 import os.path
 from random import randint
 from subprocess import check_call

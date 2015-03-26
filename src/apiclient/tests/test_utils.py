@@ -19,14 +19,14 @@ from urllib import unquote
 from apiclient.utils import (
     ascii_url,
     urlencode,
-    )
+)
 from django.utils.encoding import smart_unicode
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesAll,
-    )
+)
 
 
 class TestHelpers(MAASTestCase):

@@ -22,12 +22,12 @@ from maasserver.clusterrpc.boot_images import (
     get_boot_images_for,
     is_import_boot_images_running,
     is_import_boot_images_running_for,
-    )
+)
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODEGROUP_STATUS,
-    )
+)
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
@@ -36,15 +36,15 @@ from provisioningserver.boot.tests import test_tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
-    )
+)
 from provisioningserver.rpc import (
     boot_images,
     clusterservice,
-    )
+)
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
-    )
+)
 from twisted.internet.defer import succeed
 
 

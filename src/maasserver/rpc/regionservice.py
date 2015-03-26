@@ -31,7 +31,7 @@ from django.db import connection
 from maasserver import (
     eventloop,
     locks,
-    )
+)
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.rpc import (
     clusters,
@@ -39,22 +39,22 @@ from maasserver.rpc import (
     events,
     leases,
     nodes,
-    )
+)
 from maasserver.rpc.monitors import handle_monitor_expired
 from maasserver.rpc.nodegroupinterface import (
     get_cluster_interfaces_as_dicts,
     update_foreign_dhcp_ip,
-    )
+)
 from maasserver.rpc.nodes import (
     commission_node,
     create_node,
     request_node_info_by_mac_address,
-    )
+)
 from maasserver.security import get_shared_secret
 from maasserver.utils import (
     make_validation_error_message,
     synchronised,
-    )
+)
 from maasserver.utils.orm import transactional
 from netaddr import IPAddress
 from provisioningserver.rpc import (
@@ -62,7 +62,7 @@ from provisioningserver.rpc import (
     common,
     exceptions,
     region,
-    )
+)
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
@@ -73,7 +73,7 @@ from provisioningserver.utils.twisted import (
     deferWithTimeout,
     pause,
     synchronous,
-    )
+)
 from twisted.application import service
 from twisted.application.internet import TimerService
 from twisted.internet import defer
@@ -82,7 +82,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
     returnValue,
-    )
+)
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory

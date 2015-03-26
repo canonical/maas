@@ -20,7 +20,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.models import (
     Node,
     Tag,
-    )
+)
 from maasserver.views import PaginatedListView
 from maasserver.views.nodes import prefetch_nodes_listing
 

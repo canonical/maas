@@ -17,20 +17,20 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 import random
 
 import crochet
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
-    )
+)
 from django.db import transaction
 from fixtures import LoggerFixture
 from maasserver import (
     node_query,
     preseed as preseed_module,
-    )
+)
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
@@ -45,12 +45,12 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
-    )
+)
 from maasserver.exceptions import (
     NodeStateViolation,
     StaticIPAddressTypeClash,
     StaticIPAddressUnavailable,
-    )
+)
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
@@ -58,7 +58,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
-    )
+)
 from maasserver.models.node import PowerInfo
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.user import create_auth_token
@@ -67,16 +67,16 @@ from maasserver.node_status import (
     MONITORED_STATUSES,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TRANSITIONS,
-    )
+)
 from maasserver.rpc import monitors as monitors_module
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
     RunningClusterRPCFixture,
-    )
+)
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
@@ -85,28 +85,28 @@ from maasserver.utils import ignore_unused
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
-    )
+)
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     NodeResult,
     NodeUserData,
-    )
+)
 from metadataserver.user_data import (
     commissioning,
     disk_erasing,
-    )
+)
 import mock
 from mock import (
     ANY,
     sentinel,
-    )
+)
 from netaddr import IPAddress
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
@@ -125,7 +125,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
     Not,
-    )
+)
 from twisted.internet import defer
 from twisted.protocols import amp
 from twisted.python.failure import Failure

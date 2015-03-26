@@ -20,12 +20,12 @@ from provisioningserver.utils.curtin import (
     compose_mv_command,
     compose_recursive_copy,
     compose_write_text_file,
-    )
+)
 from testtools.matchers import (
     AllMatch,
     ContainsAll,
     IsInstance,
-    )
+)
 
 
 class TestComposeMvCommand(MAASTestCase):

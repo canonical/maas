@@ -22,24 +22,24 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.exceptions import (
     StaticIPAddressConflict,
     StaticIPAddressForbidden,
     StaticIPAddressTypeClash,
     StaticIPAddressUnavailable,
-    )
+)
 from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
     NodeGroupInterface,
     StaticIPAddress,
-    )
+)
 from maasserver.models.macaddress import (
     find_cluster_interface_responsible_for_ip,
     MACAddress,
     update_mac_cluster_interfaces,
     update_macs_cluster_interfaces,
-    )
+)
 from maasserver.models.network import Network
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -48,7 +48,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
-    )
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -56,7 +56,7 @@ from testtools.matchers import (
     Is,
     MatchesStructure,
     Not,
-    )
+)
 
 
 def get_random_ip_from_interface_range(interface, use_static_range=None):

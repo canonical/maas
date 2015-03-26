@@ -23,18 +23,18 @@ from maastesting.matchers import (
     IsCallableMock,
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
     MagicMock,
     sentinel,
-    )
+)
 import mock as mock_module
 from testtools.matchers import (
     DirExists,
     FileExists,
-    )
+)
 
 
 class TestTestCase(MAASTestCase):

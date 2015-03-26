@@ -25,7 +25,7 @@ from maasserver.clusterrpc.power_parameters import (
     JSON_POWER_TYPE_SCHEMA,
     make_form_field,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
-    )
+)
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.testing.factory import factory
@@ -38,7 +38,7 @@ from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_PARAMETERS,
     make_json_field,
-    )
+)
 
 
 class TestPowerActionRendering(MAASServerTestCase):

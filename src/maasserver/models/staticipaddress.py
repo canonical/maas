@@ -29,23 +29,23 @@ from django.contrib.auth.models import User
 from django.db import (
     connection,
     IntegrityError,
-    )
+)
 from django.db.models import (
     CharField,
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from maasserver import (
     DefaultMeta,
     locks,
-    )
+)
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
-    )
+)
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -53,11 +53,11 @@ from maasserver.utils import strip_domain
 from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_hostname,
-    )
+)
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.utils.enum import map_enum_reverse
 
 

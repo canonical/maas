@@ -17,7 +17,7 @@ __all__ = []
 from itertools import (
     islice,
     repeat,
-    )
+)
 from random import randint
 import time
 
@@ -25,7 +25,7 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
     connection,
     transaction,
-    )
+)
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
@@ -49,7 +49,7 @@ from maasserver.utils.orm import (
     request_transaction_retry,
     retry_on_serialization_failure,
     validate_in_transaction,
-    )
+)
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -59,18 +59,18 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,
-    )
+)
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from testtools import ExpectedException
@@ -81,12 +81,12 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesPredicate,
-    )
+)
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
     passthru,
-    )
+)
 from twisted.python.failure import Failure
 
 

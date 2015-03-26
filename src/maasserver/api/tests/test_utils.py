@@ -23,7 +23,7 @@ from maasserver.api.utils import (
     extract_oauth_key_from_auth_header,
     get_oauth_token,
     get_overridden_query_dict,
-    )
+)
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

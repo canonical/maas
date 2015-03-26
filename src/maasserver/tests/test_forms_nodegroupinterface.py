@@ -19,33 +19,33 @@ import random
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.forms import (
     ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     NodeGroupInterfaceForm,
-    )
+)
 from maasserver.models import (
     Network,
     NodeGroupInterface,
-    )
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
-    )
+)
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from testtools.matchers import (
     AllMatch,
     Equals,
     MatchesStructure,
     StartsWith,
-    )
+)
 
 
 nullable_fields = [

@@ -19,7 +19,7 @@ from maastesting.yui3 import (
     extract_tests,
     gen_failed_test_messages,
     get_failed_tests_message,
-    )
+)
 from nose.tools import nottest
 
 # Nose is over-zealous.

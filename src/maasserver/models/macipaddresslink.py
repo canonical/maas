@@ -25,7 +25,7 @@ __all__ = [
 from django.db.models import (
     ForeignKey,
     IntegerField,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

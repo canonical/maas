@@ -26,7 +26,7 @@ from django.views.generic import (
     CreateView,
     DeleteView,
     UpdateView,
-    )
+)
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 

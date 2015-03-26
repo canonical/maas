@@ -22,7 +22,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import (
     Node,
     Token,
-    )
+)
 from provisioningserver.drivers.osystem.windows import (
     BOOT_IMAGE_PURPOSE,
     Config,
@@ -30,7 +30,7 @@ from provisioningserver.drivers.osystem.windows import (
     WINDOWS_CHOICES,
     WINDOWS_DEFAULT,
     WindowsOS,
-    )
+)
 
 
 class TestWindowsOS(MAASTestCase):

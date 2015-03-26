@@ -23,35 +23,35 @@ from functools import partial
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
-    )
+)
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
-    )
+)
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     NoSuchNode,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.rpc.region import (
     MarkNodeFailed,
     UpdateNodePowerState,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferred,
     deferWithTimeout,
     pause,
     synchronous,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     DeferredList,
     DeferredSemaphore,
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python import log

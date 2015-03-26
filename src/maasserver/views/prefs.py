@@ -25,22 +25,22 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
-    )
+)
 from django.template import RequestContext
 from django.views.generic import CreateView
 from maasserver.forms import (
     ProfileForm,
     SSHKeyForm,
     SSLKeyForm,
-    )
+)
 from maasserver.models import (
     SSHKey,
     SSLKey,
-    )
+)
 from maasserver.views import (
     HelpfulDeleteView,
     process_form,
-    )
+)
 
 
 class SSHKeyCreateView(CreateView):

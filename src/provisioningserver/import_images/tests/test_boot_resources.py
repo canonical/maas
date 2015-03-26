@@ -17,7 +17,7 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 import errno
 import hashlib
 import json
@@ -26,14 +26,14 @@ from random import randint
 from subprocess import (
     PIPE,
     Popen,
-    )
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import mock
@@ -44,7 +44,7 @@ from provisioningserver.config import BootSources
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.testing.factory import make_image_spec
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.utils.fs import write_text_file
@@ -53,7 +53,7 @@ from testtools.content_type import UTF8_TEXT
 from testtools.matchers import (
     DirExists,
     FileExists,
-    )
+)
 import yaml
 
 

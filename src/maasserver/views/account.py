@@ -23,7 +23,7 @@ from django.contrib import messages
 from django.contrib.auth.views import (
     login as dj_login,
     logout as dj_logout,
-    )
+)
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import render_to_response

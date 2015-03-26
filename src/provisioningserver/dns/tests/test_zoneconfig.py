@@ -17,7 +17,7 @@ __all__ = []
 from collections import (
     Iterable,
     Sequence,
-    )
+)
 import os.path
 import random
 
@@ -28,16 +28,16 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
-    )
+)
 from provisioningserver.dns.config import (
     get_dns_config_dir,
     SRVRecord,
-    )
+)
 from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    )
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -48,7 +48,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesStructure,
     Not,
-    )
+)
 from twisted.python.filepath import FilePath
 
 

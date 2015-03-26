@@ -28,7 +28,7 @@ from maasserver.testing import (
     get_content_links,
     get_data,
     get_prefixed_form_data,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

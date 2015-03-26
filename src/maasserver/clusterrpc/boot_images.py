@@ -25,12 +25,12 @@ from functools import partial
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
-    )
+)
 from maasserver.utils import async
 from provisioningserver.rpc.cluster import (
     IsImportBootImagesRunning,
     ListBootImages,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 from twisted.python.failure import Failure
 

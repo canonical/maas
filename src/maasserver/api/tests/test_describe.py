@@ -23,7 +23,7 @@ import django.core.urlresolvers
 from django.core.urlresolvers import (
     reverse,
     get_script_prefix,
-    )
+)
 from django.test.client import RequestFactory
 from maasserver.api.doc_handler import describe
 from maasserver.testing.factory import factory
@@ -40,7 +40,7 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
     StartsWith,
-    )
+)
 
 
 class TestDescribe(MAASServerTestCase):

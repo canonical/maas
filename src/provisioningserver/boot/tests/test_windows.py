@@ -25,25 +25,25 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 import mock
 from mock import sentinel
 from provisioningserver.boot import (
     BootMethodError,
     BytesReader,
     windows as windows_module,
-    )
+)
 from provisioningserver.boot.windows import (
     Bcd,
     WindowsPXEBootMethod,
-    )
+)
 from provisioningserver.config import Config
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.rpc.testing import (
     always_fail_with,
     always_succeed_with,
-    )
+)
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.deferredruntest import extract_result
 from testtools.matchers import Is

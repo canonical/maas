@@ -23,31 +23,31 @@ from lxml.html import fromstring
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
-    )
+)
 from maasserver.models import (
     BootResource,
     BootSourceCache,
     BootSourceSelection,
     Config,
-    )
+)
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import (
     get_one,
     reload_object,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import images as images_view
 from maasserver.views.images import format_size
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
-    )
+)
 from requests import ConnectionError
 from testtools.matchers import (
     ContainsAll,
     HasLength,
-    )
+)
 
 
 class UbuntuImagesTest(MAASServerTestCase):

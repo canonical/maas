@@ -29,14 +29,14 @@ from provisioningserver.utils.shell import (
     objectfork,
     pipefork,
     PipeForkError,
-    )
+)
 import provisioningserver.utils.shell as shell_module
 from testtools import ExpectedException
 from testtools.matchers import (
     Is,
     IsInstance,
     Not,
-    )
+)
 
 
 class TestCallAndCheck(MAASTestCase):

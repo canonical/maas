@@ -19,7 +19,7 @@ from maasserver import eventloop
 from maasserver.plugin import (
     Options,
     RegionServiceMaker,
-    )
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger

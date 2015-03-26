@@ -19,7 +19,7 @@ __all__ = [
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
-    )
+)
 
 
 DISTRO_SERIES_CHOICES = {

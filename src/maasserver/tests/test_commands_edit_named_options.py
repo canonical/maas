@@ -29,7 +29,7 @@ from testtools.matchers import (
     Contains,
     FileContains,
     Not,
-    )
+)
 
 
 OPTIONS_FILE = textwrap.dedent("""\

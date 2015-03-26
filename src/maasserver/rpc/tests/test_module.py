@@ -18,7 +18,7 @@ from crochet import wait_for_reactor
 from maasserver import (
     eventloop,
     rpc,
-    )
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
@@ -27,7 +27,7 @@ from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     Equals,
     Is,
-    )
+)
 
 
 class TestFunctions(MAASTestCase):

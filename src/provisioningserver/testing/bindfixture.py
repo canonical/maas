@@ -31,7 +31,7 @@ from provisioningserver.dns.config import generate_rndc
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
-    )
+)
 import tempita
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT

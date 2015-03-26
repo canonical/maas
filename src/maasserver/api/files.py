@@ -24,18 +24,18 @@ from django.core.urlresolvers import reverse
 from django.http import (
     Http404,
     HttpResponse,
-    )
+)
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
-    )
+)
 from maasserver.models import FileStorage
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper

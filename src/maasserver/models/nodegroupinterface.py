@@ -25,31 +25,31 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
-    )
+)
 from maasserver.fields import (
     MAASIPAddressField,
     VerboseRegexValidator,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from netaddr.core import AddrFormatError
 from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.utils.network import (
     intersect_iprange,
     make_network,
-    )
+)
 
 # UI explanation for subnet_mask field.
 SUBNET_MASK_HELP = "e.g. 255.255.255.0"

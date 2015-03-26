@@ -19,7 +19,7 @@ __all__ = [
 from django.db.models import (
     CharField,
     Model,
-    )
+)
 
 
 class TestModel(Model):

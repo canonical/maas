@@ -20,15 +20,15 @@ from mock import sentinel
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.download_descriptions import (
     clean_up_repo_item,
     RepoDumper,
-    )
+)
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
-    )
+)
 
 
 class TestValuePassesFilterList(MAASTestCase):

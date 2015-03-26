@@ -29,11 +29,11 @@ from django.test.runner import setup_databases
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
-    )
+)
 from maastesting.fixtures import (
     ChromiumWebDriverFixture,
     DisplayFixture,
-    )
+)
 from postgresfixture import ClusterFixture
 from testtools.monkey import patch
 from twisted.scripts import twistd

@@ -19,7 +19,7 @@ __all__ = [
 from django.conf.urls import (
     patterns,
     url,
-    )
+)
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
 from metadataserver.api import (
@@ -33,7 +33,7 @@ from metadataserver.api import (
     MetaDataHandler,
     UserDataHandler,
     VersionIndexHandler,
-    )
+)
 
 # Handlers for nodes requesting their own metadata.
 meta_data_handler = OperationsResource(

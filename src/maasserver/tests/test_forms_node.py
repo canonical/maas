@@ -18,41 +18,41 @@ from crochet import TimeoutError
 from django.forms import (
     CheckboxInput,
     HiddenInput,
-    )
+)
 from maasserver import forms
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.forms import (
     AdminNodeForm,
     BLANK_CHOICE,
     NodeForm,
     pick_default_architecture,
-    )
+)
 import maasserver.forms as forms_module
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,
     patch_usable_osystems,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
-    )
+)
 
 
 class TestNodeForm(MAASServerTestCase):

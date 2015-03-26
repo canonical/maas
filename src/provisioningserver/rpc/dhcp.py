@@ -24,7 +24,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
-    )
+)
 
 from provisioningserver.dhcp import control
 from provisioningserver.dhcp.config import get_config
@@ -35,7 +35,7 @@ from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
     CannotRemoveHostMap,
-    )
+)
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import synchronous

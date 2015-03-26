@@ -21,13 +21,13 @@ from django.db.models import (
     ForeignKey,
     Manager,
     Model,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from metadataserver import DefaultMeta
 from metadataserver.fields import (
     Bin,
     BinaryField,
-    )
+)
 
 
 class NodeUserDataManager(Manager):

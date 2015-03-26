@@ -20,7 +20,7 @@ from testtools.matchers import (
     AfterPreprocessing,
     Equals,
     MatchesListwise,
-    )
+)
 
 
 class TestDocstringParsing(MAASTestCase):

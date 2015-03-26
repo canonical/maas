@@ -20,7 +20,7 @@ __all__ = [
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_mandatory_param
 from piston.utils import rc
 

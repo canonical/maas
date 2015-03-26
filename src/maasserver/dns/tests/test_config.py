@@ -36,16 +36,16 @@ from maasserver.dns.config import (
     is_dns_in_use,
     next_zone_serial,
     zone_serial,
-    )
+)
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     Config,
     node as node_module,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
@@ -53,30 +53,30 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import (
     ANY,
     Mock,
     sentinel,
-    )
+)
 from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
-    )
+)
 from provisioningserver.dns.config import (
     compose_config_path,
     DNSConfig,
-    )
+)
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_rndc_port,
-    )
+)
 from provisioningserver.dns.zoneconfig import DNSZoneConfigBase
 from provisioningserver.testing.bindfixture import (
     allocate_ports,
     BINDServer,
-    )
+)
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from testtools.matchers import (
     Contains,
@@ -86,7 +86,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
     Not,
-    )
+)
 from twisted.internet.defer import Deferred
 
 

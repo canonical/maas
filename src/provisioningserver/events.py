@@ -23,19 +23,19 @@ from logging import (
     ERROR,
     INFO,
     WARN,
-    )
+)
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
     NoSuchNode,
-    )
+)
 from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
     SendEventMACAddress,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
 

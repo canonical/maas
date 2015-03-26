@@ -24,7 +24,7 @@ from provisioningserver.boot import (
     BootMethod,
     BootMethodInstallError,
     utils,
-    )
+)
 from provisioningserver.boot.install_bootloader import install_bootloader
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check

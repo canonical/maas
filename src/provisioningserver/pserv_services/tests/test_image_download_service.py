@@ -24,24 +24,24 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTwistedRunTest
 from mock import (
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.boot import tftppath
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
-    )
+)
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import _run_import
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
-    )
+)
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.deferredruntest import extract_result

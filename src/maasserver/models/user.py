@@ -25,7 +25,7 @@ from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
     Token,
-    )
+)
 
 # Special users internal to MAAS.
 SYSTEM_USERS = [

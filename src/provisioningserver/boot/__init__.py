@@ -21,7 +21,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
-    )
+)
 from errno import ENOENT
 from io import BytesIO
 from os import path
@@ -31,7 +31,7 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import (
     locate_config,
     tftp,
-    )
+)
 from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
 import tempita

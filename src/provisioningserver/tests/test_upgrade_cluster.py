@@ -23,14 +23,14 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from mock import Mock
 from provisioningserver import (
     config,
     upgrade_cluster,
-    )
+)
 from provisioningserver.boot.tftppath import list_subdirs
 from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
@@ -38,7 +38,7 @@ from testtools.matchers import (
     FileContains,
     FileExists,
     Not,
-    )
+)
 
 
 class TestUpgradeCluster(MAASTestCase):

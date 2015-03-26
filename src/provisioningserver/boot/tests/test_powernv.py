@@ -22,13 +22,13 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import (
     BytesReader,
     powernv as powernv_module,
-    )
+)
 from provisioningserver.boot.powernv import (
     ARP_HTYPE,
     format_bootif,
     PowerNVBootMethod,
     re_config_file,
-    )
+)
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.pserv_services.tftp import TFTPBackend
@@ -40,7 +40,7 @@ from testtools.matchers import (
     MatchesRegex,
     Not,
     StartsWith,
-    )
+)
 
 
 def compose_config_path(mac):

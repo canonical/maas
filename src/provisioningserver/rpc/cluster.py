@@ -36,17 +36,17 @@ __all__ = [
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     Bytes,
     ParsedURL,
     StructureAsJSON,
-    )
+)
 from provisioningserver.rpc.common import (
     Authenticate,
     Identify,
-    )
+)
 from twisted.protocols import amp
 
 

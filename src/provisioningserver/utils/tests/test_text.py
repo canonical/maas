@@ -21,7 +21,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.text import (
     make_bullet_list,
     normalise_whitespace,
-    )
+)
 
 
 class TestNormaliseWhitespace(MAASTestCase):

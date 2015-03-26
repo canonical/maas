@@ -34,7 +34,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesAny,
-    )
+)
 from twisted.internet import ssl
 
 

@@ -21,7 +21,7 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 
 from jsonschema import validate
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS

@@ -17,7 +17,7 @@ __all__ = []
 from collections import (
     Counter,
     Iterator,
-    )
+)
 
 from maasserver.clusterrpc.osystems import (
     compose_curtin_network_preseed,
@@ -26,11 +26,11 @@ from maasserver.clusterrpc.osystems import (
     get_preseed_data,
     validate_license_key,
     validate_license_key_for,
-    )
+)
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     PRESEED_TYPE,
-    )
+)
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -45,7 +45,7 @@ from testtools.matchers import (
     HasLength,
     IsInstance,
     Not,
-    )
+)
 from twisted.internet.defer import succeed
 
 

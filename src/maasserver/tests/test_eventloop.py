@@ -23,7 +23,7 @@ from maasserver import (
     eventloop,
     nonces_cleanup,
     webapp,
-    )
+)
 from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -34,7 +34,7 @@ from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesStructure,
-    )
+)
 from twisted.internet import reactor
 from twisted.python.threadable import isInIOThread
 

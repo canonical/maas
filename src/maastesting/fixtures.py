@@ -26,14 +26,14 @@ from subprocess import (
     CalledProcessError,
     PIPE,
     Popen,
-    )
+)
 import sys
 
 import fixtures
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
-    )
+)
 
 
 class LoggerSilencerFixture(Fixture):

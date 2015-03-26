@@ -27,13 +27,13 @@ from maasserver.exceptions import IteratorReusedError
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
     maybeDeferred,
-    )
+)
 from twisted.python import log
 
 

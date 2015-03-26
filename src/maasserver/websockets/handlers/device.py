@@ -21,7 +21,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.models.node import Device
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
-    )
+)
 
 
 class DeviceHandler(TimestampedModelHandler):

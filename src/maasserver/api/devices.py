@@ -19,30 +19,30 @@ from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_list,
-    )
+)
 from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
-    )
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
-    )
+)
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
-    )
+)
 from maasserver.models.node import Device
 from piston.utils import rc
 

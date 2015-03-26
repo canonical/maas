@@ -23,29 +23,29 @@ from django.test.client import RequestFactory
 from maasserver import (
     preseed as preseed_module,
     server_address,
-    )
+)
 from maasserver.api import pxeconfig as pxeconfig_module
 from maasserver.api.pxeconfig import (
     event_log_pxe_request,
     find_nodegroup_for_pxeconfig_request,
     get_boot_image,
-    )
+)
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     Config,
     Event,
     MACAddress,
     Node,
-    )
+)
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
-    )
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -54,7 +54,7 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import sentinel
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
@@ -67,7 +67,7 @@ from testtools.matchers import (
     Is,
     MatchesListwise,
     StartsWith,
-    )
+)
 
 
 class TestGetBootImage(MAASServerTestCase):

@@ -18,7 +18,7 @@ from random import randint
 from warnings import (
     catch_warnings,
     warn_explicit,
-    )
+)
 
 import maastesting
 from maastesting.factory import factory
@@ -29,7 +29,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesListwise,
     MatchesStructure,
-    )
+)
 
 
 class TestWarnings(MAASTestCase):

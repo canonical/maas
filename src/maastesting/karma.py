@@ -20,7 +20,7 @@ from subprocess import (
     CalledProcessError,
     check_output,
     Popen,
-    )
+)
 
 from maastesting.fixtures import DisplayFixture
 

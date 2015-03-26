@@ -20,7 +20,7 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 
 
 class Command:

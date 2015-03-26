@@ -24,7 +24,7 @@ from provisioningserver import kernel_opts
 from provisioningserver.drivers import (
     Architecture,
     ArchitectureRegistry,
-    )
+)
 from provisioningserver.kernel_opts import (
     compose_arch_opts,
     compose_kernel_command_line,
@@ -34,12 +34,12 @@ from provisioningserver.kernel_opts import (
     ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
     prefix_target_name,
-    )
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
     Not,
-    )
+)
 
 
 def make_kernel_parameters(testcase=None, **parms):

@@ -24,7 +24,7 @@ from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
 from maasserver.models import SSHKey

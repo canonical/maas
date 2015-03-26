@@ -21,13 +21,13 @@ from maasserver.models.user import (
     GENERIC_CONSUMER,
     get_auth_tokens,
     SYSTEM_USERS,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from piston.models import (
     Consumer,
     Token,
-    )
+)
 
 
 class UserProfileTest(MAASServerTestCase):

@@ -27,7 +27,7 @@ from mock import sentinel
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
-    )
+)
 from twisted.python.failure import Failure
 
 

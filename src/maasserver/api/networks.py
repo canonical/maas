@@ -23,7 +23,7 @@ from maasserver.api.support import (
     admin_method,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
@@ -31,11 +31,11 @@ from maasserver.forms import (
     NetworkDisconnectMACsForm,
     NetworkForm,
     NetworksListingForm,
-    )
+)
 from maasserver.models import (
     Network,
     Node,
-    )
+)
 from maasserver.utils.orm import get_one
 from piston.utils import rc
 

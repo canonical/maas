@@ -28,13 +28,13 @@ from provisioningserver.boot.tftppath import list_boot_images
 from provisioningserver.config import BootSources
 from provisioningserver.import_images.cleanup import (
     cleanup_snapshots_and_cache,
-    )
+)
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
-    )
+)
 from provisioningserver.import_images.download_resources import (
     download_all_boot_resources,
-    )
+)
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
@@ -44,7 +44,7 @@ from provisioningserver.utils.fs import (
     atomic_write,
     read_text_file,
     tempdir,
-    )
+)
 from provisioningserver.utils.shell import call_and_check
 
 

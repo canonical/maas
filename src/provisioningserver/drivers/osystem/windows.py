@@ -23,7 +23,7 @@ from provisioningserver.config import Config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
-    )
+)
 
 
 WINDOWS_CHOICES = {

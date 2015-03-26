@@ -26,16 +26,16 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetClusterInterfaces,
     ReportForeignDHCPServer,
-    )
+)
 from provisioningserver.utils.twisted import (
     pause,
     retries,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
 

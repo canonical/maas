@@ -35,13 +35,13 @@ import fnmatch
 from formencode import (
     ForEach,
     Schema,
-    )
+)
 from formencode.validators import String
 from metadataserver.models import commissioningscript
 from provisioningserver.config import (
     ConfigBase,
     ConfigMeta,
-    )
+)
 
 
 """

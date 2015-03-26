@@ -26,14 +26,14 @@ from django.db.models import (
     ForeignKey,
     Manager,
     Model,
-    )
+)
 from django.utils.http import urlencode
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from metadataserver.fields import (
     Bin,
     BinaryField,
-    )
+)
 
 
 class FileStorageManager(Manager):

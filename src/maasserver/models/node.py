@@ -22,7 +22,7 @@ __all__ = [
 from collections import (
     defaultdict,
     namedtuple,
-    )
+)
 from datetime import timedelta
 from itertools import chain
 from operator import attrgetter
@@ -34,7 +34,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
-    )
+)
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -48,18 +48,18 @@ from django.db.models import (
     SET_DEFAULT,
     SET_NULL,
     TextField,
-    )
+)
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import (
     remove_host_maps,
     update_host_maps,
-    )
+)
 from maasserver.clusterrpc.power import (
     power_off_node,
     power_on_node,
-    )
+)
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_BOOT,
@@ -72,15 +72,15 @@ from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
     PRESEED_TYPE,
-    )
+)
 from maasserver.exceptions import (
     NodeStateViolation,
     StaticIPAddressTypeClash,
-    )
+)
 from maasserver.fields import (
     JSONObjectField,
     MAC,
-    )
+)
 from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -89,7 +89,7 @@ from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import (
     MACAddress,
     update_mac_cluster_interfaces,
-    )
+)
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
@@ -100,12 +100,12 @@ from maasserver.node_status import (
     get_failed_status,
     is_failed_status,
     NODE_TRANSITIONS,
-    )
+)
 from maasserver.rpc.monitors import TransitionMonitor
 from maasserver.utils import (
     get_db_state,
     strip_domain,
-    )
+)
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -113,7 +113,7 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_do,
     transactional,
-    )
+)
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
 from piston.models import Token
@@ -126,7 +126,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     callOutToThread,
     synchronous,
-    )
+)
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 

@@ -17,7 +17,7 @@ __all__ = []
 from os import (
     chmod,
     stat,
-    )
+)
 from os.path import dirname
 
 from fixtures import EnvironmentVariableFixture
@@ -28,13 +28,13 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     sentinel,
-    )
+)
 from provisioningserver import security
 from provisioningserver.utils.fs import (
     ensure_dir,
     read_text_file,
     write_text_file,
-    )
+)
 
 
 class TestGetSharedSecretFromFilesystem(MAASTestCase):

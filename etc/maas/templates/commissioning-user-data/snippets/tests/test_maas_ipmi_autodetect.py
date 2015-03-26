@@ -22,7 +22,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import call
 from snippets import maas_ipmi_autodetect
@@ -41,7 +41,7 @@ from snippets.maas_ipmi_autodetect import (
     pick_user_number_from_list,
     run_command,
     verify_ipmi_user_settings,
-    )
+)
 
 
 class TestRunCommand(MAASTestCase):

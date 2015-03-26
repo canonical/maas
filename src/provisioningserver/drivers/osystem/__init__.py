@@ -23,7 +23,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
-    )
+)
 from collections import namedtuple
 
 from provisioningserver.utils.registry import Registry

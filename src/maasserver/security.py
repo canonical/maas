@@ -29,11 +29,11 @@ from provisioningserver.security import (
     set_shared_secret_on_filesystem,
     to_bin,
     to_hex,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
-    )
+)
 from pytz import UTC
 from twisted.internet import ssl
 from twisted.internet.threads import deferToThread

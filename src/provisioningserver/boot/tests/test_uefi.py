@@ -21,14 +21,14 @@ from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
     get_main_archive_url,
     re_config_file,
     UEFIBootMethod,
-    )
+)
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -38,11 +38,11 @@ from testtools.matchers import (
     MatchesAll,
     MatchesRegex,
     StartsWith,
-    )
+)
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
-    )
+)
 
 
 def compose_config_path(mac=None, arch=None, subarch=None):

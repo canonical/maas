@@ -28,13 +28,13 @@ from django.views.generic import (
     CreateView,
     DetailView,
     UpdateView,
-    )
+)
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
-    )
+)
 
 
 class ZoneListView(PaginatedListView):

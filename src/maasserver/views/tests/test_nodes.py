@@ -22,7 +22,7 @@ import os
 from random import (
     choice,
     randint,
-    )
+)
 from textwrap import dedent
 import time
 from unittest import SkipTest
@@ -39,7 +39,7 @@ from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
-    )
+)
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
@@ -47,29 +47,29 @@ from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
-    )
+)
 from maasserver.node_action import (
     Acquire,
     Commission,
     Delete,
     Deploy,
-    )
+)
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
-    )
+)
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    )
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     SeleniumTestCase,
-    )
+)
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
@@ -79,12 +79,12 @@ from maasserver.views.nodes import (
     node_to_dict,
     NodeEventListView,
     NodeView,
-    )
+)
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
-    )
+)
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
@@ -93,7 +93,7 @@ from testtools.matchers import (
     Equals,
     HasLength,
     Not,
-    )
+)
 
 
 def normalize_text(text):

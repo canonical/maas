@@ -29,7 +29,7 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
@@ -37,11 +37,11 @@ from mock import (
     Mock,
     NonCallableMock,
     sentinel,
-    )
+)
 from testtools.matchers import (
     MatchesStructure,
     Mismatch,
-    )
+)
 from twisted.internet import defer
 
 

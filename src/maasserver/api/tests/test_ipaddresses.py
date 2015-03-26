@@ -23,7 +23,7 @@ from maasserver.dns import config as dns_config_module
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
-    )
+)
 from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
 from maasserver.testing.api import APITestCase
@@ -37,7 +37,7 @@ from testtools.matchers import (
     HasLength,
     Is,
     Not,
-    )
+)
 from twisted.python.failure import Failure
 
 

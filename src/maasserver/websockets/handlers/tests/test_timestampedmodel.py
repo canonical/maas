@@ -18,7 +18,7 @@ from datetime import datetime
 
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
-    )
+)
 from maastesting.testcase import MAASTestCase
 
 

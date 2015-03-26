@@ -28,13 +28,13 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
-    )
+)
 from django.template import RequestContext
 from django.views.generic import (
     CreateView,
     DeleteView,
     DetailView,
-    )
+)
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
@@ -52,16 +52,16 @@ from maasserver.forms import (
     ThirdPartyDriversForm,
     UbuntuForm,
     WindowsForm,
-    )
+)
 from maasserver.models import (
     BootSource,
     LicenseKey,
     UserProfile,
-    )
+)
 from maasserver.utils.osystems import (
     get_osystem_from_osystems,
     get_release_from_osystem,
-    )
+)
 from maasserver.views import process_form
 from metadataserver.models import CommissioningScript
 

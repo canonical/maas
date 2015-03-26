@@ -21,11 +21,11 @@ from fixtures import FakeLogger
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
-    )
+)
 from maasserver.rpc.clusters import (
     get_cluster_status,
     register_cluster,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase

@@ -32,20 +32,20 @@ from maasserver.api.support import (
     AnonymousOperationsHandler,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     get_mandatory_param,
     get_oauth_token,
     get_optional_list,
     get_optional_param,
-    )
+)
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
-    )
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -54,7 +54,7 @@ from maasserver.exceptions import (
     PowerProblem,
     StaticIPAddressExhaustion,
     Unauthorized,
-    )
+)
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
     BulkNodeActionForm,
@@ -62,11 +62,11 @@ from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
     NodeActionForm,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
-    )
+)
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
@@ -78,7 +78,7 @@ from piston.utils import rc
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable

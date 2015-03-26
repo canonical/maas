@@ -62,7 +62,7 @@ __all__ = [
 from contextlib import (
     closing,
     contextmanager,
-    )
+)
 from copy import deepcopy
 from getpass import getuser
 import json
@@ -76,7 +76,7 @@ from threading import RLock
 from formencode import (
     ForEach,
     Schema,
-    )
+)
 from formencode.api import NoDefault
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
@@ -89,13 +89,13 @@ from formencode.validators import (
     String,
     UnicodeString,
     URL,
-    )
+)
 from lockfile import FileLock
 from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
-    )
+)
 import yaml
 
 # Path to the directory on the cluster controller where boot resources are

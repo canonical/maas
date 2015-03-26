@@ -22,11 +22,11 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import Mock
 from provisioningserver.drivers.hardware import msftocs
 from provisioningserver.drivers.hardware.msftocs import (
@@ -36,7 +36,7 @@ from provisioningserver.drivers.hardware.msftocs import (
     power_control_msftocs,
     power_state_msftocs,
     probe_and_enlist_msftocs,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException

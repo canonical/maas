@@ -26,31 +26,31 @@ from maasserver.websockets.websockets import (
     WebSocketsProtocolWrapper,
     WebSocketsResource,
     WebSocketsTransport,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from twisted.internet.protocol import (
     Factory,
     Protocol,
-    )
+)
 from twisted.protocols.tls import TLSMemoryBIOProtocol
 from twisted.python import log
 from twisted.test.proto_helpers import (
     AccumulatingProtocol,
     StringTransportWithDisconnection,
-    )
+)
 from twisted.web.http_headers import Headers
 from twisted.web.resource import (
     IResource,
     Resource,
-    )
+)
 from twisted.web.server import (
     NOT_DONE_YET,
     Request,
-    )
+)
 from twisted.web.test.test_web import (
     DummyChannel,
     DummyRequest,
-    )
+)
 from zope.interface import implementer
 from zope.interface.verify import verifyObject
 

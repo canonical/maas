@@ -27,29 +27,29 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
     Node,
     NodeGroup,
-    )
+)
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
     APITestCase,
     MultipleUsersScenarios,
-    )
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -68,7 +68,7 @@ from testtools.matchers import (
     Equals,
     HasLength,
     MatchesListwise,
-    )
+)
 
 
 class NodeHostnameTest(MultipleUsersScenarios,

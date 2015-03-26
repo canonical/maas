@@ -20,15 +20,15 @@ from distro_info import UbuntuDistroInfo
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
-    )
+)
 from provisioningserver.drivers.osystem.debian_networking import (
     compose_network_interfaces,
-    )
+)
 from provisioningserver.udev import compose_network_interfaces_udev_rules
 from provisioningserver.utils.curtin import (
     compose_recursive_copy,
     compose_write_text_file,
-    )
+)
 
 
 class UbuntuOS(OperatingSystem):

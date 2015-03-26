@@ -25,7 +25,7 @@ from maasserver.exceptions import UnresolvableHost
 from netaddr import (
     valid_ipv4,
     valid_ipv6,
-    )
+)
 from provisioningserver.utils.network import resolve_hostname
 
 

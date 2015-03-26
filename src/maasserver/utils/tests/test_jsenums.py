@@ -22,7 +22,7 @@ from maasserver.utils.jsenums import (
     get_enums,
     header,
     serialize_enum,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.enum import map_enum
 

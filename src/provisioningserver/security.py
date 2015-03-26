@@ -21,7 +21,7 @@ __all__ = [
 from binascii import (
     a2b_hex,
     b2a_hex,
-    )
+)
 import errno
 from hashlib import sha256
 from hmac import HMAC
@@ -30,7 +30,7 @@ from os.path import dirname
 from sys import (
     stderr,
     stdin,
-    )
+)
 
 from lockfile import FileLock
 from provisioningserver.path import get_path
@@ -38,7 +38,7 @@ from provisioningserver.utils.fs import (
     ensure_dir,
     read_text_file,
     write_text_file,
-    )
+)
 
 
 def to_hex(b):

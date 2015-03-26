@@ -24,19 +24,19 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
-    )
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import sentinel
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.utils.enum import map_enum
 from random import randint
 

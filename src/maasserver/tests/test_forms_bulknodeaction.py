@@ -20,19 +20,19 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     BulkNodeActionForm,
     SetZoneBulkAction,
-    )
+)
 from maasserver.models import Node
 from maasserver.node_action import (
     Delete,
     PowerOff,
     PowerOn,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
-    )
+)
 
 
 class TestBulkNodeActionForm(MAASServerTestCase):

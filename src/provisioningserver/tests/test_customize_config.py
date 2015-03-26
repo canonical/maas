@@ -20,7 +20,7 @@ import os.path
 from subprocess import (
     PIPE,
     Popen,
-    )
+)
 import sys
 from textwrap import dedent
 

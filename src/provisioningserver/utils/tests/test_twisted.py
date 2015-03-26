@@ -19,7 +19,7 @@ import operator
 from random import (
     randint,
     random,
-    )
+)
 import re
 import threading
 import time
@@ -30,15 +30,15 @@ from maastesting.matchers import (
     IsCallable,
     IsUnfiredDeferred,
     MockCalledOnceWith,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -51,7 +51,7 @@ from provisioningserver.utils.twisted import (
     reactor_sync,
     retries,
     synchronous,
-    )
+)
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AfterPreprocessing,
@@ -65,7 +65,7 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
     Raises,
-    )
+)
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -73,7 +73,7 @@ from twisted.internet.defer import (
     CancelledError,
     Deferred,
     inlineCallbacks,
-    )
+)
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
 from twisted.python import threadable

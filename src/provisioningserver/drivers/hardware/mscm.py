@@ -27,11 +27,11 @@ import re
 from paramiko import (
     AutoAddPolicy,
     SSHClient,
-    )
+)
 from provisioningserver.utils import (
     commission_node,
     create_node,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 
 

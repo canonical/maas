@@ -30,7 +30,7 @@ from provisioningserver.dns.config import (
     DNSConfig,
     set_up_options_conf,
     set_up_rndc,
-    )
+)
 
 
 class Command(BaseCommand):

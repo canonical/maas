@@ -23,18 +23,18 @@ from maasserver.bootsources import (
     ensure_boot_source_definition,
     get_boot_sources,
     get_os_info_from_boot_sources,
-    )
+)
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootSource,
     BootSourceCache,
     BootSourceSelection,
     Config,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
@@ -42,10 +42,10 @@ from maastesting.matchers import MockCalledOnceWith
 from mock import MagicMock
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
-    )
+)
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.helpers import ImageSpec
 from requests.exceptions import ConnectionError
 from testtools.matchers import HasLength

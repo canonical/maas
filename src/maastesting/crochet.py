@@ -20,7 +20,7 @@ import crochet
 from testtools.content import (
     Content,
     UTF8_TEXT,
-    )
+)
 from testtools.matchers import Equals
 
 

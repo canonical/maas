@@ -20,20 +20,20 @@ from django.utils.safestring import SafeUnicode
 from maasserver.models import (
     SSLKey,
     sslkey as sslkey_module,
-    )
+)
 from maasserver.models.sslkey import (
     crypto,
     find_ssl_common_name,
     get_html_display_for_key,
     validate_ssl_key,
-    )
+)
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     Contains,
     StartsWith,
-    )
+)
 
 
 class SSLKeyValidatorTest(MAASServerTestCase):

@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import (
     models,
     transaction,
-    )
+)
 from django.db.utils import IntegrityError
 from netaddr import IPNetwork
 from south.db import db

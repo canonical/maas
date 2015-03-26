@@ -26,7 +26,7 @@ from maascli.actions import boot_resources_create
 from maascli.actions.boot_resources_create import (
     BootResourcesCreateAction,
     CHUNK_SIZE,
-    )
+)
 from maascli.command import CommandError
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
@@ -36,7 +36,7 @@ from mock import (
     ANY,
     Mock,
     sentinel,
-    )
+)
 
 
 class TestBootResourcesCreateAction(MAASTestCase):

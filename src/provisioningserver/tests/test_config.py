@@ -36,7 +36,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.config import (
@@ -51,7 +51,7 @@ from provisioningserver.config import (
     ConfigurationMeta,
     ConfigurationOption,
     Directory,
-    )
+)
 from provisioningserver.path import get_path
 from provisioningserver.testing.config import ConfigFixtureBase
 from testtools import ExpectedException
@@ -63,7 +63,7 @@ from testtools.matchers import (
     MatchesException,
     MatchesStructure,
     Raises,
-    )
+)
 from twisted.python.filepath import FilePath
 import yaml
 

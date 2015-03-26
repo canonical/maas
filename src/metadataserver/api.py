@@ -32,26 +32,26 @@ from maasserver.api.nodes import store_node_power_parameters
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     extract_oauth_key,
     get_mandatory_param,
-    )
+)
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
-    )
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
     NodeStateViolation,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
     SSHKey,
     SSLKey,
-    )
+)
 from maasserver.models.event import Event
 from maasserver.models.tag import Tag
 from maasserver.populate_tags import populate_tags_for_single_node
@@ -60,30 +60,30 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_enlist_userdata,
     get_preseed,
-    )
+)
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
 from metadataserver import logger
 from metadataserver.enum import (
     RESULT_TYPE,
     SIGNAL_STATUS,
-    )
+)
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
     NodeKey,
     NodeResult,
     NodeUserData,
-    )
+)
 from metadataserver.models.commissioningscript import (
     BUILTIN_COMMISSIONING_SCRIPTS,
-    )
+)
 from metadataserver.user_data import poweroff
 from piston.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
-    )
+)
 
 
 class UnknownMetadataVersion(MAASAPINotFound):

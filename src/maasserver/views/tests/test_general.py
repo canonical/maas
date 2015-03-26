@@ -33,7 +33,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
-    )
+)
 from maasserver.views.nodes import NodeEdit
 from testtools.matchers import ContainsAll
 

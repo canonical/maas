@@ -25,7 +25,7 @@ from maasserver.websockets.protocol import WebSocketFactory
 from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
     WebSocketsResource,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
@@ -35,7 +35,7 @@ from twisted.python.threadpool import ThreadPool
 from twisted.web.resource import (
     ErrorPage,
     Resource,
-    )
+)
 from twisted.web.server import Site
 from twisted.web.static import File
 from twisted.web.util import Redirect

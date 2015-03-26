@@ -26,13 +26,13 @@ from operator import attrgetter
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from netifaces import (
     AF_INET,
     AF_INET6,
     ifaddresses,
     interfaces,
-    )
+)
 from provisioningserver.utils.network import clean_up_netifaces_address
 
 

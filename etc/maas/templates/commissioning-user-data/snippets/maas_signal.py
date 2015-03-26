@@ -23,7 +23,7 @@ import urllib2
 from maas_api_helper import (
     geturl,
     read_config,
-    )
+)
 
 
 MD_VERSION = "2012-03-01"

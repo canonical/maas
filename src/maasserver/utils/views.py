@@ -30,7 +30,7 @@ from maasserver.utils.orm import (
     gen_retry_intervals,
     is_serialization_failure,
     post_commit_hooks,
-    )
+)
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
 from twisted.python import log

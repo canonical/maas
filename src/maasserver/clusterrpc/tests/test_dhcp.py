@@ -19,41 +19,41 @@ from functools import partial
 from itertools import (
     chain,
     izip,
-    )
+)
 
 from maasserver.clusterrpc import dhcp
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.fields import MAC
 from maasserver.rpc import getClientFor
 from maasserver.rpc.testing.doubles import DummyClients
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
     MockRegionToClusterRPCFixture,
-    )
+)
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MatchesPartialCall,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.rpc.cluster import (
     CreateHostMaps,
     RemoveHostMaps,
-    )
+)
 from provisioningserver.utils.twisted import reactor_sync
 from testtools.matchers import (
     AfterPreprocessing,
@@ -63,7 +63,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesPredicateWithParams,
     MatchesSetwise,
-    )
+)
 from twisted.internet import defer
 
 # Matcher for a generator that yields nothing. In the context of

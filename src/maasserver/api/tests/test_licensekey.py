@@ -22,7 +22,7 @@ from maasserver import forms
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.models.licensekey import LicenseKey
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory

@@ -23,13 +23,13 @@ from maasserver.api.nodegroups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NodeGroupInterfaceForm
 from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from piston.utils import rc
 
 

@@ -26,18 +26,18 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 
 from django.contrib import messages
 from django.http import (
     Http404,
     HttpResponseRedirect,
-    )
+)
 from django.views.generic import (
     DeleteView,
     ListView,
     TemplateView,
-    )
+)
 
 
 class TextTemplateView(TemplateView):

@@ -28,33 +28,33 @@ import sys
 from textwrap import (
     dedent,
     fill,
-    )
+)
 from urlparse import (
     urljoin,
     urlparse,
-    )
+)
 
 from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
-    )
+)
 from apiclient.utils import (
     ascii_url,
     urlencode,
-    )
+)
 import httplib2
 from maascli.command import (
     Command,
     CommandError,
-    )
+)
 from maascli.config import ProfileConfig
 from maascli.utils import (
     handler_command_name,
     parse_docstring,
     safe_name,
     try_import_module,
-    )
+)
 
 
 def http_request(url, method, body=None, headers=None,

@@ -27,16 +27,16 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
     GetProxies,
-    )
+)
 from provisioningserver.utils.twisted import (
     pause,
     retries,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.python import log
 from twisted.spread.pb import NoSuchMethod
 

@@ -23,7 +23,7 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     MagicMock,
     sentinel,
-    )
+)
 from testtools.matchers import Is
 
 

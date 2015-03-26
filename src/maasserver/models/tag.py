@@ -19,13 +19,13 @@ __all__ = [
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
-    )
+)
 from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
     TextField,
-    )
+)
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from maasserver import DefaultMeta

@@ -17,7 +17,7 @@ __all__ = []
 from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
-    )
+)
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 

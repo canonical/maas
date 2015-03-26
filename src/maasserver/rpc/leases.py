@@ -21,7 +21,7 @@ from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.orm import transactional
 from provisioningserver.pserv_services.lease_upload_service import (
     convert_mappings_to_leases,
-    )
+)
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
 

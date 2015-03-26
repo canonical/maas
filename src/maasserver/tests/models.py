@@ -29,13 +29,13 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Model,
-    )
+)
 from maasserver.fields import (
     JSONObjectField,
     LargeObjectField,
     MAASIPAddressField,
     XMLField,
-    )
+)
 from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
 

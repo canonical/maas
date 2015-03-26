@@ -20,7 +20,7 @@ from maasserver.forms_settings import (
     get_config_doc,
     get_config_field,
     get_config_form,
-    )
+)
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

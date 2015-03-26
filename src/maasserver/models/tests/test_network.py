@@ -26,14 +26,14 @@ from maasserver.models.network import (
     NameSpecifier,
     parse_network_spec,
     VLANSpecifier,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from provisioningserver.utils.network import make_network
 
 

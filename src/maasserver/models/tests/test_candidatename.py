@@ -19,7 +19,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     AllMatch,
     MatchesRegex,
-    )
+)
 
 
 class TestGenCandidateName(MAASServerTestCase):

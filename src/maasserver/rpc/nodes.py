@@ -29,7 +29,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
-    )
+)
 from maasserver.utils.orm import transactional
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
@@ -37,7 +37,7 @@ from provisioningserver.rpc.exceptions import (
     NodeStateViolation,
     NoSuchCluster,
     NoSuchNode,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 import simplejson as json
 

@@ -29,7 +29,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
-    )
+)
 from collections import OrderedDict
 from textwrap import dedent
 
@@ -40,18 +40,18 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
-    )
+)
 from maasserver.exceptions import (
     NodeActionError,
     Redirect,
     StaticIPAddressExhaustion,
-    )
+)
 from maasserver.node_status import is_failed_status
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.shell import ExternalProcessError
 

@@ -23,11 +23,11 @@ from provisioningserver.boot import (
     BytesReader,
     get_parameters,
     get_remote_mac,
-    )
+)
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     re_mac_address,
-    )
+)
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from tftp.backend import FilesystemReader
 

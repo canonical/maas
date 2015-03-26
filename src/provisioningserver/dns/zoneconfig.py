@@ -27,18 +27,18 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     spanning_cidr,
-    )
+)
 from netaddr.core import AddrFormatError
 from provisioningserver.dns.config import (
     compose_config_path,
     render_dns_template,
     report_missing_config_dir,
-    )
+)
 from provisioningserver.utils.fs import incremental_write
 from provisioningserver.utils.network import (
     intersect_iprange,
     ip_range_within_network,
-    )
+)
 
 
 def get_fqdn_or_ip_address(target):

@@ -14,11 +14,11 @@ from django.core.exceptions import ValidationError
 from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_hostname,
-    )
+)
 from testtools.matchers import (
     Equals,
     HasLength,
-    )
+)
 
 
 str = None

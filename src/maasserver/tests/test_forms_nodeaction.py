@@ -18,18 +18,18 @@ from django.contrib import messages
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
-    )
+)
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     get_action_form,
     NodeActionForm,
-    )
+)
 from maasserver.node_action import (
     Commission,
     Delete,
     Deploy,
     MarkBroken,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks

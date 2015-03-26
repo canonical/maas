@@ -19,7 +19,7 @@ from socket import (
     EAI_NODATA,
     EAI_NONAME,
     gaierror,
-    )
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -29,13 +29,13 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
-    )
+)
 import netifaces
 from netifaces import (
     AF_LINK,
     AF_INET,
     AF_INET6,
-    )
+)
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
@@ -48,7 +48,7 @@ from provisioningserver.utils.network import (
     ip_range_within_network,
     make_network,
     resolve_hostname,
-    )
+)
 from testtools.matchers import Equals
 
 

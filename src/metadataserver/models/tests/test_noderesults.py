@@ -22,7 +22,7 @@ import json
 from math import (
     ceil,
     floor,
-    )
+)
 import os.path
 import random
 from random import randint
@@ -31,7 +31,7 @@ from subprocess import (
     CalledProcessError,
     check_output,
     STDOUT,
-    )
+)
 import tarfile
 from textwrap import dedent
 import time
@@ -45,18 +45,18 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     TestWithoutCrochetMixin,
-    )
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.utils import sample_binary_data
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
     commissioningscript as cs_module,
-    )
+)
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
     extract_router_mac_addresses,
@@ -70,14 +70,14 @@ from metadataserver.models.commissioningscript import (
     set_virtual_tag,
     update_hardware_details,
     update_node_physical_block_devices,
-    )
+)
 from metadataserver.models.noderesult import NodeResult
 from mock import (
     call,
     create_autospec,
     Mock,
     sentinel,
-    )
+)
 from testtools.content import text_content
 from testtools.matchers import (
     Contains,
@@ -85,7 +85,7 @@ from testtools.matchers import (
     DocTestMatches,
     MatchesStructure,
     Not,
-    )
+)
 
 
 def open_tarfile(content):

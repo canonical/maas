@@ -23,17 +23,17 @@ from urlparse import (
     parse_qs,
     urljoin,
     urlparse,
-    )
+)
 
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
-    )
+)
 from apiclient.testing.django import (
     parse_headers_and_body_with_django,
     parse_headers_and_body_with_mimer,
-    )
+)
 from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
@@ -42,7 +42,7 @@ from testtools.matchers import (
     AfterPreprocessing,
     Equals,
     MatchesListwise,
-    )
+)
 
 
 class TestMAASOAuth(MAASTestCase):

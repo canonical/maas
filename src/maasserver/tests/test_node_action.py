@@ -22,7 +22,7 @@ from django.db import transaction
 from maasserver import (
     locks,
     node_query,
-    )
+)
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -30,11 +30,11 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     POWER_STATE,
-    )
+)
 from maasserver.exceptions import (
     NodeActionError,
     Redirect,
-    )
+)
 from maasserver.models import StaticIPAddress
 from maasserver.node_action import (
     Abort,
@@ -52,7 +52,7 @@ from maasserver.node_action import (
     PowerOn,
     Release,
     RPC_EXCEPTIONS,
-    )
+)
 from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -60,11 +60,11 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
-    )
+)
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
-    )
+)
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
 from provisioningserver.rpc.exceptions import MultipleFailures

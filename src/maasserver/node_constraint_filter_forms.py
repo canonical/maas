@@ -28,20 +28,20 @@ from maasserver.forms import (
     MultipleChoiceField,
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
-    )
+)
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
     Network,
     PhysicalBlockDevice,
     Tag,
     Zone,
-    )
+)
 from maasserver.models.network import parse_network_spec
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
-    )
+)
 
 # Matches the storage constraint from Juju. Format is an optional label,
 # followed by an optional colon, then size (which is mandatory) followed by an

@@ -27,7 +27,7 @@ from itertools import (
     imap,
     islice,
     repeat,
-    )
+)
 import os
 import os.path
 import random
@@ -43,7 +43,7 @@ import mock
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 
 # Occasionally a parameter needs separate values for None and "no value
 # given, make one up."  In that case, use NO_VALUE as the default and

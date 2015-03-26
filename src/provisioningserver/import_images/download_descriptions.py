@@ -24,20 +24,20 @@ __all__ = [
 
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     ImageSpec,
-    )
+)
 from simplestreams.mirrors import (
     BasicMirrorWriter,
     UrlMirrorReader,
-    )
+)
 from simplestreams.util import (
     path_from_mirror_url,
     products_exdata,
-    )
+)
 
 
 def clean_up_repo_item(item):

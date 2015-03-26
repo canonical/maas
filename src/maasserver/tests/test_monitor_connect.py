@@ -21,12 +21,12 @@ from maasserver import node_query
 from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith

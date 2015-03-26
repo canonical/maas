@@ -21,7 +21,7 @@ import urllib
 from urlparse import (
     urlparse,
     urlunparse,
-    )
+)
 
 
 def compose_URL(base_url, host):

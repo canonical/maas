@@ -21,7 +21,7 @@ from maasserver.models.user import SYSTEM_USERS
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
-    )
+)
 
 
 class UserHandler(Handler):

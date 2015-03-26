@@ -23,14 +23,14 @@ from django.db.models import (
     BigIntegerField,
     CharField,
     Manager,
-    )
+)
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.fields import (
     LargeObjectField,
     LargeObjectFile,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one

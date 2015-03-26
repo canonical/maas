@@ -19,7 +19,7 @@ __all__ = [
 from netaddr import (
     EUI,
     NotRegisteredError,
-    )
+)
 
 
 def get_vendor_for_mac(mac):

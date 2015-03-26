@@ -23,14 +23,14 @@ from maasserver.config_forms import (
     DictCharField,
     DictCharWidget,
     get_all_prefixed_values,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
     Mock,
-    )
+)
 
 
 class TestDictCharField(MAASServerTestCase):

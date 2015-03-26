@@ -27,7 +27,7 @@ from metadataserver.models import NodeResult
 from metadataserver.models.commissioningscript import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
-    )
+)
 
 
 class TestNodeResult(DjangoTestCase):

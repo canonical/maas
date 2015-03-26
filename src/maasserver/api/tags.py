@@ -27,7 +27,7 @@ from maasserver.api.nodegroups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_list_from_dict_or_multidict
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
@@ -36,7 +36,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     Tag,
-    )
+)
 from maasserver.utils.orm import get_one
 from piston.utils import rc
 

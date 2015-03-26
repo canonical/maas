@@ -24,17 +24,17 @@ from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
     boot_resource_set_to_dict,
     boot_resource_to_dict,
-    )
+)
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
-    )
+)
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
     LargeFile,
-    )
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory

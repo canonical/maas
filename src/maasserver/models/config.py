@@ -25,7 +25,7 @@ from django.db.models import (
     CharField,
     Manager,
     Model,
-    )
+)
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField

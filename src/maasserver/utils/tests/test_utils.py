@@ -26,7 +26,7 @@ from django.test.client import RequestFactory
 from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -40,7 +40,7 @@ from maasserver.utils import (
     make_validation_error_message,
     strip_domain,
     synchronised,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from netaddr import IPAddress

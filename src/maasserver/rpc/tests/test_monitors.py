@@ -17,7 +17,7 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 import random
 from random import randint
 
@@ -26,17 +26,17 @@ from maasserver import node_query
 from maasserver.node_status import (
     get_failed_status,
     NODE_FAILURE_STATUS_TRANSITIONS,
-    )
+)
 from maasserver.rpc import monitors
 from maasserver.rpc.monitors import (
     handle_monitor_expired,
     TransitionMonitor,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -45,17 +45,17 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
-    )
+)
 from testtools.matchers import (
     Equals,
     Is,
     MatchesStructure,
     Not,
-    )
+)
 from twisted.internet.defer import succeed
 from twisted.protocols import amp
 

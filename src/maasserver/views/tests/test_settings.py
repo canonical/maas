@@ -23,22 +23,22 @@ from lxml.html import fromstring
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.models import (
     BootSource,
     Config,
     UserProfile,
-    )
+)
 from maasserver.testing import (
     extract_redirect,
     get_prefixed_form_data,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import settings as settings_view
 

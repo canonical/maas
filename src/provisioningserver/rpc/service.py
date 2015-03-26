@@ -22,17 +22,17 @@ from socket import (
     AF_INET,
     SOCK_STREAM,
     socket,
-    )
+)
 from subprocess import (
     PIPE,
     Popen,
     STDOUT,
-    )
+)
 
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
-    )
+)
 from twisted.internet.threads import deferToThread
 
 

@@ -191,7 +191,7 @@ def format_import_lines(module, objects):
         statement = "from %s import %s" % (module, objects[0])
         if len(statement) < 79:
             return statement
-    return "from %s import (\n    %s,\n    )" % (
+    return "from %s import (\n    %s,\n)" % (
         module, ",\n    ".join(objects))
 
 

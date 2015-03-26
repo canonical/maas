@@ -25,41 +25,41 @@ from maasserver.dhcp import (
     do_configure_dhcp,
     make_subnet_config,
     split_ipv4_ipv6_interfaces,
-    )
+)
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import Config
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
-    )
+)
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from mock import (
     ANY,
     call,
     sentinel,
-    )
+)
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
-    )
+)
 from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.url import compose_URL
 from testtools.matchers import (
@@ -70,7 +70,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
     Not,
-    )
+)
 
 
 class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):

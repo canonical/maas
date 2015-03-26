@@ -21,19 +21,19 @@ from os.path import relpath
 from socket import (
     gethostbyname,
     gethostname,
-    )
+)
 from unittest import skip
 from urllib2 import (
     Request,
     urlopen,
-    )
+)
 from urlparse import urljoin
 
 from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import (
     HTTPServerFixture,
     ThreadingHTTPServer,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import FileExists
 

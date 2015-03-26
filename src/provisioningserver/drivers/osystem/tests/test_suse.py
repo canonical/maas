@@ -24,7 +24,7 @@ from provisioningserver.drivers.osystem.suse import (
     DISTRO_SERIES_CHOICES,
     DISTRO_SERIES_DEFAULT,
     SUSEOS,
-    )
+)
 
 
 class TestSUSEOS(MAASTestCase):

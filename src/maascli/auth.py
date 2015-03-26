@@ -25,7 +25,7 @@ from apiclient.creds import convert_string_to_tuple
 from maascli.api import (
     Action,
     http_request,
-    )
+)
 
 
 class UnexpectedResponse(Exception):

@@ -24,7 +24,7 @@ from metadataserver.user_data.snippets import (
     list_snippets,
     read_snippet,
     strip_name,
-    )
+)
 
 
 class TestSnippets(MAASTestCase):

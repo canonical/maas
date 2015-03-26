@@ -29,29 +29,29 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     POWER_STATE,
-    )
+)
 from maasserver.fields import (
     MAC,
     MAC_ERROR_MSG,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
     StaticIPAddress,
-    )
+)
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
-    )
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import (
     reload_object,
     reload_objects,
-    )
+)
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit
@@ -59,12 +59,12 @@ from maastesting.matchers import (
     Equals,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from metadataserver.models import (
     commissioningscript,
     NodeKey,
     NodeUserData,
-    )
+)
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
 from netaddr import IPAddress
@@ -73,7 +73,7 @@ from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     HasLength,
     Not,
-    )
+)
 
 
 class NodeAnonAPITest(MAASServerTestCase):

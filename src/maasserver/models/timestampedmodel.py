@@ -21,7 +21,7 @@ from django.db import connection
 from django.db.models import (
     DateTimeField,
     Model,
-    )
+)
 from maasserver import DefaultMeta
 
 

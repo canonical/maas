@@ -34,7 +34,7 @@ from provisioningserver.dhcp.leases_parser import (
     is_host,
     is_lease,
     lease_parser,
-    )
+)
 
 
 re_entry = re.compile(

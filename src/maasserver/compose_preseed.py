@@ -24,7 +24,7 @@ from maasserver.utils import absolute_reverse
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
-    )
+)
 import yaml
 
 

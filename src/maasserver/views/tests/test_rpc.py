@@ -32,7 +32,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesDict,
     MatchesListwise,
-    )
+)
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 

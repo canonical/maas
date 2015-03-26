@@ -22,7 +22,7 @@ from django.core.urlresolvers import reverse
 from maasserver.api import nodes as nodes_module
 from maasserver.api.node_group_interfaces import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
-    )
+)
 from maasserver.api.nodes import store_node_power_parameters
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASAPIBadRequest
@@ -32,14 +32,14 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
-    )
+)
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
 from maasserver.testing.api import (
     APITestCase,
     log_in_as_normal_user,
     make_worker_client,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
@@ -53,7 +53,7 @@ from testtools.matchers import (
     Equals,
     MatchesListwise,
     MatchesStructure,
-    )
+)
 
 
 class TestAuthentication(MAASServerTestCase):

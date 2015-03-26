@@ -17,7 +17,7 @@ __all__ = []
 from argparse import (
     ArgumentParser,
     Namespace,
-    )
+)
 import os
 from random import randint
 import stat
@@ -26,7 +26,7 @@ from subprocess import (
     CalledProcessError,
     PIPE,
     Popen,
-    )
+)
 import sys
 import types
 
@@ -39,11 +39,11 @@ from provisioningserver.utils.script import (
     ActionScript,
     AtomicWriteScript,
     MainScript,
-    )
+)
 from testtools.matchers import (
     FileContains,
     MatchesStructure,
-    )
+)
 
 
 class TestActionScript(MAASTestCase):

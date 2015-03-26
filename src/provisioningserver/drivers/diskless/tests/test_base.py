@@ -20,11 +20,11 @@ from mock import sentinel
 from provisioningserver.drivers import (
     make_setting_field,
     validate_settings,
-    )
+)
 from provisioningserver.drivers.diskless import (
     DisklessDriver,
     DisklessDriverRegistry,
-    )
+)
 from provisioningserver.utils.testing import RegistryFixture
 
 

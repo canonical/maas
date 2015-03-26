@@ -31,7 +31,7 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_storage,
     parse_legacy_tags,
     RenamableFieldsForm,
-    )
+)
 from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

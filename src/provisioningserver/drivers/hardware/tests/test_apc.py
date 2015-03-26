@@ -20,7 +20,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import call
 from provisioningserver.drivers.hardware import apc as apc_module
@@ -30,7 +30,7 @@ from provisioningserver.drivers.hardware.apc import (
     APCTelnet,
     power_control_apc,
     power_state_apc,
-    )
+)
 from testtools.matchers import Equals
 
 

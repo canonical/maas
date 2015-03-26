@@ -36,22 +36,22 @@ from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
-    )
+)
 from maasserver.enum import (
     NODE_BOOT,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     USERDATA_TYPE,
-    )
+)
 from maasserver.exceptions import (
     ClusterUnavailable,
     MissingBootImage,
     PreseedError,
-    )
+)
 from maasserver.models import (
     Config,
     DHCPLease,
-    )
+)
 from maasserver.networking_preseed import compose_curtin_network_preseed_for
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host

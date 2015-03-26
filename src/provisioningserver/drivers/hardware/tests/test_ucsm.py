@@ -23,22 +23,22 @@ from lxml.etree import (
     Element,
     SubElement,
     XML,
-    )
+)
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     ANY,
     call,
     Mock,
-    )
+)
 from provisioningserver.drivers.hardware import ucsm
 from provisioningserver.drivers.hardware.ucsm import (
     get_children,
@@ -62,7 +62,7 @@ from provisioningserver.drivers.hardware.ucsm import (
     strip_ro_keys,
     UCSM_XML_API,
     UCSM_XML_API_Error,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks

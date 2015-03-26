@@ -19,7 +19,7 @@ from hashlib import sha1
 from struct import (
     pack,
     unpack,
-    )
+)
 
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
@@ -27,7 +27,7 @@ from twisted.python import log
 from twisted.python.constants import (
     ValueConstant,
     Values,
-    )
+)
 from twisted.web.resource import IResource
 from twisted.web.server import NOT_DONE_YET
 from zope.interface import (
@@ -35,7 +35,7 @@ from zope.interface import (
     implementer,
     Interface,
     providedBy,
-    )
+)
 
 
 class _WSException(Exception):

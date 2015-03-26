@@ -19,7 +19,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver.import_images import keyrings

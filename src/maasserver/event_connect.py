@@ -19,13 +19,13 @@ from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import (
     Event,
     Node,
-    )
+)
 from maasserver.models.node import NODE_STATUS
 from maasserver.signals import connect_to_field_change
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
-    )
+)
 
 # Useful to disconnect this in testing.
 STATE_TRANSITION_EVENT_CONNECT = True

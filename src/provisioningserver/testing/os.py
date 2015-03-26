@@ -20,7 +20,7 @@ from maastesting.factory import factory
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
-    )
+)
 
 
 class FakeOS(OperatingSystem):

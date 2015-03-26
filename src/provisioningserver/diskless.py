@@ -25,12 +25,12 @@ from provisioningserver.drivers.diskless import DisklessDriverRegistry
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
-    )
+)
 from provisioningserver.utils.shell import call_and_check
 
 

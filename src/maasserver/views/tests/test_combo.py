@@ -27,7 +27,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.combo import (
     get_absolute_location,
     get_combo_view,
-    )
+)
 
 
 class TestUtilities(MAASServerTestCase):

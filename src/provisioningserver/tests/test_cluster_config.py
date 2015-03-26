@@ -21,7 +21,7 @@ from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_cluster_variable,
     get_maas_url,
-    )
+)
 
 
 class TestClusterConfig(MAASTestCase):

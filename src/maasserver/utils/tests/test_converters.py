@@ -19,7 +19,7 @@ from textwrap import dedent
 from maasserver.utils.converters import (
     human_readable_bytes,
     XMLToYAML,
-    )
+)
 from maastesting.testcase import MAASTestCase
 
 

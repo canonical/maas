@@ -36,17 +36,17 @@ from django.http import HttpResponse
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
-    )
+)
 from django.template import (
     loader,
     RequestContext,
-    )
+)
 from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DetailView,
     UpdateView,
-    )
+)
 from lxml import etree
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
@@ -54,19 +54,19 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
-    )
+)
 from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
     get_action_form,
     get_node_edit_form,
     MACAddressForm,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
     StaticIPAddress,
     Tag,
-    )
+)
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
@@ -74,13 +74,13 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
     OS_WITH_IPv6_SUPPORT,
-    )
+)
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
-    )
+)
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import IPAddress

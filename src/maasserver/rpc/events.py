@@ -23,7 +23,7 @@ from maasserver.models import (
     EventType,
     MACAddress,
     Node,
-    )
+)
 from maasserver.utils.orm import transactional
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchEventType

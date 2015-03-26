@@ -20,11 +20,11 @@ from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.forms import (
     create_Network_from_NodeGroupInterface,
     NetworkForm,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Network,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase

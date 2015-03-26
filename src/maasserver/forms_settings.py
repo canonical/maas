@@ -28,7 +28,7 @@ from django.core.exceptions import ValidationError
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
-    )
+)
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
@@ -36,7 +36,7 @@ from maasserver.utils.osystems import (
     list_commissioning_choices,
     list_osystem_choices,
     list_release_choices,
-    )
+)
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."

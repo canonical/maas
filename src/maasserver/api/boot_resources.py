@@ -29,27 +29,27 @@ from maasserver.api.support import (
     admin_method,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import import_resources
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
-    )
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIForbidden,
     MAASAPIValidationError,
-    )
+)
 from maasserver.forms import (
     BootResourceForm,
     BootResourceNoContentForm,
-    )
+)
 from maasserver.models import (
     BootResource,
     BootResourceFile,
     NodeGroup,
-    )
+)
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc

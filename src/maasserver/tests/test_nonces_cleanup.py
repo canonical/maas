@@ -28,20 +28,20 @@ from maasserver.nonces_cleanup import (
     NonceCleanupService,
     time as module_time,
     timestamp_threshold,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from mock import call
 from piston.models import Nonce
 from testtools.matchers import (
     ContainsAll,
     StartsWith,
-    )
+)
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import Clock
 

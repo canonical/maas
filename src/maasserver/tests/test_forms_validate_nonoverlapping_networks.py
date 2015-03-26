@@ -24,7 +24,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesRegex,
     StartsWith,
-    )
+)
 
 
 class TestValidateNonoverlappingNetworks(TestCase):

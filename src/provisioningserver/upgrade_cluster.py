@@ -43,11 +43,11 @@ from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot.tftppath import (
     drill_down,
     list_subdirs,
-    )
+)
 from provisioningserver.import_images.boot_resources import (
     update_targets_conf,
     write_targets_conf,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 
 

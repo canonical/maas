@@ -26,32 +26,32 @@ from maasserver.websockets import protocol as protocol_module
 from maasserver.websockets.handlers import (
     DeviceHandler,
     NodeHandler,
-    )
+)
 from maasserver.websockets.protocol import (
     MSG_TYPE,
     RESPONSE_TYPE,
     WebSocketFactory,
     WebSocketProtocol,
-    )
+)
 from maasserver.websockets.websockets import STATUSES
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     MagicMock,
     sentinel,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
     Equals,
     Is,
-    )
+)
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.web.server import NOT_DONE_YET
 

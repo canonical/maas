@@ -20,12 +20,12 @@ from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from provisioningserver.rpc.cluster import (
     ComposeCurtinNetworkPreseed,
     GetPreseedData,
-    )
+)
 from provisioningserver.rpc.testing import always_succeed_with
 
 

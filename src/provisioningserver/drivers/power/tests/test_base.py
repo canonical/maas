@@ -18,14 +18,14 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.drivers import (
     make_setting_field,
     power,
     validate_settings,
-    )
+)
 from provisioningserver.drivers.power import (
     get_error_message,
     PowerActionError,
@@ -38,7 +38,7 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
     PowerSettingError,
     PowerToolError,
-    )
+)
 from provisioningserver.utils.testing import RegistryFixture
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import Equals

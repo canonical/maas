@@ -20,13 +20,13 @@ from optparse import make_option
 from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
-    )
+)
 import django
 from django.contrib.auth.models import User
 from django.core.management.base import (
     BaseCommand,
     CommandError,
-    )
+)
 from django.http import Http404
 from maasserver.models.user import get_creds_tuple
 from maasserver.utils.orm import get_one

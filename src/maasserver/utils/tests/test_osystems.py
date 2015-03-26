@@ -20,7 +20,7 @@ import random
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import osystems as osystems_module
@@ -33,7 +33,7 @@ from maasserver.utils.osystems import (
     list_commissioning_choices,
     list_osystem_choices,
     list_release_choices,
-    )
+)
 
 
 class TestOsystems(MAASServerTestCase):

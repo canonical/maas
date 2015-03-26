@@ -25,7 +25,7 @@ from textwrap import dedent
 from maastesting.factory import factory
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.helpers import ImageSpec
 
 

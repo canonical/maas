@@ -24,13 +24,13 @@ from maasserver.rpc.nodes import (
     list_cluster_nodes_power_parameters,
     mark_node_failed,
     request_node_info_by_mac_address,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -39,13 +39,13 @@ from provisioningserver.drivers import PowerTypeRegistry
 from provisioningserver.rpc.cluster import (
     DescribePowerTypes,
     StartMonitors,
-    )
+)
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
     NoSuchNode,
-    )
+)
 from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
 from testtools import ExpectedException
@@ -54,7 +54,7 @@ from testtools.matchers import (
     Equals,
     Is,
     Not,
-    )
+)
 
 
 class TestCreateNode(MAASServerTestCase):

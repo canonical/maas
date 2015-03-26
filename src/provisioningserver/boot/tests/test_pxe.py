@@ -26,13 +26,13 @@ from provisioningserver import kernel_opts
 from provisioningserver.boot import (
     BytesReader,
     pxe as pxe_module,
-    )
+)
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     BOOTLOADERS,
     PXEBootMethod,
     re_config_file,
-    )
+)
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -45,7 +45,7 @@ from testtools.matchers import (
     Not,
     SamePath,
     StartsWith,
-    )
+)
 
 
 def compose_config_path(mac):

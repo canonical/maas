@@ -20,7 +20,7 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
     Redirect,
-    )
+)
 from maasserver.testing import extract_redirect
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase

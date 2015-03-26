@@ -19,7 +19,7 @@ __all__ = [
 from maasserver.utils.orm import (
     post_commit_hooks,
     transactional,
-    )
+)
 from maastesting.djangoclient import SensibleClient
 
 

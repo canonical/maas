@@ -26,7 +26,7 @@ from copy import deepcopy
 from json import (
     dumps,
     loads,
-    )
+)
 import re
 
 from django.core.exceptions import ValidationError
@@ -38,17 +38,17 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     SubfieldBase,
-    )
+)
 from django.db.models.fields.subclassing import Creator
 from django.forms import (
     CharField,
     ModelChoiceField,
-    )
+)
 from django.utils.encoding import force_text
 from maasserver.utils.orm import (
     get_one,
     validate_in_transaction,
-    )
+)
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 

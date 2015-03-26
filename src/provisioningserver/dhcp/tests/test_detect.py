@@ -26,7 +26,7 @@ from apiclient.testing.credentials import make_api_credentials
 from fixtures import (
     EnvironmentVariable,
     FakeLogger,
-    )
+)
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -46,7 +46,7 @@ from provisioningserver.dhcp.detect import (
     request_dhcp,
     udp_socket,
     update_region_controller,
-    )
+)
 import provisioningserver.dhcp.detect as detect_module
 from provisioningserver.testing.testcase import PservTestCase
 

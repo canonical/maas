@@ -23,18 +23,18 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     ANY,
     call,
     DEFAULT,
     Mock,
     sentinel,
-    )
+)
 import provisioningserver
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.power.poweraction import PowerActionFail
@@ -42,22 +42,22 @@ from provisioningserver.rpc import (
     exceptions,
     power,
     region,
-    )
+)
 from provisioningserver.rpc.testing import (
     always_succeed_with,
     MockClusterToRegionRPCFixture,
     MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
-    )
+)
 from testtools import ExpectedException
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
-    )
+)
 from testtools.matchers import (
     Equals,
     IsInstance,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -66,7 +66,7 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
     succeed,
-    )
+)
 from twisted.internet.task import Clock
 
 

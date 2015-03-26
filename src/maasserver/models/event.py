@@ -22,7 +22,7 @@ from django.db.models import (
     ForeignKey,
     Manager,
     TextField,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import EventType

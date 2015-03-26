@@ -25,7 +25,7 @@ from maasserver.models.sshkey import (
     HELLIPSIS,
     Key,
     validate_ssh_public_key,
-    )
+)
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

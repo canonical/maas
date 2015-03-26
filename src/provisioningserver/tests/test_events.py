@@ -21,18 +21,18 @@ from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     ANY,
     call,
-    )
+)
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
     EventDetail,
     send_event_node,
     send_event_node_mac_address,
-    )
+)
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
@@ -40,7 +40,7 @@ from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     AllMatch,
     IsInstance,
-    )
+)
 from twisted.internet.defer import inlineCallbacks
 
 

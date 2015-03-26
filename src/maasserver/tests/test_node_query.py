@@ -19,37 +19,37 @@ import random
 from maasserver.node_status import (
     get_failed_status,
     NODE_STATUS,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
-    )
+)
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.rpc.testing import always_succeed_with
 from testtools.matchers import (
     Equals,
     Is,
-    )
+)
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
 from twisted.python.reflect import namedModule

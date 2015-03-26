@@ -22,7 +22,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     Contains,
     FileContains,
-    )
+)
 
 
 class TestGetNamedConfCommand(MAASServerTestCase):

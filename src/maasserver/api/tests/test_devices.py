@@ -26,14 +26,14 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
     NodeGroup,
     StaticIPAddress,
-    )
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -41,7 +41,7 @@ from maastesting.matchers import MockCalledOnceWith
 from testtools.matchers import (
     HasLength,
     Not,
-    )
+)
 
 
 class TestDevicesAPI(APITestCase):

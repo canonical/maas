@@ -19,7 +19,7 @@ import random
 from jsonschema import (
     validate,
     ValidationError,
-    )
+)
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -34,7 +34,7 @@ from provisioningserver.drivers import (
     PowerTypeRegistry,
     SETTING_PARAMETER_FIELD_SCHEMA,
     validate_settings,
-    )
+)
 from provisioningserver.utils.testing import RegistryFixture
 from testtools.matchers import ContainsAll
 

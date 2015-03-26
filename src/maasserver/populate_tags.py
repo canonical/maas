@@ -26,7 +26,7 @@ from maasserver.models import NodeGroup
 from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
-    )
+)
 from maasserver.rpc import getClientFor
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import EvaluateTag
@@ -36,7 +36,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
     synchronous,
-    )
+)
 from provisioningserver.utils.xpath import try_match_xpath
 from twisted.internet.defer import DeferredList
 from twisted.python import log

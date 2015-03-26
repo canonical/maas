@@ -22,7 +22,7 @@ from random import randint
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.utils import osystems as osystems_module
 

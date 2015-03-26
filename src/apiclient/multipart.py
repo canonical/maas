@@ -19,14 +19,14 @@ __all__ = [
 from collections import (
     Iterable,
     Mapping,
-    )
+)
 from email.generator import Generator
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from io import (
     BytesIO,
     IOBase,
-    )
+)
 from itertools import chain
 import mimetypes
 

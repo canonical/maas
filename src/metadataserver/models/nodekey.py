@@ -22,7 +22,7 @@ from django.db.models import (
     ForeignKey,
     Manager,
     Model,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
 from maasserver.utils.orm import get_one
@@ -31,7 +31,7 @@ from metadataserver.nodeinituser import get_node_init_user
 from piston.models import (
     KEY_SIZE,
     Token,
-    )
+)
 
 
 class NodeKeyManager(Manager):

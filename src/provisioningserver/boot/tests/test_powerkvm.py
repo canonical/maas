@@ -24,11 +24,11 @@ from provisioningserver.boot import (
     BootMethodInstallError,
     powerkvm as powerkvm_module,
     utils,
-    )
+)
 from provisioningserver.boot.powerkvm import (
     GRUB_CONFIG,
     PowerKVMBootMethod,
-    )
+)
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
 

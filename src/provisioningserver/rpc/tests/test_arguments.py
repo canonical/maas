@@ -25,7 +25,7 @@ from testtools.matchers import (
     Equals,
     IsInstance,
     LessThan,
-    )
+)
 from twisted.protocols import amp
 
 

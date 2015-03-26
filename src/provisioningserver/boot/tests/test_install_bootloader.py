@@ -21,15 +21,15 @@ from maastesting.testcase import MAASTestCase
 from maastesting.utils import (
     age_file,
     get_write_time,
-    )
+)
 from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
-    )
+)
 from testtools.matchers import (
     DirExists,
     FileContains,
-    )
+)
 
 
 class TestInstallBootloader(MAASTestCase):

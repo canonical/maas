@@ -28,12 +28,12 @@ from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
     HandlerMetaClass,
-    )
+)
 from piston.resource import Resource
 from piston.utils import (
     HttpStatusCode,
     rc,
-    )
+)
 
 
 class OperationsResource(Resource):

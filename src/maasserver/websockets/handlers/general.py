@@ -26,7 +26,7 @@ from maasserver.utils.osystems import (
     list_all_usable_releases,
     list_osystem_choices,
     list_release_choices,
-    )
+)
 from maasserver.websockets.base import Handler
 
 

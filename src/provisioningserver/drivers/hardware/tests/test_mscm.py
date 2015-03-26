@@ -23,11 +23,11 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import Mock
 from provisioningserver.drivers.hardware import mscm
 from provisioningserver.drivers.hardware.mscm import (
@@ -38,7 +38,7 @@ from provisioningserver.drivers.hardware.mscm import (
     power_control_mscm,
     power_state_mscm,
     probe_and_enlist_mscm,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException

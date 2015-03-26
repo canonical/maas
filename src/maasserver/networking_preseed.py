@@ -37,14 +37,14 @@ from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.macaddress import (
     find_cluster_interface_responsible_for_ip,
-    )
+)
 from maasserver.models.nodeprobeddetails import get_probed_details
 from maasserver.models.staticipaddress import StaticIPAddress
 from netaddr import (
     IPAddress,
     IPNetwork,
     valid_ipv4,
-    )
+)
 
 
 def extract_network_interface_data(element):

@@ -24,12 +24,12 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
-    )
+)
 from maasserver.models import bootresource
 from maasserver.models.bootresource import (
     BootResource,
     RTYPE_REQUIRING_OS_SERIES_NAME,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

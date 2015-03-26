@@ -21,28 +21,28 @@ from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 import provisioningserver
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
-    )
+)
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,
-    )
+)
 from provisioningserver.pserv_services.image import BootImageEndpointService
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
-    )
+)
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
-    )
+)
 from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
-    )
+)
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
@@ -50,7 +50,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesStructure,
-    )
+)
 from twisted.application.service import MultiService
 from twisted.cred.credentials import UsernamePassword
 from twisted.cred.error import UnauthorizedLogin

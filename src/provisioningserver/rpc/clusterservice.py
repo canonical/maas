@@ -29,24 +29,24 @@ from provisioningserver import concurrency
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
-    )
+)
 from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
-    )
+)
 from provisioningserver.drivers.hardware.esxi import probe_esxi_and_enlist
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.msftocs import (
     probe_and_enlist_msftocs,
-    )
+)
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
-    )
+)
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vsphere import (
     probe_vsphere_and_enlist,
-    )
+)
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
@@ -55,53 +55,53 @@ from provisioningserver.rpc import (
     dhcp,
     exceptions,
     region,
-    )
+)
 from provisioningserver.rpc.boot_images import (
     import_boot_images,
     is_import_boot_images_running,
     list_boot_images,
-    )
+)
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.dhcp import (
     create_host_maps,
     remove_host_maps,
-    )
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.monitors import (
     cancel_monitor,
     start_monitors,
-    )
+)
 from provisioningserver.rpc.osystems import (
     compose_curtin_network_preseed,
     gen_operating_systems,
     get_os_release_title,
     get_preseed_data,
     validate_license_key,
-    )
+)
 from provisioningserver.rpc.power import (
     get_power_state,
     maybe_change_power_state,
-    )
+)
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import (
     calculate_digest,
     get_shared_secret_from_filesystem,
-    )
+)
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.endpoints import (
     connectProtocol,
     TCP4ClientEndpoint,
-    )
+)
 from twisted.internet.error import (
     ConnectError,
     ConnectionClosed,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log

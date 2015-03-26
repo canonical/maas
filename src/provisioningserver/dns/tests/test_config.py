@@ -44,15 +44,15 @@ from provisioningserver.dns.config import (
     set_up_options_conf,
     set_up_rndc,
     uncomment_named_conf,
-    )
+)
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_default_controls,
-    )
+)
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    )
+)
 from provisioningserver.utils import locate_config
 from testtools.matchers import (
     Contains,
@@ -65,7 +65,7 @@ from testtools.matchers import (
     Not,
     SamePath,
     StartsWith,
-    )
+)
 from testtools.testcase import ExpectedException
 from twisted.python.filepath import FilePath
 

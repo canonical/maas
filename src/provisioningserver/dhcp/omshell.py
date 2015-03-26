@@ -24,7 +24,7 @@ import re
 from subprocess import (
     PIPE,
     Popen,
-    )
+)
 from textwrap import dedent
 
 from provisioningserver.utils import parse_key_value_file
@@ -32,7 +32,7 @@ from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    )
+)
 
 
 bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)

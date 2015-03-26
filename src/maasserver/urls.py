@@ -19,18 +19,18 @@ from django.conf.urls import (
     include,
     patterns,
     url,
-    )
+)
 from django.contrib.auth.decorators import user_passes_test
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
-    )
+)
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
     logout,
-    )
+)
 from maasserver.views.clusters import (
     ClusterDelete,
     ClusterEdit,
@@ -38,11 +38,11 @@ from maasserver.views.clusters import (
     ClusterInterfaceDelete,
     ClusterInterfaceEdit,
     ClusterListView,
-    )
+)
 from maasserver.views.images import (
     ImageDeleteView,
     ImagesView,
-    )
+)
 from maasserver.views.index import IndexView
 from maasserver.views.networks import (
     NetworkAdd,
@@ -50,12 +50,12 @@ from maasserver.views.networks import (
     NetworkEdit,
     NetworkListView,
     NetworkView,
-    )
+)
 from maasserver.views.noderesult import (
     NodeCommissionResultListView,
     NodeCommissionResultView,
     NodeInstallResultView,
-    )
+)
 from maasserver.views.nodes import (
     enlist_preseed_view,
     MacAdd,
@@ -65,14 +65,14 @@ from maasserver.views.nodes import (
     NodeEventListView,
     NodePreseedView,
     NodeView,
-    )
+)
 from maasserver.views.prefs import (
     SSHKeyCreateView,
     SSHKeyDeleteView,
     SSLKeyCreateView,
     SSLKeyDeleteView,
     userprefsview,
-    )
+)
 from maasserver.views.rpc import info
 from maasserver.views.settings import (
     AccountsAdd,
@@ -80,16 +80,16 @@ from maasserver.views.settings import (
     AccountsEdit,
     AccountsView,
     settings,
-    )
+)
 from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptCreate,
     CommissioningScriptDelete,
-    )
+)
 from maasserver.views.settings_license_keys import (
     LicenseKeyCreate,
     LicenseKeyDelete,
     LicenseKeyEdit,
-    )
+)
 from maasserver.views.tags import TagView
 from maasserver.views.zones import (
     ZoneAdd,
@@ -97,7 +97,7 @@ from maasserver.views.zones import (
     ZoneEdit,
     ZoneListView,
     ZoneView,
-    )
+)
 
 
 def adminurl(regexp, view, *args, **kwargs):

@@ -22,7 +22,7 @@ __all__ = [
 from django.db.models import (
     Manager,
     Model,
-    )
+)
 # TODO: Import the DefaultMeta from the appropriate app, e.g. metadataserver.
 from maasserver import DefaultMeta
 

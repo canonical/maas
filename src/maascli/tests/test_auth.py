@@ -28,7 +28,7 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     sentinel,
-    )
+)
 
 
 def make_credentials():

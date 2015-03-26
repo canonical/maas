@@ -19,7 +19,7 @@ from contextlib import closing
 from django.db import (
     connection,
     transaction,
-    )
+)
 from maasserver.utils import dblocks
 from maastesting.testcase import MAASTestCase
 

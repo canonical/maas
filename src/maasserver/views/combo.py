@@ -22,14 +22,14 @@ import os
 from convoy.combo import (
     combine_files,
     parse_qs,
-    )
+)
 from django.conf import settings as django_settings
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseNotFound,
     HttpResponseRedirect,
-    )
+)
 
 # Static root computed from this very file.
 LOCAL_STATIC_ROOT = os.path.join(

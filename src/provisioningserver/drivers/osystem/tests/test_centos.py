@@ -22,7 +22,7 @@ from provisioningserver.drivers.osystem.centos import (
     BOOT_IMAGE_PURPOSE,
     CentOS,
     DISTRO_SERIES_DEFAULT,
-    )
+)
 from testtools.matchers import Equals
 
 

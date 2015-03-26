@@ -20,7 +20,7 @@ from django.db.models.query import QuerySet
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
-    )
+)
 from maasserver.models.node import Node
 from maasserver.models.zone import Zone
 from maasserver.testing.architecture import make_usable_architecture
@@ -34,22 +34,22 @@ from maasserver.websockets.base import (
     HandlerNoSuchMethodError,
     HandlerPKError,
     HandlerValidationError,
-    )
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     MagicMock,
     sentinel,
-    )
+)
 from testtools.matchers import (
     Equals,
     Is,
     IsInstance,
     MatchesStructure,
-    )
+)
 
 
 def make_handler(name, **kwargs):

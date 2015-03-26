@@ -19,14 +19,14 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
-    )
+)
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
-    )
+)
 from maasserver.fields import JSONObjectField
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.cleansave import CleanSave

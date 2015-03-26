@@ -33,11 +33,11 @@ __all__ = []
 from inspect import (
     getmodule,
     getsourcefile,
-    )
+)
 from sys import (
     _getframe as getframe,
     meta_path,
-    )
+)
 
 
 class FascistFinder:

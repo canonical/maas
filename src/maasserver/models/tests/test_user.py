@@ -17,18 +17,18 @@ __all__ = []
 from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
-    )
+)
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
     get_creds_tuple,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from piston.models import (
     KEY_SIZE,
     SECRET_SIZE,
-    )
+)
 
 
 class AuthTokensTest(MAASServerTestCase):

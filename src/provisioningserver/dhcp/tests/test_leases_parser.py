@@ -24,7 +24,7 @@ from netaddr import IPAddress
 from provisioningserver.dhcp import (
     leases_parser,
     leases_parser_fast,
-    )
+)
 from provisioningserver.dhcp.leases_parser import (
     combine_entries,
     gather_hosts,
@@ -35,7 +35,7 @@ from provisioningserver.dhcp.leases_parser import (
     is_host,
     is_lease,
     lease_parser,
-    )
+)
 
 
 def fake_parsed_lease(ip=None, mac=None, ends=None,

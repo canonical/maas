@@ -24,7 +24,7 @@ from os.path import (
     join,
     pardir,
     realpath,
-    )
+)
 import re
 from sys import executable
 from warnings import filterwarnings

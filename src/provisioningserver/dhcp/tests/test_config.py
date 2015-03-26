@@ -17,7 +17,7 @@ __all__ = []
 from os import (
     makedirs,
     path,
-    )
+)
 from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
@@ -30,7 +30,7 @@ import tempita
 from testtools.matchers import (
     Contains,
     MatchesRegex,
-    )
+)
 
 # Simple test version of the DHCP template.  Contains parameter
 # substitutions, but none that aren't also in the real template.

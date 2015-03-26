@@ -23,7 +23,7 @@ from lxml.etree import fromstring
 from provisioningserver.utils import (
     commission_node,
     create_node,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 
 

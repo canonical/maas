@@ -28,7 +28,7 @@ from django.core.urlresolvers import (
     get_resolver,
     RegexURLPattern,
     RegexURLResolver,
-    )
+)
 from maasserver.api.support import OperationsResource
 from piston.authentication import NoAuthentication
 from piston.doc import generate_doc

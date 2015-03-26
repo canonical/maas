@@ -34,7 +34,7 @@ from pyparsing import (
     restOfLine,
     Suppress,
     ZeroOrMore,
-    )
+)
 
 
 ip = Regex("[:0-9a-fA-F][:.0-9a-fA-F]{2,38}")

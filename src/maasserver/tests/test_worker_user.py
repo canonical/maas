@@ -21,7 +21,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import (
     get_worker_user,
     user_name,
-    )
+)
 
 
 class TestNodeGroupUser(MAASServerTestCase):

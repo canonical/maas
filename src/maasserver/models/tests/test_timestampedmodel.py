@@ -23,7 +23,7 @@ from maasserver.tests.models import TimestampedModelTestModel
 from maastesting.djangotestcase import (
     DjangoTransactionTestCase,
     TestModelMixin,
-    )
+)
 
 
 class TimestampedModelTest(TestModelMixin, MAASServerTestCase):

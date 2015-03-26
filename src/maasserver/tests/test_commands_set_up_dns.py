@@ -23,13 +23,13 @@ from maastesting.factory import factory
 from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
-    )
+)
 from provisioningserver.dns.testing import patch_dns_config_path
 from testtools.matchers import (
     AllMatch,
     FileContains,
     FileExists,
-    )
+)
 
 
 class TestSetUpDNSCommand(MAASServerTestCase):

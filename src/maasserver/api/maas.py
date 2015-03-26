@@ -22,14 +22,14 @@ from formencode import validators
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_settings import (
     get_config_doc,
     get_config_form,
     validate_config_name,
-    )
+)
 from maasserver.models import Config
 from piston.utils import rc
 import simplejson as json

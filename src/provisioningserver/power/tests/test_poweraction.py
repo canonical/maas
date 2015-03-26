@@ -26,23 +26,23 @@ from mock import (
     ANY,
     Mock,
     sentinel,
-    )
+)
 import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.utils import (
     escape_py_literal,
     locate_config,
     ShellTemplate,
-    )
+)
 from testtools.matchers import (
     FileContains,
     MatchesException,
     Raises,
-    )
+)
 
 
 class TestPowerAction(MAASTestCase):

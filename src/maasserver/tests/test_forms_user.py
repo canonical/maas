@@ -19,7 +19,7 @@ from maasserver.forms import (
     EditUserForm,
     NewUserCreationForm,
     ProfileForm,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesRegex

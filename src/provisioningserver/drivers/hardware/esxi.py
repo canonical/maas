@@ -18,11 +18,11 @@ from provisioningserver.drivers.hardware.virsh import (
     VirshSSH,
     VirshVMState,
     VM_STATE_TO_POWER_STATE,
-    )
+)
 from provisioningserver.utils import (
     commission_node,
     create_node,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 
 

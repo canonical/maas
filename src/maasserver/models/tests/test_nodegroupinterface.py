@@ -19,7 +19,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
-    )
+)
 from maasserver.models import NodeGroupInterface
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -27,12 +27,12 @@ from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from testtools.matchers import (
     Equals,
     HasLength,
     Not,
-    )
+)
 
 
 def make_interface(network=None):

@@ -23,7 +23,7 @@ from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    )
+)
 from twisted.python import log
 
 

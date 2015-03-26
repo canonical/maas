@@ -25,11 +25,11 @@ from maasserver.utils import async
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.rpc.cluster import (
     CreateHostMaps,
     RemoveHostMaps,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 from twisted.python.failure import Failure
 

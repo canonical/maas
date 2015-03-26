@@ -21,7 +21,7 @@ from django.db import IntegrityError
 from maasserver.models.eventtype import (
     EventType,
     LOGGING_LEVELS,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
@@ -33,7 +33,7 @@ from testtools.matchers import (
     GreaterThan,
     MatchesAny,
     MatchesStructure,
-    )
+)
 
 
 class EventTypeTest(MAASServerTestCase):

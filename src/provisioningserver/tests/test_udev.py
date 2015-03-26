@@ -22,7 +22,7 @@ from provisioningserver.udev import (
     compose_udev_equality,
     compose_udev_rule,
     compose_udev_setting,
-    )
+)
 from testtools.matchers import ContainsAll
 
 

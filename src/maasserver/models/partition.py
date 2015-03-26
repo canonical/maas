@@ -23,7 +23,7 @@ from django.db.models import (
     BooleanField,
     CharField,
     ForeignKey,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave

@@ -33,13 +33,13 @@ from maasserver import (
     eventloop,
     locks,
     monitor_connect,
-    )
+)
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS_CHOICES,
     POWER_STATE,
-    )
+)
 from maasserver.models import (
     Config,
     DHCPLease,
@@ -47,18 +47,18 @@ from maasserver.models import (
     EventType,
     MACAddress,
     Node,
-    )
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     events as events_module,
     regionservice,
-    )
+)
 from maasserver.rpc.regionservice import (
     Region,
     RegionAdvertisingService,
     RegionServer,
     RegionService,
-    )
+)
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.security import get_shared_secret
@@ -66,7 +66,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -77,26 +77,26 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
     Provides,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     call,
     Mock,
-    )
+)
 import netaddr
 from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
     cluster,
     common,
     exceptions,
-    )
+)
 from provisioningserver.rpc.exceptions import (
     CannotRegisterCluster,
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
-    )
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     Authenticate,
@@ -121,14 +121,14 @@ from provisioningserver.rpc.region import (
     SendEventMACAddress,
     UpdateLeases,
     UpdateNodePowerState,
-    )
+)
 from provisioningserver.rpc.testing import (
     always_fail_with,
     always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
     TwistedLoggerFixture,
-    )
+)
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
@@ -136,7 +136,7 @@ from simplejson import dumps
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
-    )
+)
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -146,12 +146,12 @@ from testtools.matchers import (
     IsInstance,
     MatchesListwise,
     MatchesStructure,
-    )
+)
 from twisted.application.service import Service
 from twisted.internet import (
     reactor,
     tcp,
-    )
+)
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
@@ -159,7 +159,7 @@ from twisted.internet.defer import (
     fail,
     inlineCallbacks,
     succeed,
-    )
+)
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory

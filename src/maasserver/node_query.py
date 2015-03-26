@@ -24,28 +24,28 @@ from maasserver.signals import connect_to_field_change
 from maasserver.utils.orm import (
     post_commit,
     transactional,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     FOREVER,
     synchronous,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.threads import deferToThread
 
 

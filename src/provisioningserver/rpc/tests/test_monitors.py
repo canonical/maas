@@ -17,23 +17,23 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import (
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.rpc import monitors as monitors_module
 from provisioningserver.rpc.monitors import (
     cancel_monitor,
     running_monitors,
     start_monitors,
-    )
+)
 from provisioningserver.rpc.region import MonitorExpired
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
@@ -42,7 +42,7 @@ from testtools.matchers import (
     HasLength,
     IsInstance,
     Not,
-    )
+)
 from twisted.internet.base import DelayedCall
 from twisted.internet.task import Clock
 from twisted.protocols import amp

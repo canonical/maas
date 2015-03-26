@@ -21,12 +21,12 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTwistedRunTest
 from mock import (
     ANY,
     sentinel,
-    )
+)
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.config import BOOT_RESOURCES_STORAGE
@@ -39,7 +39,7 @@ from provisioningserver.rpc.boot_images import (
     is_import_boot_images_running,
     list_boot_images,
     reload_boot_images,
-    )
+)
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause

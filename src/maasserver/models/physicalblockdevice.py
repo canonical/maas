@@ -22,7 +22,7 @@ from maasserver import DefaultMeta
 from maasserver.models.blockdevice import (
     BlockDevice,
     BlockDeviceManager,
-    )
+)
 from maasserver.utils.converters import human_readable_bytes
 
 

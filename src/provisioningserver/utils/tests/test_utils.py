@@ -28,17 +28,17 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     Mock,
     sentinel,
-    )
+)
 import provisioningserver
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
-    )
+)
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
@@ -58,12 +58,12 @@ from provisioningserver.utils import (
     write_custom_config_section,
     in_develop_mode,
     sudo,
-    )
+)
 from testtools.matchers import (
     DirExists,
     EndsWith,
     IsInstance,
-    )
+)
 from twisted.internet import defer
 
 

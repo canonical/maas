@@ -19,7 +19,7 @@ from random import randint
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
     make_name_from_interface,
-    )
+)
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 

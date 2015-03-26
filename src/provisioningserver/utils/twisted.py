@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from functools import (
     partial,
     wraps,
-    )
+)
 from itertools import repeat
 import sys
 import threading
@@ -43,7 +43,7 @@ from twisted.internet.defer import (
     Deferred,
     maybeDeferred,
     succeed,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.python import threadable
 from twisted.python.failure import Failure

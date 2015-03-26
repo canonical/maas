@@ -32,7 +32,7 @@ from testtools.matchers import (
     Contains,
     Equals,
     MatchesListwise,
-    )
+)
 
 
 class MediaRootFixture(Fixture):

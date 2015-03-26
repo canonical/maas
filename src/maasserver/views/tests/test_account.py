@@ -20,11 +20,11 @@ from django.core.urlresolvers import reverse
 from lxml.html import (
     fromstring,
     tostring,
-    )
+)
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

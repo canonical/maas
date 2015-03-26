@@ -27,18 +27,18 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.boot_images import (
     get_boot_images,
     is_import_boot_images_running_for,
-    )
+)
 from maasserver.enum import (
     NODEGROUP_STATE,
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models.bootresource import BootResource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
@@ -46,7 +46,7 @@ from maasserver.rpc import getClientFor
 from piston.models import (
     KEY_SIZE,
     Token,
-    )
+)
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddESXi,
@@ -57,7 +57,7 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
-    )
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 

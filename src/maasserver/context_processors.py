@@ -26,7 +26,7 @@ from maasserver.models import Config
 from maasserver.utils.version import (
     get_maas_doc_version,
     get_maas_version,
-    )
+)
 
 
 def yui(context):

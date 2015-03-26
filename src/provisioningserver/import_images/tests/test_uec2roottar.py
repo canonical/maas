@@ -23,7 +23,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver.import_images import uec2roottar

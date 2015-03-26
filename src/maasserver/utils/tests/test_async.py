@@ -30,13 +30,13 @@ from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -46,7 +46,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     LessThan,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.internet.task import deferLater

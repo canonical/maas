@@ -17,7 +17,7 @@ __all__ = []
 from maasserver.models import (
     BootSource,
     BootSourceSelection,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

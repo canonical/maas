@@ -27,7 +27,7 @@ from provisioningserver.drivers.osystem.debian_networking import (
     compose_ipv6_stanza,
     compose_network_interfaces,
     has_static_ipv6_address,
-    )
+)
 from testtools.matchers import Contains
 
 

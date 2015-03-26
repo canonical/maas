@@ -19,7 +19,7 @@ from subprocess import (
     CalledProcessError,
     check_output,
     STDOUT,
-    )
+)
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase

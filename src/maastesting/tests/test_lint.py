@@ -19,21 +19,21 @@ from itertools import ifilter
 from os import (
     mkdir,
     walk,
-    )
+)
 from os.path import (
     join,
     relpath,
-    )
+)
 from pipes import quote
 from shutil import (
     copy2,
     rmtree,
-    )
+)
 from subprocess import (
     PIPE,
     Popen,
     STDOUT,
-    )
+)
 from tempfile import mkdtemp
 
 from maastesting import root
@@ -41,7 +41,7 @@ from maastesting.testcase import MAASTestCase
 from testtools.content import (
     Content,
     UTF8_TEXT,
-    )
+)
 
 
 class TestLint(MAASTestCase):

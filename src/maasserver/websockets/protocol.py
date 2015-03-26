@@ -25,7 +25,7 @@ from django.contrib.auth import (
     BACKEND_SESSION_KEY,
     load_backend,
     SESSION_KEY,
-    )
+)
 from django.contrib.auth.models import User
 from django.utils.importlib import import_module
 from maasserver.utils.orm import transactional
@@ -37,7 +37,7 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import (
     Factory,
     Protocol,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.python import log
 from twisted.web.server import NOT_DONE_YET

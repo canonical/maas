@@ -22,13 +22,13 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.bindfixture import (
     BINDServer,
     BINDServerResources,
-    )
+)
 from testtools.matchers import (
     Contains,
     FileContains,
     FileExists,
     Not,
-    )
+)
 from testtools.testcase import gather_details
 
 

@@ -22,7 +22,7 @@ from django.db.models import (
     Manager,
     Model,
     OneToOneField,
-    )
+)
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException

@@ -22,12 +22,12 @@ from maasserver import forms
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-    )
+)
 from maasserver.models import LicenseKey
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import patch_usable_osystems

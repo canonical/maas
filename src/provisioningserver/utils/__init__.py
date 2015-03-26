@@ -32,7 +32,7 @@ from collections import Iterable
 from itertools import (
     chain,
     imap,
-    )
+)
 import os
 from pipes import quote
 import re
@@ -48,19 +48,19 @@ from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NoConnectionsAvailable,
     NodeAlreadyExists,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     pause,
     retries,
-    )
+)
 import simplejson as json
 import tempita
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.protocols.amp import UnhandledCommand
 
 

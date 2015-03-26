@@ -31,13 +31,13 @@ import time
 from django.db import (
     close_old_connections,
     connections,
-    )
+)
 from django.db.utils import load_backend
 from django.http import (
     Http404,
     HttpResponse,
     StreamingHttpResponse,
-    )
+)
 from django.shortcuts import get_object_or_404
 from maasserver import locks
 from maasserver.bootsources import (
@@ -45,15 +45,15 @@ from maasserver.bootsources import (
     ensure_boot_source_definition,
     get_boot_sources,
     set_simplestreams_env,
-    )
+)
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     COMPONENT,
-    )
+)
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
@@ -61,22 +61,22 @@ from maasserver.models import (
     BootResourceSet,
     LargeFile,
     NodeGroup,
-    )
+)
 from maasserver.utils import (
     absolute_reverse,
     absolute_url_reverse,
-    )
+)
 from maasserver.utils.orm import (
     get_one,
     transactional,
-    )
+)
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
-    )
+)
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
-    )
+)
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
@@ -88,7 +88,7 @@ from simplestreams import util as sutil
 from simplestreams.mirrors import (
     BasicMirrorWriter,
     UrlMirrorReader,
-    )
+)
 from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor

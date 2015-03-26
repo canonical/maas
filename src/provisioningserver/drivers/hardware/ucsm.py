@@ -74,11 +74,11 @@ from lxml.etree import (
     Element,
     tostring,
     XML,
-    )
+)
 from provisioningserver.utils import (
     commission_node,
     create_node,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 
 

@@ -22,7 +22,7 @@ from django.core.exceptions import ValidationError
 from django.db import (
     connection,
     DatabaseError,
-    )
+)
 from django.db.models import BinaryField
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.fields import (
@@ -35,11 +35,11 @@ from maasserver.fields import (
     validate_mac,
     VerboseRegexField,
     VerboseRegexValidator,
-    )
+)
 from maasserver.models import (
     MACAddress,
     NodeGroup,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
@@ -47,7 +47,7 @@ from maasserver.tests.models import (
     LargeObjectFieldModel,
     MAASIPAddressFieldModel,
     XMLFieldModel,
-    )
+)
 from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import MockCalledOnceWith
 from psycopg2 import OperationalError

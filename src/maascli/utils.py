@@ -23,7 +23,7 @@ from functools import partial
 from inspect import (
     cleandoc,
     getdoc,
-    )
+)
 import re
 import sys
 from urlparse import urlparse

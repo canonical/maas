@@ -17,12 +17,12 @@ __all__ = []
 from maasserver.clusterrpc.power import (
     power_off_node,
     power_on_node,
-    )
+)
 from maasserver.rpc.testing.fixtures import MockRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
@@ -30,7 +30,7 @@ from mock import ANY
 from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
-    )
+)
 from provisioningserver.utils.twisted import reactor_sync
 from testtools.deferredruntest import extract_result
 

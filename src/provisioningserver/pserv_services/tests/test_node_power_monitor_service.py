@@ -20,32 +20,32 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     ANY,
     call,
-    )
+)
 from provisioningserver.pserv_services import (
     node_power_monitor_service as npms,
-    )
+)
 from provisioningserver.rpc import (
     exceptions,
     region,
-    )
+)
 from provisioningserver.rpc.testing import (
     MockClusterToRegionRPCFixture,
     TwistedLoggerFixture,
-    )
+)
 from testtools.deferredruntest import extract_result
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (
     fail,
     succeed,
-    )
+)
 from twisted.internet.task import Clock
 
 

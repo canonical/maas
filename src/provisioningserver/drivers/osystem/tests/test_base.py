@@ -21,7 +21,7 @@ from provisioningserver.drivers import osystem as osystem_module
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.testing.os import make_osystem
 from provisioningserver.utils.testing import RegistryFixture
 

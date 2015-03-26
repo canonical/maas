@@ -19,7 +19,7 @@ __all__ = [
 from metadataserver.user_data.snippets import get_userdata_template_dir
 from metadataserver.user_data.utils import (
     generate_user_data as _generate_user_data,
-    )
+)
 
 
 def generate_user_data(node):

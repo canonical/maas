@@ -17,7 +17,7 @@ __all__ = []
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 from glob import glob
 import json
 import os
@@ -25,19 +25,19 @@ from os.path import (
     abspath,
     join,
     relpath,
-    )
+)
 import sys
 from unittest import SkipTest
 
 from maastesting import (
     root,
     yui3,
-    )
+)
 from maastesting.fixtures import (
     DisplayFixture,
     ProxiesDisabledFixture,
     SSTFixture,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list
 from nose.tools import nottest
@@ -46,7 +46,7 @@ from sst.actions import (
     get_element,
     go_to,
     wait_for,
-    )
+)
 from testtools import clone_test_with_new_id
 
 # Nose is over-zealous.

@@ -20,13 +20,13 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     make_maas_meta,
     make_maas_meta_without_os,
     set_resource,
-    )
+)
 
 
 class TestBootImageMapping(MAASTestCase):

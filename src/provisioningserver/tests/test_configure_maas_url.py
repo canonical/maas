@@ -22,18 +22,18 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     Mock,
-    )
+)
 from provisioningserver import configure_maas_url
 from provisioningserver.configure_maas_url import substitute_pserv_yaml_line
 from testtools.matchers import (
     FileContains,
     StartsWith,
-    )
+)
 
 
 class TestRewriteConfigFile(MAASTestCase):

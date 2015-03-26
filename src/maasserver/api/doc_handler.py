@@ -77,7 +77,7 @@ from maasserver.api.doc import (
     find_api_resources,
     generate_api_docs,
     generate_power_types_doc,
-    )
+)
 from maasserver.utils import build_absolute_uri
 import simplejson as json
 

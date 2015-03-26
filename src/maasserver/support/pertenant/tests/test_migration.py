@@ -18,7 +18,7 @@ from django.contrib.auth.models import User
 from maasserver.models import (
     Node,
     SSHKey,
-    )
+)
 from maasserver.support.pertenant import migration
 from maasserver.support.pertenant.migration import (
     copy_ssh_keys,
@@ -35,10 +35,10 @@ from maasserver.support.pertenant.migration import (
     legacy_user_name,
     migrate,
     migrate_to_user,
-    )
+)
 from maasserver.support.pertenant.tests.test_utils import (
     make_provider_state_file,
-    )
+)
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -47,7 +47,7 @@ from maastesting.matchers import MockCalledOnceWith
 from mock import (
     call,
     sentinel,
-    )
+)
 from testtools.matchers import MatchesStructure
 
 

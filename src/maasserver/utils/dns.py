@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 from netaddr import (
     AddrConversionError,
     IPAddress,
-    )
+)
 
 
 str = None

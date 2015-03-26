@@ -21,7 +21,7 @@ from provisioningserver.drivers.osystem import (
     Node,
     OperatingSystemRegistry,
     Token,
-    )
+)
 from provisioningserver.rpc import exceptions
 
 

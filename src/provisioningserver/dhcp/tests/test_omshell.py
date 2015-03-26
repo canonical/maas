@@ -28,18 +28,18 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     Mock,
-    )
+)
 from provisioningserver.dhcp import omshell
 from provisioningserver.dhcp.omshell import (
     call_dnssec_keygen,
     generate_omapi_key,
     Omshell,
-    )
+)
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import (
     EndsWith,
     MatchesStructure,
-    )
+)
 
 
 class TestOmshell(MAASTestCase):

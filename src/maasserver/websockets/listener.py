@@ -29,12 +29,12 @@ from twisted.internet import (
     interfaces,
     reactor,
     task,
-    )
+)
 from twisted.internet.threads import deferToThread
 from twisted.python import (
     failure,
     log,
-    )
+)
 from zope.interface import implements
 
 

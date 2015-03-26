@@ -22,7 +22,7 @@ from maastesting.factory import factory
 from metadataserver.fields import (
     Bin,
     BinaryField,
-    )
+)
 from metadataserver.tests.models import BinaryFieldModel
 
 

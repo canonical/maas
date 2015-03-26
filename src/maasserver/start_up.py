@@ -24,7 +24,7 @@ from django.db.utils import DatabaseError
 from maasserver import (
     locks,
     security,
-    )
+)
 from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
@@ -34,7 +34,7 @@ from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
     transactional,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.upgrade_cluster import create_gnupg_home
 

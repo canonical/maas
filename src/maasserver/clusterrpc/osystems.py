@@ -29,7 +29,7 @@ from maasserver.models import BootResource
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
-    )
+)
 from maasserver.utils import async
 from maasserver.utils.orm import get_one
 from provisioningserver.rpc.cluster import (
@@ -38,7 +38,7 @@ from provisioningserver.rpc.cluster import (
     GetPreseedData,
     ListOperatingSystems,
     ValidateLicenseKey,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 from twisted.python.failure import Failure
 

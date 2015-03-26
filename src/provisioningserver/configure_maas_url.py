@@ -29,7 +29,7 @@ from urlparse import urlparse
 from provisioningserver.utils.fs import (
     atomic_write,
     read_text_file,
-    )
+)
 from provisioningserver.utils.url import compose_URL
 
 

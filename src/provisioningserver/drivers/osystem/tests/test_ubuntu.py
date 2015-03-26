@@ -24,7 +24,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.osystem.debian_networking import (
     compose_network_interfaces,
-    )
+)
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 import provisioningserver.drivers.osystem.ubuntu as ubuntu_module
 from provisioningserver.udev import compose_network_interfaces_udev_rules
@@ -33,7 +33,7 @@ from testtools.matchers import (
     AllMatch,
     HasLength,
     IsInstance,
-    )
+)
 
 
 class TestUbuntuOS(MAASTestCase):

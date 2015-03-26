@@ -20,12 +20,12 @@ from django.db.models.signals import post_delete
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     Config,
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from maasserver.signals import connect_to_field_change
 
 

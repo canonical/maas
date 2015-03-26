@@ -19,7 +19,7 @@ __all__ = [
 from contextlib import (
     closing,
     contextmanager,
-    )
+)
 import json
 import os
 from os.path import expanduser

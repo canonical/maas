@@ -19,7 +19,7 @@ __all__ = [
 from django.db.models.signals import (
     post_delete,
     post_save,
-    )
+)
 from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
@@ -28,7 +28,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from maasserver.signals import connect_to_field_change
 
 

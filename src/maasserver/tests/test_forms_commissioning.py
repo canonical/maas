@@ -18,7 +18,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from maasserver.forms import (
     CommissioningForm,
     CommissioningScriptForm,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text

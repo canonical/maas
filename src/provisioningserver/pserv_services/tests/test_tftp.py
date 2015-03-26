@@ -21,32 +21,32 @@ import random
 from socket import (
     AF_INET,
     AF_INET6,
-    )
+)
 from urllib import urlencode
 from urlparse import (
     parse_qsl,
     urlparse,
-    )
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 import mock
 from mock import (
     sentinel,
     ANY,
-    )
+)
 from netaddr import IPNetwork
 from netaddr.ip import (
     IPV4_LINK_LOCAL,
     IPV6_LINK_LOCAL,
-    )
+)
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
@@ -57,7 +57,7 @@ from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
     UDPServer,
-    )
+)
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     AfterPreprocessing,
@@ -66,7 +66,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesStructure,
-    )
+)
 from tftp.backend import IReader
 from tftp.protocol import TFTP
 from twisted.application import internet
@@ -75,11 +75,11 @@ from twisted.internet import reactor
 from twisted.internet.address import (
     IPv4Address,
     IPv6Address,
-    )
+)
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
-    )
+)
 from twisted.internet.protocol import Protocol
 from twisted.python import context
 from zope.interface.verify import verifyObject

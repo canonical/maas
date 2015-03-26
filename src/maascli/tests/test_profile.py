@@ -19,7 +19,7 @@ from maascli.profile import (
     InvalidProfile,
     name_default_profile,
     select_profile,
-    )
+)
 from maascli.testing.config import make_configs
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase

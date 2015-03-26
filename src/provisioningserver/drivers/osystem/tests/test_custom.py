@@ -23,7 +23,7 @@ from provisioningserver.drivers.osystem import custom
 from provisioningserver.drivers.osystem.custom import (
     BOOT_IMAGE_PURPOSE,
     CustomOS,
-    )
+)
 
 
 class TestCustomOS(MAASTestCase):

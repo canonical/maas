@@ -24,11 +24,11 @@ from urlparse import urljoin
 from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
-    )
+)
 from maascli.api import (
     Action,
     http_request,
-    )
+)
 from maascli.command import CommandError
 
 # Send 4MB of data per request.

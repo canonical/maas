@@ -22,7 +22,7 @@ from django.db.models import (
     ForeignKey,
     Manager,
     Model,
-    )
+)
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
@@ -30,12 +30,12 @@ from maasserver.enum import NODE_STATUS
 from maasserver.fields import (
     MAASIPAddressField,
     MACAddressField,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.macaddress import (
     MACAddress,
     update_macs_cluster_interfaces,
-    )
+)
 from maasserver.utils import strip_domain
 
 

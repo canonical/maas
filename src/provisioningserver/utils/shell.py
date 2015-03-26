@@ -29,11 +29,11 @@ from subprocess import (
     CalledProcessError,
     PIPE,
     Popen,
-    )
+)
 from sys import (
     stderr,
     stdout,
-    )
+)
 from tempfile import TemporaryFile
 
 from twisted.python.failure import Failure

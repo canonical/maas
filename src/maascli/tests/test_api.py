@@ -33,14 +33,14 @@ from maascli.testing.config import make_configs
 from maascli.utils import (
     handler_command_name,
     safe_name,
-    )
+)
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
     sentinel,
-    )
+)
 from testtools.matchers import (
     EndsWith,
     Equals,
@@ -48,7 +48,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesListwise,
     Not,
-    )
+)
 
 
 class TestRegisterAPICommands(MAASTestCase):

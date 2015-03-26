@@ -22,7 +22,7 @@ from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
-    )
+)
 
 
 class CustomOS(OperatingSystem):

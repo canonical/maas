@@ -29,20 +29,20 @@ from maastesting.factory import factory
 from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
-    )
+)
 from maastesting.matchers import IsCallable
 from mock import (
     call,
     MagicMock,
     sentinel,
-    )
+)
 from provisioningserver import tags
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     DocTestMatches,
     Equals,
     MatchesStructure,
-    )
+)
 
 
 class TestProcessResponse(PservTestCase):

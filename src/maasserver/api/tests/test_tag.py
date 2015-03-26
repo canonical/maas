@@ -24,19 +24,19 @@ from maasserver.models.node import generate_node_system_id
 from maasserver.testing.api import (
     APITestCase,
     make_worker_client,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from metadataserver.models.commissioningscript import inject_lshw_result
 from mock import (
     ANY,
     call,
-    )
+)
 from testtools.matchers import MatchesStructure
 
 

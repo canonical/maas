@@ -21,17 +21,17 @@ from lxml.html import fromstring
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.settings_commissioning_scripts import (
     COMMISSIONING_SCRIPTS_ANCHOR,
-    )
+)
 from metadataserver.models import CommissioningScript
 from testtools.matchers import (
     ContainsAll,
     MatchesStructure,
-    )
+)
 
 
 class CommissioningScriptListingTest(MAASServerTestCase):

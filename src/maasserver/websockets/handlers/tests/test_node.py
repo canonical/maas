@@ -26,7 +26,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
-    )
+)
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
@@ -41,7 +41,7 @@ from maasserver.websockets.base import (
     HandlerError,
     HandlerPermissionError,
     HandlerValidationError,
-    )
+)
 from maasserver.websockets.handlers.node import NodeHandler
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import RESULT_TYPE

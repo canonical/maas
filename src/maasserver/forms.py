@@ -60,11 +60,11 @@ from django.contrib import messages
 from django.contrib.auth.forms import (
     UserChangeForm,
     UserCreationForm,
-    )
+)
 from django.contrib.auth.models import (
     AnonymousUser,
     User,
-    )
+)
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.utils import IntegrityError
@@ -72,19 +72,19 @@ from django.forms import (
     CheckboxInput,
     Form,
     MultipleChoiceField,
-    )
+)
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.clusterrpc.osystems import (
     validate_license_key,
     validate_license_key_for,
-    )
+)
 from maasserver.clusterrpc.power_parameters import (
     get_power_type_choices,
     get_power_type_parameters,
     get_power_types,
-    )
+)
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -92,21 +92,21 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
-    )
+)
 from maasserver.exceptions import (
     ClusterUnavailable,
     NodeActionError,
-    )
+)
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
     NodeGroupFormField,
-    )
+)
 from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
     INVALID_SETTING_MSG_TEMPLATE,
-    )
+)
 from maasserver.models import (
     BootResource,
     BootResourceFile,
@@ -128,27 +128,27 @@ from maasserver.models import (
     SSLKey,
     Tag,
     Zone,
-    )
+)
 from maasserver.models.node import (
     fqdn_is_duplicate,
     nodegroup_fqdn,
-    )
+)
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
     compile_node_actions,
-    )
+)
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
     make_name_from_interface,
-    )
+)
 from maasserver.utils.orm import (
     get_one,
     transactional,
-    )
+)
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -157,7 +157,7 @@ from maasserver.utils.osystems import (
     list_all_usable_releases,
     list_osystem_choices,
     list_release_choices,
-    )
+)
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import (
@@ -165,21 +165,21 @@ from netaddr import (
     IPNetwork,
     IPRange,
     valid_ipv6,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
-    )
+)
 from provisioningserver.utils.network import (
     ip_range_within_network,
     make_network,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
-    )
+)
 from twisted.internet.defer import DeferredList
 from twisted.internet.task import coiterate
 from twisted.internet.threads import deferToThread

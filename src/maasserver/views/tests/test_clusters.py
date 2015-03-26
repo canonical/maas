@@ -23,16 +23,16 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     BootResource,
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -42,7 +42,7 @@ from testtools.matchers import (
     ContainsAll,
     HasLength,
     MatchesStructure,
-    )
+)
 
 
 class ClusterListingTest(MAASServerTestCase):

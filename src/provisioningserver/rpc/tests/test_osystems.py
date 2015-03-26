@@ -24,11 +24,11 @@ from mock import sentinel
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.rpc import (
     exceptions,
     osystems,
-    )
+)
 from provisioningserver.rpc.testing.doubles import StubOS
 from provisioningserver.testing.os import make_osystem
 

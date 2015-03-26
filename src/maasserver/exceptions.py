@@ -35,7 +35,7 @@ from django.core.exceptions import ValidationError
 from django.http import (
     HttpResponse,
     HttpResponseRedirect,
-    )
+)
 import simplejson as json
 
 

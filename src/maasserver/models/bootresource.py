@@ -21,23 +21,23 @@ from django.db.models import (
     CharField,
     IntegerField,
     Manager,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
-    )
+)
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import (
     now,
     TimestampedModel,
-    )
+)
 from maasserver.utils.orm import (
     get_first,
     get_one,
-    )
+)
 
 # Names on boot resources have a specific meaning depending on the type
 # of boot resource. If its a synced or generated image then the name must

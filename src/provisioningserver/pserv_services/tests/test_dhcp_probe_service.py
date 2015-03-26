@@ -21,20 +21,20 @@ from maastesting.matchers import (
     HasLength,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTwistedRunTest
 from mock import (
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.pserv_services import dhcp_probe_service
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,
-    )
+)
 from provisioningserver.rpc import (
     getRegionClient,
     region,
-    )
+)
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 from twisted.internet import defer

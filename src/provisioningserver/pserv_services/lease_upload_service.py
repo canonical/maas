@@ -22,14 +22,14 @@ __all__ = [
 from provisioningserver.dhcp.leases import (
     check_lease_changes,
     record_lease_state,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLeases
 from provisioningserver.utils.twisted import (
     pause,
     retries,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread

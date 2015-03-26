@@ -19,14 +19,14 @@ from subprocess import (
     PIPE,
     Popen,
     STDOUT,
-    )
+)
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase
 from testtools.content import (
     Content,
     UTF8_TEXT,
-    )
+)
 
 # Do not use '=======' as a conflict marker since it's
 # used in docstrings.

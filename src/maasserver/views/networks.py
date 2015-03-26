@@ -28,13 +28,13 @@ from django.views.generic import (
     CreateView,
     DetailView,
     UpdateView,
-    )
+)
 from maasserver.forms import NetworkForm
 from maasserver.models import Network
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
-    )
+)
 
 
 class NetworkListView(PaginatedListView):

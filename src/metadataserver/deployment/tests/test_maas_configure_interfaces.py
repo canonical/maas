@@ -18,11 +18,11 @@ from argparse import ArgumentParser
 from errno import (
     EACCES,
     ENOENT,
-    )
+)
 from os import (
     makedirs,
     remove,
-    )
+)
 import os.path
 from random import randint
 from textwrap import dedent
@@ -32,19 +32,19 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 import metadataserver.deployment.maas_configure_interfaces as script
 from mock import (
     ANY,
     call,
-    )
+)
 from testtools.matchers import (
     ContainsAll,
     Equals,
     FileContains,
     FileExists,
-    )
+)
 
 
 class TestPrepareParser(MAASTestCase):

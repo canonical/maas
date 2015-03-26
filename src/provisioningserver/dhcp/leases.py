@@ -39,7 +39,7 @@ import errno
 from os import (
     fstat,
     stat,
-    )
+)
 
 from provisioningserver.dhcp.leases_parser_fast import parse_leases
 from provisioningserver.logger import get_maas_logger

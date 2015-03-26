@@ -20,7 +20,7 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.bootsource import BootSource
 from maasserver.models.cleansave import CleanSave

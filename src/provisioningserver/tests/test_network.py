@@ -19,11 +19,11 @@ from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from netifaces import (
     AF_INET,
     AF_INET6,
-    )
+)
 from provisioningserver import network
 from testtools.matchers import HasLength
 

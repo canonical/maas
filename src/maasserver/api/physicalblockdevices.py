@@ -18,7 +18,7 @@ from maasserver.api.support import (
     admin_method,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import get_mandatory_param
 from maasserver.models import PhysicalBlockDevice
 

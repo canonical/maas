@@ -22,7 +22,7 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractproperty,
-    )
+)
 import httplib
 import json
 import logging
@@ -36,14 +36,14 @@ from django.contrib import messages
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
-    )
+)
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseRedirect,
-    )
+)
 from django.utils.http import urlquote_plus
 from maasserver import logger
 from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
@@ -51,15 +51,15 @@ from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
-    )
+)
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
-    )
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
@@ -67,7 +67,7 @@ from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.utils.shell import ExternalProcessError
 
 

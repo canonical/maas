@@ -28,7 +28,7 @@ from maas import (
     find_settings,
     import_local_settings,
     import_settings,
-    )
+)
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.factory import factory
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
@@ -36,7 +36,7 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
     Is,
-    )
+)
 
 
 class TestSettingsHelpers(DjangoTestCase):

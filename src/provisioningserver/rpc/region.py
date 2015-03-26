@@ -47,11 +47,11 @@ from provisioningserver.rpc.arguments import (
     CompressedAmpList,
     ParsedURL,
     StructureAsJSON,
-    )
+)
 from provisioningserver.rpc.common import (
     Authenticate,
     Identify,
-    )
+)
 from provisioningserver.rpc.exceptions import (
     CannotRegisterCluster,
     CommissionNodeFailed,
@@ -60,7 +60,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
-    )
+)
 from twisted.protocols import amp
 
 

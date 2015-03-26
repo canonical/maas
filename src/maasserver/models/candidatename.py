@@ -20,14 +20,14 @@ __all__ = [
 from itertools import (
     imap,
     product,
-    )
+)
 from random import shuffle
 
 from django.db.models import (
     IntegerField,
     Model,
     SlugField,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 

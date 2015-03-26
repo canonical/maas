@@ -21,7 +21,7 @@ from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
     INSTALL_SET,
     XINSTALL_TYPES,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

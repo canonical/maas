@@ -27,26 +27,26 @@ from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
-    )
+)
 from maasserver.models import (
     Config,
     DownloadProgress,
     NodeGroup,
     nodegroup as nodegroup_module,
-    )
+)
 from maasserver.testing.api import (
     APITestCase,
     explain_unexpected_response,
     log_in_as_normal_user,
     make_worker_client,
     MultipleUsersScenarios,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import (
     reload_object,
     reload_objects,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
@@ -54,7 +54,7 @@ from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
     NodeResult,
-    )
+)
 from mock import Mock
 from provisioningserver.rpc.cluster import (
     AddESXi,
@@ -65,11 +65,11 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
-    )
+)
 from testtools.matchers import (
     AllMatch,
     Equals,
-    )
+)
 
 
 class TestNodeGroupsAPI(MultipleUsersScenarios,

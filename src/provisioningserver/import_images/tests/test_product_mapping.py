@@ -18,16 +18,16 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.product_mapping import (
     map_products,
     ProductMapping,
-    )
+)
 from provisioningserver.import_images.testing.factory import (
     make_boot_resource,
     make_image_spec,
     set_resource,
-    )
+)
 
 
 class TestProductMapping(MAASTestCase):

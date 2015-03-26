@@ -25,14 +25,14 @@ from maasserver.third_party_drivers import (
     match_aliases_to_driver,
     node_modaliases,
     populate_kernel_opts,
-    )
+)
 from maastesting import root
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
     NodeResult,
-    )
+)
 
 
 class TestNodeModaliases(MAASServerTestCase):

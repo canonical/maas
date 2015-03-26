@@ -20,7 +20,7 @@ __all__ = [
 from maasserver.models import (
     FileStorage,
     Node,
-    )
+)
 import yaml
 
 

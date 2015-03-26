@@ -22,11 +22,11 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import call
 from provisioningserver.drivers.hardware import esxi as virsh
 from provisioningserver.utils.twisted import asynchronous

@@ -21,13 +21,13 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver import (
     config,
     diskless,
-    )
+)
 from provisioningserver.diskless import (
     compose_diskless_link_path,
     compose_diskless_tgt_config,
@@ -45,21 +45,21 @@ from provisioningserver.diskless import (
     reload_diskless_tgt,
     tgt_entry,
     update_diskless_tgt,
-    )
+)
 from provisioningserver.drivers.diskless import DisklessDriverRegistry
 from provisioningserver.drivers.diskless.tests.test_base import (
     make_diskless_driver,
-    )
+)
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.testing.os import FakeOS
 from provisioningserver.utils.testing import RegistryFixture
 from testtools.matchers import (
     FileExists,
     Not,
-    )
+)
 
 
 class DisklessTestMixin:

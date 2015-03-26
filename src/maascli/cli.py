@@ -24,14 +24,14 @@ from maascli.auth import (
     check_valid_apikey,
     obtain_credentials,
     UnexpectedResponse,
-    )
+)
 from maascli.command import Command
 from maascli.config import ProfileConfig
 from maascli.utils import (
     api_url,
     parse_docstring,
     safe_name,
-    )
+)
 
 
 class cmd_login(Command):

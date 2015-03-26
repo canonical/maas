@@ -27,7 +27,7 @@ from django.contrib import admin
 from django.db.models import (
     get_app,
     get_models,
-    )
+)
 from piston.models import Consumer
 
 # Register models in the admin site.  When the DEBUG setting is enabled, the

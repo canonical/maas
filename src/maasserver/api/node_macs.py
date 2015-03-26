@@ -25,7 +25,7 @@ from maasserver.fields import validate_mac
 from maasserver.models import (
     MACAddress,
     Node,
-    )
+)
 from piston.utils import rc
 
 

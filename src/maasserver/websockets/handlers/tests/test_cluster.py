@@ -16,7 +16,7 @@ __all__ = []
 
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.cluster import ClusterHandler

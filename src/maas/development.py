@@ -21,7 +21,7 @@ from maas import (
     import_local_settings,
     import_settings,
     settings,
-    )
+)
 from maas.customise_test_db import patch_db_creation
 from metadataserver.address import guess_server_host
 import provisioningserver.config

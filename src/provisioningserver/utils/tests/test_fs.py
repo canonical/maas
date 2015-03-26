@@ -21,7 +21,7 @@ import stat
 from subprocess import (
     CalledProcessError,
     PIPE,
-    )
+)
 import sys
 import tempfile
 import time
@@ -42,7 +42,7 @@ from provisioningserver.utils.fs import (
     sudo_write_file,
     tempdir,
     write_text_file,
-    )
+)
 import provisioningserver.utils.fs as fs_module
 from testtools.matchers import (
     DirExists,
@@ -52,7 +52,7 @@ from testtools.matchers import (
     Not,
     SamePath,
     StartsWith,
-    )
+)
 from testtools.testcase import ExpectedException
 
 

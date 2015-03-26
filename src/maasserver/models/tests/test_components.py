@@ -22,7 +22,7 @@ from maasserver.components import (
     get_persistent_error,
     get_persistent_errors,
     register_persistent_error,
-    )
+)
 from maasserver.enum import COMPONENT
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

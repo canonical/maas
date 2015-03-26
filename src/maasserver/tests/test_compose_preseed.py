@@ -19,7 +19,7 @@ from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
     PRESEED_TYPE,
-    )
+)
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -31,12 +31,12 @@ from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
-    )
+)
 from provisioningserver.testing.os import make_osystem
 from testtools.matchers import (
     KeysEqual,
     StartsWith,
-    )
+)
 import yaml
 
 

@@ -34,7 +34,7 @@ from django.db import (
     close_old_connections,
     connection,
     transaction,
-    )
+)
 from django.db.utils import OperationalError
 from fixtures import Fixture
 from maasserver.fields import register_mac_type
@@ -45,7 +45,7 @@ from maasserver.utils.orm import is_serialization_failure
 from maastesting.djangotestcase import (
     DjangoTestCase,
     DjangoTransactionTestCase,
-    )
+)
 from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
 from mock import Mock

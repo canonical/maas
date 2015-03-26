@@ -24,20 +24,20 @@ from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     maaslog,
-    )
+)
 from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import call_and_check
 from simplestreams.contentsource import FdContentSource
 from simplestreams.mirrors import (
     BasicMirrorWriter,
     UrlMirrorReader,
-    )
+)
 from simplestreams.objectstores import FileStore
 from simplestreams.util import (
     item_checksums,
     path_from_mirror_url,
     products_exdata,
-    )
+)
 from twisted.python import log
 
 

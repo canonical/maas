@@ -29,13 +29,13 @@ from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.plugin import IPlugin
 from twisted.python import usage
 from twisted.web.resource import (
     IResource,
     Resource,
-    )
+)
 from twisted.web.server import Site
 from zope.interface import implementer
 

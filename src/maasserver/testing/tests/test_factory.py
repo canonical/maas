@@ -19,7 +19,7 @@ import random
 from maasserver.models import (
     Network,
     NodeGroup,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase

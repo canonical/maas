@@ -23,12 +23,12 @@ from provisioningserver.logger import log
 from provisioningserver.logger.log import (
     get_maas_logger,
     MAASLogger,
-    )
+)
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     HasLength,
     IsInstance,
-    )
+)
 
 
 class TestGetMAASLogger(PservTestCase):

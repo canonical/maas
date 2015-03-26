@@ -32,24 +32,24 @@ from django.views.generic import (
     CreateView,
     DeleteView,
     UpdateView,
-    )
+)
 from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
-    )
+)
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
-    )
+)
 from maasserver.forms import (
     NodeGroupEdit,
     NodeGroupInterfaceForm,
-    )
+)
 from maasserver.models import (
     BootResource,
     NodeGroup,
     NodeGroupInterface,
-    )
+)
 from maasserver.views import PaginatedListView
 
 

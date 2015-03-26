@@ -31,7 +31,7 @@ from testtools.matchers import (
     Contains,
     MatchesAll,
     MatchesRegex,
-    )
+)
 from twisted.protocols import amp
 
 

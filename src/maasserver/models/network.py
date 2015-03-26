@@ -21,7 +21,7 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 import re
 
 from django.core.exceptions import ValidationError
@@ -32,7 +32,7 @@ from django.db.models import (
     Model,
     PositiveSmallIntegerField,
     TextField,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave

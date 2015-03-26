@@ -24,13 +24,13 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     call,
     sentinel,
-    )
+)
 from provisioningserver.dhcp import control
 from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dhcp.testing.config import make_subnet_config
@@ -38,7 +38,7 @@ from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     dhcp,
     exceptions,
-    )
+)
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.shell import ExternalProcessError
 

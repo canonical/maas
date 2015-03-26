@@ -22,7 +22,7 @@ from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from provisioningserver.drivers.hardware import vsphere
 from provisioningserver.drivers.hardware.vsphere import VspherePyvmomi
 from provisioningserver.utils.twisted import asynchronous
@@ -32,7 +32,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     Not,
-    )
+)
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 

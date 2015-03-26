@@ -19,7 +19,7 @@ from os import makedirs
 from os.path import (
     dirname,
     join,
-    )
+)
 
 from maastesting import noseplug
 from maastesting.factory import factory
@@ -29,13 +29,13 @@ from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     sentinel,
-    )
+)
 from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesListwise,
     MatchesStructure,
-    )
+)
 from twisted.python.filepath import FilePath
 
 

@@ -20,12 +20,12 @@ from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     MockCalledOnceWith,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     create_autospec,
     sentinel,
-    )
+)
 from provisioningserver.rpc import common
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools import ExpectedException
@@ -34,7 +34,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     Not,
-    )
+)
 from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransport

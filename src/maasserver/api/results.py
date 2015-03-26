@@ -19,11 +19,11 @@ __all__ = [
 from maasserver.api.support import (
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
-    )
+)
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
 from metadataserver.models import NodeResult

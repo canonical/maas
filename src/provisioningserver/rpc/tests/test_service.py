@@ -28,7 +28,7 @@ from provisioningserver.rpc.service import (
     _service_action,
     connect_check,
     service_action,
-    )
+)
 from provisioningserver.testing.testcase import PservTestCase
 from twisted.internet import defer
 

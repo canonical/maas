@@ -26,7 +26,7 @@ from django.db.models import (
     CharField,
     Manager,
     TextField,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

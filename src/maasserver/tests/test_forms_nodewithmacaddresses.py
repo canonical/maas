@@ -20,7 +20,7 @@ from maasserver.models import NodeGroup
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase

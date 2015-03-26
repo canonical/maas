@@ -27,12 +27,12 @@ from maasserver.dns.zonegenerator import (
     warn_loopback,
     WARNING_MESSAGE,
     ZoneGenerator,
-    )
+)
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -41,18 +41,18 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from mock import (
     ANY,
     call,
     Mock,
-    )
+)
 from netaddr import IPNetwork
 from provisioningserver.dns.config import SRVRecord
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    )
+)
 from provisioningserver.utils.enum import map_enum
 from testtools import TestCase
 from testtools.matchers import (
@@ -61,7 +61,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesSetwise,
     MatchesStructure,
-    )
+)
 
 
 class TestGetDNSServerAddress(MAASServerTestCase):

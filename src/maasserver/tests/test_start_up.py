@@ -18,11 +18,11 @@ from maasserver import (
     eventloop,
     locks,
     start_up,
-    )
+)
 from maasserver.models import (
     BootSource,
     NodeGroup,
-    )
+)
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
@@ -30,7 +30,7 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from mock import call
 from testtools.matchers import HasLength
 

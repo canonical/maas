@@ -19,7 +19,7 @@ from django.core.validators import validate_email
 from maasserver.forms import (
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
-    )
+)
 from maasserver.testing.testcase import MAASServerTestCase
 
 

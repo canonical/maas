@@ -17,7 +17,7 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 import errno
 import os
 from textwrap import dedent
@@ -26,7 +26,7 @@ from maastesting.factory import factory
 from maastesting.utils import (
     age_file,
     get_write_time,
-    )
+)
 from mock import Mock
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
@@ -36,7 +36,7 @@ from provisioningserver.dhcp.leases import (
     LEASES_TIME_CACHE_KEY,
     parse_leases_file,
     record_lease_state,
-    )
+)
 from provisioningserver.testing.testcase import PservTestCase
 
 

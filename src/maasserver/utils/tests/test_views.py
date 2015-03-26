@@ -20,7 +20,7 @@ import logging
 from random import (
     randint,
     random,
-    )
+)
 from weakref import WeakSet
 
 from apiclient.multipart import encode_multipart_data
@@ -28,7 +28,7 @@ from django.core import signals
 from django.core.handlers.wsgi import (
     WSGIHandler,
     WSGIRequest,
-    )
+)
 from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpResponse
@@ -41,14 +41,14 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from mock import (
     ANY,
     call,
     sentinel,
-    )
+)
 from testtools.matchers import (
     Contains,
     Equals,
@@ -56,7 +56,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     Not,
-    )
+)
 from twisted.internet.task import Clock
 from twisted.python import log
 from twisted.web import wsgi

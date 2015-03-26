@@ -31,16 +31,16 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
-    )
+)
 from maasserver.models import (
     Event,
     SSHKey,
     Tag,
-    )
+)
 from maasserver.models.node import Node
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.factory import factory
@@ -51,7 +51,7 @@ from maastesting.djangotestcase import DjangoTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
@@ -64,29 +64,29 @@ from metadataserver.api import (
     MetaDataHandler,
     poweroff as api_poweroff,
     UnknownMetadataVersion,
-    )
+)
 from metadataserver.models import (
     NodeKey,
     NodeResult,
     NodeUserData,
-    )
+)
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 from metadataserver.nodeinituser import get_node_init_user
 from mock import (
     ANY,
     Mock,
-    )
+)
 from netaddr import IPNetwork
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
-    )
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
     MatchesAll,
     Not,
-    )
+)
 
 
 class TestHelpers(DjangoTestCase):

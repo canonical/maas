@@ -23,7 +23,7 @@ from maasserver.dns import zonegenerator
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.exceptions import UnresolvableHost
 from maasserver.networking_preseed import (
     add_ip_to_mapping,
@@ -42,14 +42,14 @@ from maasserver.networking_preseed import (
     map_static_ips,
     normalise_ip,
     normalise_mac,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from testtools.matchers import HasLength
 
 

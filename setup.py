@@ -16,13 +16,13 @@ from glob import glob
 from os.path import (
     dirname,
     join,
-    )
+)
 import sys
 
 from setuptools import (
     find_packages,
     setup,
-    )
+)
 
 # The source tree's location in the filesystem.
 SOURCE_DIR = dirname(__file__)

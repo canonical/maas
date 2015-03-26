@@ -21,13 +21,13 @@ from maasserver.models import Event
 from maasserver.node_status import (
     get_failed_status,
     NODE_STATUS,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
-    )
+)
 
 
 class TestStatusTransitionEvent(MAASServerTestCase):

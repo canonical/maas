@@ -20,12 +20,12 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import (
     PARTITION_TABLE_TYPE,
     PARTITION_TABLE_TYPE_CHOICES,
-    )
+)
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

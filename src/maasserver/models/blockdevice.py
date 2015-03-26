@@ -25,7 +25,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave

@@ -23,11 +23,11 @@ from django.core.urlresolvers import reverse
 from maasserver.api.support import (
     admin_method,
     OperationsHandlerMixin,
-    )
+)
 from maasserver.models.config import (
     Config,
     ConfigManager,
-    )
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -35,7 +35,7 @@ from mock import (
     call,
     Mock,
     sentinel,
-    )
+)
 
 
 class TestOperationsResource(APITestCase):

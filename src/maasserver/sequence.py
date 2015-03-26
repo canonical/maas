@@ -21,7 +21,7 @@ __all__ = [
 from django.db import (
     connection,
     transaction,
-    )
+)
 
 
 BIGINT_MAX = 2 ** 63 - 1

@@ -25,7 +25,7 @@ from maasserver import logger
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
-    )
+)
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.models import (
     BootResource,
@@ -33,18 +33,18 @@ from maasserver.models import (
     Event,
     MACAddress,
     NodeGroup,
-    )
+)
 from maasserver.models.macaddress import update_mac_cluster_interfaces
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
-    )
+)
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import (
     find_nodegroup,
     strip_domain,
-    )
+)
 from maasserver.utils.orm import get_one
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.kernel_opts import KernelParameters

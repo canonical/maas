@@ -25,13 +25,13 @@ import subprocess
 from maastesting.factory import (
     factory,
     TooManyRandomRetries,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import FakeRandInt
 from netaddr import (
     IPAddress,
     IPNetwork,
-    )
+)
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -39,7 +39,7 @@ from testtools.matchers import (
     MatchesAll,
     Not,
     StartsWith,
-    )
+)
 
 
 class TestFactory(MAASTestCase):

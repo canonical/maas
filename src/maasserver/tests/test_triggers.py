@@ -23,7 +23,7 @@ from maasserver.triggers import (
     register_all_triggers,
     register_procedure,
     register_trigger,
-    )
+)
 from maasserver.utils.orm import psql_array
 
 

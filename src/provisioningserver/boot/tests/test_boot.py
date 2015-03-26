@@ -23,7 +23,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 import mock
 from provisioningserver import boot
 from provisioningserver.boot import (
@@ -31,7 +31,7 @@ from provisioningserver.boot import (
     BytesReader,
     gen_template_filenames,
     get_remote_mac,
-    )
+)
 import tempita
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import context

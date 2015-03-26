@@ -24,7 +24,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 
 

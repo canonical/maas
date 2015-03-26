@@ -18,7 +18,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import call
 from provisioningserver.boot import utils

@@ -19,7 +19,7 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave

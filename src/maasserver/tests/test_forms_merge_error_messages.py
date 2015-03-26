@@ -17,7 +17,7 @@ __all__ = []
 from maasserver.forms import (
     MAX_MESSAGES,
     merge_error_messages,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

@@ -28,13 +28,13 @@ import struct
 from urllib2 import (
     HTTPError,
     URLError,
-    )
+)
 
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 
 

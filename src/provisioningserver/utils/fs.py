@@ -35,7 +35,7 @@ from shutil import rmtree
 from subprocess import (
     PIPE,
     Popen,
-    )
+)
 import sys
 import tempfile
 from time import time

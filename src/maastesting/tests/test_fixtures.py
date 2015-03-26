@@ -23,12 +23,12 @@ from maastesting.fixtures import (
     ProxiesDisabledFixture,
     TempDirectory,
     TempWDFixture,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     DirExists,
     Not,
-    )
+)
 
 
 class TestProxiedDisabledFixture(MAASTestCase):

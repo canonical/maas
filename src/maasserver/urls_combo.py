@@ -19,7 +19,7 @@ from django.conf import settings
 from django.conf.urls import (
     patterns,
     url,
-    )
+)
 from maasserver.views.combo import get_combo_view
 
 

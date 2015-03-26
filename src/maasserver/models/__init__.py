@@ -54,7 +54,7 @@ from django.core.urlresolvers import (
     get_callable,
     get_resolver,
     get_script_prefix,
-    )
+)
 from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
@@ -83,7 +83,7 @@ from maasserver.models.network import Network
 from maasserver.models.node import (
     Device,
     Node,
-    )
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition

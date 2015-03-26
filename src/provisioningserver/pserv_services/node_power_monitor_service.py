@@ -24,13 +24,13 @@ from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchCluster,
-    )
+)
 from provisioningserver.rpc.power import query_all_nodes
 from provisioningserver.rpc.region import ListNodePowerParameters
 from provisioningserver.utils.twisted import (
     pause,
     retries,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log

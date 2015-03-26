@@ -34,26 +34,26 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     locate_tftp_path,
     maas_meta_last_modified,
-    )
+)
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.helpers import ImageSpec
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
-    )
+)
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
-    )
+)
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.os import make_osystem
 from testtools.matchers import (
     Not,
     StartsWith,
-    )
+)
 from testtools.testcase import ExpectedException
 
 

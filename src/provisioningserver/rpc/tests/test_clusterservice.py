@@ -17,7 +17,7 @@ __all__ = []
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 from hashlib import sha256
 from hmac import HMAC
 from itertools import product
@@ -38,34 +38,34 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     ANY,
     call,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
-    )
+)
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.network import discover_networks
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
-    )
+)
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     boot_images,
@@ -79,18 +79,18 @@ from provisioningserver.rpc import (
     power as power_module,
     region,
     tags,
-    )
+)
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
     PatchedURI,
-    )
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.monitors import (
     cancel_monitor,
     running_monitors,
-    )
+)
 from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
@@ -100,11 +100,11 @@ from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
-    )
+)
 from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
     StubOS,
-    )
+)
 from provisioningserver.security import set_shared_secret_on_filesystem
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
@@ -119,17 +119,17 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
     Not,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet import (
     error,
     reactor,
-    )
+)
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
     succeed,
-    )
+)
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock

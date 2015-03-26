@@ -28,20 +28,20 @@ from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
-    )
+)
 
 from jsonschema import validate
 from provisioningserver.drivers import (
     JSON_SETTING_SCHEMA,
     validate_settings,
-    )
+)
 from provisioningserver.utils import pause
 from provisioningserver.utils.registry import Registry
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.threads import deferToThread
 
 

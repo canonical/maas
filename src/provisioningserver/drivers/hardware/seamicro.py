@@ -26,7 +26,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     commission_node,
     create_node,
-    )
+)
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.url import compose_URL
 from seamicroclient import exceptions as seamicro_exceptions

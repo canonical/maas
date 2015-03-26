@@ -25,7 +25,7 @@ from maasserver.forms import BootSourceSelectionForm
 from maasserver.models import (
     BootSource,
     BootSourceSelection,
-    )
+)
 from piston.utils import rc
 
 

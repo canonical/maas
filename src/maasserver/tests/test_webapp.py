@@ -23,7 +23,7 @@ from lxml import html
 from maasserver import (
     start_up,
     webapp,
-    )
+)
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -35,7 +35,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesStructure,
-    )
+)
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.python.threadpool import ThreadPool

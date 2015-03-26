@@ -18,11 +18,11 @@ __all__ = [
 
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
-    )
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
-    )
+)
 
 
 class ClusterHandler(TimestampedModelHandler):

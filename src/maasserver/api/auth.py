@@ -21,7 +21,7 @@ from oauth import oauth
 from piston.authentication import (
     OAuthAuthentication,
     send_oauth_error,
-    )
+)
 from piston.utils import rc
 
 

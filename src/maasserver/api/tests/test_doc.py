@@ -22,7 +22,7 @@ from django.conf.urls import (
     include,
     patterns,
     url,
-    )
+)
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from maasserver.api import doc as doc_module
@@ -32,13 +32,13 @@ from maasserver.api.doc import (
     find_api_resources,
     generate_api_docs,
     generate_power_types_doc,
-    )
+)
 from maasserver.api.doc_handler import render_api_docs
 from maasserver.api.support import (
     operation,
     OperationsHandler,
     OperationsResource,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from mock import sentinel

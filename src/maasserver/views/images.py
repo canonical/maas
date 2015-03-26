@@ -27,27 +27,27 @@ from django.http import (
     HttpResponse,
     HttpResponseForbidden,
     HttpResponseRedirect,
-    )
+)
 from django.shortcuts import get_object_or_404
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
-    )
+)
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
-    )
+)
 from maasserver.bootsources import get_os_info_from_boot_sources
 from maasserver.clusterrpc.boot_images import (
     get_available_boot_images,
     is_import_boot_images_running,
-    )
+)
 from maasserver.clusterrpc.osystems import get_os_release_title
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
-    )
+)
 from maasserver.models import (
     BootResource,
     BootSourceCache,
@@ -55,7 +55,7 @@ from maasserver.models import (
     Config,
     LargeFile,
     Node,
-    )
+)
 from maasserver.views import HelpfulDeleteView
 from requests import ConnectionError
 

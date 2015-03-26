@@ -22,11 +22,11 @@ from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import (
     IsCallable,
     MockCallsMatch,
-    )
+)
 from mock import (
     call,
     Mock,
-    )
+)
 
 
 class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):

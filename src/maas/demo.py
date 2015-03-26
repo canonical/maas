@@ -19,7 +19,7 @@ from maas import (
     development,
     import_settings,
     settings,
-    )
+)
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.

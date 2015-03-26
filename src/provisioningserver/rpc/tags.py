@@ -20,11 +20,11 @@ from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
-    )
+)
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
-    )
+)
 from provisioningserver.tags import process_node_tags
 from provisioningserver.utils.twisted import synchronous
 

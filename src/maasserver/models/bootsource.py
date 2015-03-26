@@ -21,7 +21,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     FilePathField,
     URLField,
-    )
+)
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField

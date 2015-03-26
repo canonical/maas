@@ -26,23 +26,23 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
     sentinel,
-    )
+)
 from netaddr import IPNetwork
 from provisioningserver.dns import actions
 from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
-    )
+)
 from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    )
+)
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import (
@@ -50,7 +50,7 @@ from testtools.matchers import (
     Contains,
     FileContains,
     FileExists,
-    )
+)
 
 
 class TestReconfigure(MAASTestCase):

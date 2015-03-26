@@ -39,7 +39,7 @@ from itertools import (
     islice,
     repeat,
     takewhile,
-    )
+)
 from time import sleep
 
 from django.core.exceptions import MultipleObjectsReturned
@@ -47,14 +47,14 @@ from django.db import (
     close_old_connections,
     connection,
     transaction,
-    )
+)
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
 from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
-    )
+)
 from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE

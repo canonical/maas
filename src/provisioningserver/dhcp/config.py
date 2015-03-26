@@ -21,7 +21,7 @@ __all__ = [
 from itertools import (
     chain,
     repeat,
-    )
+)
 from platform import linux_distribution
 
 from provisioningserver.boot import BootMethodRegistry

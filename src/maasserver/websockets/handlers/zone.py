@@ -19,7 +19,7 @@ __all__ = [
 from maasserver.models.zone import Zone
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
-    )
+)
 
 
 class ZoneHandler(TimestampedModelHandler):

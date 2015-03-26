@@ -19,21 +19,21 @@ from itertools import islice
 from hypothesis import (
     assume,
     given,
-    )
+)
 from hypothesis.specifiers import floats_in_range
 from maastesting.matchers import GreaterThanOrEqual
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
-    )
+)
 from testtools.matchers import (
     AllMatch,
     HasLength,
     IsInstance,
     LessThan,
     MatchesAll,
-    )
+)
 
 
 class TestFunctions(MAASTestCase):

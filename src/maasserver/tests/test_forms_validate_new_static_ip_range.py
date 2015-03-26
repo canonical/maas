@@ -18,12 +18,12 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.forms import (
     ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     validate_new_static_ip_ranges,
-    )
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

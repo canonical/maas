@@ -21,7 +21,7 @@ from copy import copy
 from datetime import (
     datetime,
     timedelta,
-    )
+)
 
 from maasserver.rpc import getClientFor
 from maasserver.utils.orm import transactional
@@ -29,11 +29,11 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
-    )
+)
 from twisted.protocols import amp
 
 

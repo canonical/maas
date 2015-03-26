@@ -26,7 +26,7 @@ __all__ = [
 from abc import (
     ABCMeta,
     abstractmethod,
-    )
+)
 import collections
 from copy import copy
 import itertools
@@ -37,54 +37,54 @@ import fixtures
 from fixtures import (
     EnvironmentVariable,
     Fixture,
-    )
+)
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from mock import (
     Mock,
     sentinel,
-    )
+)
 import provisioningserver
 from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
-    )
+)
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
 from provisioningserver.security import (
     get_shared_secret_from_filesystem,
     set_shared_secret_on_filesystem,
-    )
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
-    )
+)
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AllMatch,
     IsInstance,
     MatchesAll,
     MatchesDict,
-    )
+)
 from twisted.internet import (
     defer,
     endpoints,
     reactor,
     ssl,
-    )
+)
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
 from twisted.python import (
     log,
     reflect,
-    )
+)
 from twisted.python.failure import Failure
 from twisted.test import iosim
 

@@ -18,14 +18,14 @@ from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
-    )
+)
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     sentinel,
-    )
+)
 from provisioningserver.rpc import tags
 
 

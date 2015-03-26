@@ -24,12 +24,12 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
-    )
+)
 from maasserver.models import (
     Node,
     node as node_module,
     NodeGroup,
-    )
+)
 from maasserver.testing.api import MultipleUsersScenarios
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory

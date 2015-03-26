@@ -27,12 +27,12 @@ from maasserver.utils.orm import transactional
 from maasserver.websockets.listener import (
     PostgresListener,
     PostgresListenerNotifyError,
-    )
+)
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
-    )
+)
 from mock import sentinel
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet import reactor

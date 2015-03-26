@@ -27,7 +27,7 @@ from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import (
     commissioningscript,
     NodeResult,
-    )
+)
 
 # A map of commissioning script output names to their detail
 # namespaces. These namespaces are used in the return values from

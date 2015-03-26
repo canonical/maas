@@ -24,7 +24,7 @@ import os.path
 from subprocess import (
     check_call,
     check_output,
-    )
+)
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import environment_variables

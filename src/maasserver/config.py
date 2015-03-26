@@ -19,13 +19,13 @@ __all__ = [
 from formencode.validators import (
     UnicodeString,
     URL,
-    )
+)
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
     ConfigurationMeta,
     ConfigurationOption,
-    )
+)
 
 
 class RegionConfiguration(Configuration):

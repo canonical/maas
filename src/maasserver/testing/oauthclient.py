@@ -26,7 +26,7 @@ from oauth.oauth import (
     OAuthRequest,
     OAuthSignatureMethod_PLAINTEXT,
     OAuthToken,
-    )
+)
 
 
 class OAuthAuthenticatedClient(MAASSensibleClient):

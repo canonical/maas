@@ -20,14 +20,14 @@ import django.template
 from maas import (
     fix_up_databases,
     import_local_settings,
-    )
+)
 from maas.monkey import patch_get_script_prefix
 from metadataserver.address import guess_server_host
 from provisioningserver.logger import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_LEVEL,
-    )
+)
 from provisioningserver.utils.url import compose_URL
 
 # Use new style url tag:

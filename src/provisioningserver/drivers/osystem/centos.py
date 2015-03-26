@@ -21,7 +21,7 @@ import re
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
-    )
+)
 
 
 DISTRO_SERIES_DEFAULT = 'centos65'

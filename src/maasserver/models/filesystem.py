@@ -23,12 +23,12 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import (
     FILESYSTEM_TYPE,
     FILESYSTEM_TYPE_CHOICES,
-    )
+)
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.filesystemgroup import FilesystemGroup

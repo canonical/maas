@@ -20,7 +20,7 @@ from maasserver import dns
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
-    )
+)
 from maasserver.models import DHCPLease
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object

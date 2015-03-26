@@ -27,10 +27,10 @@ from provisioningserver import config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
-    )
+)
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
-    )
+)
 from provisioningserver.import_images.helpers import ImageSpec
 from provisioningserver.logger import get_maas_logger
 

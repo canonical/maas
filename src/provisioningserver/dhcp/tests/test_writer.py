@@ -20,7 +20,7 @@ import os
 from subprocess import (
     PIPE,
     Popen,
-    )
+)
 import sys
 
 from maastesting import root
@@ -33,7 +33,7 @@ from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
     ContainsAll,
     MatchesStructure,
-    )
+)
 
 
 class TestScript(MAASTestCase):

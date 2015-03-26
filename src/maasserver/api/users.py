@@ -22,11 +22,11 @@ from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     extract_bool,
     get_mandatory_param,
-    )
+)
 from maasserver.models import User
 
 

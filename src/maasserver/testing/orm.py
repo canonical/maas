@@ -21,7 +21,7 @@ __all__ = [
 from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,
-    )
+)
 import testtools
 from testtools.matchers import HasLength
 

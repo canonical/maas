@@ -20,11 +20,11 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
-    )
+)
 from maasserver.models import (
     MAASAuthorizationBackend,
     Node,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import get_node_init_user

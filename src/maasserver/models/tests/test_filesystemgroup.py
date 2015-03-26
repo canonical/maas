@@ -28,7 +28,7 @@ from testtools.matchers import (
     Equals,
     Is,
     Not,
-    )
+)
 
 
 class TestFilesystemGroup(MAASServerTestCase):

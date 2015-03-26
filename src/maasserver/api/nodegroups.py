@@ -30,24 +30,24 @@ from maasserver.api.support import (
     AnonymousOperationsHandler,
     operation,
     OperationsHandler,
-    )
+)
 from maasserver.api.utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
     get_mandatory_param,
     get_optional_param,
-    )
+)
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
-    )
+)
 from maasserver.exceptions import (
     MAASAPIValidationError,
     Unauthorized,
-    )
+)
 from maasserver.forms import (
     DownloadProgressForm,
     NodeGroupEdit,
-    )
+)
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_probed_details

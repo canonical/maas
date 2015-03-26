@@ -45,7 +45,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
-    )
+)
 from provisioningserver.rpc import cluster
 
 

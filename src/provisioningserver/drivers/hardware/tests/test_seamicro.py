@@ -23,15 +23,15 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
-    )
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-    )
+)
 from mock import (
     call,
     Mock,
-    )
+)
 from provisioningserver.drivers.hardware import seamicro
 from provisioningserver.drivers.hardware.seamicro import (
     find_seamicro15k_servers,
@@ -44,7 +44,7 @@ from provisioningserver.drivers.hardware.seamicro import (
     SeaMicroAPIV09Error,
     SeaMicroError,
     select_seamicro15k_api_version,
-    )
+)
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread

@@ -28,7 +28,7 @@ from formencode.validators import Invalid
 from maasserver.exceptions import (
     MAASAPIValidationError,
     Unauthorized,
-    )
+)
 from piston.models import Token
 
 

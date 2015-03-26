@@ -24,7 +24,7 @@ __all__ = [
 from itertools import (
     chain,
     imap,
-    )
+)
 import threading
 
 from django.conf import settings
@@ -32,7 +32,7 @@ from maasserver import locks
 from maasserver.dns.zonegenerator import (
     sequence,
     ZoneGenerator,
-    )
+)
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
 from maasserver.models.network import Network
@@ -41,12 +41,12 @@ from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.sequence import (
     INT_MAX,
     Sequence,
-    )
+)
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     post_commit,
     transactional,
-    )
+)
 from provisioningserver.dns.actions import (
     bind_reconfigure,
     bind_reload,
@@ -55,12 +55,12 @@ from provisioningserver.dns.actions import (
     bind_write_configuration,
     bind_write_options,
     bind_write_zones,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import (
     callOut,
     callOutToThread,
-    )
+)
 
 
 maaslog = get_maas_logger("dns")

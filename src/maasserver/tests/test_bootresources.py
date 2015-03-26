@@ -26,37 +26,37 @@ from django.core.urlresolvers import reverse
 from django.db import (
     connections,
     transaction,
-    )
+)
 from django.http import StreamingHttpResponse
 from django.test.client import Client
 from fixtures import Fixture
 from maasserver import (
     bootresources,
     utils as utils_module,
-    )
+)
 from maasserver.bootresources import (
     BootResourceStore,
     download_all_boot_resources,
     download_boot_resources,
     get_simplestream_endpoint,
-    )
+)
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     COMPONENT,
-    )
+)
 from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
     Config,
     LargeFile,
-    )
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -66,14 +66,14 @@ from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     MagicMock,
     Mock,
     sentinel,
-    )
+)
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.testing import TwistedLoggerFixture
@@ -83,7 +83,7 @@ from testtools.matchers import (
     ContainsAll,
     Equals,
     Is,
-    )
+)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
 from twisted.internet.threads import deferToThread

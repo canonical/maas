@@ -22,7 +22,7 @@ from django.db.models.signals import (
     post_save,
     pre_delete,
     pre_save,
-    )
+)
 
 
 def connect_to_field_change(callback, model, fields, delete=False):

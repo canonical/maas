@@ -18,7 +18,7 @@ from django.forms import CharField
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
-    )
+)
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
@@ -31,11 +31,11 @@ from maasserver.forms import (
     NodeWithMACAddressesForm,
     pick_default_architecture,
     remove_None_values,
-    )
+)
 from maasserver.models import (
     Node,
     NodeGroup,
-    )
+)
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

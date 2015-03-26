@@ -20,7 +20,7 @@ from os import urandom
 from apiclient.multipart import (
     encode_multipart_data,
     get_content_type,
-    )
+)
 from apiclient.testing.django import parse_headers_and_body_with_django
 from django.utils.datastructures import MultiValueDict
 from maastesting.factory import factory
@@ -28,7 +28,7 @@ from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     EndsWith,
     StartsWith,
-    )
+)
 
 
 ahem_django_ahem = (

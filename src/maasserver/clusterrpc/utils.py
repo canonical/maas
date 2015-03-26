@@ -29,7 +29,7 @@ from maasserver.utils import async
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
-    )
+)
 from twisted.python.failure import Failure
 
 

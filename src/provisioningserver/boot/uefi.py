@@ -29,11 +29,11 @@ from provisioningserver.boot import (
     BytesReader,
     get_parameters,
     utils,
-    )
+)
 from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
-    )
+)
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils.fs import tempdir
@@ -42,7 +42,7 @@ from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
-    )
+)
 
 
 ARCHIVE_PATH = "/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"

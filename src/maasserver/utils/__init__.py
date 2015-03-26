@@ -32,7 +32,7 @@ from urllib import urlencode
 from urlparse import (
     urljoin,
     urlparse,
-    )
+)
 
 from django.conf import settings
 from django.core.urlresolvers import reverse

@@ -24,7 +24,7 @@ from django.db.models import (
     ForeignKey,
     ManyToManyField,
     SET_NULL,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
@@ -33,11 +33,11 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressTypeClash,
     StaticIPAddressUnavailable,
-    )
+)
 from maasserver.fields import (
     MAC,
     MACAddressField,
-    )
+)
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.managers import BulkManager
@@ -48,7 +48,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPRange,
-    )
+)
 from provisioningserver.logger import get_maas_logger
 
 

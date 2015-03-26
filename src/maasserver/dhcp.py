@@ -28,17 +28,17 @@ from maasserver.rpc import getClientFor
 from maasserver.utils.orm import (
     post_commit,
     transactional,
-    )
+)
 from netaddr import IPAddress
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
-    )
+)
 from provisioningserver.utils.twisted import (
     callOut,
     callOutToThread,
     synchronous,
-    )
+)
 
 
 def split_ipv4_ipv6_interfaces(interfaces):

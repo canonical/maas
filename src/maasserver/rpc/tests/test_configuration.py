@@ -20,7 +20,7 @@ from maasserver.models.config import Config
 from maasserver.rpc.configuration import (
     get_archive_mirrors,
     get_proxies,
-    )
+)
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 

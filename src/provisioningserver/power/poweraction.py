@@ -26,7 +26,7 @@ from provisioningserver.utils import (
     escape_py_literal,
     locate_config,
     ShellTemplate,
-    )
+)
 from provisioningserver.utils.network import find_ip_via_arp
 
 

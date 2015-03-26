@@ -23,7 +23,7 @@ from collections import defaultdict
 from os import (
     path,
     urandom,
-    )
+)
 from warnings import warn
 
 from crochet import run_in_reactor
@@ -31,7 +31,7 @@ import fixtures
 from maasserver import (
     eventloop,
     security,
-    )
+)
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getClientFor
@@ -39,30 +39,30 @@ from maasserver.rpc.regionservice import RegionServer
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
-    )
+)
 from provisioningserver.rpc import (
     cluster,
     clusterservice,
-    )
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
     make_amp_protocol_factory,
-    )
+)
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
-    )
+)
 from testtools.monkey import (
     MonkeyPatcher,
     patch,
-    )
+)
 from twisted.internet import (
     defer,
     endpoints,
     reactor,
-    )
+)
 from twisted.internet.protocol import Factory
 from twisted.test import iosim
 from zope.interface import implementer

@@ -24,7 +24,7 @@ from django.contrib.messages import constants
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
-    )
+)
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.http.request import build_request_repr
@@ -34,17 +34,17 @@ from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
-    )
+)
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     MAASAPINotFound,
     MAASException,
-    )
+)
 from maasserver.middleware import (
     APIErrorsMiddleware,
     APIRPCErrorsMiddleware,
@@ -53,7 +53,7 @@ from maasserver.middleware import (
     ExceptionMiddleware,
     ExternalComponentsMiddleware,
     RPCErrorsMiddleware,
-    )
+)
 from maasserver.models import nodegroup as nodegroup_module
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
@@ -62,20 +62,20 @@ from maasserver.utils.orm import make_serialization_failure
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
-    )
+)
 from maastesting.utils import sample_binary_data
 from mock import Mock
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
-    )
+)
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import (
     Contains,
     Equals,
     Not,
-    )
+)
 from twisted.python.failure import Failure
 
 

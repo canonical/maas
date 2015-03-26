@@ -26,19 +26,19 @@ from maasserver import locks
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
-    )
+)
 from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootSource,
     BootSourceCache,
     BootSourceSelection,
     Config,
-    )
+)
 from maasserver.utils.orm import transactional
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
-    )
+)
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import tempdir

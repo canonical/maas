@@ -22,7 +22,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from django.shortcuts import get_object_or_404
 from django.utils.html import escape
 from maasserver.models.cleansave import CleanSave
@@ -32,7 +32,7 @@ from metadataserver import DefaultMeta
 from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
-    )
+)
 from metadataserver.fields import BinaryField
 
 

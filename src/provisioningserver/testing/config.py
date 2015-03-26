@@ -26,13 +26,13 @@ from os import path
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
-    )
+)
 from maastesting.fixtures import TempDirectory
 from provisioningserver.config import (
     BootSources,
     ClusterConfiguration,
     Config,
-    )
+)
 import yaml
 
 

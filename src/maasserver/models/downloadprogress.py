@@ -23,7 +23,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    )
+)
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel

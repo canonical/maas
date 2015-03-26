@@ -27,11 +27,11 @@ import shutil
 from django.core.management.base import (
     BaseCommand,
     CommandError,
-    )
+)
 from iscpy import (
     MakeISC,
     ParseISCString,
-    )
+)
 from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 
 
