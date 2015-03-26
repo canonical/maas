@@ -22,12 +22,23 @@ __all__ = [
 import os
 import subprocess
 
+from provisioningserver.drivers.power import (
+    builtin_power_drivers,
+    PowerDriverRegistry,
+)
 from provisioningserver.utils import (
     escape_py_literal,
     locate_config,
     ShellTemplate,
 )
 from provisioningserver.utils.network import find_ip_via_arp
+
+
+def is_power_driver(power_type):
+    for power_driver in builtin_power_drivers:
+        if power_type == power_driver.name:
+            return True
+    return False
 
 
 class UnknownPowerType(Exception):
@@ -61,14 +72,17 @@ class PowerAction:
 
     The class is intended to be used in two phases:
     1. Instantiation, passing the power_type.
-    2. .execute(), passing any template parameters required by the template.
+    2. .execute(), passing any parameters required by the template
+       or Python power driver.
     """
 
     def __init__(self, power_type):
-        self.path = os.path.join(
-            self.get_template_basedir(), power_type + ".template")
-        if not os.path.exists(self.path):
-            raise UnknownPowerType(power_type)
+        self.power_driver = is_power_driver(power_type)
+        if not self.power_driver:
+            self.path = os.path.join(
+                self.get_template_basedir(), power_type + ".template")
+            if not os.path.exists(self.path):
+                raise UnknownPowerType(power_type)
 
         self.power_type = power_type
 
@@ -127,16 +141,35 @@ class PowerAction:
                     process.returncode, shell, output))
 
     def execute(self, **context):
-        """Execute the template.
+        """Execute the power template or the power driver.
 
         :return: Standard output and standard error returned by the execution
             of the template.
 
-        Any supplied parameters will be passed to the template as substitution
-        values.
+        Any supplied parameters will be passed to the template or power
+        driver as substitution values.
         """
+        if self.power_driver:
+            return self.execute_power_driver(**context)
+        else:
+            return self.execute_power_template(**context)
+
+    def execute_power_template(self, **context):
         template = self.get_template()
         context = self.update_context(context)
         rendered = self.render_template(
             template=template, context=context)
         return self.run_shell(rendered)
+
+    def execute_power_driver(self, **context):
+        power_driver = PowerDriverRegistry[self.power_type]
+        # Needed for MACs and IPs
+        context = self.update_context(context)
+        power_change = context.get('power_change')
+        if power_change in ('on', 'off'):
+            return power_driver.perform_power(context)
+        elif power_change == 'query':
+            return power_driver.query(context)
+        else:
+            raise PowerActionFail(
+                "Invalid power change %s" % power_change)

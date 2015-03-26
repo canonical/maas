@@ -21,14 +21,25 @@ import re
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from mock import (
     ANY,
     Mock,
     sentinel,
 )
+from provisioningserver.drivers.power import (
+    builtin_power_drivers,
+    PowerDriverRegistry,
+)
+from provisioningserver.drivers.power.tests.test_base import (
+    make_power_driver_base,
+)
 import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
+    is_power_driver,
     PowerAction,
     PowerActionFail,
     UnknownPowerType,
@@ -40,13 +51,17 @@ from provisioningserver.utils import (
 )
 from testtools.matchers import (
     FileContains,
+    IsInstance,
     MatchesException,
     Raises,
 )
+from twisted.internet.defer import Deferred
 
 
 class TestPowerAction(MAASTestCase):
     """Tests for PowerAction."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def configure_templates_dir(self, path):
         """Configure POWER_TEMPLATES_DIR to `path`."""
@@ -125,6 +140,32 @@ class TestPowerAction(MAASTestCase):
                 "name 'mac' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name))))
 
+    def test_execute_calls_execute_power_template(self):
+        template = "echo working {{mac}} > {{outfile}}"
+        power_action = PowerAction('ether_wake')
+        power_action.path = self._create_template_file(template)
+        execute_power_template = self.patch(
+            power_action, "execute_power_template")
+        power_action.execute(testing="test")
+
+        self.assertThat(
+            execute_power_template, MockCalledOnceWith(testing="test"))
+
+    def test_execute_calls_execute_power_driver(self):
+        power_type = factory.make_name("power_type")
+        power_driver = make_power_driver_base(name=power_type)
+        builtin_power_drivers.append(power_driver)
+        self.addCleanup(builtin_power_drivers.remove, power_driver)
+        power_action = PowerAction(power_type)
+        execute_power_driver = self.patch(
+            power_action, "execute_power_driver")
+        power_action.execute(testing="test")
+
+        self.expectThat(
+            execute_power_driver, MockCalledOnceWith(testing="test"))
+        self.expectThat(
+            execute_power_driver, IsInstance(Deferred))
+
     def _create_template_file(self, template):
         """Create a temporary template file with the given contents."""
         return self.make_file("testscript.sh", template)
@@ -132,10 +173,10 @@ class TestPowerAction(MAASTestCase):
     def run_action(self, path, **kwargs):
         pa = PowerAction('ether_wake')
         pa.path = path
-        return pa.execute(**kwargs)
+        return pa.execute_power_template(**kwargs)
 
-    def test_execute(self):
-        # execute() should run the template through a shell.
+    def test_execute_power_template(self):
+        # execute_power_template() should run the template through a shell.
         output_file = self.make_file(
             name='output', contents="(Output should go here)")
         template = "echo working {{mac}} > {{outfile}}"
@@ -144,32 +185,73 @@ class TestPowerAction(MAASTestCase):
         self.run_action(path, mac="test", outfile=output_file)
         self.assertThat(output_file, FileContains("working test\n"))
 
-    def test_execute_return_execution_result(self):
+    def test_execute_power_template_return_execution_result(self):
         template = "echo ' test \n'"
         path = self._create_template_file(template)
         output = self.run_action(path)
         # run_action() returns the 'stripped' output.
         self.assertEqual('test', output)
 
-    def test_execute_raises_PowerActionFail_when_script_fails(self):
+    def test_execute_power_template_raises_PowerActionFail_for_failure(self):
         path = self._create_template_file("this_is_not_valid_shell")
         self.assertThat(
             lambda: self.run_action(path),
             Raises(MatchesException(
                 PowerActionFail, "ether_wake failed with return code 127")))
 
-    def test_execute_raises_PowerActionFail_with_output(self):
+    def test_execute_power_template_raises_PowerActionFail_with_output(self):
         path = self._create_template_file("echo reason for failure; exit 1")
         self.assertThat(
             lambda: self.run_action(path),
             Raises(
                 MatchesException(PowerActionFail, ".*:\nreason for failure")))
 
+    def make_power_driver_scaffold(self):
+        power_type = factory.make_name("power_type")
+        power_driver = make_power_driver_base(name=power_type)
+        builtin_power_drivers.append(power_driver)
+        self.addCleanup(builtin_power_drivers.remove, power_driver)
+        PowerDriverRegistry.register_item(power_driver.name, power_driver)
+        self.addCleanup(PowerDriverRegistry.unregister_item, power_driver.name)
+        power_action = PowerAction(power_type)
+        return power_type, power_driver, power_action
+
+    def test_execute_power_driver_calls_perform_power(self):
+        power_type, power_driver, power_action = (
+            self.make_power_driver_scaffold())
+        perform_power = self.patch(power_driver, "perform_power")
+        context = {'power_change': 'on'}
+        updated_context = power_action.update_context(context)
+        power_action.execute_power_driver(**context)
+
+        self.assertThat(perform_power, MockCalledOnceWith(updated_context))
+
+    def test_execute_power_driver_calls_query(self):
+        power_type, power_driver, power_action = (
+            self.make_power_driver_scaffold())
+        query = self.patch(power_driver, "query")
+        context = {'power_change': 'query'}
+        updated_context = power_action.update_context(context)
+        power_action.execute_power_driver(**context)
+
+        self.assertThat(query, MockCalledOnceWith(updated_context))
+
+    def test_execute_power_driver_raises_PowerActionFail_for_failure(self):
+        power_type, power_driver, power_action = (
+            self.make_power_driver_scaffold())
+        context = {'power_change': 'error'}
+        updated_context = power_action.update_context(context)
+
+        self.assertRaises(
+            PowerActionFail, power_action.execute_power_driver,
+            **updated_context)
+
     def test_wake_on_lan_cannot_shut_down_node(self):
         pa = PowerAction('ether_wake')
         self.assertRaises(
             PowerActionFail,
-            pa.execute, power_change='off', mac=factory.make_mac_address())
+            pa.execute_power_template, power_change='off',
+            mac=factory.make_mac_address())
 
     def test_fence_cdu_checks_state(self):
         # We can't test the fence_cdu template in detail (and it may be
@@ -288,7 +370,7 @@ class TestTemplateContext(MAASTestCase):
 
     def test_basic_context(self):
         power_action = self.make_stubbed_power_action()
-        result = power_action.execute()
+        result = power_action.execute_power_template()
         self.assertEqual("done", result)
         self.assertThat(
             power_action.render_template,
@@ -303,7 +385,7 @@ class TestTemplateContext(MAASTestCase):
     def test_ip_address_is_unmolested_if_set(self):
         power_action = self.make_stubbed_power_action()
         ip_address = factory.make_ipv6_address()
-        result = power_action.execute(ip_address=ip_address)
+        result = power_action.execute_power_template(ip_address=ip_address)
         self.assertEqual("done", result)
         self.assertThat(
             power_action.render_template,
@@ -316,14 +398,14 @@ class TestTemplateContext(MAASTestCase):
                 ),
             ))
 
-    def test_execute_looks_up_ip_address_from_mac_address(self):
+    def test_execute_power_template_looks_up_ip_address_from_mac_address(self):
         find_ip_via_arp = self.patch(
             provisioningserver.power.poweraction, "find_ip_via_arp")
         find_ip_via_arp.return_value = sentinel.ip_address_from_mac
 
         power_action = self.make_stubbed_power_action()
         mac_address = factory.make_mac_address()
-        result = power_action.execute(mac_address=mac_address)
+        result = power_action.execute_power_template(mac_address=mac_address)
         self.assertEqual("done", result)
         self.assertThat(
             power_action.render_template,
@@ -336,3 +418,21 @@ class TestTemplateContext(MAASTestCase):
                     mac_address=mac_address,
                 ),
             ))
+
+
+class TestIsPowerDriver(MAASTestCase):
+
+    def test__finds_power_driver(self):
+        power_type = factory.make_name("power_type")
+        power_driver = make_power_driver_base(name=power_type)
+        builtin_power_drivers.append(power_driver)
+        self.addCleanup(builtin_power_drivers.remove, power_driver)
+        result = is_power_driver(power_type)
+
+        self.assertTrue(result)
+
+    def test__does_not_find_power_driver(self):
+        false_power_type = factory.make_name("power_type")
+        result = is_power_driver(false_power_type)
+
+        self.assertFalse(result)
