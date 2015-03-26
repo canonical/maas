@@ -209,11 +209,33 @@ describe("Manager", function() {
         });
 
         it("sets isLoading to false after loading", function(done) {
-            NodesManager._isLoading = true;
             webSocket.returnData.push(makeFakeResponse([makeNode()]));
             NodesManager.loadItems().then(function() {
                 expect(NodesManager._isLoading).toBe(false);
                 done();
+            });
+        });
+
+        it("resolves all load defers once done loading", function(done) {
+            webSocket.returnData.push(makeFakeResponse([makeNode()]));
+            var count = 0;
+            var loadDone = function() {
+                count += 1;
+                if(count === 2) {
+                    expect(NodesManager._extraLoadDefers).toEqual([]);
+                    done();
+                }
+            };
+
+            // Both need to resolve for the done() to be called. If both
+            // are not called then the test will timeout.
+            NodesManager.loadItems().then(function(items) {
+                expect(items).toBe(NodesManager.getItems());
+                loadDone();
+            });
+            NodesManager.loadItems().then(function(items) {
+                expect(items).toBe(NodesManager.getItems());
+                loadDone();
             });
         });
 
@@ -232,6 +254,31 @@ describe("Manager", function() {
             NodesManager.loadItems().then(null, function(error) {
                 expect(error).toBe(errorMsg);
                 done();
+            });
+        });
+
+        it("rejects all load defers on error", function(done) {
+            var fakeError = makeName("error");
+            webSocket.returnData.push(
+                makeFakeResponse(fakeError, true));
+            var count = 0;
+            var errorDone = function() {
+                count += 1;
+                if(count === 2) {
+                    expect(NodesManager._extraLoadDefers).toEqual([]);
+                    done();
+                }
+            };
+
+            // Both need to reject for the done() to be called. If both
+            // are not called then the test will timeout.
+            NodesManager.loadItems().then(null, function(error) {
+                expect(error).toBe(fakeError);
+                errorDone();
+            });
+            NodesManager.loadItems().then(null, function(error) {
+                expect(error).toBe(fakeError);
+                errorDone();
             });
         });
 
@@ -317,7 +364,6 @@ describe("Manager", function() {
         });
 
         it("sets isLoading to false after reloading", function(done) {
-            NodesManager._isLoading = true;
             webSocket.returnData.push(makeFakeResponse([makeNode()]));
             NodesManager.reloadItems().then(function() {
                 expect(NodesManager._isLoading).toBe(false);
@@ -347,12 +393,60 @@ describe("Manager", function() {
             });
         });
 
+        it("resolves all reload defers once done reloading", function(done) {
+            webSocket.returnData.push(makeFakeResponse([makeNode()]));
+            var count = 0;
+            var reloadDone = function() {
+                count += 1;
+                if(count === 2) {
+                    expect(NodesManager._extraReloadDefers).toEqual([]);
+                    done();
+                }
+            };
+
+            // Both need to resolve for the done() to be called. If both
+            // are not called then the test will timeout.
+            NodesManager.reloadItems().then(function(items) {
+                expect(items).toBe(NodesManager.getItems());
+                reloadDone();
+            });
+            NodesManager.reloadItems().then(function(items) {
+                expect(items).toBe(NodesManager.getItems());
+                reloadDone();
+            });
+        });
+
         it("calls defer error handler on error", function(done) {
             var errorMsg = "Unable to reload the nodes.";
             webSocket.returnData.push(makeFakeResponse(errorMsg, true));
             NodesManager.reloadItems().then(null, function(error) {
                 expect(error).toBe(errorMsg);
                 done();
+            });
+        });
+
+        it("rejects all reload defers on error", function(done) {
+            var fakeError = makeName("error");
+            webSocket.returnData.push(
+                makeFakeResponse(fakeError, true));
+            var count = 0;
+            var errorDone = function() {
+                count += 1;
+                if(count === 2) {
+                    expect(NodesManager._extraReloadDefers).toEqual([]);
+                    done();
+                }
+            };
+
+            // Both need to reject for the done() to be called. If both
+            // are not called then the test will timeout.
+            NodesManager.reloadItems().then(null, function(error) {
+                expect(error).toBe(fakeError);
+                errorDone();
+            });
+            NodesManager.reloadItems().then(null, function(error) {
+                expect(error).toBe(fakeError);
+                errorDone();
             });
         });
 

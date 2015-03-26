@@ -41,6 +41,16 @@ angular.module('MAAS').service(
             // Actions will not be processed while this is false.
             this._isLoading = false;
 
+            // Holds list of defers that need to be called once the loading of
+            // items has finished. This is used when a caller calls loadItems
+            // when its already loading.
+            this._extraLoadDefers = [];
+
+            // Holds list of defers that need to be called once the reloading
+            // of items has finished. This is used when a caller calls
+            // reloadItems when its already reloading.
+            this._extraReloadDefers = [];
+
             // Holds all of the notify actions that need to be processed. This
             // is used to hold the actions while the items are being loaded.
             // Once all of the items are loaded the queue will be processed.
@@ -136,6 +146,20 @@ angular.module('MAAS').service(
             return defer.promise;
         };
 
+        // Resolves array of defers with item.
+        Manager.prototype._resolveDefers = function(defersArray, item) {
+            angular.forEach(defersArray, function(defer) {
+                defer.resolve(item);
+            });
+        };
+
+        // Rejects array of defers with error.
+        Manager.prototype._rejectDefers = function(defersArray, error) {
+            angular.forEach(defersArray, function(defer) {
+                defer.reject(error);
+            });
+        };
+
         // Return list of items.
         Manager.prototype.getItems = function() {
             return this._items;
@@ -149,6 +173,14 @@ angular.module('MAAS').service(
                 return this.reloadItems();
             }
 
+            // If its already loading then the caller just needs to be informed
+            // of when it has finished loading.
+            if(this._isLoading) {
+                var defer = $q.defer();
+                this._extraLoadDefers.push(defer);
+                return defer.promise;
+            }
+
             var self = this;
             this._isLoading = true;
             return this._batchLoadItems(this._items, function(item) {
@@ -158,7 +190,13 @@ angular.module('MAAS').service(
                 self._loaded = true;
                 self._isLoading = false;
                 self.processActions();
+                self._resolveDefers(self._extraLoadDefers, self._items);
+                self._extraLoadDefers = [];
                 return self._items;
+            }, function(error) {
+                self._rejectDefers(self._extraLoadDefers, error);
+                self._extraLoadDefers = [];
+                return $q.reject(error);
             });
         };
 
@@ -168,6 +206,14 @@ angular.module('MAAS').service(
             // load the initial list.
             if(!this._loaded) {
                 return this.loadItems();
+            }
+
+            // If its already reloading then the caller just needs to be
+            // informed of when it has refinished loading.
+            if(this._isLoading) {
+                var defer = $q.defer();
+                this._extraReloadDefers.push(defer);
+                return defer.promise;
             }
 
             // Updates the items list with the reloaded items.
@@ -217,7 +263,13 @@ angular.module('MAAS').service(
                     self.setActiveItem(self._activeItem[self._pk]);
                 }
 
+                self._resolveDefers(self._extraReloadDefers, self._items);
+                self._extraReloadDefers = [];
                 return self._items;
+            }, function(error) {
+                self._rejectDefers(self._extraReloadDefers, error);
+                self._extraReloadDefers = [];
+                return $q.reject(error);
             });
         };
 
