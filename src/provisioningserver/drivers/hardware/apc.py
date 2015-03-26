@@ -110,20 +110,6 @@ class APCTelnet:
         self._write_read_transaction(CONFIRM_CHANGE, '...')
         self._write_read_transaction('\r', CMD_PROMPT)
 
-    def _power_on_outlet(self, outlet):
-        self._drill_down_to_outlet_menu()
-        self._select_outlet(outlet)
-        self._select_option(1)
-        # Confirm power on
-        self._confirm_option(1)
-
-    def _power_off_outlet(self, outlet):
-        self._drill_down_to_outlet_menu()
-        self._select_outlet(outlet)
-        self._select_option(1)
-        # Confirm power off
-        self._confirm_option(2)
-
     def __enter__(self):
         self.telnet = Telnet(self.ip, timeout=30)
         self._enter_username()
@@ -136,7 +122,11 @@ class APCTelnet:
     def power_off_outlet(self, outlet):
         """Power off outlet."""
         with self:
-            self._power_off_outlet(outlet)
+            self._drill_down_to_outlet_menu()
+            self._select_outlet(outlet)
+            self._select_option(1)
+            # Confirm power off
+            self._confirm_option(2)
 
     def power_on_outlet(self, outlet):
         """Power on outlet.
@@ -144,9 +134,15 @@ class APCTelnet:
         This forces the outlet off first, before turning it on.
         """
         with self:
-            self._power_off_outlet(outlet)
-            sleep(2)  # Without this it's too fast.
-            self._power_on_outlet(outlet)
+            self._drill_down_to_outlet_menu()
+            self._select_outlet(outlet)
+            self._select_option(1)
+            # Confirm power off
+            self._confirm_option(2)
+            # Without sleep it's too fast
+            sleep(2)
+            # Confirm power on
+            self._confirm_option(1)
 
     def get_power_state_of_outlet(self, outlet):
         """Get power state of outlet (ON/OFF)."""

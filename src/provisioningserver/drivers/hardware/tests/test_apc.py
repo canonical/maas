@@ -172,58 +172,42 @@ class TestAPCTelnet(MAASTestCase):
         self.expectThat(telnet.close, MockCalledOnceWith())
         self.expectThat(apc.telnet, Equals(None))
 
-    def test__power_off_outlet_powers_outlet_off(self):
-        apc = make_apc_telnet()
-        outlet = randint(1, 16)
-        _drill_down_to_outlet_menu = self.patch(
-            apc, '_drill_down_to_outlet_menu')
-        _select_outlet = self.patch(apc, '_select_outlet')
-        _select_option = self.patch(apc, '_select_option')
-        _confirm_option = self.patch(apc, '_confirm_option')
-        apc._power_off_outlet(outlet)
-        self.expectThat(_drill_down_to_outlet_menu, MockCalledOnceWith())
-        self.expectThat(_select_outlet, MockCalledOnceWith(outlet))
-        self.expectThat(_select_option, MockCalledOnceWith(1))
-        self.expectThat(_confirm_option, MockCalledOnceWith(2))
-
     def test_power_off_outlet_powers_outlet_off(self):
         apc = make_apc_telnet()
         outlet = randint(1, 16)
         _enter = self.patch(apc_module.APCTelnet, "__enter__")
-        _power_off_outlet = self.patch(apc, "_power_off_outlet")
-        _exit = self.patch(apc_module.APCTelnet, "__exit__")
-        apc.power_off_outlet(outlet)
-        self.expectThat(_enter, MockCalledOnceWith())
-        self.expectThat(_power_off_outlet, MockCalledOnceWith(outlet))
-        self.expectThat(_exit, MockCalledOnceWith(None, None, None))
-
-    def test__power_on_outlet_powers_outlet_on(self):
-        apc = make_apc_telnet()
-        outlet = randint(1, 16)
         _drill_down_to_outlet_menu = self.patch(
             apc, '_drill_down_to_outlet_menu')
         _select_outlet = self.patch(apc, '_select_outlet')
         _select_option = self.patch(apc, '_select_option')
         _confirm_option = self.patch(apc, '_confirm_option')
-        apc._power_on_outlet(outlet)
+        _exit = self.patch(apc_module.APCTelnet, "__exit__")
+        apc.power_off_outlet(outlet)
+        self.expectThat(_enter, MockCalledOnceWith())
         self.expectThat(_drill_down_to_outlet_menu, MockCalledOnceWith())
         self.expectThat(_select_outlet, MockCalledOnceWith(outlet))
         self.expectThat(_select_option, MockCalledOnceWith(1))
-        self.expectThat(_confirm_option, MockCalledOnceWith(1))
+        self.expectThat(_confirm_option, MockCalledOnceWith(2))
+        self.expectThat(_exit, MockCalledOnceWith(None, None, None))
 
     def test_power_on_outlet_powers_outlet_on(self):
         apc = make_apc_telnet()
         outlet = randint(1, 16)
         sleep = self.patch(apc_module, "sleep")
         _enter = self.patch(apc_module.APCTelnet, "__enter__")
-        _power_off_outlet = self.patch(apc, "_power_off_outlet")
-        _power_on_outlet = self.patch(apc, "_power_on_outlet")
+        _drill_down_to_outlet_menu = self.patch(
+            apc, '_drill_down_to_outlet_menu')
+        _select_outlet = self.patch(apc, '_select_outlet')
+        _select_option = self.patch(apc, '_select_option')
+        _confirm_option = self.patch(apc, '_confirm_option')
         _exit = self.patch(apc_module.APCTelnet, "__exit__")
         apc.power_on_outlet(outlet)
         self.expectThat(_enter, MockCalledOnceWith())
-        self.expectThat(_power_off_outlet, MockCalledOnceWith(outlet))
+        self.expectThat(_drill_down_to_outlet_menu, MockCalledOnceWith())
+        self.expectThat(_select_outlet, MockCalledOnceWith(outlet))
+        self.expectThat(_select_option, MockCalledOnceWith(1))
+        self.expectThat(_confirm_option, MockCallsMatch(call(2), call(1)))
         self.expectThat(sleep, MockCalledOnceWith(2))
-        self.expectThat(_power_on_outlet, MockCalledOnceWith(outlet))
         self.expectThat(_exit, MockCalledOnceWith(None, None, None))
 
     def test_get_power_state_of_outlet_gets_power_state(self):
