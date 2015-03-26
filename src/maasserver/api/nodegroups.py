@@ -516,13 +516,13 @@ class NodeGroupHandler(OperationsHandler):
                 accept_all=accept_all)
         elif model == 'esxi':
             poweraddr = get_mandatory_param(request.data, 'address')
-            username = get_mandatory_param(request.data, 'username')
+            poweruser = get_mandatory_param(request.data, 'username')
             password = get_mandatory_param(request.data, 'password')
             prefix_filter = get_optional_param(
                 request.data, 'prefix_filter', default=None)
 
             nodegroup.add_esxi(
-                username, poweraddr, password=password,
+                user, poweruser, poweraddr, password=password,
                 prefix_filter=prefix_filter, accept_all=accept_all)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)

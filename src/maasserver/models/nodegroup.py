@@ -411,7 +411,7 @@ class NodeGroup(TimestampedModel):
                 password=password, protocol=protocol, port=port,
                 prefix_filter=prefix_filter, accept_all=accept_all)
 
-    def add_esxi(self, user, poweraddr, password,
+    def add_esxi(self, user, poweruser, poweraddr, password,
                  prefix_filter=None, accept_all=False):
         """ Add all of the virtual machines inside a virsh controller.
 
@@ -433,8 +433,9 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                AddESXi, user=user, poweraddr=poweraddr, password=password,
-                prefix_filter=prefix_filter, accept_all=accept_all)
+                AddESXi, user=user, poweruser=poweruser, poweraddr=poweraddr,
+                password=password, prefix_filter=prefix_filter,
+                accept_all=accept_all)
 
     def enlist_nodes_from_ucsm(self, user, url, username,
                                password, accept_all=False):

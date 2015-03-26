@@ -2096,11 +2096,13 @@ class TestClusterProtocol_AddESXi(MAASTestCase):
         mock_deferToThread = self.patch_autospec(
             clusterservice, 'deferToThread')
         user = factory.make_name('user')
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddESXi, {
             "user": user,
+            "poweruser": poweruser,
             "poweraddr": poweraddr,
             "password": password,
             "prefix_filter": prefix_filter,
@@ -2109,7 +2111,8 @@ class TestClusterProtocol_AddESXi(MAASTestCase):
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_esxi_and_enlist,
-                user, poweraddr, password, prefix_filter, True))
+                user, poweruser, poweraddr, password,
+                prefix_filter, True))
 
     def test__logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -2118,11 +2121,13 @@ class TestClusterProtocol_AddESXi(MAASTestCase):
             clusterservice, 'deferToThread')
         mock_deferToThread.return_value = fail(Exception(fake_error))
         user = factory.make_name('user')
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddESXi, {
             "user": user,
+            "poweruser": poweruser,
             "poweraddr": poweraddr,
             "password": password,
             "prefix_filter": prefix_filter,

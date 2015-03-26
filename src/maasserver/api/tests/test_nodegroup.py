@@ -454,6 +454,7 @@ class TestNodeGroupAPI(APITestCase):
         model = 'esxi'
         poweraddr = factory.make_ipv4_address()
         password = factory.make_name('password')
+        poweruser = factory.make_name('poweruser')
         prefix_filter = factory.make_name('filter')
         accept_all = True
 
@@ -466,8 +467,9 @@ class TestNodeGroupAPI(APITestCase):
             {
                 'op': 'probe_and_enlist_hardware',
                 'model': model,
+                'user': user.username,
                 'address': poweraddr,
-                'username': user.username,
+                'username': poweruser,
                 'password': password,
                 'prefix_filter': prefix_filter,
                 'accept_all': accept_all,
@@ -480,9 +482,9 @@ class TestNodeGroupAPI(APITestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddESXi, user=user.username, poweraddr=poweraddr,
-                password=password, prefix_filter=prefix_filter,
-                accept_all=True))
+                AddESXi, user=user.username, poweruser=poweruser,
+                poweraddr=poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=True))
 
     def test_probe_and_enlist_hardware_adds_msftocs(self):
         self.become_admin()

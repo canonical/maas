@@ -30,13 +30,13 @@ class ESXiError(Exception):
     """Failure communicating to ESXi. """
 
 
-def compose_esxi_url(username, password):
-    return "esx://%s@%s/?no_verify=1" % (username, password)
+def compose_esxi_url(poweruser, poweraddr):
+    return "esx://%s@%s/?no_verify=1" % (poweruser, poweraddr)
 
 
 @synchronous
 def probe_esxi_and_enlist(
-        user, poweraddr, password,
+        user, poweruser, poweraddr, password,
         prefix_filter=None, accept_all=False):
     """Extracts all of the virtual machines from virsh and enlists them
     into MAAS.
@@ -48,7 +48,7 @@ def probe_esxi_and_enlist(
     :param accept_all: if True, commission enlisted nodes.
     """
     conn = VirshSSH(dom_prefix=prefix_filter)
-    virsh_poweraddr = compose_esxi_url(user, poweraddr)
+    virsh_poweraddr = compose_esxi_url(poweruser, poweraddr)
     if not conn.login(virsh_poweraddr, password):
         raise ESXiError('Failed to login to virsh console.')
 
@@ -64,7 +64,7 @@ def probe_esxi_and_enlist(
 
         params = {
             'power_address': poweraddr,
-            'power_user': user,
+            'power_user': poweruser,
             'power_id': machine,
             'power_pass': password,
         }
@@ -76,11 +76,11 @@ def probe_esxi_and_enlist(
     conn.logout()
 
 
-def power_control_esxi(poweraddr, machine, power_change, user, password):
+def power_control_esxi(poweraddr, machine, power_change, poweruser, password):
     """Powers controls a virtual machine using virsh."""
 
     conn = VirshSSH()
-    virsh_poweraddr = compose_esxi_url(user, poweraddr)
+    virsh_poweraddr = compose_esxi_url(poweruser, poweraddr)
     if not conn.login(virsh_poweraddr, password):
         raise ESXiError('Failed to login to virsh console.')
 
@@ -98,11 +98,11 @@ def power_control_esxi(poweraddr, machine, power_change, user, password):
                 raise ESXiError('Failed to power off domain: %s' % machine)
 
 
-def power_state_esxi(poweraddr, machine, user, password):
+def power_state_esxi(poweraddr, machine, poweruser, password):
     """Return the power state for the virtual machine using virsh."""
 
     conn = VirshSSH()
-    virsh_poweraddr = compose_esxi_url(user, poweraddr)
+    virsh_poweraddr = compose_esxi_url(poweruser, poweraddr)
     if not conn.login(virsh_poweraddr, password):
         raise ESXiError('Failed to login to virsh console.')
 

@@ -368,14 +368,15 @@ class Cluster(RPCProtocol):
         return {}
 
     @cluster.AddESXi.responder
-    def add_esxi(self, user, poweraddr, password, prefix_filter, accept_all):
+    def add_esxi(self, user, poweruser, poweraddr,
+                 password, prefix_filter, accept_all):
         """add_esxi()
 
         Implementation of :py:class:`~provisioningserver.rpc.cluster.AddESXi`.
         """
         d = deferToThread(
             probe_esxi_and_enlist,
-            user, poweraddr, password, prefix_filter, accept_all)
+            user, poweruser, poweraddr, password, prefix_filter, accept_all)
         d.addErrback(partial(catch_probe_and_enlist_error, "esxi"))
         return {}
 

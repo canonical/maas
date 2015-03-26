@@ -86,6 +86,7 @@ class TestESXi(MAASTestCase):
         # Setup the power parameters that we should expect to be
         # the output of the probe_and_enlist
         fake_password = factory.make_string()
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         esx_poweraddr = "esx://%s@%s/?no_verify=1" % (user, poweraddr)
         called_params = []
@@ -97,7 +98,7 @@ class TestESXi(MAASTestCase):
                 'power_address': poweraddr,
                 'power_id': machine,
                 'power_pass': fake_password,
-                'power_user': user,
+                'power_user': poweruser,
                 })
 
         # Patch the get_mac_addresses so we get a known list of
@@ -120,8 +121,8 @@ class TestESXi(MAASTestCase):
 
         # Perform the probe and enlist
         yield deferToThread(
-            virsh.probe_esxi_and_enlist,
-            user, poweraddr, password=fake_password, accept_all=True)
+            virsh.probe_esxi_and_enlist, user, poweruser, poweraddr,
+            password=fake_password, accept_all=True)
 
         # Check that login was called with the provided poweraddr and
         # password.
@@ -152,13 +153,14 @@ class TestESXi(MAASTestCase):
     @inlineCallbacks
     def test_probe_and_enlist_login_failure(self):
         user = factory.make_name('user')
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = False
         with ExpectedException(virsh.ESXiError):
             yield deferToThread(
                 virsh.probe_esxi_and_enlist,
-                user, poweraddr, password=factory.make_string())
+                user, poweruser, poweraddr, password=factory.make_string())
 
 
 class TestESXiPowerControl(MAASTestCase):

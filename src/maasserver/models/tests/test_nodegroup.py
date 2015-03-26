@@ -664,14 +664,16 @@ class TestNodeGroup(MAASServerTestCase):
             {'system_id': factory.make_name('system-id')})
 
         user = factory.make_name('user')
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
-        nodegroup.add_esxi(user, poweraddr, password, None, True).wait(10)
+        nodegroup.add_esxi(
+            user, poweruser, poweraddr, password, None, True).wait(10)
 
         self.expectThat(
             protocol.AddESXi,
             MockCalledOnceWith(
-                ANY, user=user, poweraddr=poweraddr,
+                ANY, user=user, poweruser=poweruser, poweraddr=poweraddr,
                 password=password, prefix_filter=None, accept_all=True))
 
     def test_add_esxi_calls_client_with_resource_endpoint(self):
@@ -680,14 +682,15 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
 
         user = factory.make_name('user')
+        poweruser = factory.make_name('poweruser')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
-        nodegroup.add_esxi(user, poweraddr, password, None, True)
+        nodegroup.add_esxi(user, poweruser, poweraddr, password, None, True)
 
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddESXi, user=user, poweraddr=poweraddr,
+                AddESXi, user=user, poweruser=poweruser, poweraddr=poweraddr,
                 password=password, prefix_filter=None, accept_all=True))
 
     def test_add_esxi_raises_if_no_connection_to_cluster(self):
