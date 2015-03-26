@@ -552,11 +552,42 @@ describe("NodeDetailsController", function() {
             [["architectures"], ["osinfo"]]);
     });
 
+    describe("getPowerStateClass", function() {
+
+        it("returns blank if no node", function() {
+            var controller = makeController();
+            expect($scope.getPowerStateClass()).toBe("");
+        });
+
+        it("returns check if checkingPower is true", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.checkingPower = true;
+            expect($scope.getPowerStateClass()).toBe("checking");
+        });
+
+        it("returns power_state from node ", function() {
+            var controller = makeController();
+            var state = makeName("state");
+            $scope.node = node;
+            node.power_state = state;
+            expect($scope.getPowerStateClass()).toBe(state);
+        });
+    });
+
     describe("getPowerStateText", function() {
 
         it("returns blank if no node", function() {
             var controller = makeController();
             expect($scope.getPowerStateText()).toBe("");
+        });
+
+        it("returns 'Checking' if checkingPower is true", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.checkingPower = true;
+            node.power_state = "unknown";
+            expect($scope.getPowerStateText()).toBe("Checking power");
         });
 
         it("returns blank if power_state is unknown", function() {
@@ -573,6 +604,58 @@ describe("NodeDetailsController", function() {
             node.power_state = state;
             expect($scope.getPowerStateText()).toBe("Power " + state);
         });
+    });
+
+    describe("canCheckPowerState", function() {
+
+        it("returns false if no node", function() {
+            var controller = makeController();
+            expect($scope.canCheckPowerState()).toBe(false);
+        });
+
+        it("returns false if power_state is unknown", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.power_state = "unknown";
+            expect($scope.canCheckPowerState()).toBe(false);
+        });
+
+        it("returns false if checkingPower is true", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.checkingPower = true;
+            expect($scope.canCheckPowerState()).toBe(false);
+        });
+
+        it("returns true if not checkingPower and power_state not unknown",
+            function() {
+                var controller = makeController();
+                $scope.node = node;
+                expect($scope.canCheckPowerState()).toBe(true);
+            });
+    });
+
+    describe("checkPowerState", function() {
+
+        it("sets checkingPower to true", function() {
+            var controller = makeController();
+            spyOn(NodesManager, "checkPowerState").and.returnValue(
+                $q.defer().promise);
+            $scope.checkPowerState();
+            expect($scope.checkingPower).toBe(true);
+        });
+
+        it("sets checkingPower to false once checkPowerState resolves",
+            function() {
+                var controller = makeController();
+                var defer = $q.defer();
+                spyOn(NodesManager, "checkPowerState").and.returnValue(
+                    defer.promise);
+                $scope.checkPowerState();
+                defer.resolve();
+                $rootScope.$digest();
+                expect($scope.checkingPower).toBe(false);
+            });
     });
 
     describe("getOSText", function() {

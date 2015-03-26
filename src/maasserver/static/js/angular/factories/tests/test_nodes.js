@@ -95,4 +95,43 @@ describe("NodesManager", function() {
             });
         });
     });
+
+    describe("checkPowerState", function() {
+
+        it("calls node.check_power with system_id", function(done) {
+            var node = makeNode();
+            webSocket.returnData.push(makeFakeResponse("on"));
+            NodesManager.checkPowerState(node).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.check_power");
+                expect(sentObject.params.system_id).toBe(node.system_id);
+                done();
+            });
+        });
+
+        it("sets power_state to results", function(done) {
+            var node = makeNode();
+            var power_state = makeName("state");
+            webSocket.returnData.push(makeFakeResponse(power_state));
+            NodesManager.checkPowerState(node).then(function(state) {
+                expect(node.power_state).toBe(power_state);
+                expect(state).toBe(power_state);
+                done();
+            });
+        });
+
+        it("sets power_state to error on error and logs error",
+            function(done) {
+                var node = makeNode();
+                var error = makeName("error");
+                spyOn(console, "log");
+                webSocket.returnData.push(makeFakeResponse(error, true));
+                NodesManager.checkPowerState(node).then(function(state) {
+                    expect(node.power_state).toBe("error");
+                    expect(state).toBe("error");
+                    expect(console.log).toHaveBeenCalledWith(error);
+                    done();
+                });
+            });
+    });
 });

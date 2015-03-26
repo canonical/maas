@@ -24,14 +24,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.availableActionOptions = [];
         $scope.actionError = null;
         $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.checkingPower = false;
 
         // Holds errors that are displayed on the details page.
         $scope.errors = {
             cluster_disconnected: {
                 viewable: false,
                 message: "The cluster this node belongs to is disconnected. " +
-                    "No changes can be made to this node until the cluster " +
-                    "is reconnected."
+                    "Reconnect the cluster to the region controller to save " +
+                    "changes on this node."
             },
             invalid_arch: {
                 viewable: false,
@@ -396,6 +397,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
         }
 
+        $scope.getPowerStateClass = function() {
+            // This will get called very early and node can be empty.
+            // In that case just return an empty string. It will be
+            // called again to show the correct information.
+            if(!angular.isObject($scope.node)) {
+                return "";
+            }
+
+            if($scope.checkingPower) {
+                return "checking";
+            } else {
+                return $scope.node.power_state;
+            }
+        };
+
         // Get the power state text to show.
         $scope.getPowerStateText = function() {
             // This will get called very early and node can be empty.
@@ -405,11 +421,35 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return "";
             }
 
-            if($scope.node.power_state === "unknown") {
+            if($scope.checkingPower) {
+                return "Checking power";
+            } else if($scope.node.power_state === "unknown") {
                 return "";
             } else {
                 return "Power " + $scope.node.power_state;
             }
+        };
+
+        // Returns true when the "check now" button for updating the power
+        // state should be shown.
+        $scope.canCheckPowerState = function() {
+            // This will get called very early and node can be empty.
+            // In that case just return false. It will be
+            // called again to show the correct information.
+            if(!angular.isObject($scope.node)) {
+                return false;
+            }
+            return (
+                $scope.node.power_state !== "unknown" &&
+                !$scope.checkingPower);
+        };
+
+        // Check the power state of the node.
+        $scope.checkPowerState = function() {
+            $scope.checkingPower = true;
+            NodesManager.checkPowerState($scope.node).then(function() {
+                $scope.checkingPower = false;
+            });
         };
 
         // Returns the nice name of the OS for the node.

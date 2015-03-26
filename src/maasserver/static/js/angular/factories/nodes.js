@@ -54,5 +54,24 @@ angular.module('MAAS').factory(
                 });
         };
 
+        // Check the power state for the node.
+        NodesManager.prototype.checkPowerState = function(node) {
+            return RegionConnection.callMethod("node.check_power", {
+                "system_id": node.system_id
+                }).then(function(state) {
+                    node.power_state = state;
+                    return state;
+                }, function(error) {
+                    node.power_state = "error";
+
+                    // Already been logged server side, but log it client
+                    // side so if they really care they can see why.
+                    console.log(error);
+
+                    // Return the state as error to the remaining callbacks.
+                    return "error";
+                });
+        };
+
         return new NodesManager();
     }]);

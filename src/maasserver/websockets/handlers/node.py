@@ -19,6 +19,7 @@ __all__ = [
 import logging
 from operator import itemgetter
 
+import crochet
 from django.core.urlresolvers import reverse
 from lxml import etree
 from maasserver.enum import NODE_PERMISSION
@@ -32,7 +33,9 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
+from maasserver.rpc import getClientFor
 from maasserver.utils.converters import XMLToYAML
+from maasserver.utils.orm import transactional
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -43,7 +46,19 @@ from maasserver.websockets.handlers.timestampedmodel import (
 )
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
+from provisioningserver.logger import get_maas_logger
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+)
+from provisioningserver.rpc.cluster import PowerQuery
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tags import merge_details_cleanly
+from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.threads import deferToThread
+
+
+maaslog = get_maas_logger("websockets.node")
 
 
 class NodeHandler(TimestampedModelHandler):
@@ -65,6 +80,7 @@ class NodeHandler(TimestampedModelHandler):
             'update',
             'action',
             'set_active',
+            'check_power',
             ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -437,3 +453,59 @@ class NodeHandler(TimestampedModelHandler):
                 "%s action is not available for this node." % action_name)
         extra_params = params.get("extra", {})
         return action.execute(allow_redirect=False, **extra_params)
+
+    def check_power(self, params):
+        """Check the power state of the node."""
+        obj = self.get_object(params)
+        ng = obj.nodegroup
+
+        try:
+            client = getClientFor(ng.uuid)
+        except NoConnectionsAvailable:
+            maaslog.error(
+                "Unable to get RPC connection for cluster '%s' (%s)",
+                ng.cluster_name, ng.uuid)
+            raise HandlerError("Unable to connect to cluster controller")
+
+        state = None
+        try:
+            power_info = obj.get_effective_power_info()
+        except UnknownPowerType:
+            # Only raises this error when the node doesn't have a power type
+            # set. Return unknown because with no power type, we don't know
+            # its power state.
+            state = "unknown"
+        if not power_info.can_be_started:
+            # If its cannot be started then its not queryable.
+            state = "unknown"
+
+        if state is None:
+            call = client(
+                PowerQuery, system_id=obj.system_id, hostname=obj.hostname,
+                power_type=power_info.power_type,
+                context=power_info.power_parameters)
+            try:
+                # Allow 15 seconds for the power query max as we're holding
+                # up a thread waiting.
+                state = call.wait(15)['state']
+            except crochet.TimeoutError:
+                maaslog.error(
+                    "%s: Timed out waiting for power response in "
+                    "Node.power_state",
+                    obj.hostname)
+                state = "error"
+            except (NotImplementedError, PowerActionFail):
+                state = "error"
+
+        @asynchronous
+        def update_power_state(state):
+            transactional_update = transactional(obj.update_power_state)
+            return deferToThread(transactional_update, state)
+
+        # Update the power_state of the node. This will cause the update to
+        # occur in a seperate thread wrapped with transactional. This will make
+        # sure the change is committed and retried if required. Not pushing
+        # this to another thread, would result in the entire power query being
+        # performed again.
+        update_power_state(state).wait(15)
+        return state

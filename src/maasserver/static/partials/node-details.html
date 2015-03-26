@@ -8,15 +8,21 @@
 <div class="ng-hide" data-ng-show="loaded">
     <header class="page-header">
         <div class="inner-wrapper">
-            <nav class="page-header__nav">
+            <nav class="page-header__nav ng-hide">
                 <a href="#">&lsaquo;&nbsp;Back</a>
             </nav>
             <h1 class="page-header__title eight-col">
-                <span contenteditable="true">{$ node.fqdn $}</span>
+                {$ node.fqdn $}
                 <span class="page-header__title--identicator" id="bulk-actions">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <span class="power-status">{$ node.status $}</span>
-                    <span class="power-status--power {$ node.power_state $}">{$ getPowerStateText() $} <span class="power-check">3 minutes ago <a href="#" class="power-check__link">check now</a></span></span>
+                    <span class="power-status--power {$ getPowerStateClass() $}">
+                        <span class="loader" data-ng-show="checkingPower"></span>
+                        {$ getPowerStateText() $}
+                        <span class="power-check" data-ng-show="canCheckPowerState()">
+                            <a href="" class="power-check__link" data-ng-click="checkPowerState()">check now</a>
+                        </span>
+                    </span>
                 </span>
                 <a href="#" class="link-cta-ubuntu ng-hide">Save</a>
                 <a href="#" class="alt ng-hide">Cancel</a>
