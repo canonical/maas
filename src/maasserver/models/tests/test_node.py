@@ -687,7 +687,7 @@ class TestNode(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(owner))
         self.assertThat(node._set_status, MockCalledOnceWith(
-            node.system_id, NODE_STATUS.FAILED_DISK_ERASING))
+            node.system_id, status=NODE_STATUS.FAILED_DISK_ERASING))
 
         # Neither the owner nor the agent has been changed.
         node = reload_object(node)
@@ -717,6 +717,34 @@ class TestNode(MAASServerTestCase):
             node_start, MockCalledOnceWith(
                 admin, user_data=generate_user_data.return_value))
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
+
+    def test_start_disk_erasing_sets_status_on_post_commit_error(self):
+        # When start_disk_erasing encounters an error in its post-commit hook,
+        # it will set the node's status to FAILED_DISK_ERASING.
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        # Patch out some things that we don't want to do right now.
+        self.patch(node, 'start').return_value = None
+        # Fake an error during the post-commit hook.
+        error_message = factory.make_name("error")
+        error_type = factory.make_exception_type()
+        _start_async = self.patch_autospec(node, "_start_disk_erasing_async")
+        _start_async.side_effect = error_type(error_message)
+        # Capture calls to _set_status.
+        self.patch_autospec(Node, "_set_status")
+
+        with LoggerFixture("maas") as logger:
+            with ExpectedException(error_type):
+                with post_commit_hooks:
+                    node.start_disk_erasing(admin)
+
+        # The status is set to be reverted to its initial status.
+        self.assertThat(node._set_status, MockCalledOnceWith(
+            node, node.system_id, status=NODE_STATUS.FAILED_DISK_ERASING))
+        # It's logged too.
+        self.assertThat(logger.output, Equals(
+            "%s: Could not start node for disk erasure: %s\n"
+            % (node.hostname, error_message)))
 
     def test_start_disk_erasing_logs_and_raises_errors_in_starting(self):
         self.disable_node_query()
@@ -1368,6 +1396,38 @@ class TestNode(MAASServerTestCase):
                 admin, user_data=generate_user_data.return_value))
         self.assertEqual(NODE_STATUS.NEW, node.status)
 
+    def test_start_commissioning_reverts_status_on_post_commit_error(self):
+        # When start_commissioning encounters an error in its post-commit
+        # hook, it will revert the node to its previous status.
+        admin = factory.make_admin()
+        status = random.choice(
+            (NODE_STATUS.NEW, NODE_STATUS.READY,
+             NODE_STATUS.FAILED_COMMISSIONING))
+        node = factory.make_Node(status=status)
+        # Patch out some things that we don't want to do right now.
+        self.patch(node, '_start_transition_monitor_async')
+        self.patch(node, 'start').return_value = None
+        # Fake an error during the post-commit hook.
+        error_message = factory.make_name("error")
+        error_type = factory.make_exception_type()
+        _start_async = self.patch_autospec(node, "_start_commissioning_async")
+        _start_async.side_effect = error_type(error_message)
+        # Capture calls to _set_status.
+        self.patch_autospec(Node, "_set_status")
+
+        with LoggerFixture("maas") as logger:
+            with ExpectedException(error_type):
+                with post_commit_hooks:
+                    node.start_commissioning(admin)
+
+        # The status is set to be reverted to its initial status.
+        self.assertThat(node._set_status, MockCalledOnceWith(
+            node, node.system_id, status=status))
+        # It's logged too.
+        self.assertThat(logger.output, Equals(
+            "%s: Could not start node for commissioning: %s\n"
+            % (node.hostname, error_message)))
+
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
@@ -1467,9 +1527,9 @@ class TestNode(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
         self.assertThat(node._set_status, MockCalledOnceWith(
-            node.system_id, NODE_STATUS.NEW))
+            node.system_id, status=NODE_STATUS.NEW))
 
-    def test_abort_commisssioning_errors_if_node_is_not_commissioning(self):
+    def test_abort_commissioning_errors_if_node_is_not_commissioning(self):
         unaccepted_statuses = set(map_enum(NODE_STATUS).values())
         unaccepted_statuses.remove(NODE_STATUS.COMMISSIONING)
         for status in unaccepted_statuses:

@@ -925,8 +925,8 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToThread, self._set_status, old_status,
-                self.system_id)
+                callOutToThread, self._set_status, self.system_id,
+                status=old_status)
 
             def eb_start(failure, hostname):
                 maaslog.error(
@@ -1050,7 +1050,7 @@ class Node(CleanSave, TimestampedModel):
         :param hostname: The node's hostname, for logging.
         :param system_id: The system ID for the node.
         """
-        d = deferToThread(cls._set_status, system_id, NODE_STATUS.NEW)
+        d = deferToThread(cls._set_status, system_id, status=NODE_STATUS.NEW)
         if is_stopping:
             return d.addCallback(
                 callOut, maaslog.info, "%s: Commissioning aborted", hostname)
@@ -1362,8 +1362,8 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToThread, self._set_status,
-                NODE_STATUS.FAILED_DISK_ERASING, self.system_id)
+                callOutToThread, self._set_status, self.system_id,
+                status=NODE_STATUS.FAILED_DISK_ERASING)
 
             def eb_start(failure, hostname):
                 maaslog.error(
@@ -1448,7 +1448,7 @@ class Node(CleanSave, TimestampedModel):
         :param system_id: The system ID for the node.
         """
         d = deferToThread(
-            cls._set_status, system_id, NODE_STATUS.FAILED_DISK_ERASING)
+            cls._set_status, system_id, status=NODE_STATUS.FAILED_DISK_ERASING)
         if is_stopping:
             return d.addCallback(
                 callOut, maaslog.info, "%s: Disk erasing aborted", hostname)
