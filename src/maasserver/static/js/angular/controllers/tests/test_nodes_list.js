@@ -18,14 +18,16 @@ describe("NodesListController", function() {
         $q = $injector.get("$q");
     }));
 
-    // Load the NodesManager, DevicesManager, GeneralManager, RegionConnection,
-    // SearchService and mock the websocket connection.
+    // Load the NodesManager, DevicesManager, GeneralManager,
+    // NodesManager, RegionConnection, SearchService and mock the
+    // websocket connection.
     var NodesManager, DevicesManager, GeneralManager, RegionConnection;
     var ManagerHelperService, SearchService, webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
         DevicesManager = $injector.get("DevicesManager");
         GeneralManager = $injector.get("GeneralManager");
+        ZonesManager = $injector.get("ZonesManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
@@ -124,7 +126,7 @@ describe("NodesListController", function() {
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [NodesManager, DevicesManager, GeneralManager]);
+                [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
         });
 
     describe("toggleTab", function() {
@@ -785,6 +787,22 @@ describe("NodesListController", function() {
                     $scope.$digest();
                     expect($scope.tabs[tab].osSelection.osystem).toBe("");
                     expect($scope.tabs[tab].osSelection.release).toBe("");
+                });
+            });
+
+            describe("actionSetZone", function () {
+                it("calls performAction with zone",
+                    function() {
+                        spyOn(NodesManager, "performAction").and.returnValue(
+                            $q.defer().promise);
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        $scope.tabs[tab].actionOption = { name: "set-zone" };
+                        $scope.tabs[tab].selectedItems = [object];
+                        $scope.tabs[tab].zoneSelection = { id: 1 };
+                        $scope.actionGo(tab);
+                        expect(NodesManager.performAction).toHaveBeenCalledWith(
+                            object, "set-zone", { zone_id: 1 });
                 });
             });
 

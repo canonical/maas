@@ -29,6 +29,7 @@ from maasserver.node_action import (
     Delete,
     Deploy,
     MarkBroken,
+    SetZone,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -52,16 +53,18 @@ class TestNodeActionForm(MAASServerTestCase):
         self.assertEqual(node, form.node)
 
     def test_get_action_form_for_admin(self):
+        """Check the actions available to admins"""
         admin = factory.make_admin()
         node = factory.make_Node(
             status=NODE_STATUS.NEW, boot_type=NODE_BOOT.DEBIAN)
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.name, Delete.name, MarkBroken.name],
+            [Commission.name, Delete.name, MarkBroken.name, SetZone.name],
             form.actions)
 
     def test_get_action_form_for_user(self):
+        """Check the actions available to users"""
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(node)

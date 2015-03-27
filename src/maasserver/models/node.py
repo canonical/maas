@@ -1308,6 +1308,14 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         maaslog.info("%s allocated to user %s", self.hostname, user.username)
 
+    def set_zone(self, zone):
+        """Set this node's zone"""
+        old_zone_name = self.zone.name
+        self.zone = zone
+        self.save()
+        maaslog.info("%s: moved from %s zone to %s zone." % (
+            self.hostname, old_zone_name, self.zone.name))
+
     def start_disk_erasing(self, user):
         """Erase the disks on a node.
 

@@ -6,9 +6,9 @@
 
 angular.module('MAAS').controller('NodesListController', [
     '$scope', '$rootScope', '$location', 'NodesManager', 'DevicesManager',
-    'GeneralManager', 'ManagerHelperService', 'SearchService', function($scope,
-        $rootScope, $location, NodesManager, DevicesManager, GeneralManager,
-        ManagerHelperService, SearchService) {
+    'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
+    function($scope, $rootScope, $location, NodesManager, DevicesManager,
+        GeneralManager, ManagerHelperService, SearchService, ZonesManager) {
 
         // Set title and page.
         $rootScope.title = "Nodes";
@@ -16,6 +16,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Set initial values.
         $scope.nodes = NodesManager.getItems();
+        $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.currentpage = "nodes";
         $scope.osinfo = GeneralManager.getData("osinfo");
@@ -42,6 +43,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.osSelection = {
             osystem: "",
             release: ""
+        };
+        $scope.tabs.nodes.zoneSelection = {
+            zone: ""
         };
 
         // Device tab.
@@ -299,8 +303,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Perform the action on all nodes.
         $scope.actionGo = function(tab) {
             var extra = {};
-
-            // Set deploy parameters if a deploy action.
+            // Set deploy parameters if a deploy or set zone action.
             if($scope.tabs[tab].actionOption.name === "deploy" &&
                 angular.isString($scope.tabs[tab].osSelection.osystem) &&
                 angular.isString($scope.tabs[tab].osSelection.release)) {
@@ -313,6 +316,10 @@ angular.module('MAAS').controller('NodesListController', [
                 release = release.split("/");
                 release = release[release.length-1];
                 extra.distro_series = release;
+            } else if($scope.tabs[tab].actionOption.name === "set-zone" &&
+                angular.isNumber($scope.tabs[tab].zoneSelection.id)) {
+                // Set the zone parameter
+                extra.zone_id = $scope.tabs[tab].zoneSelection.id;
             }
 
             // Perform the action on all selected items.
@@ -339,9 +346,9 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
-        // Load the NodesManager, DevicesManager and GeneralManager.
+        // Load NodesManager, DevicesManager, GeneralManager and ZonesManager.
         ManagerHelperService.loadManagers(
-            [NodesManager, DevicesManager, GeneralManager]);
+            [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
 
         // Stop polling when the scope is destroyed.
         $scope.$on("$destroy", function() {

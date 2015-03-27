@@ -157,8 +157,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
 
+            // Build the available action options control from the
+            // allowed actions, except set-zone which does not make
+            // sense in this view because the form has this
+            // functionality
             angular.forEach($scope.allActionOptions, function(option) {
-                if($scope.node.actions.indexOf(option.name) >= 0) {
+                if($scope.node.actions.indexOf(option.name) >= 0
+                   && option.name !== "set-zone") {
                     $scope.availableActionOptions.push(option);
                 }
             });

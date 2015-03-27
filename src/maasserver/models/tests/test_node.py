@@ -2648,6 +2648,13 @@ class TestNode_Start(MAASServerTestCase):
         self.assertThat(
             dns_update_zones, MockCalledOnceWith(node.nodegroup))
 
+    def test__set_zone(self):
+        """Verifies whether the set_zone sets the node's zone"""
+        zone = factory.make_Zone()
+        node = factory.make_Node()
+        node.set_zone(zone)
+        self.assertEqual(node.zone, zone)
+
     def test__starts_nodes(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)

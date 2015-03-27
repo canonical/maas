@@ -52,6 +52,7 @@ from maasserver.node_action import (
     PowerOn,
     Release,
     RPC_EXCEPTIONS,
+    SetZone,
 )
 from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
@@ -425,6 +426,18 @@ class TestDeployAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
 
+class TestSetZoneAction(MAASServerTestCase):
+
+    def test_SetZone_sets_zone(self):
+        user = factory.make_User()
+        zone1 = factory.make_Zone()
+        zone2 = factory.make_Zone()
+        node = factory.make_Node(status=NODE_STATUS.NEW, zone=zone1)
+        action = SetZone(node, user)
+        action.execute(zone_id=zone2.id)
+        self.assertEqual(node.zone.id, zone2.id)
+
+
 class TestPowerOnAction(MAASServerTestCase):
 
     def test_PowerOn_starts_node(self):
@@ -711,7 +724,7 @@ class TestActionsDerivesFromInstallableNodeAction(MAASServerTestCase):
     scenarios = [
         (action.name, {'action_class': action})
         for action in ACTION_CLASSES
-        if action != Delete
+        if action not in (SetZone, Delete)
         ]
 
     def test_action_derives_from_InstallableNodeAction(self):

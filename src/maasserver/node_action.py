@@ -46,6 +46,7 @@ from maasserver.exceptions import (
     Redirect,
     StaticIPAddressExhaustion,
 )
+from maasserver.models import Zone
 from maasserver.node_status import is_failed_status
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -175,6 +176,25 @@ class Delete(NodeAction):
             raise Redirect(reverse('node-delete', args=[self.node.system_id]))
         else:
             self.node.delete()
+
+
+class SetZone(NodeAction):
+    """Set the zone of a node."""
+    name = "set-zone"
+    display = "Set Zone"
+    display_sentence = "Zone set"
+    actionable_statuses = (NODE_STATUS.NEW, NODE_STATUS.READY)
+    permission = NODE_PERMISSION.ADMIN
+
+    def execute(self, allow_redirect=True, zone_id=None):
+        """See `NodeAction.execute`."""
+        zone = Zone.objects.get(id=zone_id)
+        self.node.set_zone(zone)
+        return self.display_sentence
+
+    def is_actionable(self):
+        """Returns true if the selected nodes can be added to a zone"""
+        return super(SetZone, self).is_actionable()
 
 
 class InstallableNodeAction(NodeAction):
@@ -405,6 +425,7 @@ ACTION_CLASSES = (
     Abort,
     MarkBroken,
     MarkFixed,
+    SetZone,
     Delete,
     )
 
