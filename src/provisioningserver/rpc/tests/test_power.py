@@ -757,20 +757,34 @@ class TestPowerQueryAsync(MAASTestCase):
     @inlineCallbacks
     def test_query_all_nodes_swallows_Exception(self):
         node1, node2 = self.make_nodes(2)
+        error_message = factory.make_name("error")
+        error_type = factory.make_exception_type()
         new_state_2 = self.pick_alternate_state(node2['power_state'])
         get_power_state = self.patch(power, 'get_power_state')
         get_power_state.side_effect = [
-            fail(Exception('unknown')), succeed(new_state_2)]
+            fail(error_type(error_message)),
+            succeed(new_state_2),
+        ]
 
-        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+        maaslog = FakeLogger("maas.power", level=logging.DEBUG)
+        twistlog = TwistedLoggerFixture()
+
+        with maaslog, twistlog:
             yield power.query_all_nodes([node1, node2])
 
         self.assertDocTestMatches(
             """\
-            hostname-...: Failed to refresh power state: unknown
+            hostname-...: Failed to refresh power state: %s
             hostname-...: Power state has changed from ... to ...
-            """,
+            """ % error_message,
             maaslog.output)
+        self.assertDocTestMatches(
+            """\
+            Failed to refresh power state.
+            Traceback (most recent call last):
+            Failure: maastesting.factory.TestException#...: %s
+            """ % error_message,
+            twistlog.output)
 
     @inlineCallbacks
     def test_query_all_nodes_returns_deferredlist_of_number_of_nodes(self):

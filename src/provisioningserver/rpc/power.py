@@ -356,6 +356,8 @@ def maaslog_report_failure(node, failure):
         maaslog.error(
             "%s: Failed to refresh power state: %s",
             node['hostname'], failure.getErrorMessage())
+        # Also write out a full traceback to the server log.
+        log.err(failure, "Failed to refresh power state.")
 
 
 def query_node(node, clock):
