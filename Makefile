@@ -63,12 +63,14 @@ build: \
 
 all: build doc
 
+release_codename := $(shell lsb_release -c -s)
+
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    --no-install-recommends install $(shell sort -u \
-	        $(addprefix required-packages/,base build dev doc))
+	        $(addprefix required-packages/,base build dev doc $(release_codename)))
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden)
 

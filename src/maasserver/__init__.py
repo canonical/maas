@@ -34,6 +34,17 @@ class DefaultMeta:
     app_label = 'maasserver'
 
 
+def execute_from_command_line():
+    # On Vivid, we need to explicitly use Django 1.6.
+    import os
+    import sys
+    if os.path.isdir("/usr/lib/django16"):
+        sys.path.insert(1, "/usr/lib/django16")
+
+    import django.core.management
+    django.core.management.execute_from_command_line()
+
+
 try:
     import maasfascist
     maasfascist  # Silence lint.
