@@ -18,8 +18,26 @@ EOF
    initctl reload-configuration
 }
 
+write_systemd_poweroff_job() {
+   cat >/lib/systemd/system/maas-poweroff.service <<EOF
+   [Unit]
+   Description=Poweroff when maas task is done
+   Wants=cloud-final.service
+   After=cloud-final.service
+   ConditionPathExists=!/tmp/block-poweroff
+
+   [Service]
+   ExecStart=/sbin/poweroff
+EOF
+   # reload required due to lack of inotify in overlayfs (LP: #882147)
+   if [ -d /run/systemd/system ]; then
+       systemctl daemon-reload
+   fi
+}
+
 main() {
    write_poweroff_job
+   write_systemd_poweroff_job
 
    echo "Powering node off."
 }
