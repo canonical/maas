@@ -31,7 +31,7 @@ from maas import (
 )
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.factory import factory
-from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
+from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -128,7 +128,7 @@ class TestDatabaseConfiguration(DjangoTestCase):
                 "default": ContainsDict({
                     "OPTIONS": ContainsDict({
                         "isolation_level": Equals(
-                            ISOLATION_LEVEL_SERIALIZABLE),
+                            ISOLATION_LEVEL_REPEATABLE_READ),
                     }),
                 }),
             }),

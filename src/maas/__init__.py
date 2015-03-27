@@ -67,7 +67,7 @@ def fix_up_databases(databases):
 
     Does not modify connections to non-PostgreSQL databases.
     """
-    from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
+    from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
     for _, database in databases.viewitems():
         engine = database.get("ENGINE")
         if engine == 'django.db.backends.postgresql_psycopg2':
@@ -76,12 +76,12 @@ def fix_up_databases(databases):
             # particular transaction isolation level, and it enforces it.
             if "isolation_level" in options:
                 isolation_level = options["isolation_level"]
-                if isolation_level != ISOLATION_LEVEL_SERIALIZABLE:
+                if isolation_level != ISOLATION_LEVEL_REPEATABLE_READ:
                     warnings.warn(
                         "isolation_level is set to %r; overriding to %r."
-                        % (isolation_level, ISOLATION_LEVEL_SERIALIZABLE),
+                        % (isolation_level, ISOLATION_LEVEL_REPEATABLE_READ),
                         RuntimeWarning, 2)
-            options["isolation_level"] = ISOLATION_LEVEL_SERIALIZABLE
+            options["isolation_level"] = ISOLATION_LEVEL_REPEATABLE_READ
             # Disable ATOMIC_REQUESTS: MAAS manually manages this so it can
             # retry transactions that fail with serialisation errors.
             if "ATOMIC_REQUESTS" in database:
