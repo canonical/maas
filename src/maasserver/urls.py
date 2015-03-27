@@ -105,7 +105,7 @@ def adminurl(regexp, view, *args, **kwargs):
     return url(regexp, view, *args, **kwargs)
 
 
-## URLs accessible to anonymous users.
+# # URLs accessible to anonymous users.
 # Combo URLs.
 urlpatterns = patterns(
     '',
@@ -129,7 +129,7 @@ urlpatterns += patterns(
         name='robots'),
 )
 
-## URLs for logged-in users.
+# # URLs for logged-in users.
 # Preferences views.
 urlpatterns += patterns(
     'maasserver.views',
@@ -194,7 +194,7 @@ urlpatterns += patterns(
 )
 
 
-## URLs for admin users.
+# # URLs for admin users.
 # Settings views.
 urlpatterns += patterns(
     'maasserver.views',

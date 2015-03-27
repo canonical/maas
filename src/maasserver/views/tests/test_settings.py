@@ -344,7 +344,7 @@ class NonAdminSettingsTest(MAASServerTestCase):
         self.assertEqual(reverse('login'), extract_redirect(response))
 
 
- # Settable attributes on User.
+# Settable attributes on User.
 user_attributes = [
     'email',
     'is_superuser',

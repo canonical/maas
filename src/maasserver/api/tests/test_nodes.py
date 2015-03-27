@@ -1177,7 +1177,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_fails_if_nodes_do_not_exist(self):
-         # Make sure there is a node, it just isn't among the ones to release
+        # Make sure there is a node, it just isn't among the ones to release
         factory.make_Node()
         node_ids = {factory.make_string() for _ in xrange(5)}
         response = self.client.post(

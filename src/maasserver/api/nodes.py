@@ -944,7 +944,7 @@ class NodesHandler(OperationsHandler):
         current state.
         """
         system_ids = set(request.POST.getlist('nodes'))
-         # Check the existence of these nodes first.
+        # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         nodes = Node.nodes.get_nodes(

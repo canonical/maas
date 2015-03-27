@@ -3,11 +3,11 @@
 from __future__ import (
     absolute_import,
     print_function,
-    #unicode_literals,
+    # unicode_literals,
     )
 
 # TODO: Don't use str.  It stands in the way of Python 3 compatibility.
-#str = None
+# str = None
 
 __metaclass__ = type
 

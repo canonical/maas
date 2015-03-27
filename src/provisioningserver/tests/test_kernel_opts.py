@@ -274,8 +274,8 @@ class TestKernelOpts(MAASTestCase):
             Not(Contains("console=ttyAMA0")))
 
     def test_compose_arch_opts_copes_with_unknown_subarch(self):
-         # Pass a None testcase so that the architecture doesn't get
-         # registered.
+        # Pass a None testcase so that the architecture doesn't get
+        # registered.
         params = make_kernel_parameters(
             testcase=None,
             arch=factory.make_name("arch"),

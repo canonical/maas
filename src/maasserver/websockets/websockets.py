@@ -464,7 +464,7 @@ class _WebSocketsProtocolWrapperReceiver():
         @type fin: C{bool}
         @param fin: Whether or not the frame is final.
         """
-        if not opcode in (CONTROLS.BINARY, CONTROLS.TEXT, CONTROLS.CONTINUE):
+        if opcode not in (CONTROLS.BINARY, CONTROLS.TEXT, CONTROLS.CONTINUE):
             return
         self._messages.append(data)
         if fin:

@@ -37,7 +37,7 @@ DEFAULT_OS = UbuntuOS()
 
 def get_default_config():
     return {
-        ## settings default values.
+        # # settings default values.
         # Commissioning section configuration.
         'check_compatibility': False,
         # Ubuntu section configuration.
@@ -60,7 +60,7 @@ def get_default_config():
         # Third Party
         'enable_third_party_drivers': True,
         'enable_disk_erasing_on_release': False,
-        ## /settings
+        # # /settings
         }
 
 

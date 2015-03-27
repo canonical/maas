@@ -19,9 +19,9 @@ from maastesting.testcase import MAASTestCase
 
 
 class TestSomething(MAASTestCase):
-# TODO: Change test class name to match what you're testing.
+    """TODO: Change test class name to match what you're testing."""
 
-    #resources = [...]
+    # resources = [...]
 
     def test_something(self):
         self.assertTrue(1)
