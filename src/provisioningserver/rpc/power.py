@@ -40,6 +40,7 @@ from provisioningserver.rpc.region import (
 )
 from provisioningserver.utils.twisted import (
     asynchronous,
+    callOut,
     deferred,
     deferWithTimeout,
     pause,
@@ -47,6 +48,7 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    CancelledError,
     DeferredList,
     DeferredSemaphore,
     inlineCallbacks,
@@ -183,33 +185,55 @@ def maybe_change_power_state(system_id, hostname, power_type,
     """
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
+
     # There should be one and only one power change for each system ID.
-    # If there's one already, raise an error.
-    registered_power_action = power_action_registry.get(system_id, None)
-    if registered_power_action is not None:
+    if system_id in power_action_registry:
+        current_power_change, d = power_action_registry[system_id]
+    else:
+        current_power_change, d = None, None
+
+    if current_power_change is None:
+        # Arrange for the power change to happen later; do not make the caller
+        # wait, because it might take a long time. We set a timeout of two
+        # minutes so that if the power action doesn't return in a timely
+        # fashion (or fails silently or some such) it doesn't block other
+        # actions on the node.
+        d = deferLater(
+            clock, 0, deferWithTimeout, CHANGE_POWER_STATE_TIMEOUT,
+            change_power_state, system_id, hostname, power_type, power_change,
+            context, clock)
+
+        power_action_registry[system_id] = power_change, d
+
+        # Whether we succeed or fail, we need to remove the action from the
+        # registry of actions, otherwise subsequent actions will fail.
+        d.addBoth(callOut, power_action_registry.pop, system_id, None)
+
+        # Log cancellations distinctly from other errors.
+        def eb_cancelled(failure):
+            failure.trap(CancelledError)
+            log.msg(
+                "%s: Power could not be turned %s; timed out."
+                % (hostname, power_change))
+        d.addErrback(eb_cancelled)
+
+        # Catch-all log.
+        d.addErrback(
+            log.err, "%s: Power could not be turned %s." % (
+                hostname, power_change))
+
+    elif current_power_change == power_change:
+        # What we want is already happening; let it continue.
+        pass
+
+    else:
+        # Right now we reject conflicting power changes. However, we have the
+        # Deferred (in `d`) along which the current power change is occurring,
+        # so the option to cancel is available if we want it.
         raise PowerActionAlreadyInProgress(
             "Unable to change power state to '%s' for node %s: another "
             "action is already in progress for that node." %
             (power_change, hostname))
-    power_action_registry[system_id] = power_change
-
-    def clean_up(*args, **kwargs):
-        power_action_registry.pop(system_id, None)
-
-    # Arrange for the power change to happen later; do not make the caller
-    # wait, because it might take a long time.
-    # We set a timeout of two minutes so that if the power action
-    # doesn't return in a timely fashion (or fails silently or
-    # some such) it doesn't block other actions on the node.
-    d = deferLater(
-        clock, 0, deferWithTimeout, CHANGE_POWER_STATE_TIMEOUT,
-        change_power_state, system_id, hostname, power_type,
-        power_change, context, clock)
-    d.addErrback(log.err)
-    # Whether we succeeded or failed, we need to remove the action
-    # from the registry of actions, otherwise every subsequent
-    # action will fail.
-    d.addBoth(clean_up)
 
 
 @asynchronous
