@@ -33,8 +33,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
 )
-from mock import sentinel
+from mock import (
+    ANY,
+    sentinel,
+)
 from provisioningserver.utils.twisted import DeferredValue
+from psycopg2 import OperationalError
+from testtools.matchers import HasLength
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -161,6 +166,43 @@ class TestPostgresListener(MAASServerTestCase):
         self.assertRaises(
             PostgresListenerNotifyError,
             listener.convertChannel, "node_unknown")
+
+    def test__doRead_removes_self_from_reactor_on_error(self):
+        listener = PostgresListener()
+
+        connection = self.patch(listener, "connection")
+        connection.connection.poll.side_effect = OperationalError()
+
+        self.patch(reactor, "removeReader")
+        self.patch(listener, "connectionLost")
+        listener.doRead()
+        self.assertThat(
+            reactor.removeReader,
+            MockCalledOnceWith(listener))
+        self.assertThat(
+            listener.connectionLost,
+            MockCalledOnceWith(ANY))
+
+    def test__doRead_copies_and_clears_notifies_list(self):
+        listener = PostgresListener()
+
+        connection = self.patch(listener, "connection")
+        connection.connection.poll.return_value = None
+        # The new notifies received from the database.
+        connection.connection.notifies = [sentinel.notify]
+
+        handleNotifies = self.patch(listener, "handleNotifies")
+        # The returned value from handleNotifies() is used as input into the
+        # Twisted cooperator. Here we ensure that it has nothing to do.
+        handleNotifies.return_value = iter(())
+
+        listener.doRead()
+        self.assertThat(
+            handleNotifies,
+            MockCalledOnceWith([sentinel.notify]))
+        self.assertThat(
+            connection.connection.notifies,
+            HasLength(0))
 
 
 class TransactionalHelpersMixin:

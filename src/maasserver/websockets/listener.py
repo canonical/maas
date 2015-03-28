@@ -117,14 +117,19 @@ class PostgresListener:
         except OperationalError:
             # If the connection goes down then this exception is raised. It
             # contains no pgcode or pgerror to identify the reason, so best
-            # assumtion is that the connection has been lost. Exit early.
-            return self.connectionLost(
-                failure.Failure(error.ConnectionClosed()))
-
-        # Process all of the notify messages inside of a Cooperator so each
-        # notification will be handled in order.
-        if self.connection.connection.notifies:
-            task.cooperate(self.handleNotifies())
+            # assumtion is that the connection has been lost.
+            reactor.removeReader(self)
+            self.connectionLost(failure.Failure(error.ConnectionClosed()))
+        else:
+            # Process all of the notify messages inside of a Cooperator so
+            # each notification will be handled in order.
+            notifies = self.connection.connection.notifies
+            if len(notifies) != 0:
+                # Pass a *copy* of the received notifies list.
+                task.cooperate(self.handleNotifies(notifies[:]))
+                # Delete the contents of the connection's notifies list so
+                # that we don't process them a second time.
+                del notifies[:]
 
     def connectionLost(self, reason):
         """Reconnect when the connection is lost."""
@@ -208,13 +213,13 @@ class PostgresListener:
                 "%s action is not supported." % action)
         return channel, action
 
-    def handleNotifies(self):
+    def handleNotifies(self, notifies):
         """Process each notify message yeilding to the returned defer.
 
         This method should be called from the global Cooperator so each notify
         message is handled in order.
         """
-        for notify in self.connection.connection.notifies:
+        for notify in notifies:
             try:
                 channel, action = self.convertChannel(notify.channel)
             except PostgresListenerNotifyError as e:
@@ -227,5 +232,3 @@ class PostgresListener:
                     yield defer.maybeDeferred(
                         handler, action, notify.payload).addErrback(
                         self.logErr)
-
-        del self.connection.connection.notifies[:]
