@@ -47,12 +47,14 @@ from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
     Equals,
     Is,
+    IsInstance,
 )
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
 )
 from twisted.internet.threads import deferToThread
+from twisted.python.threadpool import ThreadPool
 from twisted.web.server import NOT_DONE_YET
 
 
@@ -61,6 +63,8 @@ class TestWebSocketProtocol(MAASServerTestCase):
     def make_protocol(self, patch_authenticate=True, transport_uri=''):
         self.patch(protocol_module, "PostgresListener")
         factory = WebSocketFactory()
+        factory.startFactory()
+        self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
         protocol.transport.uri = transport_uri
@@ -521,9 +525,9 @@ class TestWebSocketProtocol(MAASServerTestCase):
         self.addCleanup(self.clean_node, node)
         protocol, factory = self.make_protocol()
         protocol.user = MagicMock()
-        mock_deferToThread = self.patch_autospec(
-            protocol_module, "deferToThread")
-        mock_deferToThread.return_value = fail(
+        mock_deferToThreadPool = self.patch_autospec(
+            protocol_module, "deferToThreadPool")
+        mock_deferToThreadPool.return_value = fail(
             maas_factory.make_exception("error"))
         message = {
             "type": MSG_TYPE.REQUEST,
@@ -561,6 +565,8 @@ class TestWebSocketFactory(MAASTestCase):
 
     def make_protocol_with_factory(self, user=None):
         factory = WebSocketFactory()
+        factory.startFactory()
+        self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
         if user is None:
@@ -618,11 +624,30 @@ class TestWebSocketFactory(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_startFactory_starts_threadpool(self):
+        factory = WebSocketFactory()
+        yield factory.startFactory()
+        try:
+            self.assertThat(factory.threadpool, IsInstance(ThreadPool))
+            self.expectThat(factory.threadpool.started, Equals(True))
+        finally:
+            yield factory.stopFactory()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_stopFactory_stops_listener(self):
         factory = WebSocketFactory()
         yield factory.startFactory()
         yield factory.stopFactory()
         self.expectThat(factory.listener.connected(), Equals(False))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_stopFactory_stops_threadpool(self):
+        factory = WebSocketFactory()
+        yield factory.startFactory()
+        yield factory.stopFactory()
+        self.assertEqual([], factory.threadpool.threads)
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = WebSocketFactory()
