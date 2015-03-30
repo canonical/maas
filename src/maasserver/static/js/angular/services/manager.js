@@ -110,15 +110,23 @@ angular.module('MAAS').service(
             }
         };
 
+        // Return the parameters that should be used for the batch load
+        // request. Should be used by subclass that want to add extra
+        // parameters to the batch request. By default it returns an empty
+        // object.
+        Manager.prototype._initBatchLoadParameters = function() {
+            return {};
+        };
+
         // Batch load items from the region in groups of 50.
         Manager.prototype._batchLoadItems = function(array, extra_func) {
             var self = this;
             var defer = $q.defer();
             var method = this._handler + ".list";
             function callLoad() {
-                var params = {
-                    count: 50
-                };
+                var params = self._initBatchLoadParameters();
+                params.count = 50;
+
                 // Get the last pk in the list so the region knows to
                 // start at that offset.
                 if(array.length > 0) {
