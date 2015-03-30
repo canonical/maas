@@ -93,6 +93,7 @@ from maasserver.views.nodes import (
     message_from_form_stats,
     node_to_dict,
     NodeEventListView,
+    NodeListView,
     NodeView,
     )
 from maastesting.djangotestcase import count_queries
@@ -283,22 +284,18 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         factory.make_Node()
         response = self.client.get(reverse('node-list'))
-        sort_hostname = '?sort=hostname&dir=asc'
-        sort_status = '?sort=status&dir=asc'
-        sort_owner = '?sort=owner&dir=asc'
-        sort_cpu_count = '?sort=cpu_count&dir=asc'
-        sort_memory = '?sort=memory&dir=asc'
-        sort_storage = '?sort=storage&dir=asc'
-        sort_primary_mac = '?sort=primary_mac&dir=asc'
-        sort_zone = '?sort=zone&dir=asc'
-        self.assertIn(sort_hostname, get_content_links(response))
-        self.assertIn(sort_status, get_content_links(response))
-        self.assertIn(sort_owner, get_content_links(response))
-        self.assertIn(sort_cpu_count, get_content_links(response))
-        self.assertIn(sort_memory, get_content_links(response))
-        self.assertIn(sort_storage, get_content_links(response))
-        self.assertIn(sort_primary_mac, get_content_links(response))
-        self.assertIn(sort_zone, get_content_links(response))
+        sort_fields = (
+            NodeListView.sort_fields +
+            tuple(NodeListView.late_sort_fields.keys())
+        )
+        expected_sort_fields = [
+            'hostname', 'status', 'owner', 'cpu_count', 'memory', 'storage',
+            'primary_mac', 'zone'
+        ]
+        self.assertItemsEqual(expected_sort_fields, sort_fields)
+        sorting_links = ['?sort=%s&dir=asc' % field for field in sort_fields]
+        self.assertThat(
+            get_content_links(response), ContainsAll(sorting_links))
 
     def test_node_list_ignores_unknown_sort_param(self):
         self.client_log_in()
@@ -379,6 +376,38 @@ class NodeViewsTest(MAASServerTestCase):
         response = self.client.get(
             reverse('node-list'), {
                 'sort': 'status',
+                'dir': 'desc'})
+        self.assertEqual(
+            node_links,
+            [link for link in get_content_links(response)
+                if link.startswith('/nodes/node')])
+
+    def test_node_list_sorts_by_primary_mac(self):
+        self.client_log_in()
+        [factory.make_Node(mac=True) for _ in range(8)]
+
+        # First check the ascending sort order.
+        node_macs = sorted(
+            (unicode(n.get_primary_mac()), n) for n in Node.objects.all())
+        sorted_nodes = [item[1] for item in node_macs]
+        response = self.client.get(
+            reverse('node-list'), {
+                'sort': 'primary_mac',
+                'dir': 'asc'})
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in sorted_nodes
+        ]
+        self.assertEqual(
+            node_links,
+            [link for link in get_content_links(response)
+                if link.startswith('/nodes/node')])
+
+        # Now check the reverse order.
+        node_links = list(reversed(node_links))
+        response = self.client.get(
+            reverse('node-list'), {
+                'sort': 'primary_mac',
                 'dir': 'desc'})
         self.assertEqual(
             node_links,

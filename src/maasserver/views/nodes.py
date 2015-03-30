@@ -28,7 +28,6 @@ __all__ = [
 from cgi import escape
 import json
 import logging
-from operator import attrgetter
 import re
 from textwrap import dedent
 from urllib import urlencode
@@ -297,7 +296,14 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
     sort_fields = (
         'hostname', 'status', 'owner', 'cpu_count',
         'memory', 'storage', 'zone')
-    late_sort_fields = ('primary_mac', )
+    late_sort_fields = {
+        'primary_mac': (
+            lambda node1, node2: cmp(
+                unicode(node1.get_primary_mac()),
+                unicode(node2.get_primary_mac()),
+            )
+        ),
+    }
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
@@ -510,7 +516,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         """
 
         # Build relative URLs for the links, just with the params
-        fields = self.sort_fields + self.late_sort_fields
+        fields = self.sort_fields + tuple(self.late_sort_fields.keys())
         links = {field: '?' for field in fields}
         classes = {field: 'sort-none' for field in fields}
 
@@ -535,10 +541,9 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         """
         node_list = context['node_list']
         reverse = (self.sort_dir == 'desc')
-        if self.sort_by in self.late_sort_fields:
-            node_list = sorted(
-                node_list, key=attrgetter(self.sort_by),
-                reverse=reverse)
+        cmp_func = self.late_sort_fields.get(self.sort_by)
+        if cmp_func is not None:
+            node_list = sorted(node_list, cmp=cmp_func, reverse=reverse)
         context['node_list'] = node_list
         return context
 
