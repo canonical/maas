@@ -46,7 +46,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -57,7 +57,7 @@ __all__ = [
     "Config",
     "ConfigBase",
     "ConfigMeta",
-    ]
+]
 
 from contextlib import (
     closing,
@@ -69,6 +69,7 @@ import json
 import os
 from os import environ
 import os.path
+import re
 from shutil import copyfile
 import sqlite3
 from threading import RLock
@@ -121,6 +122,32 @@ class Directory(UnicodeString):
                 value, state)
 
 
+class ExtendedURL(URL):
+    """A validator URLs.
+
+    This validator extends formencode.validators.URL by adding support
+    for the general case of hostnames (i.e. hostnames containing numeric
+    digits, hyphens, and hostnames of length 1), and ipv6 addresses with
+    or without brackets.
+    """
+
+    url_re = re.compile(r'''
+        ^(http|https)://
+        (?:[%:\w]*@)?                              # authenticator
+        (?:                                        # ip or domain
+        (?P<ip>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}
+            (?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|
+        (?P<ipv6>\[?(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}\]?)|
+        (?P<domain>[a-z0-9][a-z0-9\-]{,62}\.)*     # subdomain
+        (?P<tld>[a-z0-9\-]{1,63})  # tld or hostname
+        )
+        (?::[0-9]{1,5})?                           # port
+        # files/delims/etc
+        (?P<path>/[a-z0-9\-\._~:/\?#\[\]@!%\$&\'\(\)\*\+,;=]*)?
+        $
+    ''', re.I | re.VERBOSE)
+
+
 class ConfigOops(Schema):
     """Configuration validator for OOPS options.
 
@@ -136,7 +163,7 @@ class ConfigOops(Schema):
 
     chained_validators = (
         RequireIfPresent("reporter", present="directory"),
-        )
+    )
 
 
 class ConfigBroker(Schema):
@@ -700,8 +727,8 @@ class ClusterConfiguration(Configuration):
 
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.",
-        URL(require_tld=False, if_missing="http://localhost:5240/MAAS"))
-
+        ExtendedURL(require_tld=False,
+                    if_missing="http://localhost:5240/MAAS"))
     # TFTP options.
     tftp_port = ConfigurationOption(
         "tftp_port", "The UDP port on which to listen for TFTP requests.",

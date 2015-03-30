@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -385,12 +385,12 @@ class TestConfig(MAASTestCase):
             'username': getuser(),
             'password': 'test',
             'vhost': '/',
-            },
+        },
         'logfile': 'pserv.log',
         'oops': {
             'directory': '',
             'reporter': '',
-            },
+        },
         'rpc': {},
         'tftp': {
             'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
@@ -398,16 +398,16 @@ class TestConfig(MAASTestCase):
             # The "root" setting is obsolete; resource_root replaces it.
             'root': "/var/lib/maas/tftp",
             'resource_root': "/var/lib/maas/boot-resources/current/",
-            },
+        },
         # Legacy section.  Became unused in MAAS 1.5.
         'boot': {
             'architectures': None,
             'ephemeral': {
                 'images_directory': None,
                 'releases': None,
-                },
             },
-        }
+        },
+    }
 
     default_development_config = deepcopy(default_production_config)
     default_development_config.update(logfile="/dev/null")
@@ -431,7 +431,7 @@ class TestConfig(MAASTestCase):
         config = (
             'oops:\n'
             '  directory: /tmp/oops\n'
-            )
+        )
         expected = MatchesException(
             formencode.Invalid, "oops: You must give a value for reporter")
         self.assertThat(
@@ -473,7 +473,7 @@ class TestBootSources(MAASTestCase):
     default_source = {
         'url': (
             'http://maas.ubuntu.com/images/ephemeral-v2/releases/'
-            ),
+        ),
         'keyring': (
             '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
         'keyring_data': None,
@@ -486,7 +486,7 @@ class TestBootSources(MAASTestCase):
                 'subarches': ['*'],
             },
         ],
-        }
+    }
 
     def make_source(self):
         """Create a dict defining an arbitrary `BootSource`."""
@@ -500,8 +500,8 @@ class TestBootSources(MAASTestCase):
                 'labels': [factory.make_name('label')],
                 'arches': [factory.make_name('arch')],
                 'subarches': [factory.make_name('sub') for _ in range(3)],
-                }],
-            }
+            }],
+        }
 
     def test_parse_parses_source(self):
         sources = [self.make_source()]
@@ -944,6 +944,38 @@ class TestClusterConfiguration(MAASTestCase):
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         # It's also stored in the configuration database.
+        self.assertEqual({"maas_url": example_url}, config.store)
+
+    def test_set_maas_url_accepts_hostnames(self):
+        config = ClusterConfiguration({})
+        example_url = factory.make_simple_http_url(
+            netloc="%s:%d" % (factory.make_hostname(), factory.pick_port()))
+        config.maas_url = example_url
+        self.assertEqual(example_url, config.maas_url)
+        self.assertEqual({"maas_url": example_url}, config.store)
+
+    def test_set_maas_url_accepts_very_short_hostnames(self):
+        config = ClusterConfiguration({})
+        example_url = factory.make_simple_http_url(
+            netloc=factory.make_string(size=1))
+        config.maas_url = example_url
+        self.assertEqual(example_url, config.maas_url)
+        self.assertEqual({"maas_url": example_url}, config.store)
+
+    def test_set_maas_url_accepts_ipv6_addresses(self):
+        config = ClusterConfiguration({})
+        example_url = factory.make_simple_http_url(
+            netloc=factory.make_ipv6_address())
+        config.maas_url = example_url
+        self.assertEqual(example_url, config.maas_url)
+        self.assertEqual({"maas_url": example_url}, config.store)
+
+    def test_set_maas_url_accepts_ipv6_addresses_with_brackets(self):
+        config = ClusterConfiguration({})
+        example_url = factory.make_simple_http_url(
+            netloc="[%s]" % factory.make_ipv6_address())
+        config.maas_url = example_url
+        self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)
 
     def test_default_tftp_port(self):
