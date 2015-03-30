@@ -38,7 +38,7 @@ REGION_PACKAGE_NAME = "maas-region-controller-min"
 
 def get_version_from_apt(package):
     """Return the version output from `apt_pkg.Cache` for the given package."""
-    cache = apt_pkg.Cache()
+    cache = apt_pkg.Cache(None)
     version = None
     if package in cache:
         apt_package = cache[package]

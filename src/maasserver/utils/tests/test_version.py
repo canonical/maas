@@ -29,6 +29,11 @@ from testtools.matchers import Is
 
 class TestGetVersionFromAPT(MAASTestCase):
 
+    def test__creates_cache_with_None_progress(self):
+        mock_Cache = self.patch(version.apt_pkg, "Cache")
+        version.get_version_from_apt(version.REGION_PACKAGE_NAME)
+        self.assertThat(mock_Cache, MockCalledOnceWith(None))
+
     def test__returns_empty_string_if_package_not_in_cache(self):
         self.patch(version.apt_pkg, "Cache")
         self.assertEquals(
