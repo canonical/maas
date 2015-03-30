@@ -47,6 +47,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
+        // Node name header section.
+        $scope.nameHeader = {
+            editing: false,
+            value: ""
+        };
+
         // Summary section.
         $scope.summary = {
             editing: false,
@@ -148,6 +154,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if($scope.node && $scope.node.fqdn) {
                 $rootScope.title = $scope.node.fqdn;
             }
+        }
+
+        function updateName() {
+            // Don't update the value if in editing mode. As this would
+            // overwrite the users changes.
+            if($scope.nameHeader.editing) {
+                return;
+            }
+            $scope.nameHeader.value = $scope.node.fqdn;
         }
 
         // Update the available action options for the node.
@@ -314,8 +329,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Starts the watchers on the scope.
         function startWatching() {
-            // Update the title when the node fqdn changes.
-            $scope.$watch("node.fqdn", updateTitle);
+            // Update the title and name when the node fqdn changes.
+            $scope.$watch("node.fqdn", function() {
+                updateTitle();
+                updateName();
+            });
 
             // Update the availableActionOptions when the node actions change.
             $scope.$watch("node.actions", updateAvailableActionOptions);
@@ -395,9 +413,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 if(angular.isObject(cluster)) {
                     cluster.connected = true;
                 }
+                updateName();
                 updateSummary();
             }, function(error) {
                 handleSaveError(error);
+                updateName();
                 updateSummary();
             });
         }
@@ -558,6 +578,75 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return (
                 $scope.isSuperUser() &&
                 !isErrorViewable("cluster_disconnected"));
+        };
+
+        // Called to edit the node name.
+        $scope.editName = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
+
+            // Do nothing if already editing because we don't want to reset
+            // the current value.
+            if($scope.nameHeader.editing) {
+                return;
+            }
+            $scope.nameHeader.editing = true;
+
+            // Set the value to the hostname, as that is what can be changed
+            // not the fqdn.
+            $scope.nameHeader.value = $scope.node.hostname;
+        };
+
+        // Return true when the value in nameHeader is invalid.
+        $scope.editNameInvalid = function() {
+            // The value cannot be blank.
+            var value = $scope.nameHeader.value;
+            if(value.length === 0) {
+                return true;
+            }
+
+            // Remove unallowed characters.
+            value = value.trim();
+            value = value.replace(/[^a-zA-Z0-9-_.]/g, '');
+
+            // Split the hostname into its parts.
+            values = value.split('.');
+
+            // Hostname part cannot contain an '_'.
+            value = values[0];
+            value = value.replace(/_/g, '');
+
+            // Only allow one dot.
+            if(values.length > 1) {
+                value += "." + values[1];
+            }
+
+            // If calculated value != nameHeader.value then it
+            // is invalid.
+            return $scope.nameHeader.value !== value;
+        };
+
+        // Called to cancel editing of the node name.
+        $scope.cancelEditName = function() {
+            $scope.nameHeader.editing = false;
+            updateName();
+        };
+
+        // Called to save editing of node name.
+        $scope.saveEditName = function() {
+            // Does nothing if invalid.
+            if($scope.editNameInvalid()) {
+                return;
+            }
+            $scope.nameHeader.editing = false;
+
+            // Copy the node and make the changes.
+            var node = angular.copy($scope.node);
+            node.hostname = $scope.nameHeader.value;
+
+            // Update the node.
+            updateNode(node);
         };
 
         // Called to enter edit mode in the summary section.

@@ -256,9 +256,11 @@ header.banner {
             margin: -10px 0 -10px -10px;
             border-radius: 2px;
             color: #333;
+            cursor: default;
 
-            &:hover {
+            &.editable:hover {
                 border: 1px solid #D2D2D2;
+                cursor: text;
             }
 
             &:active,
@@ -266,10 +268,17 @@ header.banner {
                 outline: none;
                 background-color: #FFF;
                 border: 1px solid #B2B2B2;
+            }
 
-                + span {
-                    display: none;
-                }
+            &.invalid,
+            &.invalid:hover,
+            &.invalid:active,
+            &.invalid:focus {
+                border-color: #d90000;
+            }
+
+            br {
+                display:none;
             }
         }
 
