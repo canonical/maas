@@ -422,6 +422,17 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
         }
 
+        // Called when the node has been loaded.
+        function nodeLoaded(node) {
+            $scope.node = node;
+            $scope.loaded = true;
+
+            updateTitle();
+            updateSummary();
+            updateMachineOutput();
+            startWatching();
+        }
+
         $scope.getPowerStateClass = function() {
             // This will get called very early and node can be empty.
             // In that case just return an empty string. It will be
@@ -813,19 +824,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager,
             UsersManager
         ]).then(function() {
-            // Get the active node and set loaded to true.
-            NodesManager.setActiveItem(
-                $routeParams.system_id).then(function(node) {
-                    $scope.node = node;
-                    $scope.loaded = true;
-
-                    updateTitle();
-                    updateSummary();
-                    updateMachineOutput();
-                    startWatching();
-                }, function(error) {
-                    ErrorService.raiseError(error);
-                });
+            // Possibly redirected from another controller that already had
+            // this node set to active. Only call setActiveItem if not already
+            // the activeItem.
+            var activeNode = NodesManager.getActiveItem();
+            if(angular.isObject(activeNode) &&
+                activeNode.system_id === $routeParams.system_id) {
+                nodeLoaded(activeNode);
+            } else {
+                NodesManager.setActiveItem(
+                    $routeParams.system_id).then(function(node) {
+                        nodeLoaded(node);
+                    }, function(error) {
+                        ErrorService.raiseError(error);
+                    });
+            }
 
             // Poll for architectures and osinfo the whole time. This is
             // because the user can always see the architecture and

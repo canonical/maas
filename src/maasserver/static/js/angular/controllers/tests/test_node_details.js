@@ -237,7 +237,22 @@ describe("NodeDetailsController", function() {
             UsersManager]);
     });
 
-    it("calls setActiveItem onces managers loaded", function() {
+    it("doesnt call setActiveItem if node is loaded", function() {
+        spyOn(NodesManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        NodesManager._activeItem = node;
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect($scope.node).toBe(node);
+        expect($scope.loaded).toBe(true);
+        expect(NodesManager.setActiveItem).not.toHaveBeenCalled();
+    });
+
+    it("calls setActiveItem if node is not active", function() {
         spyOn(NodesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();

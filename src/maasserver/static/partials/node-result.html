@@ -1,0 +1,29 @@
+<div data-ng-hide="loaded">
+    <header class="page-header">
+        <div class="inner-wrapper">
+            <h1 class="page-header__title twelve-col">Loading...</h1>
+        </div>
+    </header>
+</div>
+<div class="ng-hide" data-ng-show="loaded">
+    <header class="page-header">
+        <div class="inner-wrapper">
+            <nav class="page-header__nav">
+                <a href="#/node/{$ node.system_id $}">&lsaquo;&nbsp;Back to machine details</a>
+            </nav>
+            <h1 class="page-header__title eight-col">
+                {$ node.fqdn $}
+                <span class="page-header__title--identicator">
+                    {$ filename $}
+                </span>
+            </h1>
+        </div>
+    </header>
+    <div class="row">
+        <div class="inner-wrapper">
+            <pre>
+                <code>{$ getResultData() $}</code>
+            </pre>
+        </div>
+    </div>
+</div>
