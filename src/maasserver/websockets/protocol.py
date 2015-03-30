@@ -19,6 +19,10 @@ from collections import deque
 from Cookie import SimpleCookie
 from functools import partial
 import json
+from urlparse import (
+    parse_qs,
+    urlparse,
+)
 
 from django.conf import settings
 from django.contrib.auth import (
@@ -62,13 +66,13 @@ class RESPONSE_TYPE:
     ERROR = 1
 
 
-def get_sessionid(cookies):
+def get_cookie(cookies, cookie_name):
     """Return the sessionid value from `cookies`."""
     if cookies is None:
         return None
     cookies = SimpleCookie(cookies.encode('utf-8'))
-    if "sessionid" in cookies:
-        return cookies["sessionid"].value
+    if cookie_name in cookies:
+        return cookies[cookie_name].value
     else:
         return None
 
@@ -86,10 +90,14 @@ class WebSocketProtocol(Protocol):
         self.factory.clients.append(self)
 
         # Using the provided cookies on the connection request, authenticate
-        # the client. If this fails it will call loseConnection. A websocket
-        # connection is only allowed from an authenticated user.
+        # the client. If this fails or if the CSRF token can't be found, it
+        # will call loseConnection. A websocket connection is only allowed
+        # from an authenticated user.
+        cookies = self.transport.cookies
         self.authenticate(
-            get_sessionid(self.transport.cookies))
+            get_cookie(cookies, 'sessionid'),
+            get_cookie(cookies, 'csrftoken'),
+        )
 
     def connectionLost(self, reason):
         """Connection to the client has been lost."""
@@ -136,25 +144,40 @@ class WebSocketProtocol(Protocol):
         else:
             return None
 
-    def authenticate(self, session_id):
-        """Authenticate the connection."""
+    def authenticate(self, session_id, csrftoken):
+        """Authenticate the connection.
 
+        - Check that the CSRF token is valid.
+        - Authenticate the user using the session id.
+        """
+        # Check the CSRF token.
+        tokens = parse_qs(
+            urlparse(self.transport.uri).query).get('csrftoken')
+        if tokens is None or csrftoken not in tokens:
+            self.loseConnection(
+                STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
+            return
+
+        # Authenticate user.
         def got_user(user):
             if user is None:
                 self.loseConnection(
                     STATUSES.PROTOCOL_ERROR, "Failed to authenticate user.")
+                return
             else:
                 self.user = user
+
             self.processMessages()
 
-        def got_error(failure):
+        def got_user_error(failure):
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR,
                 "Error authenticating user: %s" % failure.getErrorMessage())
             return None
 
         d = deferToThread(self.getUserFromSessionId, session_id)
-        d.addCallbacks(got_user, got_error)
+        d.addCallbacks(got_user, got_user_error)
+
         return d
 
     def dataReceived(self, data):

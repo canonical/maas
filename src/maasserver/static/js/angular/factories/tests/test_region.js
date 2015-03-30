@@ -10,11 +10,12 @@ describe("RegionConnection", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $timeout, $rootScope, $q, $window;
+    var $timeout, $rootScope, $q, $cookies, $window;
     beforeEach(inject(function($injector) {
         $timeout = $injector.get("$timeout");
         $rootScope = $injector.get("$rootScope");
         $q = $injector.get("$q");
+        $cookies = $injector.get("$cookies");
         $window = $injector.get("$window");
     }));
 
@@ -326,6 +327,18 @@ describe("RegionConnection", function() {
             // angular.mock requires the actual call to work for afterEach.
             angular.element.and.callThrough();
         });
+
+        it("includes csrftoken if cookie defined", function() {
+            csrftoken = makeName('csrftoken');
+            // No need to organize a cleanup: cookies are reset before each
+            // test.
+            $cookies.csrftoken = csrftoken;
+            expect(RegionConnection._buildUrl()).toBe(
+                "ws://" + $window.location.hostname + ":" +
+                $window.location.port + $window.location.pathname + "/ws" +
+                '?csrftoken=' + csrftoken);
+        });
+
     });
 
     describe("defaultConnect", function() {

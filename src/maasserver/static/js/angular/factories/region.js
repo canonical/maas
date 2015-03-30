@@ -9,8 +9,8 @@
 
 angular.module('MAAS').factory(
     'RegionConnection',
-    ['$q', '$rootScope', '$timeout', '$window', function(
-        $q, $rootScope, $timeout, $window) {
+    ['$q', '$rootScope', '$timeout', '$window', '$cookies', function(
+        $q, $rootScope, $timeout, $window, $cookies) {
 
         // Message types
         var MSG_TYPE = {
@@ -177,7 +177,16 @@ angular.module('MAAS').factory(
             if(path[path.length - 1] !== '/') {
                 path += '/';
             }
-            return "ws://" + host + ":" + port + path + "ws";
+
+            url = "ws://" + host + ":" + port + path + "ws";
+
+            // Include the csrftoken in the URL if it's defined.
+            csrftoken = $cookies.csrftoken;
+            if(angular.isDefined(csrftoken)) {
+                url += '?csrftoken=' + encodeURIComponent(csrftoken);
+            }
+
+            return url;
         };
 
         // Opens the default websocket connection.

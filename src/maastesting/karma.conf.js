@@ -19,6 +19,7 @@ module.exports = function(config) {
       '/usr/share/javascript/angular.js/angular.js',
       '/usr/share/javascript/angular.js/angular-route.js',
       '/usr/share/javascript/angular.js/angular-mocks.js',
+      '/usr/share/javascript/angular.js/angular-cookies.js',
       '../../src/maasserver/static/js/angular/maas.js',
       '../../src/maasserver/static/js/angular/testing/*.js',
       '../../src/maasserver/static/js/angular/*/*.js',

@@ -605,6 +605,8 @@ class WebSocketsResourceTest(MAASTestCase):
         self.assertIdentical(None, request.transport)
         self.assertIsInstance(transport.protocol._receiver,
                               SavingEchoReceiver)
+        self.assertEqual(request.getHeader("cookie"), transport.cookies)
+        self.assertEqual(request.uri, transport.uri)
 
     def test_renderProtocol(self):
         """

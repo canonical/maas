@@ -58,14 +58,29 @@ from twisted.web.server import NOT_DONE_YET
 
 class TestWebSocketProtocol(MAASServerTestCase):
 
-    def make_protocol(self, patch_authenticate=True):
+    def make_protocol(self, patch_authenticate=True, transport_uri=''):
         self.patch(protocol_module, "PostgresListener")
         factory = WebSocketFactory()
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
+        protocol.transport.uri = transport_uri
         if patch_authenticate:
             self.patch(protocol, "authenticate")
         return protocol, factory
+
+    def make_ws_uri(self, csrftoken=None):
+        """Make a websocket URI.
+
+        In practice, the URI usually looks like:
+        '/MAAS/ws?csrftoken=<csrftoken>' but in practice the code only
+        cares about the presence of the CSRF token in the query string.
+        """
+        url = "/%s/%s" % (
+            maas_factory.make_name("path"),
+            maas_factory.make_name("path"))
+        if csrftoken is not None:
+            url += "?csrftoken=%s" % csrftoken
+        return url
 
     def get_written_transport_message(self, protocol):
         call = protocol.transport.write.call_args_list.pop()
@@ -78,21 +93,24 @@ class TestWebSocketProtocol(MAASServerTestCase):
         self.assertItemsEqual(
             [protocol], factory.clients)
 
-    def test_connectionMade_extracts_sessionid_from_cookies(self):
+    def test_connectionMade_extracts_sessionid_and_csrftoken(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
         sessionid = maas_factory.make_name("sessionid")
+        csrftoken = maas_factory.make_name("csrftoken")
         cookies = {
             maas_factory.make_name("key"): maas_factory.make_name("value")
             for _ in range(3)
             }
         cookies["sessionid"] = sessionid
+        cookies["csrftoken"] = csrftoken
         protocol.transport.cookies = "; ".join(
             "%s=%s" % (key, value)
             for key, value in cookies.items())
         mock_authenticate = self.patch(protocol, "authenticate")
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
-        self.assertThat(mock_authenticate, MockCalledOnceWith(sessionid))
+        self.assertThat(
+            mock_authenticate, MockCalledOnceWith(sessionid, csrftoken))
 
     def test_connectionLost_removes_self_from_factory(self):
         protocol, factory = self.make_protocol()
@@ -167,23 +185,30 @@ class TestWebSocketProtocol(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_authenticate_sets_users(self):
+    def test_authenticate_sets_user(self):
         user, session_id = yield deferToThread(self.get_user_and_session_id)
-        protocol, factory = self.make_protocol(patch_authenticate=False)
-        yield protocol.authenticate(session_id)
+        csrftoken = maas_factory.make_name("csrftoken")
+        uri = self.make_ws_uri(csrftoken)
+        protocol, factory = self.make_protocol(
+            patch_authenticate=False, transport_uri=uri)
+        yield protocol.authenticate(session_id, csrftoken)
         self.expectThat(
             user, Equals(protocol.user))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_user_is_None(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        csrftoken = maas_factory.make_name("csrftoken")
+        uri = self.make_ws_uri(csrftoken)
+        protocol, factory = self.make_protocol(
+            patch_authenticate=False, transport_uri=uri)
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         mock_getUserFromSessionId = self.patch_autospec(
             protocol, "getUserFromSessionId")
         mock_getUserFromSessionId.return_value = None
 
-        yield protocol.authenticate(maas_factory.make_name("sessionid"))
+        yield protocol.authenticate(
+            maas_factory.make_name("sessionid"), csrftoken)
         self.expectThat(
             mock_loseConnection,
             MockCalledOnceWith(
@@ -193,19 +218,64 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_error_getting_user(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        csrftoken = maas_factory.make_name("csrftoken")
+        uri = self.make_ws_uri(csrftoken)
+        protocol, factory = self.make_protocol(
+            patch_authenticate=False, transport_uri=uri)
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         mock_getUserFromSessionId = self.patch_autospec(
             protocol, "getUserFromSessionId")
         mock_getUserFromSessionId.side_effect = maas_factory.make_exception(
             "unknown reason")
 
-        yield protocol.authenticate(maas_factory.make_name("sessionid"))
+        yield protocol.authenticate(
+            maas_factory.make_name("sessionid"),
+            csrftoken,
+        )
         self.expectThat(
             mock_loseConnection,
             MockCalledOnceWith(
                 STATUSES.PROTOCOL_ERROR,
                 "Error authenticating user: unknown reason"))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_authenticate_calls_loseConnection_if_invalid_csrftoken(self):
+        user, session_id = yield deferToThread(self.get_user_and_session_id)
+        csrftoken = maas_factory.make_name("csrftoken")
+        uri = self.make_ws_uri(csrftoken)
+        protocol, factory = self.make_protocol(
+            patch_authenticate=False, transport_uri=uri)
+        mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
+
+        other_csrftoken = maas_factory.make_name("csrftoken")
+        yield protocol.authenticate(session_id, other_csrftoken)
+        self.expectThat(protocol.user, Equals(None))
+
+        self.expectThat(
+            mock_loseConnection,
+            MockCalledOnceWith(
+                STATUSES.PROTOCOL_ERROR,
+                "Invalid CSRF token."))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_authenticate_calls_loseConnection_if_csrftoken_is_missing(self):
+        user, session_id = yield deferToThread(self.get_user_and_session_id)
+        uri = self.make_ws_uri(csrftoken=None)
+        protocol, factory = self.make_protocol(
+            patch_authenticate=False, transport_uri=uri)
+        mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
+
+        other_csrftoken = maas_factory.make_name("csrftoken")
+        yield protocol.authenticate(session_id, other_csrftoken)
+        self.expectThat(protocol.user, Equals(None))
+
+        self.expectThat(
+            mock_loseConnection,
+            MockCalledOnceWith(
+                STATUSES.PROTOCOL_ERROR,
+                "Invalid CSRF token."))
 
     def test_dataReceived_calls_loseConnection_if_json_error(self):
         protocol, factory = self.make_protocol()

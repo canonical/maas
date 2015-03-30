@@ -688,6 +688,10 @@ class WebSocketsResource(object):
         # cookies.
         transport.cookies = request.getHeader("cookie")
 
+        # Set the uri on the transport. This allows the protocol to view the
+        # uri.
+        transport.uri = request.uri
+
         if not isinstance(protocol, WebSocketsProtocol):
             protocol = WebSocketsProtocolWrapper(protocol)
 

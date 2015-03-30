@@ -8,7 +8,7 @@
  * conflicts with Django templates.
  */
 
-angular.module('MAAS', ['ngRoute']).config(
+angular.module('MAAS', ['ngRoute', 'ngCookies']).config(
     function($interpolateProvider, $routeProvider) {
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');
