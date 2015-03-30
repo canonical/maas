@@ -47,9 +47,13 @@ class TestTimeStampedModelHandler(MAASTestCase):
     def test_dehydrate_created_converts_datetime_to_string(self):
         now = datetime.now()
         handler = TimestampedModelHandler(None, {})
-        self.assertEquals("%s" % now, handler.dehydrate_created(now))
+        self.assertEquals(
+            now.strftime('%a, %d %b. %Y %H:%M:%S'),
+            handler.dehydrate_created(now))
 
     def test_dehydrate_updated_converts_datetime_to_string(self):
         now = datetime.now()
         handler = TimestampedModelHandler(None, {})
-        self.assertEquals("%s" % now, handler.dehydrate_updated(now))
+        self.assertEquals(
+            now.strftime('%a, %d %b. %Y %H:%M:%S'),
+            handler.dehydrate_updated(now))

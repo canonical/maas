@@ -17,6 +17,7 @@ __all__ = []
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maasserver.websockets.handlers.zone import ZoneHandler
 
 
@@ -27,8 +28,8 @@ class TestZoneHandler(MAASServerTestCase):
             "id": zone.id,
             "name": zone.name,
             "description": zone.description,
-            "updated": "%s" % zone.updated,
-            "created": "%s" % zone.created,
+            "updated": dehydrate_datetime(zone.updated),
+            "created": dehydrate_datetime(zone.created),
             }
         return data
 

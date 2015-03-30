@@ -18,6 +18,7 @@ from django.core.urlresolvers import reverse
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.device import DeviceHandler
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 
 
@@ -27,7 +28,7 @@ class TestDeviceHandler(MAASServerTestCase):
         pxe_mac = node.get_pxe_mac()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         data = {
-            "created": "%s" % node.created,
+            "created": dehydrate_datetime(node.created),
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
@@ -47,7 +48,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 tag.name
                 for tag in node.tags.all()
                 ],
-            "updated": "%s" % node.updated,
+            "updated": dehydrate_datetime(node.updated),
             "url": reverse('node-view', args=[node.system_id]),
             "zone": {
                 "id": node.zone.id,

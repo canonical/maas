@@ -79,6 +79,10 @@ class TestTriggers(MAASServerTestCase):
             "auth_user_user_create_notify",
             "auth_user_user_update_notify",
             "auth_user_user_delete_notify",
+            "maasserver_event_event_create_notify",
+            "maasserver_event_event_update_notify",
+            "maasserver_event_event_delete_notify",
+            "maasserver_event_event_create_node_device_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:

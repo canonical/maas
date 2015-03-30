@@ -13,10 +13,19 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "dehydrate_datetime",
     "TimestampedModelHandler",
     ]
 
 from maasserver.websockets.base import Handler
+
+
+DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
+
+
+def dehydrate_datetime(datetime):
+    """Convert the `datetime` to string with `DATETIME_FORMAT`."""
+    return datetime.strftime(DATETIME_FORMAT)
 
 
 class TimestampedModelHandler(Handler):
@@ -34,7 +43,7 @@ class TimestampedModelHandler(Handler):
         return cls
 
     def dehydrate_created(self, datetime):
-        return "%s" % datetime
+        return dehydrate_datetime(datetime)
 
     def dehydrate_updated(self, datetime):
-        return "%s" % datetime
+        return dehydrate_datetime(datetime)

@@ -54,7 +54,9 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maasserver.websockets.handlers import node as node_module
+from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.node import NodeHandler
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
@@ -92,10 +94,10 @@ class TestNodeHandler(MAASServerTestCase):
                 "id": event.type.id,
                 "name": event.type.name,
                 "description": event.type.description,
-                "level": event.type.level,
+                "level": dehydrate_event_type_level(event.type.level),
                 },
             "description": event.description,
-            "created": event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            "created": dehydrate_datetime(event.created),
             }
 
     def dehydrate_node_result(self, result):
@@ -105,7 +107,7 @@ class TestNodeHandler(MAASServerTestCase):
             "name": result.name,
             "data": result.data,
             "line_count": len(result.data.splitlines()),
-            "created": result.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            "created": dehydrate_datetime(result.created),
             }
 
     def dehydrate_interface(self, mac_address, node):
@@ -183,7 +185,7 @@ class TestNodeHandler(MAASServerTestCase):
                     node=node, result_type=RESULT_TYPE.COMMISSIONING)
                 ],
             "cpu_count": node.cpu_count,
-            "created": "%s" % node.created,
+            "created": dehydrate_datetime(node.created),
             "disable_ipv4": node.disable_ipv4,
             "disks": len(physicalblockdevices),
             "disk_tags": self.get_all_disk_tags(physicalblockdevices),
@@ -201,6 +203,7 @@ class TestNodeHandler(MAASServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "id": node.id,
             "installation_results": [
                 self.dehydrate_node_result(result)
                 for result in NodeResult.objects.filter(
@@ -241,7 +244,7 @@ class TestNodeHandler(MAASServerTestCase):
                 tag.name
                 for tag in node.tags.all()
                 ],
-            "updated": "%s" % node.updated,
+            "updated": dehydrate_datetime(node.updated),
             "url": reverse('node-view', args=[node.system_id]),
             "zone": {
                 "id": node.zone.id,

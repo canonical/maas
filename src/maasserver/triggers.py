@@ -91,6 +91,30 @@ TAG_NODES_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a event is created.
+# Sends a notify message for node_update or device_update depending on if the
+# link node is installable.
+EVENT_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION event_create_node_device_notify()
+    RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node
+      WHERE id = NEW.node_id;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -255,3 +279,25 @@ def register_all_triggers():
         "auth_user", "user_update_notify", "update")
     register_trigger(
         "auth_user", "user_delete_notify", "delete")
+
+    # Events table
+    register_procedure(
+        get_notification_procedure(
+            'event_create_notify', 'event_create', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'event_update_notify', 'event_update', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'event_delete_notify', 'event_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_event", "event_create_notify", "insert")
+    register_trigger(
+        "maasserver_event", "event_update_notify", "update")
+    register_trigger(
+        "maasserver_event", "event_delete_notify", "delete")
+
+    # Events table, update to linked node.
+    register_procedure(EVENT_NODE_NOTIFY)
+    register_trigger(
+        "maasserver_event", "event_create_node_device_notify", "insert")

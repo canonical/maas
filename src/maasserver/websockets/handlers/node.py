@@ -41,7 +41,9 @@ from maasserver.websockets.base import (
     HandlerError,
     HandlerPermissionError,
 )
+from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
+    dehydrate_datetime,
     TimestampedModelHandler,
 )
 from metadataserver.enum import RESULT_TYPE
@@ -84,7 +86,6 @@ class NodeHandler(TimestampedModelHandler):
             ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
-            "id",
             "installable",
             "parent",
             "pxe_mac",
@@ -312,7 +313,7 @@ class NodeHandler(TimestampedModelHandler):
                 "name": result.name,
                 "data": result.data,
                 "line_count": len(result.data.splitlines()),
-                "created": result.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+                "created": dehydrate_datetime(result.created),
             }
             for result in NodeResult.objects.filter(
                 node=obj, result_type=result_type)
@@ -336,10 +337,10 @@ class NodeHandler(TimestampedModelHandler):
                     "id": event.type.id,
                     "name": event.type.name,
                     "description": event.type.description,
-                    "level": event.type.level,
+                    "level": dehydrate_event_type_level(event.type.level),
                     },
                 "description": event.description,
-                "created": event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+                "created": dehydrate_datetime(event.created),
             }
             for event in events
             ]

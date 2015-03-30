@@ -20,6 +20,7 @@ from maasserver.clusterrpc.power_parameters import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.cluster import ClusterHandler
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestClusterHandler(MAASServerTestCase):
@@ -36,8 +37,8 @@ class TestClusterHandler(MAASServerTestCase):
             "connected": cluster.is_connected(),
             "state": cluster.get_state(),
             "power_types": power_types,
-            "updated": "%s" % cluster.updated,
-            "created": "%s" % cluster.created,
+            "updated": dehydrate_datetime(cluster.updated),
+            "created": dehydrate_datetime(cluster.created),
             }
         return data
 

@@ -17,6 +17,7 @@ __all__ = []
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
+from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.zone import Zone
@@ -302,6 +303,24 @@ class TransactionalHelpersMixin:
         user = User.objects.get(id=id)
         user.consumers.all().delete()
         user.delete()
+
+    @transactional
+    def create_event(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Event(**params)
+
+    @transactional
+    def update_event(self, id, params):
+        event = Event.objects.get(id=id)
+        for key, value in params.items():
+            setattr(event, key, value)
+        return event.save()
+
+    @transactional
+    def delete_event(self, id):
+        event = Event.objects.get(id=id)
+        event.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -608,5 +627,95 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield deferToThread(self.delete_user, user.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the event
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("event", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            event = yield deferToThread(self.create_event)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % event.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("event", lambda *args: dv.set(args))
+        event = yield deferToThread(self.create_event)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_event,
+                event.id,
+                {'description': factory.make_name('description')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % event.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("event", lambda *args: dv.set(args))
+        event = yield deferToThread(self.create_event)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_event, event.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % event.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeEventListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_event table that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_event, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stop()
