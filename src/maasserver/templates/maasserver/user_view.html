@@ -38,8 +38,8 @@
         <li class="two-col clear">
             <h4>MAAS Keys</h4>
             <span>
-            {{ user.get_profile.get_authorisation_tokens.count }}
-            key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
+            {{ user.userprofile.get_authorisation_tokens.count }}
+            key{{ user.userprofile.get_authorisation_tokens.count|pluralize }}
           </span>
         </li>
         <li class="three-col">

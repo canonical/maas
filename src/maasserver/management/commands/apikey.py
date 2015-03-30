@@ -57,7 +57,7 @@ class Command(BaseCommand):
             self.stdout.write('\n')
 
     def _generate_token(self, user):
-        _, token = user.get_profile().create_authorisation_token()
+        _, token = user.userprofile.create_authorisation_token()
         self._print_token(token)
 
     def _delete_token(self, user, key_to_delete):
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             raise CommandError(e)
         _, token_key, _ = creds_tuple
         try:
-            user.get_profile().delete_authorisation_token(token_key)
+            user.userprofile.delete_authorisation_token(token_key)
         except Http404:
             raise CommandError("No matching api key found.")
 
@@ -98,6 +98,6 @@ class Command(BaseCommand):
 
         else:
             # No mutating action requested, so just print existing keys.
-            tokens = user.get_profile().get_authorisation_tokens()
+            tokens = user.userprofile.get_authorisation_tokens()
             for token in tokens:
                 self._print_token(token)

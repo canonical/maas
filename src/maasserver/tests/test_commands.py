@@ -200,7 +200,7 @@ class TestApikeyCommand(DjangoTestCase):
         self.assertEqual('', stderr.getvalue().strip())
 
         expected_token = get_one(
-            user.get_profile().get_authorisation_tokens())
+            user.userprofile.get_authorisation_tokens())
         expected_string = convert_tuple_to_string(
             get_creds_tuple(expected_token)) + '\n'
         self.assertEqual(expected_string, stdout.getvalue())
@@ -210,15 +210,15 @@ class TestApikeyCommand(DjangoTestCase):
         out = BytesIO()
         stdout = getwriter("UTF-8")(out)
         user = factory.make_User()
-        num_keys = len(user.get_profile().get_authorisation_tokens())
+        num_keys = len(user.userprofile.get_authorisation_tokens())
         call_command(
             'apikey', username=user.username, generate=True, stderr=stderr,
             stdout=stdout)
         self.assertEqual('', stderr.getvalue().strip())
-        keys_after = user.get_profile().get_authorisation_tokens()
+        keys_after = user.userprofile.get_authorisation_tokens()
         expected_num_keys = num_keys + 1
         self.assertEqual(expected_num_keys, len(keys_after))
-        expected_token = user.get_profile().get_authorisation_tokens()[1]
+        expected_token = user.userprofile.get_authorisation_tokens()[1]
         expected_string = convert_tuple_to_string(
             get_creds_tuple(expected_token)) + '\n'
         self.assertEqual(expected_string, stdout.getvalue())
@@ -228,7 +228,7 @@ class TestApikeyCommand(DjangoTestCase):
         stdout = BytesIO()
         user = factory.make_User()
         existing_token = get_one(
-            user.get_profile().get_authorisation_tokens())
+            user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(
             get_creds_tuple(existing_token))
         call_command(
@@ -236,7 +236,7 @@ class TestApikeyCommand(DjangoTestCase):
             stderr=stderr, stdout=stdout)
         self.assertEqual('', stderr.getvalue().strip())
 
-        keys_after = user.get_profile().get_authorisation_tokens()
+        keys_after = user.userprofile.get_authorisation_tokens()
         self.assertEqual(0, len(keys_after))
 
     def test_apikey_rejects_mutually_exclusive_options(self):
@@ -261,7 +261,7 @@ class TestApikeyCommand(DjangoTestCase):
         stderr = BytesIO()
         user = factory.make_User()
         existing_token = get_one(
-            user.get_profile().get_authorisation_tokens())
+            user.userprofile.get_authorisation_tokens())
         token_string = convert_tuple_to_string(
             get_creds_tuple(existing_token))
         call_command(

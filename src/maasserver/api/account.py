@@ -41,7 +41,7 @@ class AccountHandler(OperationsHandler):
         :rtype: string (json)
 
         """
-        profile = request.user.get_profile()
+        profile = request.user.userprofile
         consumer, token = profile.create_authorisation_token()
         return {
             'token_key': token.key, 'token_secret': token.secret,
@@ -55,7 +55,7 @@ class AccountHandler(OperationsHandler):
         :param token_key: The key of the token to be deleted.
         :type token_key: unicode
         """
-        profile = request.user.get_profile()
+        profile = request.user.userprofile
         token_key = get_mandatory_param(request.data, 'token_key')
         profile.delete_authorisation_token(token_key)
         return rc.DELETED

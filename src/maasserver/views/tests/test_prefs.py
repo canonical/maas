@@ -55,11 +55,11 @@ class UserPrefsViewTest(MAASServerTestCase):
         user = self.logged_in_user
         # Create a few tokens.
         for _ in range(3):
-            user.get_profile().create_authorisation_token()
+            user.userprofile.create_authorisation_token()
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         # The OAuth tokens are displayed.
-        for token in user.get_profile().get_authorisation_tokens():
+        for token in user.userprofile.get_authorisation_tokens():
             # The token string is a compact representation of the keys.
             self.assertSequenceEqual(
                 [convert_tuple_to_string(get_creds_tuple(token))],

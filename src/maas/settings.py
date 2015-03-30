@@ -106,8 +106,6 @@ ANGULARJS_LOCATION = '/usr/share/javascript/angular.js/'
 
 STATIC_LOCAL_SERVE = DEBUG
 
-AUTH_PROFILE_MODULE = 'maasserver.UserProfile'
-
 AUTHENTICATION_BACKENDS = (
     'maasserver.models.MAASAuthorizationBackend',
     )

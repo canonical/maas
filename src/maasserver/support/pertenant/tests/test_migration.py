@@ -244,7 +244,7 @@ class TestGiveCredentialsToUser(MAASServerTestCase):
     def test_give(self):
         user1 = factory.make_User()
         user2 = factory.make_User()
-        profile = user1.get_profile()
+        profile = user1.userprofile
         consumer, token = profile.create_authorisation_token()
         give_api_credentials_to_user(user1, user2)
         self.assertEqual(user2, reload_object(consumer).user)
@@ -368,11 +368,11 @@ class TestMigrate(MAASServerTestCase):
         factory.make_FileStorage(owner=None)
         # Create two users, both with API credentials, an SSH key and a node.
         user1 = factory.make_User()
-        consumer1, token1 = user1.get_profile().create_authorisation_token()
+        consumer1, token1 = user1.userprofile.create_authorisation_token()
         key1 = factory.make_SSHKey(user1, get_ssh_key_string(1))
         node1 = factory.make_Node(owner=user1)
         user2 = factory.make_User()
-        consumer2, token2 = user2.get_profile().create_authorisation_token()
+        consumer2, token2 = user2.userprofile.create_authorisation_token()
         key2 = factory.make_SSHKey(user2, get_ssh_key_string(2))
         node2 = factory.make_Node(owner=user2)
         migrate()

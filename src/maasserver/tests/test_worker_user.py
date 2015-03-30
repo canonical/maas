@@ -22,6 +22,7 @@ from maasserver.worker_user import (
     get_worker_user,
     user_name,
 )
+from testtools import ExpectedException
 
 
 class TestNodeGroupUser(MAASServerTestCase):
@@ -38,4 +39,5 @@ class TestNodeGroupUser(MAASServerTestCase):
     def test_worker_user_is_system_user(self):
         worker_user = get_worker_user()
         self.assertIn(worker_user.username, SYSTEM_USERS)
-        self.assertRaises(UserProfile.DoesNotExist, worker_user.get_profile)
+        with ExpectedException(UserProfile.DoesNotExist):
+            worker_user.userprofile

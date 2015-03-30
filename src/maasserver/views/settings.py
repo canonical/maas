@@ -104,7 +104,7 @@ class AccountsDelete(DeleteView):
     def get_object(self):
         username = self.kwargs.get('username', None)
         user = get_object_or_404(User, username=username)
-        return user.get_profile()
+        return user.userprofile
 
     def get_next_url(self):
         return reverse('settings')

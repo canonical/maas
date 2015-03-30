@@ -25,7 +25,7 @@
             <div id="api" class="api eight-col">
                 <p>You'll need a separate API key for each Juju environment.</p>
                 <ul class="no-bullets">
-                    {% for token in user.get_profile.get_authorisation_tokens %}
+                    {% for token in user.userprofile.get_authorisation_tokens %}
                     <li class="bundle">
                         <a href="#" class="delete-link icon right">
                             <img title="Delete MAAS key" class="left" src="{{ STATIC_URL }}img/delete.png" />

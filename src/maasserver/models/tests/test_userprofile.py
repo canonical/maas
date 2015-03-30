@@ -35,8 +35,8 @@ class UserProfileTest(MAASServerTestCase):
     def test_profile_creation(self):
         # A profile is created each time a user is created.
         user = factory.make_User()
-        self.assertIsInstance(user.get_profile(), UserProfile)
-        self.assertEqual(user, user.get_profile().user)
+        self.assertIsInstance(user.userprofile, UserProfile)
+        self.assertEqual(user, user.userprofile.user)
 
     def test_consumer_creation(self):
         # A generic consumer is created each time a user is created.
@@ -53,7 +53,7 @@ class UserProfileTest(MAASServerTestCase):
     def test_create_authorisation_token(self):
         # UserProfile.create_authorisation_token calls create_auth_token.
         user = factory.make_User()
-        profile = user.get_profile()
+        profile = user.userprofile
         consumer, token = profile.create_authorisation_token()
         self.assertEqual(user, token.user)
         self.assertEqual(user, consumer.user)
@@ -61,12 +61,12 @@ class UserProfileTest(MAASServerTestCase):
     def test_get_authorisation_tokens(self):
         # UserProfile.get_authorisation_tokens calls get_auth_tokens.
         user = factory.make_User()
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.assertIn(token, user.get_profile().get_authorisation_tokens())
+        consumer, token = user.userprofile.create_authorisation_token()
+        self.assertIn(token, user.userprofile.get_authorisation_tokens())
 
     def test_delete(self):
         # Deleting a profile also deletes the related user.
-        profile = factory.make_User().get_profile()
+        profile = factory.make_User().userprofile
         profile_id = profile.id
         user_id = profile.user.id
         self.assertTrue(User.objects.filter(id=user_id).exists())
@@ -79,7 +79,7 @@ class UserProfileTest(MAASServerTestCase):
 
     def test_delete_consumers_tokens(self):
         # Deleting a profile deletes the related tokens and consumers.
-        profile = factory.make_User().get_profile()
+        profile = factory.make_User().userprofile
         token_ids = []
         consumer_ids = []
         for _ in range(3):
@@ -92,7 +92,7 @@ class UserProfileTest(MAASServerTestCase):
 
     def test_delete_attached_nodes(self):
         # Cannot delete a user with nodes attached to it.
-        profile = factory.make_User().get_profile()
+        profile = factory.make_User().userprofile
         factory.make_Node(owner=profile.user)
         self.assertRaises(CannotDeleteUserException, profile.delete)
 

@@ -221,7 +221,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def set_up_oauth_token(self):
         """Set up an oauth token to be used for requests."""
-        profile = self.logged_in_user.get_profile()
+        profile = self.logged_in_user.userprofile
         consumer, token = profile.create_authorisation_token()
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
 
