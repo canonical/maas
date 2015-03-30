@@ -1,0 +1,60 @@
+<div data-ng-hide="loaded">
+    <header class="page-header">
+        <div class="inner-wrapper">
+            <h1 class="page-header__title twelve-col">Loading...</h1>
+        </div>
+    </header>
+</div>
+<div class="ng-hide" data-ng-show="loaded">
+    <header class="page-header margin-bottom">
+        <div class="inner-wrapper">
+            <nav class="page-header__nav">
+                <a href="#/node/{$ node.system_id $}">&lsaquo;&nbsp;Back to machine details</a>
+            </nav>
+            <h1 class="page-header__title eight-col">
+                {$ node.fqdn $}
+                <span class="page-header__title--identicator">
+                    {$ events.length $} machine events in the past {$ days $} days
+                    <span class="power-status--power">
+                        <span class="power-check">
+                            <a href="" class="power-check__link" data-ng-click="loadMore()">load 30 more days</a>
+                        </span>
+                    </span>
+                </span>
+            </h1>
+        </div>
+    </header>
+    <div class="inner-wrapper">
+        <form>
+            <div id="search-bar" class="search">
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                <input type="search" placeholder="Search machine events in the past {$ days $} days"
+                    class="search__input" data-ng-model="search" />
+                <input type="submit" class="search__submit" />
+            </div>
+            <table class="table-listing " id="events-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th class="table-listing__header t1"></th>
+                        <th class="table-listing__header t75">Event</th>
+                        <th class="table-listing__header t24">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row"
+                        data-ng-repeat="event in events | filter:search | orderBy:'-id' track by event.id">
+                        <td class="t1 no-padding-right no-padding-left">
+                            <span class="icon {$ event.type.level $}"></span>
+                        </td>
+                        <td class="t75">
+                            {$ getEventText(event) $}
+                        </td>
+                        <td class="t24">
+                            {$ event.created $}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+    </div>
+</div>

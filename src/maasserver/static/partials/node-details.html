@@ -317,15 +317,19 @@
             <table class="table-listing no-hover" data-ng-show="node.events.length">
                 <thead>
                     <tr class="table-listing__row">
+                        <th class="t1"></th>
                         <th class="t75">Event</th>
-                        <th class="t25">Time</th>
+                        <th class="t24">Time</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="table-listing__row"
                         data-ng-repeat="event in node.events | limitTo:events.limit">
+                        <td class="t1 no-padding-right no-padding-left">
+                            <span class="icon {$ event.type.level $}"></span>
+                        </td>
                         <td class="t75">{$ getEventText(event) $}</td>
-                        <td class="t25">{$ event.created $}</td>
+                        <td class="t24">{$ event.created $}</td>
                     </tr>
                 </tbody>
             </table>
@@ -334,7 +338,7 @@
                    <a href="" class="link-cta-ubuntu clear right"></a>
                 </div>
                 <div class="two-col last-col no-margin-bottom">
-                    <a href="#/node/{$ node.system_id $}/events" class="link-cta-ubuntu secondary full">View all</a>
+                    <a href="#/node/{$ node.system_id $}/events" class="link-cta-ubuntu secondary full">View more</a>
                 </div>
             </div>
             <p class="twelve-col text-center" data-ng-show="allowShowMoreEvents()">

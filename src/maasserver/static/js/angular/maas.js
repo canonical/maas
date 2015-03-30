@@ -35,6 +35,10 @@ angular.module('MAAS', ['ngRoute', 'ngCookies']).config(
                     templateUrl: 'static/partials/node-result.html',
                     controller: 'NodeResultController'
                 }).
+                when('/node/:system_id/events', {
+                    templateUrl: 'static/partials/node-events.html',
+                    controller: 'NodeEventsController'
+                }).
                 when('/error', {
                     templateUrl: 'static/partials/error.html',
                     controller: 'ErrorController'
