@@ -19,6 +19,17 @@ angular.module('MAAS').controller('NodeResultController', [
         $scope.node = null;
         $scope.filename = $routeParams.filename;
 
+        // Called once the node is loaded.
+        function nodeLoaded(node) {
+            $scope.node = node;
+            $scope.loaded = true;
+
+            // Update the title when the fqdn of the node changes.
+            $scope.$watch("node.fqdn", function() {
+                $rootScope.title = $scope.node.fqdn + " - " + $scope.filename;
+            });
+        }
+
         // Returns the result data for the requested filename.
         $scope.getResultData = function() {
             if(!angular.isObject($scope.node)) {
@@ -52,13 +63,11 @@ angular.module('MAAS').controller('NodeResultController', [
             var activeNode = NodesManager.getActiveItem();
             if(angular.isObject(activeNode) &&
                 activeNode.system_id === $routeParams.system_id) {
-                $scope.node = activeNode;
-                $scope.loaded = true;
+                nodeLoaded(activeNode);
             } else {
                 NodesManager.setActiveItem(
                     $routeParams.system_id).then(function(node) {
-                        $scope.node = node;
-                        $scope.loaded = true;
+                        nodeLoaded(node);
                     }, function(error) {
                         ErrorService.raiseError(error);
                     });

@@ -161,6 +161,20 @@ describe("NodeResultController", function() {
         expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
     });
 
+    it("watches node.fqdn updates $rootScope.title", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        NodesManager._activeItem = node;
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        node.fqdn = makeName("fqdn");
+        $rootScope.$digest();
+        expect($rootScope.title).toBe(
+            node.fqdn + " - " + $routeParams.filename);
+    });
+
     describe("getResultData", function() {
 
         it("returns empty string if node not loaded", function() {

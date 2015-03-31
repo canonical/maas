@@ -794,7 +794,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(!angular.isObject($scope.node)) {
                 return "";
             }
-            return $scope.node["summary_" + $scope.machine_output.summaryType];
+            // Prepend a newline before the summary output, because the code
+            // tag requires that the content start on a newline.
+            return "\n" +
+                $scope.node["summary_" + $scope.machine_output.summaryType];
         };
 
         // Return the installation log data.
@@ -812,7 +815,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(results.length === 0) {
                 return "";
             } else {
-                return results[0].data;
+                // Prepend a newline before the data, because the code
+                // tag requires that the content start on a newline.
+                return "\n" + results[0].data;
             }
         };
 
