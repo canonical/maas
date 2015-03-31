@@ -251,7 +251,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'mac_address', "MAC Address", field_type='mac_address'),
             make_json_field('power_pass', "Power password"),
-            make_json_field('power_address', "Power MAC")
+            make_json_field('power_address', "Power address")
         ],
     },
     {
