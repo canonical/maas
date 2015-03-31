@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from django.core.urlresolvers import reverse
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.device import DeviceHandler
@@ -49,16 +48,13 @@ class TestDeviceHandler(MAASServerTestCase):
                 for tag in node.tags.all()
                 ],
             "updated": dehydrate_datetime(node.updated),
-            "url": reverse('node-view', args=[node.system_id]),
             "zone": {
                 "id": node.zone.id,
                 "name": node.zone.name,
-                "url": reverse('zone-view', args=[node.zone.name]),
                 },
             }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [
-                "url",
                 "fqdn",
                 "status",
                 "extra_macs",

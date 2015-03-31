@@ -409,7 +409,7 @@ class NodeHandler(OperationsHandler):
         form = form_class(
             node, data={NodeActionForm.input_name: Commission.name})
         if form.is_valid():
-            node = form.save(allow_redirect=False)
+            node = form.save()
             return node
         else:
             raise MAASAPIValidationError(form.errors)

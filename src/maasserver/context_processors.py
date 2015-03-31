@@ -19,9 +19,7 @@ __all__ = [
     ]
 
 from django.conf import settings
-from maasserver.clusterrpc.power_parameters import get_power_type_parameters
 from maasserver.components import get_persistent_errors
-from maasserver.forms import get_node_edit_form
 from maasserver.models import Config
 from maasserver.utils.version import (
     get_maas_doc_version,
@@ -72,20 +70,10 @@ def static_resources(context):
         'JS_LIST': [
             'js/image.js',
             'js/image_views.js',
-            'js/license_key.js',
-            'js/morph.js',
             'js/user_panel.js',
-            'js/node_add.js',
-            'js/node.js',
             'js/prefs.js',
-            'js/utils.js',
-            'js/node_views.js',
-            'js/node_check.js',
             'js/shortpoll.js',
             'js/enums.js',
-            'js/os_distro_select.js',
-            'js/power_parameters.js',
-            'js/nodes_chart.js',
             'js/reveal.js',
         ],
     }
@@ -94,11 +82,6 @@ def static_resources(context):
 def global_options(context):
     return {
         'persistent_errors': get_persistent_errors(),
-        'node_form': get_node_edit_form(context.user)(),
-        'POWER_TYPE_PARAMETERS_FIELDS': [
-            (power_type, field.widget.render('power_parameters', []))
-            for power_type, field in get_power_type_parameters().items()
-        ],
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
         },

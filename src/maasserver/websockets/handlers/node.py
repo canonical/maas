@@ -20,7 +20,6 @@ import logging
 from operator import itemgetter
 
 import crochet
-from django.core.urlresolvers import reverse
 from lxml import etree
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
@@ -125,7 +124,6 @@ class NodeHandler(TimestampedModelHandler):
         return {
             "id": zone.id,
             "name": zone.name,
-            "url": reverse('zone-view', args=[zone.name])
             }
 
     def dehydrate_nodegroup(self, nodegroup):
@@ -158,7 +156,6 @@ class NodeHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        data["url"] = reverse('node-view', args=[obj.system_id])
         data["fqdn"] = obj.fqdn
         data["status"] = obj.display_status()
         data["actions"] = compile_node_actions(obj, self.user).keys()
@@ -453,7 +450,7 @@ class NodeHandler(TimestampedModelHandler):
             raise NodeActionError(
                 "%s action is not available for this node." % action_name)
         extra_params = params.get("extra", {})
-        return action.execute(allow_redirect=False, **extra_params)
+        return action.execute(**extra_params)
 
     def check_power(self, params):
         """Check the power state of the node."""

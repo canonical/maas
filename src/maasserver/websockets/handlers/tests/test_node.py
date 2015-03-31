@@ -21,7 +21,6 @@ import re
 
 import crochet
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from lxml import etree
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
@@ -245,17 +244,14 @@ class TestNodeHandler(MAASServerTestCase):
                 for tag in node.tags.all()
                 ],
             "updated": dehydrate_datetime(node.updated),
-            "url": reverse('node-view', args=[node.system_id]),
             "zone": {
                 "id": node.zone.id,
                 "name": node.zone.name,
-                "url": reverse('zone-view', args=[node.zone.name]),
                 },
             }
         if for_list:
             allowed_fields = NodeHandler.Meta.list_fields + [
                 "actions",
-                "url",
                 "fqdn",
                 "status",
                 "pxe_mac",
@@ -583,13 +579,12 @@ class TestNodeHandler(MAASServerTestCase):
             handler.action, {"system_id": node.system_id, "action": "unknown"})
 
     def test_action_performs_action(self):
-        user = factory.make_User()
-        factory.make_SSHKey(user)
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        handler = NodeHandler(user, {})
-        self.assertEquals(
-            handler.action({"system_id": node.system_id, "action": "deploy"}),
-            "This node has been asked to deploy.")
+        admin = factory.make_admin()
+        factory.make_SSHKey(admin)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
+        handler = NodeHandler(admin, {})
+        handler.action({"system_id": node.system_id, "action": "delete"})
+        self.assertIsNone(reload_object(node))
 
     def test_action_performs_action_passing_extra(self):
         user = factory.make_User()
@@ -597,15 +592,13 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         osystem = make_osystem_with_releases(self)
         handler = NodeHandler(user, {})
-        self.expectThat(
-            handler.action({
-                "system_id": node.system_id,
-                "action": "deploy",
-                "extra": {
-                    "osystem": osystem["name"],
-                    "distro_series": osystem["releases"][0]["name"],
-                }}),
-            Equals("This node has been asked to deploy."))
+        handler.action({
+            "system_id": node.system_id,
+            "action": "deploy",
+            "extra": {
+                "osystem": osystem["name"],
+                "distro_series": osystem["releases"][0]["name"],
+            }})
         node = reload_object(node)
         self.expectThat(node.osystem, Equals(osystem["name"]))
         self.expectThat(

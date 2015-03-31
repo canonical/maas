@@ -34,7 +34,6 @@ from collections import OrderedDict
 from textwrap import dedent
 
 from crochet import TimeoutError
-from django.core.urlresolvers import reverse
 from maasserver import locks
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -43,7 +42,6 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     NodeActionError,
-    Redirect,
     StaticIPAddressExhaustion,
 )
 from maasserver.models import Zone
@@ -128,18 +126,12 @@ class NodeAction:
         return None
 
     @abstractmethod
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """Perform this action.
 
         Even though this is not the API, the action may raise
         :class:`MAASAPIException` exceptions.  When this happens, the view
         will return to the client an http response reflecting the exception.
-
-        :param allow_redirect: Whether a redirect (typically to a confirmation
-            page) is possible.
-        :return: A human-readable message confirming that the action has been
-            performed.  It will be shown as an informational notice on the
-            Node page.
         """
 
     def is_permitted(self):
@@ -165,17 +157,14 @@ class Delete(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """Redirect to the delete view's confirmation page.
 
         The rest of deletion is handled by a specialized deletion view.
         All that the action really does is get you to its are-you-sure
         page.
         """
-        if allow_redirect:
-            raise Redirect(reverse('node-delete', args=[self.node.system_id]))
-        else:
-            self.node.delete()
+        self.node.delete()
 
 
 class SetZone(NodeAction):
@@ -186,11 +175,10 @@ class SetZone(NodeAction):
     actionable_statuses = (NODE_STATUS.NEW, NODE_STATUS.READY)
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self, allow_redirect=True, zone_id=None):
+    def execute(self, zone_id=None):
         """See `NodeAction.execute`."""
         zone = Zone.objects.get(id=zone_id)
         self.node.set_zone(zone)
-        return self.display_sentence
 
     def is_actionable(self):
         """Returns true if the selected nodes can be added to a zone"""
@@ -215,14 +203,12 @@ class Commission(InstallableNodeAction):
         NODE_STATUS.BROKEN)
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "Node commissioning started."
 
 
 class Abort(InstallableNodeAction):
@@ -234,14 +220,12 @@ class Abort(InstallableNodeAction):
         NODE_STATUS.COMMISSIONING, NODE_STATUS.DISK_ERASING,)
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_operation(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "Node operation aborted."
 
 
 class Acquire(InstallableNodeAction):
@@ -252,11 +236,10 @@ class Acquire(InstallableNodeAction):
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         with locks.node_acquire:
             self.node.acquire(self.user, token=None)
-        return "This node is now allocated to you."
 
 
 class Deploy(InstallableNodeAction):
@@ -278,7 +261,7 @@ class Deploy(InstallableNodeAction):
                 """)
         return None
 
-    def execute(self, allow_redirect=True, osystem=None, distro_series=None):
+    def execute(self, osystem=None, distro_series=None):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
             with locks.node_acquire:
@@ -298,8 +281,6 @@ class Deploy(InstallableNodeAction):
                 % self.node.hostname)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "This node has been asked to deploy."
 
     def is_actionable(self):
         is_actionable = super(Deploy, self).is_actionable()
@@ -314,7 +295,7 @@ class PowerOn(InstallableNodeAction):
     actionable_statuses = (NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED)
     permission = NODE_PERMISSION.EDIT
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.start(self.user)
@@ -324,8 +305,6 @@ class PowerOn(InstallableNodeAction):
                 % self.node.hostname)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "This node has been asked to start up."
 
     def is_actionable(self):
         is_actionable = super(PowerOn, self).is_actionable()
@@ -351,14 +330,12 @@ class PowerOff(InstallableNodeAction):
     )
     permission = NODE_PERMISSION.EDIT
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.stop(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "This node has been asked to shut down."
 
 
 class Release(InstallableNodeAction):
@@ -373,14 +350,12 @@ class Release(InstallableNodeAction):
         NODE_STATUS.FAILED_DISK_ERASING)
     permission = NODE_PERMISSION.EDIT
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase()
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-        else:
-            return "This node is no longer allocated to you."
 
 
 class MarkBroken(InstallableNodeAction):
@@ -394,11 +369,10 @@ class MarkBroken(InstallableNodeAction):
         NODE_STATUS.DEPLOYING, NODE_STATUS.DISK_ERASING] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         self.node.mark_broken(
             "Manually marked as broken by user '%s'" % self.user.username)
-        return "Node marked broken."
 
 
 class MarkFixed(InstallableNodeAction):
@@ -409,10 +383,9 @@ class MarkFixed(InstallableNodeAction):
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self, allow_redirect=True):
+    def execute(self):
         """See `NodeAction.execute`."""
         self.node.mark_fixed()
-        return "Node marked fixed."
 
 
 ACTION_CLASSES = (

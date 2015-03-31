@@ -51,21 +51,6 @@ from maasserver.views.networks import (
     NetworkListView,
     NetworkView,
 )
-from maasserver.views.noderesult import (
-    NodeCommissionResultListView,
-    NodeCommissionResultView,
-    NodeInstallResultView,
-)
-from maasserver.views.nodes import (
-    enlist_preseed_view,
-    MacAdd,
-    MacDelete,
-    NodeDelete,
-    NodeEdit,
-    NodeEventListView,
-    NodePreseedView,
-    NodeView,
-)
 from maasserver.views.prefs import (
     SSHKeyCreateView,
     SSHKeyDeleteView,
@@ -90,7 +75,6 @@ from maasserver.views.settings_license_keys import (
     LicenseKeyDelete,
     LicenseKeyEdit,
 )
-from maasserver.views.tags import TagView
 from maasserver.views.zones import (
     ZoneAdd,
     ZoneDelete,
@@ -146,14 +130,6 @@ urlpatterns += patterns(
     url(
         r'^account/prefs/sslkey/delete/(?P<keyid>\d*)/$',
         SSLKeyDeleteView.as_view(), name='prefs-delete-sslkey'),
-    url(
-        r'^commissioning-results/(?P<id>[0-9]+)/$',
-        NodeCommissionResultView.as_view(),
-        name='nodecommissionresult-view'),
-    url(
-        r'^installation-results/(?P<id>[0-9]+)/$',
-        NodeInstallResultView.as_view(),
-        name='nodeinstallresult-view'),
     )
 # Logout view.
 urlpatterns += patterns(
@@ -161,37 +137,15 @@ urlpatterns += patterns(
     url(r'^accounts/logout/$', logout, name='logout'),
 )
 
-# Nodes views.
+
+# Index view.
 urlpatterns += patterns(
     'maasserver.views',
     url(
         r'^$',
         IndexView.as_view(),
         name='index'),
-    url(r'^nodes/enlist-preseed/$', enlist_preseed_view,
-        name='enlist-preseed-view'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/events/$', NodeEventListView.as_view(),
-        name='node-event-list-view'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/view/$', NodeView.as_view(),
-        name='node-view'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/preseedview/$',
-        NodePreseedView.as_view(), name='node-preseed-view'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/edit/$', NodeEdit.as_view(),
-        name='node-edit'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/delete/$', NodeDelete.as_view(),
-        name='node-delete'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/delete/$',
-        MacDelete.as_view(), name='mac-delete'),
-    url(
-        r'^nodes/(?P<system_id>[\w\-]+)/macs/add/$',
-        MacAdd.as_view(), name='mac-add'),
-)
+    )
 
 
 # # URLs for admin users.
@@ -258,10 +212,6 @@ urlpatterns += patterns(
         CommissioningScriptCreate.as_view(),
         name='commissioning-script-add'),
     adminurl(
-        r'^commissioning-results/$',
-        NodeCommissionResultListView.as_view(),
-        name='nodecommissionresult-list'),
-    adminurl(
         r'^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/delete/$',
         LicenseKeyDelete.as_view(),
         name='license-key-delete'),
@@ -273,12 +223,6 @@ urlpatterns += patterns(
         r'^license-key/add/$',
         LicenseKeyCreate.as_view(),
         name='license-key-add'),
-)
-
-# Tag views.
-urlpatterns += patterns(
-    'maasserver.views',
-    url(r'^tags/(?P<name>[\w\-]+)/view/$', TagView.as_view(), name='tag-view'),
 )
 
 # Image views.

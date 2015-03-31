@@ -16,7 +16,6 @@ __all__ = [
     "DeviceHandler",
     ]
 
-from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.node import Device
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -89,7 +88,6 @@ class DeviceHandler(TimestampedModelHandler):
         return {
             "id": zone.id,
             "name": zone.name,
-            "url": reverse('zone-view', args=[zone.name])
             }
 
     def dehydrate_nodegroup(self, nodegroup):
@@ -101,7 +99,6 @@ class DeviceHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        data["url"] = reverse('node-view', args=[obj.system_id])
         data["fqdn"] = obj.fqdn
 
         # get_pxe_mac returns the first MAC if self.pxe_mac isn't set.

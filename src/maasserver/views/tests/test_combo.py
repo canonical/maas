@@ -149,7 +149,7 @@ class TestComboLoaderView(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_maas_load_js(self):
-        requested_files = ['js/node.js', 'js/enums.js']
+        requested_files = ['js/user_panel.js', 'js/enums.js']
         url = '%s?%s' % (reverse('combo-maas'), '&'.join(requested_files))
         response = self.client.get(url)
         # No sign of a missing js file.

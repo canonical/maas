@@ -1124,7 +1124,7 @@ class NodeActionForm(forms.Form):
                     {'action': [action.inhibition]})
         return action_name
 
-    def save(self, allow_redirect=True):
+    def save(self):
         """An action was requested.  Perform it.
 
         This implementation of `save` does not support the `commit` argument.
@@ -1133,7 +1133,7 @@ class NodeActionForm(forms.Form):
         action = self.actions.get(action_name)
         msg_level = messages.INFO
         try:
-            message = action.execute(allow_redirect=allow_redirect)
+            message = action.execute()
         except NodeActionError as e:
             message = e.message
             msg_level = messages.ERROR
@@ -2143,7 +2143,7 @@ class BulkNodeActionForm(forms.Form):
                     # Do not let execute() raise a redirect exception
                     # because this action is part of a bulk operation.
                     try:
-                        action_instance.execute(allow_redirect=False)
+                        action_instance.execute()
                     except NodeActionError:
                         return "not_actionable"
                     else:

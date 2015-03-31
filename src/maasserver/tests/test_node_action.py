@@ -15,9 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import random
-from urlparse import urlparse
 
-from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import (
     locks,
@@ -31,10 +29,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     POWER_STATE,
 )
-from maasserver.exceptions import (
-    NodeActionError,
-    Redirect,
-)
+from maasserver.exceptions import NodeActionError
 from maasserver.models import StaticIPAddress
 from maasserver.node_action import (
     Abort,
@@ -206,16 +201,11 @@ class TestNodeAction(MAASServerTestCase):
 
 class TestDeleteAction(MAASServerTestCase):
 
-    def test_Delete_redirects_to_node_delete_view(self):
+    def test__deletes_node(self):
         node = factory.make_Node()
         action = Delete(node, factory.make_admin())
-        try:
-            action.execute()
-        except Redirect as e:
-            pass
-        self.assertEqual(
-            reverse('node-delete', args=[node.system_id]),
-            urlparse(unicode(e)).path)
+        action.execute()
+        self.assertIsNone(reload_object(node))
 
 
 class TestCommissionAction(MAASServerTestCase):

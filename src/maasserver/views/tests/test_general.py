@@ -34,7 +34,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
 )
-from maasserver.views.nodes import NodeEdit
+from maasserver.views.clusters import ClusterEdit
 from testtools.matchers import ContainsAll
 
 
@@ -70,46 +70,6 @@ class Test404500(MAASServerTestCase):
             ['Internal server error.'],
             [elem.text.strip() for elem in
                 doc.cssselect('h2')])
-
-
-class TestSnippets(MAASServerTestCase):
-
-    def _assertTemplateExistsAndContains(self, content, template_selector,
-                                         contains_selector, reverse=False):
-        doc = fromstring(content)
-        snippets = doc.cssselect(template_selector)
-        # The snippet exists.
-        self.assertEqual(
-            1, len(snippets),
-            "The snippet '%s' does not exist." % template_selector)
-        # It contains the required element.
-        selects = fromstring(snippets[0].text).cssselect(contains_selector)
-        if reverse:
-            self.assertEqual(
-                0, len(selects),
-                "The element '%s' does exist." % contains_selector)
-        else:
-            self.assertEqual(
-                1, len(selects),
-                "The element '%s' does not exist." % contains_selector,)
-
-    def assertTemplateExistsAndContains(self, content, template_selector,
-                                        contains_selector, reverse=False):
-        """Assert that the provided html 'content' contains a snippet as
-        selected by 'template_selector' which in turn contains an element
-        selected by 'contains_selector'.
-        """
-        self._assertTemplateExistsAndContains(
-            content, template_selector, contains_selector)
-
-    def assertTemplateExistsAndDoesNotContain(self, content, template_selector,
-                                              contains_selector):
-        """Assert that the provided html 'content' contains a snippet as
-        selected by 'template_selector' which does not contains an element
-        selected by 'contains_selector'.
-        """
-        self._assertTemplateExistsAndContains(
-            content, template_selector, contains_selector, reverse=True)
 
 
 class FakeDeletableModel:
@@ -333,32 +293,32 @@ class MAASExceptionHandledInView(MAASServerTestCase):
     def test_raised_MAASException_redirects(self):
         # When a ExternalComponentException is raised in a POST request, the
         # response is a redirect to the same page.
-        self.client_log_in()
+        self.client_log_in(as_admin=True)
 
-        # Patch NodeEdit to error on post.
+        # Patch ClusterEdit to error on post.
         def post(self, request, *args, **kwargs):
             raise ExternalComponentException()
-        self.patch(NodeEdit, 'post', post)
-        node = factory.make_Node(owner=self.logged_in_user)
-        node_edit_link = reverse('node-edit', args=[node.system_id])
-        response = self.client.post(node_edit_link, {})
-        self.assertEqual(node_edit_link, extract_redirect(response))
+        self.patch(ClusterEdit, 'post', post)
+        nodegroup = factory.make_NodeGroup()
+        nodegroup_edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
+        response = self.client.post(nodegroup_edit_link, {})
+        self.assertEqual(nodegroup_edit_link, extract_redirect(response))
 
     def test_raised_ExternalComponentException_publishes_message(self):
         # When a ExternalComponentException is raised in a POST request, a
         # message is published with the error message.
-        self.client_log_in()
+        self.client_log_in(as_admin=True)
         error_message = factory.make_string()
 
-        # Patch NodeEdit to error on post.
+        # Patch ClusterEdit to error on post.
         def post(self, request, *args, **kwargs):
             raise ExternalComponentException(error_message)
-        self.patch(NodeEdit, 'post', post)
-        node = factory.make_Node(owner=self.logged_in_user)
-        node_edit_link = reverse('node-edit', args=[node.system_id])
-        self.client.post(node_edit_link, {})
+        self.patch(ClusterEdit, 'post', post)
+        nodegroup = factory.make_NodeGroup()
+        nodegroup_edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
+        self.client.post(nodegroup_edit_link, {})
         # Manually perform the redirect: i.e. get the same page.
-        response = self.client.get(node_edit_link, {})
+        response = self.client.get(nodegroup_edit_link, {})
         self.assertEqual(
             [error_message],
             [message.message for message in response.context['messages']])

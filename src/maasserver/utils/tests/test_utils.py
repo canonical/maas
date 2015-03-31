@@ -69,18 +69,18 @@ class TestAbsoluteReverse(MAASServerTestCase):
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_kwargs(self):
-        node = factory.make_Node()
+        nodegroup = factory.make_NodeGroup()
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
         absolute_url = absolute_reverse(
-            'node-view', kwargs={'system_id': node.system_id})
-        expected_url = reverse('node-view', args=[node.system_id])
+            'cluster-edit', kwargs={'uuid': nodegroup.uuid})
+        expected_url = reverse('cluster-edit', args=[nodegroup.uuid])
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_args(self):
-        node = factory.make_Node()
+        nodegroup = factory.make_NodeGroup()
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
-        absolute_url = absolute_reverse('node-view', args=[node.system_id])
-        expected_url = reverse('node-view', args=[node.system_id])
+        absolute_url = absolute_reverse('cluster-edit', args=[nodegroup.uuid])
+        expected_url = reverse('cluster-edit', args=[nodegroup.uuid])
         self.assertEqual(expected_url, absolute_url)
 
 
