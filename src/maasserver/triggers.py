@@ -115,6 +115,20 @@ EVENT_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a NodeGroupInterface is added, updated, or
+# deleted from a `NodeGroup`. Sends a notify message for nodegroup_update.
+NODEGROUP_INTERFACE_NODEGROUP_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      nodegroup RECORD;
+    BEGIN
+      PERFORM pg_notify('nodegroup_update',CAST(%s AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -224,6 +238,32 @@ def register_all_triggers():
         "maasserver_nodegroup", "nodegroup_update_notify", "update")
     register_trigger(
         "maasserver_nodegroup", "nodegroup_delete_notify", "delete")
+
+    # Nodegroup interface table
+    register_procedure(
+        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
+            'nodegroupinterface_create_notify',
+            'NEW.nodegroup_id',
+            ))
+    register_procedure(
+        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
+            'nodegroupinterface_update_notify',
+            'NEW.nodegroup_id',
+            ))
+    register_procedure(
+        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
+            'nodegroupinterface_delete_notify',
+            'OLD.nodegroup_id',
+            ))
+    register_trigger(
+        "maasserver_nodegroupinterface",
+        "nodegroupinterface_create_notify", "insert")
+    register_trigger(
+        "maasserver_nodegroupinterface",
+        "nodegroupinterface_update_notify", "update")
+    register_trigger(
+        "maasserver_nodegroupinterface",
+        "nodegroupinterface_delete_notify", "delete")
 
     # Zone table
     register_procedure(

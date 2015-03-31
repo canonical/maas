@@ -20,6 +20,7 @@ from django.db import connection
 from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -246,6 +247,24 @@ class TransactionalHelpersMixin:
         nodegroup.delete()
 
     @transactional
+    def create_nodegroupinterface(self, nodegroup, params=None):
+        if params is None:
+            params = {}
+        return factory.make_NodeGroupInterface(nodegroup, **params)
+
+    @transactional
+    def update_nodegroupinterface(self, id, params):
+        interface = NodeGroupInterface.objects.get(id=id)
+        for key, value in params.items():
+            setattr(interface, key, value)
+        return interface.save()
+
+    @transactional
+    def delete_nodegroupinterface(self, id):
+        interface = NodeGroupInterface.objects.get(id=id)
+        interface.delete()
+
+    @transactional
     def create_zone(self, params=None):
         if params is None:
             params = {}
@@ -442,6 +461,71 @@ class TestClusterListener(
             yield deferToThread(self.delete_nodegroup, nodegroup.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestClusterInterfaceListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster interface
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_nodegroup_update_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        nodegroup = yield deferToThread(self.create_nodegroup)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_nodegroupinterface, nodegroup)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_nodegroup_update_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        nodegroup = yield deferToThread(self.create_nodegroup)
+        interface = yield deferToThread(
+            self.create_nodegroupinterface, nodegroup)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_nodegroupinterface,
+                interface.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_nodegroup_update_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        nodegroup = yield deferToThread(self.create_nodegroup)
+        interface = yield deferToThread(
+            self.create_nodegroupinterface, nodegroup)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_nodegroupinterface, interface.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
             yield listener.stop()
 
