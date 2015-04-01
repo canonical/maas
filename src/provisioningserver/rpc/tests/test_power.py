@@ -948,6 +948,8 @@ class TestMaybeChangePowerState(MAASTestCase):
         # we can grab the delayed call from the registry in time to cancel it.
         self.patch_autospec(power, 'change_power_state')
         power.change_power_state.return_value = Deferred()
+        mock_power_change_failure = self.patch_autospec(
+            power, 'power_change_failure')
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
@@ -971,6 +973,11 @@ class TestMaybeChangePowerState(MAASTestCase):
             %s: Power could not be turned %s; timed out.
             """ % (hostname, power_change),
             logger.dump())
+        self.assertThat(
+            mock_power_change_failure,
+            MockCalledOnceWith(
+                system_id, hostname, power_change, "Timed out")
+        )
 
     @inlineCallbacks
     def test__calls_change_power_state_with_timeout(self):

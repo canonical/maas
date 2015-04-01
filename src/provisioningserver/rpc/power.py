@@ -215,6 +215,8 @@ def maybe_change_power_state(system_id, hostname, power_type,
             log.msg(
                 "%s: Power could not be turned %s; timed out."
                 % (hostname, power_change))
+            return power_change_failure(
+                system_id, hostname, power_change, "Timed out")
         d.addErrback(eb_cancelled)
 
         # Catch-all log.
