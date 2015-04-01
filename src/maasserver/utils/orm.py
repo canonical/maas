@@ -217,7 +217,6 @@ class SerializationFailure(psycopg2.OperationalError):
     set to `SERIALIZATION_FAILURE` without subclassing. I suspect only the C
     interface can do that.
     """
-
     pgcode = SERIALIZATION_FAILURE
 
 

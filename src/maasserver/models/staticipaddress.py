@@ -54,6 +54,7 @@ from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_hostname,
 )
+from maasserver.utils.orm import make_serialization_failure
 from netaddr import (
     IPAddress,
     IPRange,
@@ -208,11 +209,10 @@ class StaticIPAddressManager(Manager):
                             requested_address, alloc_type, user,
                             hostname=hostname)
                     except StaticIPAddressUnavailable:
-                        # That address has been taken since we obtained the
-                        # list of existing addresses from the database. This
-                        # is a race!  It also ought to be impossible as
-                        # this critical section is in a lock...
-                        continue
+                        # This is phantom read: another transaction has
+                        # taken this IP.  Raise a serialization failure to
+                        # let the retry mechanism do its thing.
+                        raise make_serialization_failure()
             else:
                 raise StaticIPAddressExhaustion(
                     "No more IPs available in range %s-%s" % (

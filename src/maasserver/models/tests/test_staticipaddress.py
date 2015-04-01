@@ -32,6 +32,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from maasserver.utils.orm import is_serialization_failure
 from mock import sentinel
 from netaddr import (
     IPAddress,
@@ -115,6 +116,17 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertRaises(
             StaticIPAddressUnavailable, StaticIPAddress.objects.allocate_new,
             low, high, requested_address=requested_address)
+
+    def test_allocate_new_raises_serialization_error_if_ip_taken(self):
+        low, high = factory.make_ip_range()
+        # Simulate a "IP already taken" error.
+        mock_attempt_allocation = self.patch(
+            StaticIPAddress.objects, '_attempt_allocation')
+        mock_attempt_allocation.side_effect = StaticIPAddressUnavailable()
+
+        error = self.assertRaises(
+            Exception, StaticIPAddress.objects.allocate_new, low, high)
+        self.assertTrue(is_serialization_failure(error))
 
     def test_allocate_new_does_not_use_lock_for_requested_ip(self):
         # When requesting a specific IP address, there's no need to
