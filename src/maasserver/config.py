@@ -49,7 +49,7 @@ class RegionConfiguration(Configuration):
 
     class __metaclass__(ConfigurationMeta):
         envvar = "MAAS_REGION_CONFIG"
-        default = "/etc/maas/region.conf"
+        default = "/etc/maas/regiond.conf"
         backend = ConfigurationFile
 
     maas_url = ConfigurationOption(

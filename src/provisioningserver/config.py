@@ -722,7 +722,7 @@ class ClusterConfiguration(Configuration):
 
     class __metaclass__(ConfigurationMeta):
         envvar = "MAAS_CLUSTER_CONFIG"
-        default = "/etc/maas/cluster.conf"
+        default = "/etc/maas/clusterd.conf"
         backend = ConfigurationFile
 
     maas_url = ConfigurationOption(
