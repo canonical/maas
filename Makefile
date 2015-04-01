@@ -301,6 +301,9 @@ distclean: clean stop
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r run/* run-e2e/* services/*/supervise
 
+distclean+db: clean stop distclean
+	$(RM) -r db
+
 harness: bin/maas-region-admin bin/database
 	$(dbrun) bin/maas-region-admin shell --settings=maas.demo
 
