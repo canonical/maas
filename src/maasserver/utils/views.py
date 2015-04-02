@@ -31,6 +31,8 @@ from maasserver.utils.orm import (
     is_serialization_failure,
     post_commit_hooks,
 )
+from piston.authentication import initialize_server_request
+from piston.models import Nonce
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
 from twisted.python import log
@@ -54,6 +56,19 @@ def log_final_failed_attempt(request, attempt, elapsed):
     logger.error(
         "Attempt #%d for %s failed; giving up (%.1fs elapsed in total)",
         attempt, request.path, elapsed)
+
+
+def delete_oauth_nonce(request):
+    """Delete the OAuth nonce for the given request from the database.
+
+    This is to allow the exact same request to be retried.
+    """
+    oauth_server, oauth_request = initialize_server_request(request)
+    consumer_key = oauth_request.get_parameter('oauth_consumer_key')
+    token_key = oauth_request.get_parameter('oauth_token')
+    nonce = oauth_request.get_parameter('oauth_nonce')
+    Nonce.objects.filter(
+        consumer_key=consumer_key, token_key=token_key, key=nonce).delete()
 
 
 def reset_request(request):
@@ -172,6 +187,7 @@ class WebApplicationHandler(WSGIHandler):
                     return response
                 # We'll retry after a brief interlude.
                 log_failed_attempt(request, attempt, elapsed, remaining, wait)
+                delete_oauth_nonce(request)
                 request = reset_request(request)
                 sleep(wait)
             else:

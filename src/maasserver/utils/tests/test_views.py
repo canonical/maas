@@ -34,10 +34,11 @@ from django.db import connection
 from django.http import HttpResponse
 from django.http.response import HttpResponseServerError
 from fixtures import FakeLogger
+#from maastesting.factory import factory
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import views
 from maasserver.utils.orm import validate_in_transaction
-from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -49,6 +50,8 @@ from mock import (
     call,
     sentinel,
 )
+from piston.authentication import initialize_server_request
+from piston.models import Nonce
 from testtools.matchers import (
     Contains,
     Equals,
@@ -57,17 +60,27 @@ from testtools.matchers import (
     IsInstance,
     Not,
 )
+from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
 from twisted.python import log
 from twisted.web import wsgi
 
 
-def make_request():
+def make_request(env=None, oauth_env=None):
     # Return a minimal WSGIRequest.
-    return WSGIRequest({
+    if oauth_env is None:
+        oauth_env = {}
+    base_env = {
         "REQUEST_METHOD": "GET",
         "wsgi.input": wsgi._InputStream(io.BytesIO()),
-    })
+        "SERVER_NAME": "server",
+        "SERVER_PORT": 80,
+        "HTTP_AUTHORIZATION": factory.make_oauth_header(**oauth_env),
+    }
+    if env is not None:
+        base_env.update(env)
+    request = WSGIRequest(base_env)
+    return request
 
 
 class TestLogFunctions(MAASTestCase):
@@ -119,6 +132,42 @@ class TestResetRequest(MAASTestCase):
         request.COOKIES["messages"] = sentinel.messages
         request = views.reset_request(request)
         self.assertEqual({}, request.COOKIES)
+
+
+class TestDeleteOAuthNonce(MAASTestCase):
+    """Tests for :py:func:`maasserver.utils.views.delete_oauth_nonce`."""
+
+    def test__deletes_nonce(self):
+        oauth_consumer_key = factory.make_string(18)
+        oauth_token = factory.make_string(18)
+        oauth_nonce = randint(0, 99999)
+        Nonce.objects.create(
+            consumer_key=oauth_consumer_key, token_key=oauth_token,
+            key=oauth_nonce)
+        oauth_env = {
+            'oauth_consumer_key': oauth_consumer_key,
+            'oauth_token': oauth_token,
+            'oauth_nonce': oauth_nonce,
+        }
+        request = make_request(oauth_env=oauth_env)
+        views.delete_oauth_nonce(request)
+        with ExpectedException(Nonce.DoesNotExist):
+            Nonce.objects.get(
+                consumer_key=oauth_consumer_key, token_key=oauth_token,
+                key=oauth_nonce)
+
+    def test__skips_missing_nonce(self):
+        oauth_consumer_key = factory.make_string(18)
+        oauth_token = factory.make_string(18)
+        oauth_nonce = randint(0, 99999)
+        oauth_env = {
+            'oauth_consumer_key': oauth_consumer_key,
+            'oauth_token': oauth_token,
+            'oauth_nonce': oauth_nonce,
+        }
+        request = make_request(oauth_env=oauth_env)
+        # No exception is raised.
+        self.assertIsNone(views.delete_oauth_nonce(request))
 
 
 class TestWebApplicationHandler(SerializationFailureTestCase):
@@ -357,8 +406,44 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             'CONTENT_LENGTH': headers['Content-Length'],
             'HTTP_MIME_VERSION': headers['MIME-Version'],
         }
-        request = WSGIRequest(env)
+        request = make_request(env)
 
         response = handler.get_response(request)
         self.assertEqual(file_content, response.content)
         self.assertEqual(recorder, [file_content] * 3)
+
+    def test__get_response_deleted_nonces_across_requests(self):
+        handler = views.WebApplicationHandler(3)
+        user = factory.make_User()
+        token = user.userprofile.get_authorisation_tokens()[0]
+
+        recorder = []
+
+        def get_response_check_nonce(self, request):
+            _, oauth_req = initialize_server_request(request)
+            # get_or _create the Nonce object like the authentication
+            # mechanism does.
+            nonce_obj, created = Nonce.objects.get_or_create(
+                consumer_key=token.consumer.key, token_key=token.key,
+                key=oauth_req.get_parameter('oauth_nonce'))
+
+            # Record calls.
+            recorder.append(created)
+            response = HttpResponse(
+                content='',
+                status=httplib.OK,
+                mimetype=b"text/plain; charset=utf-8")
+            handler._WebApplicationHandler__retry.add(response)
+            return response
+
+        self.patch(
+            WSGIHandler, "get_response", get_response_check_nonce)
+
+        oauth_env = {
+            'oauth_consumer_key': token.consumer.key,
+            'oauth_token': token.key,
+        }
+        request = make_request(oauth_env=oauth_env)
+
+        handler.get_response(request)
+        self.assertEqual(recorder, [True] * 3, "Nonce hasn't been cleaned up!")
