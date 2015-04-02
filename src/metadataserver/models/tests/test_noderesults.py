@@ -38,6 +38,7 @@ import time
 
 from fixtures import FakeLogger
 from maasserver.fields import MAC
+from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
@@ -69,6 +70,7 @@ from metadataserver.models.commissioningscript import (
     set_node_routers,
     set_virtual_tag,
     update_hardware_details,
+    update_node_network_information,
     update_node_physical_block_devices,
 )
 from metadataserver.models.noderesult import NodeResult
@@ -1109,3 +1111,93 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             Contains('sata'))
+
+
+class TestUpdateNodeNetworkInformation(MAASServerTestCase):
+    """Tests the update_node_network_information function using data from the
+    ip_link_results.txt file to simulate `ip link`'s output.
+
+    The file records 6 different MAC addresses coming from different kinds of
+    interfaces:
+
+    38:b1:db:cd:f0:ab
+    52:54:00:03:53:aa
+    52:54:00:67:f5:3a
+    ec:f4:bb:f9:17:8e
+    fe:54:00:02:36:19
+    fe:54:00:b4:f1:61
+    """
+
+    def test__add_all_interfaces(self):
+        """Test a node that has no previously known interfaces on which we
+        need to add a series of interfaces.
+        """
+        node = factory.make_Node()
+        # Delete all MAC addresses eventually created by factory attached to
+        # this node.
+        MACAddress.objects.filter(node_id=node.id).delete()
+
+        output = open(
+            os.path.dirname(__file__) + '/ip_link_results.txt').read()
+        update_node_network_information(node, output, 0)
+
+        # Makes sure all the test dataset MAC addresses were added to the node.
+        node_macaddresses = [m.mac_address for m in node.macaddress_set.all()]
+        self.assertIn(MAC("38:b1:db:cd:f0:ab"), node_macaddresses)
+        self.assertIn(MAC("52:54:00:03:53:aa"), node_macaddresses)
+        self.assertIn(MAC("52:54:00:67:f5:3a"), node_macaddresses)
+        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), node_macaddresses)
+        self.assertIn(MAC("fe:54:00:02:36:19"), node_macaddresses)
+        self.assertIn(MAC("fe:54:00:b4:f1:61"), node_macaddresses)
+
+    def test__one_mac_missing(self):
+        """Test whether we correcly detach a NIC that no longer appears to be
+        connected to the node.
+        """
+        node = factory.make_Node()
+
+        # Create a MAC address that we know is not in the test dataset.
+        mac_to_be_detached = factory.make_MACAddress(node=node)
+        mac_to_be_detached.mac_address = "01:23:45:67:89:ab"
+        mac_to_be_detached.save()
+
+        output = open(
+            os.path.dirname(__file__) + '/ip_link_results.txt').read()
+        update_node_network_information(node, output, 0)
+        db_macaddresses = [m.mac_address for m in node.macaddress_set.all()]
+
+        # These should have been added to the node.
+        self.assertIn(MAC("38:b1:db:cd:f0:ab"), db_macaddresses)
+        self.assertIn(MAC("52:54:00:03:53:aa"), db_macaddresses)
+        self.assertIn(MAC("52:54:00:67:f5:3a"), db_macaddresses)
+        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), db_macaddresses)
+        self.assertIn(MAC("fe:54:00:02:36:19"), db_macaddresses)
+        self.assertIn(MAC("fe:54:00:b4:f1:61"), db_macaddresses)
+
+        # This one should have been removed because it no longer shows on the
+        # `ip link` output.
+        self.assertNotIn(MAC('01:23:45:67:89:ab'), db_macaddresses)
+
+    def test__reassign_mac(self):
+        """Test whether we can assign a MAC address previously connected to a
+        different node to the current one"""
+        node1 = factory.make_Node()
+
+        # Create a MAC address that we know IS in the test dataset.
+        mac_to_be_reassigned = factory.make_MACAddress(node=node1)
+        mac_to_be_reassigned.mac_address = MAC('38:b1:db:cd:f0:ab')
+        mac_to_be_reassigned.save()
+
+        node2 = factory.make_Node()
+        output = open(
+            os.path.dirname(__file__) + '/ip_link_results.txt').read()
+        update_node_network_information(node2, output, 0)
+
+        node2_db_macaddresses = [m.mac_address
+                                 for m in node2.macaddress_set.all()]
+        self.assertIn(MAC("38:b1:db:cd:f0:ab"), node2_db_macaddresses)
+        self.assertIn(MAC("52:54:00:03:53:aa"), node2_db_macaddresses)
+        self.assertIn(MAC("52:54:00:67:f5:3a"), node2_db_macaddresses)
+        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), node2_db_macaddresses)
+        self.assertIn(MAC("fe:54:00:02:36:19"), node2_db_macaddresses)
+        self.assertIn(MAC("fe:54:00:b4:f1:61"), node2_db_macaddresses)

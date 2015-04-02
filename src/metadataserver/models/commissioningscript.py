@@ -43,6 +43,7 @@ from django.db.models import (
 )
 from lxml import etree
 from maasserver.fields import MAC
+from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
@@ -118,6 +119,11 @@ LSHW_SCRIPT = dedent("""\
     lshw -xml
     """)
 
+# Built-in script to run `ip link`
+IPLINK_SCRIPT = dedent("""\
+    #!/bin/sh
+    ip link
+    """)
 
 # Count the processors which do not declare their number of 'threads'
 # as 1 processor.
@@ -138,6 +144,44 @@ _xpath_memory_bytes = """\
             /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
     div 1024 div 1024
 """
+
+
+def update_node_network_information(node, output, exit_status):
+    """Updates the network interfaces from the results of `IPLINK_SCRIPT`.
+
+    Creates and deletes MACAddresses according to what we currently know about
+    this node's hardware.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+
+    """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+
+    # Get the MAC addresses of all connected interfaces.
+    hw_macaddresses = {
+        MAC(line.split()[1]) for line in output.splitlines()
+        if line.strip().startswith('link/ether')
+    }
+
+    # MAC addresses found in the db but not on the hardware node will be
+    # deleted.
+    for mac_address in node.macaddress_set.all():
+        if mac_address not in hw_macaddresses:
+            mac_address.delete()
+
+    # MAC addresses found in the hardware node but not on the db will be
+    # created or reassigned.
+    for address in hw_macaddresses:
+        if address not in node.macaddress_set.all():
+            try:
+                mac_address = MACAddress.objects.get(mac_address=address)
+                mac_address.node = node
+                mac_address.save()
+            except MACAddress.DoesNotExist:
+                MACAddress(mac_address=address, node=node).save()
 
 
 def update_hardware_details(node, output, exit_status):
@@ -546,6 +590,10 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     '00-maas-06-block-devices.out': {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': update_node_physical_block_devices,
+    },
+    '00-maas-07-network-interfaces.out': {
+        'content': IPLINK_SCRIPT.encode('ascii'),
+        'hook': update_node_network_information,
     },
     '99-maas-01-wait-for-lldpd.out': {
         'content': make_function_call_script(
