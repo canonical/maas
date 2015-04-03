@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -26,7 +26,7 @@ __all__ = [
     "write_custom_config_section",
     "in_develop_mode",
     "sudo",
-    ]
+]
 
 from collections import Iterable
 from itertools import (
@@ -41,7 +41,6 @@ from sys import _getframe as getframe
 from warnings import warn
 
 import bson
-from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
@@ -98,6 +97,7 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     """
     # Avoid circular dependencies.
     from provisioningserver.rpc.region import CreateNode
+    from provisioningserver.cluster_config import get_cluster_uuid
 
     for elapsed, remaining, wait in retries(15, 5, reactor):
         try:
@@ -231,7 +231,7 @@ def find_settings(whence):
         name: value
         for name, value in vars(whence).items()
         if not name.startswith("_")
-        }
+    }
 
 
 def import_settings(whence):
@@ -292,7 +292,7 @@ def parse_key_value_file(file_name, separator=":"):
 maas_custom_config_markers = (
     "## Begin MAAS settings.  Do not edit; MAAS will overwrite this section.",
     "## End MAAS settings.",
-    )
+)
 
 
 def find_list_item(item, in_list, starting_at=0):
@@ -347,7 +347,7 @@ def write_custom_config_section(original_text, custom_section):
             header,
             custom_section,
             footer,
-            ]
+        ]
     else:
         # There is a MAAS custom section in the file.  Replace it.
         lines = (

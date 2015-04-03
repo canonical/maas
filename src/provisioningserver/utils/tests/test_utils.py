@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -178,14 +178,14 @@ class WriteCustomConfigSectionTest(MAASTestCase):
             "Old custom section.",
             footer,
             "Text after custom section.",
-            ]
+        ]
         expected = [
             "Text before custom section.",
             header,
             "New custom section.",
             footer,
             "Text after custom section.",
-            ]
+        ]
         self.assertEqual(
             expected,
             write_custom_config_section(
@@ -201,14 +201,14 @@ class WriteCustomConfigSectionTest(MAASTestCase):
         original = [
             header,
             "Old custom section (probably).",
-            ]
+        ]
         expected = [
             header,
             "Old custom section (probably).",
             header,
             "New custom section.",
             footer,
-            ]
+        ]
         self.assertEqual(
             expected,
             write_custom_config_section(
@@ -226,12 +226,12 @@ class WriteCustomConfigSectionTest(MAASTestCase):
             header,
             "More custom section.",
             footer,
-            ]
+        ]
         expected = [
             header,
             "New custom section.",
             footer,
-            ]
+        ]
         self.assertEqual(
             expected,
             write_custom_config_section(
@@ -245,14 +245,14 @@ class WriteCustomConfigSectionTest(MAASTestCase):
         original = [
             footer,
             "Possible old custom section.",
-            ]
+        ]
         expected = [
             footer,
             "Possible old custom section.",
             header,
             "New custom section.",
             footer,
-            ]
+        ]
         self.assertEqual(
             expected,
             write_custom_config_section(
@@ -439,7 +439,7 @@ class TestCreateNode(PservTestCase):
             'system_id': uuid
         }
         get_cluster_uuid = self.patch(
-            provisioningserver.utils, 'get_cluster_uuid')
+            provisioningserver.cluster_config, 'get_cluster_uuid')
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
         yield create_node(
             macs, arch, power_type, power_parameters, hostname=hostname)
@@ -484,7 +484,7 @@ class TestCreateNode(PservTestCase):
         protocol.CreateNode.return_value = defer.succeed(
             {"system_id": system_id})
         get_cluster_uuid = self.patch(
-            provisioningserver.utils, 'get_cluster_uuid')
+            provisioningserver.cluster_config, 'get_cluster_uuid')
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
 
         uuid = 'node-' + factory.make_UUID()
@@ -536,7 +536,7 @@ class TestCreateNode(PservTestCase):
         protocol.CreateNode.side_effect = [
             defer.succeed({"system_id": system_id}),
             defer.fail(NodeAlreadyExists("Node already exists.")),
-            ]
+        ]
 
         yield create_node(
             macs, arch, power_type, power_parameters)

@@ -17,6 +17,7 @@ __metaclass__ = type
 from provisioningserver import security
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
+import provisioningserver.cluster_config_command
 import provisioningserver.configure_maas_url
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
@@ -36,6 +37,7 @@ script_commands = {
     'install-shared-secret': security.InstallSharedSecretScript,
     'install-uefi-config': provisioningserver.boot.install_grub,
     'upgrade-cluster': provisioningserver.upgrade_cluster,
+    'config': provisioningserver.cluster_config_command,
 }
 
 

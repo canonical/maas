@@ -73,6 +73,7 @@ import re
 from shutil import copyfile
 import sqlite3
 from threading import RLock
+import uuid
 
 from formencode import (
     ForEach,
@@ -103,6 +104,26 @@ import yaml
 # stored.  This used to be configurable in bootresources.yaml, and may become
 # configurable again in the future.
 BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
+
+# Default result for cluster UUID if not set
+UUID_NOT_SET = '** UUID NOT SET **'
+
+
+class UUID(UnicodeString):
+    """A validator for UUIDs
+
+    The string must be a valid UUID.
+    """
+
+    messages = dict(notUUID="%(value)r Failed to parse UUID")
+
+    def validate_python(self, value, state=None):
+        try:
+            return uuid.UUID(unicode(value))
+        except:
+            raise Invalid(
+                self.message("notUUID", state, value=value),
+                value, state)
 
 
 class Directory(UnicodeString):
@@ -413,7 +434,7 @@ class BootSources(ConfigBase, ForEach):
 ###############################################################################
 
 
-def touch(path, mode=0600):
+def touch(path, mode=0o600):
     """Ensure that `path` exists."""
     os.close(os.open(path, os.O_CREAT | os.O_APPEND, mode))
 
@@ -726,6 +747,7 @@ class ClusterConfiguration(Configuration):
         default = "/etc/maas/clusterd.conf"
         backend = ConfigurationFile
 
+    # MAAS URL options
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.",
         ExtendedURL(require_tld=False,
@@ -736,4 +758,9 @@ class ClusterConfiguration(Configuration):
         Number(min=0, max=(2 ** 16) - 1, if_missing=69))
     tftp_root = ConfigurationOption(
         "tftp_root", "The root directory for TFTP resources.",
-        Directory(if_missing="/var/lib/maas/boot-resources/current"))
+        Directory(if_missing="/var/lib/maas/boot-resources/current/"))
+
+    # Cluster UUID Option
+    cluster_uuid = ConfigurationOption(
+        "cluster_uuid", "The UUID for this cluster controller",
+        UUID(if_missing=unicode(UUID_NOT_SET)))

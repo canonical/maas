@@ -21,11 +21,11 @@ from functools import partial
 from getpass import getuser
 from io import BytesIO
 from operator import methodcaller
-import os
 import os.path
 import re
 import sqlite3
 from textwrap import dedent
+from uuid import uuid4
 
 from fixtures import EnvironmentVariableFixture
 import formencode
@@ -51,6 +51,7 @@ from provisioningserver.config import (
     ConfigurationMeta,
     ConfigurationOption,
     Directory,
+    UUID,
 )
 from provisioningserver.path import get_path
 from provisioningserver.testing.config import ConfigFixtureBase
@@ -87,6 +88,27 @@ class TestDirectory(MAASTestCase):
             validator.from_python(directory)
         with expected_exception:
             validator.to_python(directory)
+
+
+class TestUUID(MAASTestCase):
+    """Tests for `Directory`."""
+
+    def test__validation_succeeds_when_uuid_is_good(self):
+        uuid = unicode(uuid4())
+        validator = UUID(accept_python=False)
+        self.assertEqual(uuid, validator.from_python(uuid))
+        self.assertEqual(uuid, validator.to_python(uuid))
+
+    def test__validation_fails_when_uuid_is_bad(self):
+        uuid = unicode(uuid4()) + "can't-be-a-uuid"
+        validator = UUID(accept_python=False)
+        expected_exception = ExpectedException(
+            formencode.validators.Invalid, "^%s$" % re.escape(
+                "%r Failed to parse UUID" % uuid))
+        with expected_exception:
+            validator.from_python(uuid)
+        with expected_exception:
+            validator.to_python(uuid)
 
 
 class ExampleConfig(ConfigBase, formencode.Schema):
@@ -771,7 +793,7 @@ class TestConfigurationDatabase(MAASTestCase):
         # configuration databases.
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
-        os.chmod(config_file, 0644)  # u=rw,go=r
+        os.chmod(config_file, 0o644)  # u=rw,go=r
         with ConfigurationDatabase.open(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
@@ -889,7 +911,7 @@ class TestConfigurationFile(MAASTestCase):
         # configuration databases.
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
-        os.chmod(config_file, 0644)  # u=rw,go=r
+        os.chmod(config_file, 0o644)  # u=rw,go=r
         with ConfigurationFile.open(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
@@ -993,7 +1015,7 @@ class TestClusterConfiguration(MAASTestCase):
     def test_default_tftp_root(self):
         config = ClusterConfiguration({})
         self.assertEqual(
-            "/var/lib/maas/boot-resources/current", config.tftp_root)
+            "/var/lib/maas/boot-resources/current/", config.tftp_root)
 
     def test_set_and_get_tftp_root(self):
         config = ClusterConfiguration({})
