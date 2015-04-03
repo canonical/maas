@@ -805,23 +805,67 @@ describe("NodesListController", function() {
                             object, "set-zone", { zone_id: 1 });
                 });
             });
+        });
+    });
 
-            describe("addHardwareOptionChanged", function() {
+    describe("addHardwareOptionChanged", function() {
 
-                it("calls show in addHardwareScope", function() {
-                    var controller = makeController();
-                    $scope.addHardwareScope = {
-                        show: jasmine.createSpy("show")
-                    };
-                    $scope.addHardwareOption = {
-                        name: "hardware"
-                    };
-                    $scope.addHardwareOptionChanged();
-                    expect(
-                        $scope.addHardwareScope.show).toHaveBeenCalledWith(
-                            "hardware");
-                });
-            });
+        it("calls show in addHardwareScope", function() {
+            var controller = makeController();
+            $scope.addHardwareScope = {
+                show: jasmine.createSpy("show")
+            };
+            $scope.addHardwareOption = {
+                name: "hardware"
+            };
+            $scope.addHardwareOptionChanged();
+            expect($scope.addHardwareScope.show).toHaveBeenCalledWith(
+                "hardware");
+        });
+    });
+
+    describe("addDevice", function() {
+
+        it("calls show in addDeviceScope", function() {
+            var controller = makeController();
+            $scope.addDeviceScope = {
+                show: jasmine.createSpy("show")
+            };
+            $scope.addDevice();
+            expect($scope.addDeviceScope.show).toHaveBeenCalled();
+        });
+    });
+
+    describe("cancelAddDevice", function() {
+
+        it("calls cancel in addDeviceScope", function() {
+            var controller = makeController();
+            $scope.addDeviceScope = {
+                cancel: jasmine.createSpy("cancel")
+            };
+            $scope.cancelAddDevice();
+            expect($scope.addDeviceScope.cancel).toHaveBeenCalled();
+        });
+    });
+
+    describe("getDeviceIPAssignment", function() {
+
+        it("returns 'External IP' for external assignment", function() {
+            var controller = makeController();
+            expect($scope.getDeviceIPAssignment("external")).toBe(
+                "External IP");
+        });
+
+        it("returns 'Dynamic IP' for dynamic assignment", function() {
+            var controller = makeController();
+            expect($scope.getDeviceIPAssignment("dynamic")).toBe(
+                "Dynamic IP");
+        });
+
+        it("returns 'Static IP' for static assignment", function() {
+            var controller = makeController();
+            expect($scope.getDeviceIPAssignment("static")).toBe(
+                "Static IP");
         });
     });
 });

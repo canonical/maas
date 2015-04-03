@@ -33,6 +33,14 @@ angular.module('MAAS').factory(
 
         DevicesManager.prototype = new Manager();
 
+        // Create a device.
+        DevicesManager.prototype.create = function(node) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the device to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("device.create", node);
+        };
+
         // Perform the action on the device.
         DevicesManager.prototype.performAction = function(
             device, action, extra) {

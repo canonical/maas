@@ -10,6 +10,13 @@ angular.module('MAAS').controller('NodesListController', [
     function($scope, $rootScope, $location, NodesManager, DevicesManager,
         GeneralManager, ManagerHelperService, SearchService, ZonesManager) {
 
+        // Mapping of device.ip_assignment to viewable text.
+        var DEVICE_IP_ASSIGNMENT = {
+            external: "External IP",
+            dynamic: "Dynamic IP",
+            "static": "Static IP"
+        };
+
         // Set title and page.
         $rootScope.title = "Nodes";
         $rootScope.page = "nodes";
@@ -81,9 +88,14 @@ angular.module('MAAS').controller('NodesListController', [
         ];
 
         // This will hold the AddHardwareController once it is initialized.
-        // The controller will set this variable as it's always a child or
+        // The controller will set this variable as it's always a child of
         // this scope.
         $scope.addHardwareScope = null;
+
+        // This will hold the AddDeviceController once it is initialized.
+        // The controller will set this variable as it's always a child of
+        // this scope.
+        $scope.addDeviceScope = null;
 
         // When the addHardwareScope is hidden it will emit this event. We
         // clear the call to action button, so it can be used again.
@@ -344,6 +356,21 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.addHardwareScope.show(
                     $scope.addHardwareOption.name);
             }
+        };
+
+        // Called when the add device button is pressed.
+        $scope.addDevice = function() {
+            $scope.addDeviceScope.show();
+        };
+
+        // Called when the cancel add device button is pressed.
+        $scope.cancelAddDevice = function() {
+            $scope.addDeviceScope.cancel();
+        };
+
+        // Get the display text for device ip assignment type.
+        $scope.getDeviceIPAssignment = function(ipAssignment) {
+            return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
         // Load NodesManager, DevicesManager, GeneralManager and ZonesManager.

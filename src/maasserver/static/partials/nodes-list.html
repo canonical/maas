@@ -190,6 +190,87 @@
                 </div>
             </div>
         </div>
+        <!-- XXX blake_r 2015-03-31 - Need to add e2e test. -->
+        <div data-ng-show="currentpage === 'devices'">
+            <div class="page-header__actions four-col last-col">
+                <div class="page-header__cta two-col no-margin-bottom last-col" data-ng-hide="tabs.devices.selectedItems.length">
+                    <div class="two-col no-margin-bottom last-col">
+                        <button class="two-col cta-ubuntu"
+                            data-ng-click="addDevice()"
+                            data-ng-hide="addDeviceScope.viewable">Add Device</button>
+                        <button class="two-col cta-ubuntu secondary ng-hide"
+                            data-ng-click="cancelAddDevice()"
+                            data-ng-show="addDeviceScope.viewable">Cancel add device</button>
+                    </div>
+                </div>
+                <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.devices.selectedItems.length">
+                    <span class="page-header__cta-feedback two-col no-margin-bottom" data-ng-click="showSelected('devices')">
+                        {$ tabs.devices.selectedItems.length $} Selected
+                    </span>
+                </div>
+            </div>
+            <div class="page-header__dropdown ng-hide" data-ng-show="addDeviceScope.viewable" data-ng-controller="AddDeviceController">
+                <h3>Add device</h3>
+                <form action="post" class="twelve-col border-bottom">
+                    <fieldset class="six-col no-padding">
+                        <div class="inline">
+                            <label for="device-name" class="two-col">Name</label>
+                            <input type="text" id="device-name" class="three-col" placeholder="Name your device"
+                                data-ng-model="device.name"
+                                data-ng-class="{ invalid: nameHasError() }">
+                        </div>
+                        <div class="inline">
+                            <label for="mac-address" class="two-col">MAC address</label>
+                            <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
+                                data-ng-model="device.mac"
+                                data-ng-class="{ invalid: macHasError() }">
+                        </div>
+                    </fieldset>
+                    <fieldset class="six-col last-col no-padding">
+                        <div class="inline">
+                            <label for="ip-assignment" class="two-col">IP assigment</label>
+                            <select name="ip-assignment" id="ip-assignment" class="three-col"
+                                placeholder="Select IP assignment" data-ng-model="device.ipAssignment"
+                                data-ng-options="assigment.title for assigment in ipAssignments">
+                                <option value="" disabled selected>Select IP assignment</option>
+                            </select>
+                        </div>
+                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'external'">
+                            <label for="ip-address" class="two-col">IP address</label>
+                            <input type="text" id="ip-address" class="three-col" placeholder="000.000.000.000"
+                                data-ng-model="device.ipAddress"
+                                data-ng-class="{ invalid: ipHasError() }">
+                        </div>
+                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'static'">
+                            <label for="network" class="two-col">Network</label>
+                            <select name="network" id="network" class="three-col"
+                                placeholder="Select network" data-ng-model="device.clusterInterfaceId"
+                                data-ng-options="interface.id as getInterfaceStaticRange(interface) for interface in getManagedInterfaces()">
+                                <option value="" disabled selected>Select network</option>
+                            </select>
+                        </div>
+                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'static'">
+                            <label for="ip-address" class="two-col">IP address</label>
+                            <input type="text" id="ip-address" class="three-col" placeholder="000.000.000.000 (Optional)"
+                                data-ng-model="device.ipAddress"
+                                data-ng-class="{ invalid: ipHasError() }">
+                        </div>
+                    </fieldset>
+                </form>
+                <div class="page-header__feedback">
+                    <p class="page-header__feedback-message info ng-hide" data-ng-show="error">{$ error $}</p>
+                    <div class="right align-right">
+                        <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                        <button class="cta-ubuntu secondary"
+                            data-ng-class="{ disabled: deviceHasError() }"
+                            data-ng-click="save(true)">Save and add another</button>
+                        <button class="cta-ubuntu"
+                            data-ng-class="{ disabled: deviceHasError() }"
+                            data-ng-click="save(false)">Save device</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 
@@ -377,18 +458,24 @@
                             <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
                             <label for="check-all-devices" class="checkbox-label"></label>
                         </th>
-                        <th class="table-listing__header t19">
+                        <th class="table-listing__header t24">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                             <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
                                 <acronym title="Fully Qualified Domain Name">FQDN</acronym>
                             </a>
                         </th>
-                        <th class="table-listing__header t60">
-                            <a href="" data-ng-click="tabs.devices.predicate='pxe_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
+                        <th class="table-listing__header t25">
+                            <a href="" data-ng-click="tabs.devices.predicate='primary_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
                                 <acronym title="Media Access Control addresses">MAC</acronym>
                             </a>
                         </th>
+                        <th class="table-listing__header t15">
+                            <a href="" data-ng-click="tabs.devices.predicate='ip_assignment'; tabs.devices.reverse=!tabs.devices.reverse">IP assignment</a>
+                        </th>
                         <th class="table-listing__header t20">
+                            <a href="" data-ng-click="tabs.devices.predicate='ip_address'; tabs.devices.reverse=!tabs.devices.reverse">IP</a>
+                        </th>
+                        <th class="table-listing__header t15">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                             <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
                         </th>
@@ -400,20 +487,17 @@
                         data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                         data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
                         <td class="t1">
-                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                             <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
                             <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                         </td>
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <td class="t19">
-                            <a href="{$ device.url $}">{$ device.fqdn $}</a>
+                        <td class="t24">{$ device.fqdn $}</td>
+                        <td class="t25">
+                            {$ device.primary_mac $}
+                            <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
                         </td>
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <td class="t60">
-                            {$ device.pxe_mac $}
-                            <span data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
-                        </td>
-                        <td class="t20">{$ device.owner $}</td>
+                        <td class="t15">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
+                        <td class="t20">{$ device.ip_address $}</td>
+                        <td class="t15">{$ device.owner $}</td>
                     </tr>
                 </tbody>
             </table>

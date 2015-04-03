@@ -67,7 +67,8 @@ form input[type='submit'] {
     font-size: 1em;
     border: none;
 
-    &[disabled] {
+    &[disabled],
+    &.disabled {
         cursor: default;
         opacity: .5;
     }

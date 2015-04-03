@@ -1011,23 +1011,19 @@ describe("NodeDetailsController", function() {
             var controller = makeController();
             var values = [
                 {
-                    input: "abc",
-                    output: false
-                },
-                {
                     input: "aB0-z",
                     output: false
                 },
                 {
-                    input: "abc_alpha.local",
+                    input: "abc_alpha",
                     output: true
                 },
                 {
-                    input: "ab^&c.local",
+                    input: "ab^&c",
                     output: true
                 },
                 {
-                    input: "abc.local.extra",
+                    input: "abc.local",
                     output: true
                 }
             ];
