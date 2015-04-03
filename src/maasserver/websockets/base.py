@@ -21,6 +21,7 @@ __all__ = [
 
 
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
@@ -354,7 +355,9 @@ class Handler:
         form_class = self.get_form_class("create")
         if form_class is not None:
             data = self.preprocess_form("create", params)
-            form = form_class(data=data)
+            request = HttpRequest()
+            request.user = self.user
+            form = form_class(request=request, data=data)
             if form.is_valid():
                 try:
                     obj = form.save()

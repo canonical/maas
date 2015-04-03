@@ -193,7 +193,9 @@ class TestHandler(MAASServerTestCase):
         kwargs["queryset"] = Node.objects.all()
         kwargs["object_class"] = Node
         kwargs["pk"] = "system_id"
-        return make_handler("TestNodesHandler", **kwargs)
+        handler = make_handler("TestNodesHandler", **kwargs)
+        handler.user = factory.make_User()
+        return handler
 
     def make_mock_node_with_fields(self, **kwargs):
         return object.__new__(
@@ -514,6 +516,21 @@ class TestHandler(MAASServerTestCase):
             "hostname": hostname,
             "architecture": arch,
             }, Equals(json_obj))
+
+    def test_create_with_form_passes_request_with_user_set(self):
+        hostname = factory.make_name("hostname")
+        arch = make_usable_architecture(self)
+        mock_form = MagicMock()
+        mock_form.return_value.is_valid.return_value = True
+        mock_form.return_value.save.return_value = factory.make_Node()
+        handler = self.make_nodes_handler(fields=[], form=mock_form)
+        handler.create({
+            "hostname": hostname,
+            "architecture": arch,
+            })
+        # Extract the passed request.
+        passed_request = mock_form.call_args_list[0][1]['request']
+        self.assertIs(handler.user, passed_request.user)
 
     def test_create_with_form_raises_HandlerValidationError(self):
         hostname = factory.make_name("hostname")
