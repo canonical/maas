@@ -75,8 +75,25 @@ node name basis. The templates are looked up in the following order::
     {prefix}
     'generic'
 
-``prefix`` is either empty or one of ``enlist``, ``enlist_userdata``,
-``commissioning``, ``curtin``, ``curtin_userdata`` or ``preseed_master``.
+    Note: in order to be backward-compatible with earlier versions of MAAS that
+    only supported the Ubuntu OS, if the node OS is Ubuntu paths without the
+    {osystem} are also tried:
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}
+    {prefix}_{node_arch}_{node_subarch}
+    {prefix}_{osystem}_{node_arch}
+    {prefix}_{node_arch}
+    {prefix}_{osystem}
+    {prefix}
+    'generic'
+
+``prefix`` is either empty (in which case the following underscore is also
+ommitted: e.g. {osystem}_{node_arch}_{node_subarch}_{release}) or one of
+``enlist``, ``enlist_userdata``, ``commissioning``, ``curtin``,
+``curtin_userdata`` or ``preseed_master``.
 
 As you can see this mechanism is also used to calculate the base preseeds for
 all of installation, enlistment and commissioning.  It allows end users to

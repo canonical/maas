@@ -60,6 +60,7 @@ from maasserver.utils import absolute_reverse
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from netaddr import IPAddress
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import read_text_file
@@ -408,6 +409,9 @@ def get_preseed(node):
             osystem=node.get_osystem(), release=node.get_distro_series())
 
 
+UBUNTU_NAME = UbuntuOS().name
+
+
 def get_preseed_filenames(node, prefix='', osystem='', release='',
                           default=False):
     """List possible preseed template filenames for the given node.
@@ -435,11 +439,29 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
     {prefix}_{osystem}
     {prefix}
     'generic'
+
+    Note: in order to be backward-compatible with earlier versions of MAAS that
+    only supported the Ubuntu OS, if the node OS is Ubuntu paths without the
+    {osystem} are also tried:
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}
+    {prefix}_{node_arch}_{node_subarch}
+    {prefix}_{osystem}_{node_arch}
+    {prefix}_{node_arch}
+    {prefix}_{osystem}
+    {prefix}
+    'generic'
     """
     elements = []
     # Add prefix.
     if prefix != '':
         elements.append(prefix)
+        has_prefix = True
+    else:
+        has_prefix = False
     # Add osystem
     elements.append(osystem)
     # Add architecture/sub-architecture.
@@ -453,6 +475,16 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
         elements.append(node.hostname)
     while elements:
         yield compose_filename(elements)
+        # Backward-compatibility fix for 1439366: also generate a filename
+        # with the 'osystem' omitted when deploying with Ubuntu.
+        if osystem == UBUNTU_NAME:
+            should_emit = (
+                (not has_prefix and len(elements) > 1) or
+                (has_prefix and len(elements) > 2))
+            if should_emit:
+                cutoff = 1 if has_prefix else 0
+                yield compose_filename(
+                    elements[:cutoff] + elements[cutoff + 1:])
         elements.pop()
     if default:
         yield GENERIC_FILENAME
