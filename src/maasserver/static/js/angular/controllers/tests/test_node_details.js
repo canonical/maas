@@ -1011,7 +1011,11 @@ describe("NodeDetailsController", function() {
             var controller = makeController();
             var values = [
                 {
-                    input: "aB0-z.local",
+                    input: "abc",
+                    output: false
+                },
+                {
+                    input: "aB0-z",
                     output: false
                 },
                 {
@@ -1025,10 +1029,6 @@ describe("NodeDetailsController", function() {
                 {
                     input: "abc.local.extra",
                     output: true
-                },
-                {
-                    input: "abc.loc_al",
-                    output: false
                 }
             ];
             angular.forEach(values, function(value) {

@@ -7,9 +7,10 @@
 angular.module('MAAS').controller('AddHardwareController', [
     '$scope', '$http', 'ClustersManager', 'ZonesManager',
     'NodesManager', 'GeneralManager', 'RegionConnection',
-    'ManagerHelperService', function(
+    'ManagerHelperService', 'ValidationService', function(
         $scope, $http, ClustersManager, ZonesManager, NodesManager,
-        GeneralManager, RegionConnection, ManagerHelperService) {
+        GeneralManager, RegionConnection, ManagerHelperService,
+        ValidationService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
         // in this controller.
@@ -22,7 +23,6 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
-        $scope.macPattern = /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/;
 
         // Input values.
         $scope.machines = [];
@@ -461,12 +461,21 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.currentMachine = machine;
         };
 
+        // Return true if the machines name is invalid.
+        $scope.invalidName = function(machine) {
+            // Not invalid if empty.
+            if(machine.name.length === 0) {
+                return false;
+            }
+            return !ValidationService.validateHostname(machine.name);
+        };
+
         // Validate that the mac address is valid.
         $scope.validateMac = function(mac) {
             if(mac.mac === '') {
                 mac.error = false;
             } else {
-                mac.error = !$scope.macPattern.test(mac.mac);
+                mac.error = !ValidationService.validateMAC(mac.mac);
             }
         };
 
@@ -478,7 +487,8 @@ angular.module('MAAS').controller('AddHardwareController', [
                 machine.cluster === null ||
                 machine.zone === null ||
                 machine.architecture === '' ||
-                machine.power.type === null);
+                machine.power.type === null ||
+                $scope.invalidName(machine));
             if(in_error) {
                 return in_error;
             }

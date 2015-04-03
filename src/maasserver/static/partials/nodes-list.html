@@ -92,7 +92,7 @@
                             <h4>{$ machine.name $}</h4>
                         </div>
                         <div class="cluster two-col">
-                            <p>Cluster {$ machine.cluster.cluster_name $}</p>
+                            <p>{$ machine.cluster.cluster_name $}</p>
                         </div>
                         <div class="architecture two-col">
                             <p>{$ machine.architecture $}</p>
@@ -116,7 +116,8 @@
                                     <div class="inline">
                                         <label for="machine-name" class="two-col">Machine name</label>
                                         <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
-                                            data-ng-model="machine.name">
+                                            data-ng-model="machine.name"
+                                            data-ng-class="{ invalid: invalidName(machine) }">
                                     </div>
                                     <div class="inline">
                                         <label for="architecture" class="two-col">Architecture</label>

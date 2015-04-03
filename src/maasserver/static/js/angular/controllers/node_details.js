@@ -7,10 +7,11 @@
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
     'NodesManager', 'ClustersManager', 'ZonesManager', 'GeneralManager',
-    'UsersManager', 'ManagerHelperService', 'ErrorService', function(
+    'UsersManager', 'ManagerHelperService', 'ErrorService',
+    'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
         NodesManager, ClustersManager, ZonesManager, GeneralManager,
-        UsersManager, ManagerHelperService, ErrorService) {
+        UsersManager, ManagerHelperService, ErrorService, ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -616,26 +617,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(value.length === 0) {
                 return true;
             }
-
-            // Remove unallowed characters.
-            value = value.trim();
-            value = value.replace(/[^a-zA-Z0-9-_.]/g, '');
-
-            // Split the hostname into its parts.
-            values = value.split('.');
-
-            // Hostname part cannot contain an '_'.
-            value = values[0];
-            value = value.replace(/_/g, '');
-
-            // Only allow one dot.
-            if(values.length > 1) {
-                value += "." + values[1];
-            }
-
-            // If calculated value != nameHeader.value then it
-            // is invalid.
-            return $scope.nameHeader.value !== value;
+            return !ValidationService.validateHostname(value);
         };
 
         // Called to cancel editing of the node name.

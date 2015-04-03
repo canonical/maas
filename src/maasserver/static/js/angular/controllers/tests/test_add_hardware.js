@@ -88,8 +88,6 @@ describe("AddHardwareController", function() {
         expect($scope.clusters).toBe(ClustersManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.architectures).toEqual([]);
-        expect($scope.macPattern).toEqual(
-            /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/);
         expect($scope.machines).toEqual([]);
         expect($scope.currentMachine).toBeNull();
     });
@@ -285,6 +283,29 @@ describe("AddHardwareController", function() {
         });
     });
 
+    describe("invalidName", function() {
+
+        it("return false if machine name empty", function() {
+            var controller = makeController();
+            $scope.addMachine();
+            expect($scope.invalidName($scope.currentMachine)).toBe(false);
+        });
+
+        it("return false if machine name valid", function() {
+            var controller = makeController();
+            $scope.addMachine();
+            $scope.currentMachine.name = "abc";
+            expect($scope.invalidName($scope.currentMachine)).toBe(false);
+        });
+
+        it("return true if machine name invalid", function() {
+            var controller = makeController();
+            $scope.addMachine();
+            $scope.currentMachine.name = "ab_c.local";
+            expect($scope.invalidName($scope.currentMachine)).toBe(true);
+        });
+    });
+
     describe("validateMac", function() {
 
         it("sets error to false if blank", function() {
@@ -367,6 +388,20 @@ describe("AddHardwareController", function() {
             machine.zone = {};
             machine.architecture = makeName("arch");
             machine.power.type = null;
+            machine.macs[0].mac = '00:11:22:33:44:55';
+            machine.macs[0].error = false;
+            expect($scope.machineHasError(machine)).toBe(true);
+        });
+
+        it("returns true if machine.name invalid", function() {
+            var controller = makeController();
+            $scope.addMachine();
+            var machine = $scope.currentMachine;
+            machine.cluster = {};
+            machine.zone = {};
+            machine.architecture = makeName("arch");
+            machine.name = "ab_c.local";
+            machine.power.type = {};
             machine.macs[0].mac = '00:11:22:33:44:55';
             machine.macs[0].error = false;
             expect($scope.machineHasError(machine)).toBe(true);
@@ -687,6 +722,7 @@ describe("AddHardwareController", function() {
 
             $scope.addMachine();
             $scope.addMac();
+            spyOn($scope, "invalidName").and.returnValue(false);
             var machine = $scope.currentMachine;
             machine.name = makeName("name");
             machine.cluster = {
