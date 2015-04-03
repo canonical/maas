@@ -591,10 +591,12 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': update_node_physical_block_devices,
     },
-    '00-maas-07-network-interfaces.out': {
-        'content': IPLINK_SCRIPT.encode('ascii'),
-        'hook': update_node_network_information,
-    },
+    # XXX 2015-04-03 rvb, bug=1440090: Disable this because it's breaking
+    # commissioning.  See the bug for details.
+    # '00-maas-07-network-interfaces.out': {
+    #     'content': IPLINK_SCRIPT.encode('ascii'),
+    #     'hook': update_node_network_information,
+    # },
     '99-maas-01-wait-for-lldpd.out': {
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
