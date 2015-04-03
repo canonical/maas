@@ -17,6 +17,7 @@ __all__ = []
 import re
 
 from maasserver.clusterrpc import dhcp as dhcp_module
+from maasserver.exceptions import NodeActionError
 from maasserver.fields import MAC
 from maasserver.forms import (
     DeviceForm,
@@ -26,7 +27,9 @@ from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.node_action import compile_node_actions
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -76,9 +79,10 @@ class TestDeviceHandler(MAASServerTestCase):
                 return "%s" % lease.ip
         return None
 
-    def dehydrate_device(self, node, for_list=False):
+    def dehydrate_device(self, node, user, for_list=False):
         primary_mac = node.get_primary_mac()
         data = {
+            "actions": compile_node_actions(node, user).keys(),
             "created": dehydrate_datetime(node.created),
             "extra_macs": [
                 "%s" % mac_address.mac_address
@@ -113,6 +117,7 @@ class TestDeviceHandler(MAASServerTestCase):
             }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [
+                "actions",
                 "fqdn",
                 "extra_macs",
                 "tags",
@@ -163,7 +168,7 @@ class TestDeviceHandler(MAASServerTestCase):
         handler = DeviceHandler(owner, {})
         device = self.make_device_with_ip_address(owner=owner)
         self.assertEquals(
-            self.dehydrate_device(device),
+            self.dehydrate_device(device, owner),
             handler.get({"system_id": device.system_id}))
 
     def test_list(self):
@@ -171,7 +176,7 @@ class TestDeviceHandler(MAASServerTestCase):
         handler = DeviceHandler(owner, {})
         device = self.make_device_with_ip_address(owner=owner)
         self.assertItemsEqual(
-            [self.dehydrate_device(device, for_list=True)],
+            [self.dehydrate_device(device, owner, for_list=True)],
             handler.list({}))
 
     def test_list_ignores_nodes(self):
@@ -181,7 +186,7 @@ class TestDeviceHandler(MAASServerTestCase):
         # Create a node.
         factory.make_Node(owner=owner)
         self.assertItemsEqual(
-            [self.dehydrate_device(device, for_list=True)],
+            [self.dehydrate_device(device, owner, for_list=True)],
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_devices(self):
@@ -214,7 +219,7 @@ class TestDeviceHandler(MAASServerTestCase):
         self.make_device_with_ip_address()
         handler = DeviceHandler(user, {})
         self.assertItemsEqual([
-            self.dehydrate_device(device, for_list=True),
+            self.dehydrate_device(device, user, for_list=True),
             ], handler.list({}))
 
     def test_get_object_returns_device_if_super_user(self):
@@ -454,3 +459,49 @@ class TestDeviceHandler(MAASServerTestCase):
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
             Equals(0), "Created StaticIPAddress was not deleted.")
+
+    def test_missing_action_raises_error(self):
+        user = factory.make_User()
+        device = self.make_device_with_ip_address(owner=user)
+        handler = DeviceHandler(user, {})
+        with ExpectedException(NodeActionError):
+            handler.action({"system_id": device.system_id})
+
+    def test_invalid_action_raises_error(self):
+        user = factory.make_User()
+        device = self.make_device_with_ip_address(owner=user)
+        handler = DeviceHandler(user, {})
+        self.assertRaises(
+            NodeActionError,
+            handler.action,
+            {"system_id": device.system_id, "action": "unknown"})
+
+    def test_not_available_action_raises_error(self):
+        user = factory.make_User()
+        device = self.make_device_with_ip_address(owner=user)
+        handler = DeviceHandler(user, {})
+        self.assertRaises(
+            NodeActionError,
+            handler.action,
+            {"system_id": device.system_id, "action": "unknown"})
+
+    def test_action_performs_action(self):
+        user = factory.make_User()
+        device = factory.make_Node(owner=user, installable=False)
+        handler = DeviceHandler(user, {})
+        handler.action({"system_id": device.system_id, "action": "delete"})
+        self.assertIsNone(reload_object(device))
+
+    def test_action_performs_action_passing_extra(self):
+        user = factory.make_User()
+        device = self.make_device_with_ip_address(owner=user)
+        zone = factory.make_Zone()
+        handler = DeviceHandler(user, {})
+        handler.action({
+            "system_id": device.system_id,
+            "action": "set-zone",
+            "extra": {
+                "zone_id": zone.id,
+            }})
+        device = reload_object(device)
+        self.expectThat(device.zone, Equals(zone))

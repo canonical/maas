@@ -22,6 +22,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
+from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
@@ -30,6 +31,7 @@ from maasserver.models.node import Device
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.node_action import compile_node_actions
 from maasserver.utils.orm import commit_within_atomic_block
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -82,7 +84,7 @@ class DeviceHandler(TimestampedModelHandler):
             .prefetch_related('zone')
             .prefetch_related('tags'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get', 'set_active', 'create']
+        allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
         exclude = [
             "id",
             "installable",
@@ -153,6 +155,7 @@ class DeviceHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
+        data["actions"] = compile_node_actions(obj, self.user).keys()
 
         # Use the `get_pxe_mac` because for devices this will be the first
         # mac address assigned to this node, ordered by id, and using the
@@ -350,3 +353,15 @@ class DeviceHandler(TimestampedModelHandler):
                 ', '.join(allocation.ip for allocation in sticky_ips))
 
         return self.full_dehydrate(device_obj)
+
+    def action(self, params):
+        """Perform the action on the object."""
+        obj = self.get_object(params)
+        action_name = params.get("action")
+        actions = compile_node_actions(obj, self.user)
+        action = actions.get(action_name)
+        if action is None:
+            raise NodeActionError(
+                "%s action is not available for this device." % action_name)
+        extra_params = params.get("extra", {})
+        return action.execute(**extra_params)
