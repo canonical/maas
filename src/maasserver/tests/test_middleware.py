@@ -85,29 +85,23 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         """Return a path to handle exceptions for."""
         return "/%s" % factory.make_string()
 
-    def make_middleware(self, base_path, retry_after=None):
+    def make_middleware(self, base_path):
         """Create an ExceptionMiddleware for base_path."""
         class TestingExceptionMiddleware(ExceptionMiddleware):
             path_regex = base_path
 
-        testing_middleware = TestingExceptionMiddleware()
-        if retry_after is not None:
-            testing_middleware.RETRY_AFTER_SERVICE_UNAVAILABLE = retry_after
+        return TestingExceptionMiddleware()
 
-        return testing_middleware
-
-    def process_exception(self, exception, retry_after=None):
+    def process_exception(self, exception):
         """Run a given exception through a fake ExceptionMiddleware.
 
         :param exception: The exception to simulate.
         :type exception: Exception
-        :param retry_after: Value of the RETRY_AFTER_SERVICE_UNAVAILABLE to
-            use in the fake middleware.
         :return: The response as returned by the ExceptionMiddleware.
         :rtype: HttpResponse or None.
         """
         base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path, retry_after)
+        middleware = self.make_middleware(base_path)
         request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
@@ -191,7 +185,9 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         error_text = factory.make_string()
         exception = ExternalProcessError(1, ["cmd"], error_text)
         retry_after = random.randint(0, 10)
-        response = self.process_exception(exception, retry_after)
+        self.patch(
+            middleware_module, 'RETRY_AFTER_SERVICE_UNAVAILABLE', retry_after)
+        response = self.process_exception(exception)
         self.expectThat(
             response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
         self.expectThat(response.content, Equals(unicode(exception)))
@@ -216,6 +212,20 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
         exception = MAASAPINotFound(factory.make_string())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
+
+    def test_503_response_includes_retry_after_header(self):
+        middleware = APIErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        error = ExternalProcessError(returncode=-1, cmd="foo-bar")
+        response = middleware.process_exception(request, error)
+
+        self.assertEqual(
+            (
+                httplib.SERVICE_UNAVAILABLE,
+                '%s' % middleware_module.RETRY_AFTER_SERVICE_UNAVAILABLE,
+            ),
+            (response.status_code, response['Retry-after']))
 
 
 class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
@@ -483,7 +493,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         self.assertEqual(
             (
                 httplib.SERVICE_UNAVAILABLE,
-                '%s' % middleware.RETRY_AFTER_SERVICE_UNAVAILABLE,
+                '%s' % middleware_module.RETRY_AFTER_SERVICE_UNAVAILABLE,
             ),
             (response.status_code, response['Retry-after']))
 

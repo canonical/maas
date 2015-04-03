@@ -80,6 +80,11 @@ except ImportError:
     build_request_repr = repr
 
 
+# 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
+# responses.
+RETRY_AFTER_SERVICE_UNAVAILABLE = 10
+
+
 class AccessMiddleware:
     """Protect access to views.
 
@@ -237,7 +242,7 @@ class ExceptionMiddleware:
                 status=httplib.SERVICE_UNAVAILABLE,
                 mimetype=b"text/plain; charset=%s" % encoding)
             response['Retry-After'] = (
-                self.RETRY_AFTER_SERVICE_UNAVAILABLE)
+                RETRY_AFTER_SERVICE_UNAVAILABLE)
             return response
         else:
             # Print a traceback.
@@ -356,10 +361,6 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         TimeoutError: httplib.GATEWAY_TIMEOUT,
         }
 
-    # Default 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
-    # responses.
-    RETRY_AFTER_SERVICE_UNAVAILABLE = 10
-
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
         if not path_matcher.match(request.path_info):
@@ -396,5 +397,5 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             mimetype=b"text/plain; charset=%s" % encoding)
         if status == httplib.SERVICE_UNAVAILABLE:
             response['Retry-After'] = (
-                self.RETRY_AFTER_SERVICE_UNAVAILABLE)
+                RETRY_AFTER_SERVICE_UNAVAILABLE)
         return response
