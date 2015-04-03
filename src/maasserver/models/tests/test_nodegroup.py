@@ -18,6 +18,7 @@ from random import randint
 from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
+from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 import django.dispatch
 from maasserver.bootresources import get_simplestream_endpoint
@@ -64,6 +65,7 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
+from testtools import ExpectedException
 from testtools.matchers import (
     EndsWith,
     Equals,
@@ -250,6 +252,34 @@ class TestNodeGroupManager(MAASServerTestCase):
 
 
 class TestNodeGroup(MAASServerTestCase):
+
+    def test_nodegroup_created_with_factory_validates(self):
+        try:
+            ng = factory.make_NodeGroup(name="maas")
+            ng.clean_fields()
+        except ValidationError:
+            self.fail("Factory should create a NodeGroup that validates.")
+
+    def test_create_nodegroup_with_absolute_dns_name_succeeds(self):
+        ng = factory.make_NodeGroup(name="maas.")
+        self.assertThat(ng.name, Equals("maas."))
+        ng.clean_fields()
+        self.assertThat(ng.name, Equals("maas"))
+        ng.save()
+        self.assertThat(ng.name, Equals("maas"))
+
+    def test_create_nodegroup_with_multiple_dots_dns_name_succeeds(self):
+        ng = factory.make_NodeGroup(name="maas.ubuntu.com.")
+        self.assertThat(ng.name, Equals("maas.ubuntu.com."))
+        ng.clean_fields()
+        self.assertThat(ng.name, Equals("maas.ubuntu.com"))
+        ng.save()
+        self.assertThat(ng.name, Equals("maas.ubuntu.com"))
+
+    def test_create_nodegroup_with_invalid_dns_name_fails(self):
+        with ExpectedException(ValidationError):
+            ng = factory.make_NodeGroup(name="m@@$")
+            ng.clean_fields()
 
     def test_delete_cluster_with_nodes(self):
         nodegroup = factory.make_NodeGroup()

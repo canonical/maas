@@ -691,7 +691,7 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'hostname': ["Hostname contains empty name."]},
+            {'hostname': ["DNS name contains an empty label."]},
             parsed_result)
 
     def test_PUT_refuses_to_update_invisible_node(self):

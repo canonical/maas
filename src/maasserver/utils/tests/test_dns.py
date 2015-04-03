@@ -13,6 +13,7 @@ from math import pow
 from django.core.exceptions import ValidationError
 from maasserver.utils.dns import (
     get_ip_based_hostname,
+    validate_domain_name,
     validate_hostname,
 )
 from testtools.matchers import (
@@ -70,11 +71,25 @@ class TestHostnameValidator(MAASTestCase):
         """Assertion: the validator rejects `hostname`."""
         self.assertRaises(ValidationError, validate_hostname, hostname)
 
+    def assertDomainValidatorAccepts(self, domain_name):
+        """Assertion: the validator rejects `domain_name`."""
+        try:
+            validate_domain_name(domain_name)
+        except ValidationError as e:
+            raise AssertionError(unicode(e))
+
+    def assertDomainValidatorRejects(self, hostname):
+        """Assertion: the validator rejects `hostname`."""
+        self.assertRaises(ValidationError, validate_domain_name, hostname)
+
     def test_accepts_ascii_letters(self):
         self.assertAccepts('abcde')
 
     def test_accepts_dots(self):
         self.assertAccepts('abc.def')
+
+    def test_accepts_subdomain(self):
+        self.assertAccepts('abc.def.ubuntu.com')
 
     def test_rejects_adjacent_dots(self):
         self.assertRejects('abc..def')
@@ -137,6 +152,11 @@ class TestHostnameValidator(MAASTestCase):
         # The \u03be is the Greek letter xi.  Perfectly good letter, just not
         # ASCII.
         self.assertRejects('\u03be')
+
+    def test_accepts_domain_underscores(self):
+        self.assertDomainValidatorAccepts('_foo')
+        self.assertDomainValidatorAccepts('_foo._bar')
+        self.assertDomainValidatorAccepts('_.o_O._')
 
 
 class TestIpBasedHostnameGenerator(MAASTestCase):

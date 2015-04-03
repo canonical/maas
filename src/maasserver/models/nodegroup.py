@@ -43,6 +43,7 @@ from maasserver.models.bootresource import BootResource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
 from maasserver.rpc import getClientFor
+from maasserver.utils.dns import validate_domain_name
 from piston.models import (
     KEY_SIZE,
     Token,
@@ -142,6 +143,31 @@ class NodeGroupManager(Manager):
         return self.filter(status=NODEGROUP_STATUS.ACCEPTED)
 
 
+class DomainNameField(CharField):
+    """Custom Django field that strips whitespace and trailing '.' characters
+    from DNS domain names before validating and saving to the database. Also,
+    validates that the domain name is valid according to RFCs 952 and 1123.
+    (Note that this field type should NOT be used for hostnames, since the set
+    of valid hostnames is smaller than the set of valid domain names.)
+    """
+    def __init__(self, *args, **kwargs):
+        validators = kwargs.pop('validators', [])
+        validators.append(validate_domain_name)
+        kwargs['validators'] = validators
+        super(DomainNameField, self).__init__(*args, **kwargs)
+
+    # Here we are using (abusing?) the to_pytion() function to coerce and
+    # normalize this type. Django does not have a function intended purely
+    # to normalize before saving to the database, so to_python() is the next
+    # closest alternative. For more information, see:
+    # https://docs.djangoproject.com/en/1.6/ref/forms/validation/
+    # https://code.djangoproject.com/ticket/6362
+    def to_python(self, value):
+        value = super(DomainNameField, self).to_python(value)
+        value = value.strip().rstrip('.')
+        return value
+
+
 NODEGROUP_CLUSTER_NAME_TEMPLATE = "Cluster %(uuid)s"
 
 
@@ -156,7 +182,7 @@ class NodeGroup(TimestampedModel):
         max_length=100, unique=True, editable=True, blank=True, null=False)
 
     # A node group's name is also used for the group's DNS zone.
-    name = CharField(
+    name = DomainNameField(
         max_length=80, unique=False, editable=True, blank=True, null=False)
 
     status = IntegerField(
