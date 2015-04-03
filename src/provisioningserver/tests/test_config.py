@@ -30,7 +30,6 @@ from uuid import uuid4
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
-import lockfile
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -55,6 +54,7 @@ from provisioningserver.config import (
 )
 from provisioningserver.path import get_path
 from provisioningserver.testing.config import ConfigFixtureBase
+from provisioningserver.utils.fs import FileLockProxy
 from testtools import ExpectedException
 from testtools.matchers import (
     DirExists,
@@ -945,7 +945,7 @@ class TestConfigurationFile(MAASTestCase):
 
     def test_open_takes_exclusive_lock(self):
         config_file = os.path.join(self.make_dir(), "config")
-        config_lock = lockfile.FileLock(config_file)
+        config_lock = FileLockProxy(config_file)
         self.assertFalse(config_lock.is_locked())
         with ConfigurationFile.open(config_file):
             self.assertTrue(config_lock.is_locked())

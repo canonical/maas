@@ -92,11 +92,11 @@ from formencode.validators import (
     UnicodeString,
     URL,
 )
-from lockfile import FileLock
 from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
+    FileLockProxy,
 )
 import yaml
 
@@ -575,7 +575,7 @@ class ConfigurationFile:
         to the configuration on a clean exit.
         """
         # Only one reader or writer at a time.
-        lock = FileLock(path)
+        lock = FileLockProxy(path)
         lock.acquire(timeout=5)
         try:
             # Ensure `path` exists...
