@@ -50,16 +50,25 @@ describe("GeneralManager", function() {
 
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
-            ["actions", "architectures", "osinfo"]);
+            ["node_actions", "device_actions", "architectures", "osinfo"]);
     });
 
-    it("_data.actions has correct data", function() {
-        var actions = GeneralManager._data.actions;
-        expect(actions.method).toBe("general.actions");
-        expect(actions.data).toEqual([]);
-        expect(actions.loaded).toBe(false);
-        expect(actions.polling).toBe(false);
-        expect(actions.nextPromise).toBeNull();
+    it("_data.node_actions has correct data", function() {
+        var node_actions = GeneralManager._data.node_actions;
+        expect(node_actions.method).toBe("general.node_actions");
+        expect(node_actions.data).toEqual([]);
+        expect(node_actions.loaded).toBe(false);
+        expect(node_actions.polling).toBe(false);
+        expect(node_actions.nextPromise).toBeNull();
+    });
+
+    it("_data.device_actions has correct data", function() {
+        var device_actions = GeneralManager._data.device_actions;
+        expect(device_actions.method).toBe("general.device_actions");
+        expect(device_actions.data).toEqual([]);
+        expect(device_actions.loaded).toBe(false);
+        expect(device_actions.polling).toBe(false);
+        expect(device_actions.nextPromise).toBeNull();
     });
 
     it("_data.architectures has correct data", function() {
@@ -92,16 +101,16 @@ describe("GeneralManager", function() {
         });
 
         it("returns data object", function() {
-            expect(GeneralManager._getInternalData("actions")).toBe(
-                GeneralManager._data.actions);
+            expect(GeneralManager._getInternalData("node_actions")).toBe(
+                GeneralManager._data.node_actions);
         });
     });
 
     describe("getData", function() {
 
         it("returns data from internal data", function() {
-            expect(GeneralManager.getData("actions")).toBe(
-                GeneralManager._data.actions.data);
+            expect(GeneralManager.getData("node_actions")).toBe(
+                GeneralManager._data.node_actions.data);
         });
     });
 
@@ -112,14 +121,16 @@ describe("GeneralManager", function() {
         });
 
         it("returns false if one false", function() {
-            GeneralManager._data.actions.loaded = true;
+            GeneralManager._data.node_actions.loaded = true;
+            GeneralManager._data.device_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.osinfo.loaded = false;
             expect(GeneralManager.isLoaded()).toBe(false);
         });
 
         it("returns true if all true", function() {
-            GeneralManager._data.actions.loaded = true;
+            GeneralManager._data.node_actions.loaded = true;
+            GeneralManager._data.device_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             expect(GeneralManager.isLoaded()).toBe(true);
@@ -130,8 +141,8 @@ describe("GeneralManager", function() {
 
         it("returns loaded from internal data", function() {
             var loaded = {};
-            GeneralManager._data.actions.loaded = loaded;
-            expect(GeneralManager.isDataLoaded("actions")).toBe(loaded);
+            GeneralManager._data.node_actions.loaded = loaded;
+            expect(GeneralManager.isDataLoaded("node_actions")).toBe(loaded);
         });
     });
 
@@ -142,14 +153,14 @@ describe("GeneralManager", function() {
         });
 
         it("returns true if one true", function() {
-            GeneralManager._data.actions.polling = true;
+            GeneralManager._data.node_actions.polling = true;
             GeneralManager._data.architectures.polling = false;
             GeneralManager._data.osinfo.polling = false;
             expect(GeneralManager.isPolling()).toBe(true);
         });
 
         it("returns true if all true", function() {
-            GeneralManager._data.actions.polling = true;
+            GeneralManager._data.node_actions.polling = true;
             GeneralManager._data.architectures.polling = true;
             GeneralManager._data.osinfo.polling = true;
             expect(GeneralManager.isPolling()).toBe(true);
@@ -160,8 +171,8 @@ describe("GeneralManager", function() {
 
         it("returns polling from internal data", function() {
             var polling = {};
-            GeneralManager._data.actions.polling = polling;
-            expect(GeneralManager.isDataPolling("actions")).toBe(polling);
+            GeneralManager._data.node_actions.polling = polling;
+            expect(GeneralManager.isDataPolling("node_actions")).toBe(polling);
         });
     });
 
@@ -169,16 +180,16 @@ describe("GeneralManager", function() {
 
         it("sets polling to true and calls _poll", function() {
             spyOn(GeneralManager, "_poll");
-            GeneralManager.startPolling("actions");
-            expect(GeneralManager._data.actions.polling).toBe(true);
+            GeneralManager.startPolling("node_actions");
+            expect(GeneralManager._data.node_actions.polling).toBe(true);
             expect(GeneralManager._poll).toHaveBeenCalledWith(
-                GeneralManager._data.actions);
+                GeneralManager._data.node_actions);
         });
 
         it("does nothing if already polling", function() {
             spyOn(GeneralManager, "_poll");
-            GeneralManager._data.actions.polling = true;
-            GeneralManager.startPolling("actions");
+            GeneralManager._data.node_actions.polling = true;
+            GeneralManager.startPolling("node_actions");
             expect(GeneralManager._poll).not.toHaveBeenCalled();
         });
     });
@@ -188,10 +199,10 @@ describe("GeneralManager", function() {
         it("sets polling to false and cancels promise", function() {
             spyOn($timeout, "cancel");
             var nextPromise = {};
-            GeneralManager._data.actions.polling = true;
-            GeneralManager._data.actions.nextPromise = nextPromise;
-            GeneralManager.stopPolling("actions");
-            expect(GeneralManager._data.actions.polling).toBe(false);
+            GeneralManager._data.node_actions.polling = true;
+            GeneralManager._data.node_actions.nextPromise = nextPromise;
+            GeneralManager.stopPolling("node_actions");
+            expect(GeneralManager._data.node_actions.polling).toBe(false);
             expect($timeout.cancel).toHaveBeenCalledWith(nextPromise);
         });
     });
@@ -201,32 +212,32 @@ describe("GeneralManager", function() {
         it("calls callMethod with method", function() {
             spyOn(RegionConnection, "callMethod").and.returnValue(
                 $q.defer().promise);
-            GeneralManager._loadData(GeneralManager._data.actions);
+            GeneralManager._loadData(GeneralManager._data.node_actions);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                GeneralManager._data.actions.method);
+                GeneralManager._data.node_actions.method);
         });
 
         it("sets loaded to true", function() {
             var defer = $q.defer();
             spyOn(RegionConnection, "callMethod").and.returnValue(
                 defer.promise);
-            GeneralManager._loadData(GeneralManager._data.actions);
+            GeneralManager._loadData(GeneralManager._data.node_actions);
             defer.resolve([]);
             $rootScope.$digest();
-            expect(GeneralManager._data.actions.loaded).toBe(true);
+            expect(GeneralManager._data.node_actions.loaded).toBe(true);
         });
 
-        it("sets actions data without changing reference", function() {
+        it("sets node_actions data without changing reference", function() {
             var defer = $q.defer();
             spyOn(RegionConnection, "callMethod").and.returnValue(
                 defer.promise);
-            var actionsData = GeneralManager._data.actions.data;
+            var actionsData = GeneralManager._data.node_actions.data;
             var newData = [makeName("action")];
-            GeneralManager._loadData(GeneralManager._data.actions);
+            GeneralManager._loadData(GeneralManager._data.node_actions);
             defer.resolve(newData);
             $rootScope.$digest();
-            expect(GeneralManager._data.actions.data).toEqual(newData);
-            expect(GeneralManager._data.actions.data).toBe(actionsData);
+            expect(GeneralManager._data.node_actions.data).toEqual(newData);
+            expect(GeneralManager._data.node_actions.data).toBe(actionsData);
         });
 
         it("sets osinfo data without changing reference", function() {
@@ -248,7 +259,7 @@ describe("GeneralManager", function() {
                 defer.promise);
             spyOn(ErrorService, "raiseError");
             var error = makeName("error");
-            GeneralManager._loadData(GeneralManager._data.actions, true);
+            GeneralManager._loadData(GeneralManager._data.node_actions, true);
             defer.reject(error);
             $rootScope.$digest();
             expect(ErrorService.raiseError).toHaveBeenCalledWith(error);
@@ -260,7 +271,7 @@ describe("GeneralManager", function() {
                 defer.promise);
             spyOn(ErrorService, "raiseError");
             var error = makeName("error");
-            GeneralManager._loadData(GeneralManager._data.actions, false);
+            GeneralManager._loadData(GeneralManager._data.node_actions, false);
             defer.reject(error);
             $rootScope.$digest();
             expect(ErrorService.raiseError).not.toHaveBeenCalled();
@@ -272,7 +283,7 @@ describe("GeneralManager", function() {
                 defer.promise);
             spyOn(ErrorService, "raiseError");
             var error = makeName("error");
-            GeneralManager._loadData(GeneralManager._data.actions);
+            GeneralManager._loadData(GeneralManager._data.node_actions);
             defer.reject(error);
             $rootScope.$digest();
             expect(ErrorService.raiseError).not.toHaveBeenCalled();
@@ -282,8 +293,9 @@ describe("GeneralManager", function() {
     describe("_pollAgain", function() {
 
         it("sets nextPromise on data", function() {
-            GeneralManager._pollAgain(GeneralManager._data.actions);
-            expect(GeneralManager._data.actions.nextPromise).not.toBeNull();
+            GeneralManager._pollAgain(GeneralManager._data.node_actions);
+            expect(
+                GeneralManager._data.node_actions.nextPromise).not.toBeNull();
         });
     });
 
@@ -292,29 +304,29 @@ describe("GeneralManager", function() {
         it("calls _pollAgain with error timeout if not connected", function() {
             spyOn(RegionConnection, "isConnected").and.returnValue(false);
             spyOn(GeneralManager, "_pollAgain");
-            GeneralManager._poll(GeneralManager._data.actions);
+            GeneralManager._poll(GeneralManager._data.node_actions);
             expect(GeneralManager._pollAgain).toHaveBeenCalledWith(
-                GeneralManager._data.actions,
+                GeneralManager._data.node_actions,
                 GeneralManager._pollErrorTimeout);
         });
 
         it("calls _loadData with raiseError false", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
-            GeneralManager._poll(GeneralManager._data.actions);
+            GeneralManager._poll(GeneralManager._data.node_actions);
             expect(GeneralManager._loadData).toHaveBeenCalledWith(
-                GeneralManager._data.actions, false);
+                GeneralManager._data.node_actions, false);
         });
 
-        it("calls _pollAgain with empty timeout for actions", function() {
+        it("calls _pollAgain with empty timeout for node_actions", function() {
             var defer = $q.defer();
             spyOn(GeneralManager, "_pollAgain");
             spyOn(GeneralManager, "_loadData").and.returnValue(defer.promise);
-            GeneralManager._poll(GeneralManager._data.actions);
+            GeneralManager._poll(GeneralManager._data.node_actions);
             defer.resolve([]);
             $rootScope.$digest();
             expect(GeneralManager._pollAgain).toHaveBeenCalledWith(
-                GeneralManager._data.actions,
+                GeneralManager._data.node_actions,
                 GeneralManager._pollEmptyTimeout);
         });
 
@@ -330,17 +342,17 @@ describe("GeneralManager", function() {
                 GeneralManager._pollEmptyTimeout);
         });
 
-        it("calls _pollAgain with timeout for actions", function() {
+        it("calls _pollAgain with timeout for node_actions", function() {
             var defer = $q.defer();
             spyOn(GeneralManager, "_pollAgain");
             spyOn(GeneralManager, "_loadData").and.returnValue(defer.promise);
-            var actions = [makeName("action")];
-            GeneralManager._data.actions.data = actions;
-            GeneralManager._poll(GeneralManager._data.actions);
-            defer.resolve(actions);
+            var node_actions = [makeName("action")];
+            GeneralManager._data.node_actions.data = node_actions;
+            GeneralManager._poll(GeneralManager._data.node_actions);
+            defer.resolve(node_actions);
             $rootScope.$digest();
             expect(GeneralManager._pollAgain).toHaveBeenCalledWith(
-                GeneralManager._data.actions,
+                GeneralManager._data.node_actions,
                 GeneralManager._pollTimeout);
         });
 
@@ -350,12 +362,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(defer.promise);
             var error = makeName("error");
             spyOn(console, "log");
-            GeneralManager._poll(GeneralManager._data.actions);
+            GeneralManager._poll(GeneralManager._data.node_actions);
             defer.reject(error);
             $rootScope.$digest();
             expect(console.log).toHaveBeenCalledWith(error);
             expect(GeneralManager._pollAgain).toHaveBeenCalledWith(
-                GeneralManager._data.actions,
+                GeneralManager._data.node_actions,
                 GeneralManager._pollErrorTimeout);
         });
     });
@@ -366,11 +378,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(3);
+            expect(GeneralManager._loadData.calls.count()).toBe(4);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer()

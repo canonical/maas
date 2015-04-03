@@ -21,8 +21,15 @@ angular.module('MAAS').factory(
         function GeneralManager() {
             // Holds the available endpoints and its data.
             this._data = {
-                actions: {
-                    method: "general.actions",
+                node_actions: {
+                    method: "general.node_actions",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
+                device_actions: {
+                    method: "general.device_actions",
                     data: [],
                     loaded: false,
                     polling: false,

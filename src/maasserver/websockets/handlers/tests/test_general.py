@@ -25,6 +25,16 @@ from maasserver.websockets.handlers.general import GeneralHandler
 
 class TestGeneralHandler(MAASServerTestCase):
 
+    def dehydrate_actions(self, actions):
+        return [
+            {
+                "name": name,
+                "title": action.display,
+                "sentence": action.display_sentence,
+            }
+            for name, action in actions.items()
+            ]
+
     def test_architectures(self):
         arches = [
             "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
@@ -52,30 +62,31 @@ class TestGeneralHandler(MAASServerTestCase):
             }
         self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
 
-    def test_actions_for_admin(self):
+    def test_node_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
-        actions_expected = [
-            {
-                "name": name,
-                "title": action.display,
-                "sentence": action.display_sentence,
-            }
-            for name, action in ACTIONS_DICT.items()
-            ]
-        self.assertItemsEqual(actions_expected, handler.actions({}))
+        actions_expected = self.dehydrate_actions(ACTIONS_DICT)
+        self.assertItemsEqual(actions_expected, handler.node_actions({}))
 
-    def test_actions_for_non_admin(self):
+    def test_node_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        actions_expected = [
-            {
-                "name": name,
-                "title": action.display,
-                "sentence": action.display_sentence,
-            }
+        actions_expected = dict()
+        for name, action in ACTIONS_DICT.items():
+            permission = action.permission
+            if action.installable_permission is not None:
+                permission = action.installable_permission
+            if permission != NODE_PERMISSION.ADMIN:
+                actions_expected[name] = action
+        actions_expected = self.dehydrate_actions(actions_expected)
+        self.assertItemsEqual(actions_expected, handler.node_actions({}))
+
+    def test_device_actions_for_non_admin(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        actions_expected = self.dehydrate_actions({
+            name: action
             for name, action in ACTIONS_DICT.items()
-            if action.permission != NODE_PERMISSION.ADMIN
-            ]
-        self.assertItemsEqual(actions_expected, handler.actions({}))
+            if not action.installable_only
+            })
+        self.assertItemsEqual(actions_expected, handler.device_actions({}))
 
     def test_random_hostname_checks_hostname_existence(self):
         existing_node = factory.make_Node(hostname="hostname")

@@ -21,7 +21,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.loaded = false;
         $scope.node = null;
         $scope.actionOption = null;
-        $scope.allActionOptions = GeneralManager.getData("actions");
+        $scope.allActionOptions = GeneralManager.getData("node_actions");
         $scope.availableActionOptions = [];
         $scope.actionError = null;
         $scope.osinfo = GeneralManager.getData("osinfo");

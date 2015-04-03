@@ -37,7 +37,8 @@ class GeneralHandler(Handler):
         allowed_methods = [
             'architectures',
             'osinfo',
-            'actions',
+            'node_actions',
+            'device_actions',
             'random_hostname',
             ]
 
@@ -54,18 +55,8 @@ class GeneralHandler(Handler):
             "releases": list_release_choices(releases),
         }
 
-    def actions(self, params):
-        """Return all possible actions."""
-        if self.user.is_superuser:
-            actions = ACTIONS_DICT
-        else:
-            # Standard users will not be able to use any admin actions. Hide
-            # them as they will never be actionable on any node.
-            actions = {
-                name: action
-                for name, action in ACTIONS_DICT.items()
-                if action.permission != NODE_PERMISSION.ADMIN
-                }
+    def dehydrate_actions(self, actions):
+        """Dehydrate all the actions."""
         return [
             {
                 "name": name,
@@ -74,6 +65,32 @@ class GeneralHandler(Handler):
             }
             for name, action in actions.items()
             ]
+
+    def node_actions(self, params):
+        """Return all possible node actions."""
+        if self.user.is_superuser:
+            actions = ACTIONS_DICT
+        else:
+            # Standard users will not be able to use any admin actions. Hide
+            # them as they will never be actionable on any node.
+            actions = dict()
+            for name, action in ACTIONS_DICT.items():
+                permission = action.permission
+                if action.installable_permission is not None:
+                    permission = action.installable_permission
+                if permission != NODE_PERMISSION.ADMIN:
+                    actions[name] = action
+        return self.dehydrate_actions(actions)
+
+    def device_actions(self, params):
+        """Return all possible device actions."""
+        # Remove the actions that can only be performed on installable nodes.
+        actions = {
+            name: action
+            for name, action in ACTIONS_DICT.items()
+            if not action.installable_only
+            }
+        return self.dehydrate_actions(actions)
 
     def random_hostname(self, params):
         """Return a random hostname."""

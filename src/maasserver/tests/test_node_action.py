@@ -17,10 +17,7 @@ __all__ = []
 import random
 
 from django.db import transaction
-from maasserver import (
-    locks,
-    node_query,
-)
+from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -34,12 +31,10 @@ from maasserver.models import StaticIPAddress
 from maasserver.node_action import (
     Abort,
     Acquire,
-    ACTION_CLASSES,
     Commission,
     compile_node_actions,
     Delete,
     Deploy,
-    InstallableNodeAction,
     MarkBroken,
     MarkFixed,
     NodeAction,
@@ -77,6 +72,7 @@ class FakeNodeAction(NodeAction):
     display = "Action label"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.VIEW
+    installable_only = False
 
     # For testing: an inhibition for inhibit() to return.
     fake_inhibition = None
@@ -171,6 +167,27 @@ class TestNodeAction(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         self.assertFalse(MyAction(node, factory.make_User()).is_permitted())
 
+    def test_is_permitted_uses_installable_permission(self):
+
+        class MyAction(FakeNodeAction):
+            permission = NODE_PERMISSION.VIEW
+            installable_permission = NODE_PERMISSION.EDIT
+
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+        self.assertFalse(MyAction(node, factory.make_User()).is_permitted())
+
+    def test_is_permitted_doest_use_installable_permission_if_device(self):
+
+        class MyAction(FakeNodeAction):
+            permission = NODE_PERMISSION.VIEW
+            installable_permission = NODE_PERMISSION.EDIT
+
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
+            installable=False)
+        self.assertTrue(MyAction(node, factory.make_User()).is_permitted())
+
     def test_inhibition_wraps_inhibit(self):
         inhibition = factory.make_string()
         action = FakeNodeAction(factory.make_Node(), factory.make_User())
@@ -197,6 +214,32 @@ class TestNodeAction(MAASServerTestCase):
         self.assertIsNone(action.inhibition)
         action.fake_inhibition = factory.make_string()
         self.assertIsNone(action.inhibition)
+
+    def test_installable_only_is_not_actionable_if_node_isnt_installable(self):
+        status = NODE_STATUS.NEW
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=status, installable=False)
+        action = FakeNodeAction(node, owner)
+        action.installable_only = True
+        self.assertFalse(action.is_actionable())
+
+    def test_installable_only_is_actionable_if_node_is_installable(self):
+        status = NODE_STATUS.NEW
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=status, installable=True)
+        action = FakeNodeAction(node, owner)
+        action.installable_only = True
+        self.assertTrue(action.is_actionable())
+
+    def test_is_actionable_checks_node_status_in_actionable_status(self):
+
+        class MyAction(FakeNodeAction):
+            actionable_statuses = [NODE_STATUS.ALLOCATED]
+
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
 
 
 class TestDeleteAction(MAASServerTestCase):
@@ -625,6 +668,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         return action_class(node, admin)
 
     def test_Commission_handles_rpc_errors(self):
+        from maasserver import node_query
         self.addCleanup(node_query.enable)
         node_query.disable()
 
@@ -672,50 +716,3 @@ class TestActionsErrorHandling(MAASServerTestCase):
             get_error_message_for_exception(
                 action.node.stop.side_effect),
             unicode(exception))
-
-
-class TestInstallableNodeAction(MAASServerTestCase):
-
-    def get_action_class(self, status):
-        """Return an action based on InstallableNodeAction.
-
-        The returned action class is actionable for the given
-        status.
-        """
-
-        class TestAction(InstallableNodeAction):
-            actionable_statuses = (status, )
-            name = "test"
-            display = "test"
-            permission = NODE_PERMISSION.VIEW
-
-            def execute(self):
-                pass
-        return TestAction
-
-    def test_action_is_not_actionable_if_node_isnt_installable(self):
-        status = NODE_STATUS.NEW
-        owner = factory.make_User()
-        node = factory.make_Node(
-            owner=owner, status=status, installable=False)
-        action = self.get_action_class(status)(node, owner)
-        self.assertFalse(action.is_actionable())
-
-    def test_action_is_actionable_if_node_is_installable(self):
-        status = NODE_STATUS.NEW
-        owner = factory.make_User()
-        node = factory.make_Node(
-            owner=owner, status=status, installable=True)
-        action = self.get_action_class(status)(node, owner)
-        self.assertTrue(action.is_actionable())
-
-
-class TestActionsDerivesFromInstallableNodeAction(MAASServerTestCase):
-    scenarios = [
-        (action.name, {'action_class': action})
-        for action in ACTION_CLASSES
-        if action not in (SetZone, Delete)
-        ]
-
-    def test_action_derives_from_InstallableNodeAction(self):
-        self.assertIn(InstallableNodeAction, self.action_class.__bases__)

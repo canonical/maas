@@ -45,7 +45,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
         $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
-            "actions");
+            "node_actions");
         $scope.tabs.nodes.actionErrorCount = 0;
         $scope.tabs.nodes.osSelection = {
             osystem: "",
@@ -71,7 +71,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.column = 'fqdn';
         $scope.tabs.devices.actionOption = null;
         $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
-            "actions");
+            "device_actions");
         $scope.tabs.devices.actionErrorCount = 0;
 
         // Options for add hardware dropdown.
