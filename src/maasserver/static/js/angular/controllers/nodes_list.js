@@ -51,9 +51,7 @@ angular.module('MAAS').controller('NodesListController', [
             osystem: "",
             release: ""
         };
-        $scope.tabs.nodes.zoneSelection = {
-            zone: ""
-        };
+        $scope.tabs.nodes.zoneSelection = null;
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -73,6 +71,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
             "device_actions");
         $scope.tabs.devices.actionErrorCount = 0;
+        $scope.tabs.devices.zoneSelection = null;
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = null;
@@ -146,6 +145,7 @@ angular.module('MAAS').controller('NodesListController', [
             if($scope.tabs[tab].selectedItems.length === 0) {
                 leaveViewSelected(tab);
                 $scope.tabs[tab].actionOption = null;
+                $scope.tabs[tab].zoneSelection = null;
                 if(tab === "nodes") {
                     $scope.tabs[tab].osSelection.osystem = "";
                     $scope.tabs[tab].osSelection.release = "";
@@ -273,10 +273,14 @@ angular.module('MAAS').controller('NodesListController', [
                 GeneralManager.stopPolling("osinfo");
             }
 
-            // Hide the add hardware section.
+            // Hide the add hardware/device section.
             if (tab === 'nodes') {
                 if(angular.isObject($scope.addHardwareScope)) {
                     $scope.addHardwareScope.hide();
+                }
+            } else if(tab === 'devices') {
+                if(angular.isObject($scope.addDeviceScope)) {
+                    $scope.addDeviceScope.hide();
                 }
             }
         };

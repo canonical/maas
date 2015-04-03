@@ -179,6 +179,7 @@ describe("NodesListController", function() {
                 expect(tabScope.actionOption).toBeNull();
                 expect(tabScope.takeActionOptions).toEqual([]);
                 expect(tabScope.actionErrorCount).toBe(0);
+                expect(tabScope.zoneSelection).toBeNull();
 
                 // Only the nodes tab uses the osSelection field.
                 if(tab === "nodes") {
@@ -475,9 +476,7 @@ describe("NodesListController", function() {
 
     });
 
-    // No support for devices actions yet but the testing code is already
-    // refactored to support it.
-    angular.forEach(["nodes"], function(tab) {
+    angular.forEach(["nodes", "devices"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -538,14 +537,23 @@ describe("NodesListController", function() {
                     });
 
                 it("calls hide on addHardwareScope", function() {
+                    var controller;
                     if (tab === 'nodes') {
-                        var controller = makeController();
+                        controller = makeController();
                         $scope.addHardwareScope = {
                             hide: jasmine.createSpy("hide")
                         };
                         $scope.actionOptionSelected(tab);
                         expect(
                             $scope.addHardwareScope.hide).toHaveBeenCalled();
+                    } else if (tab === 'devices') {
+                        controller = makeController();
+                        $scope.addDeviceScope = {
+                            hide: jasmine.createSpy("hide")
+                        };
+                        $scope.actionOptionSelected(tab);
+                        expect(
+                            $scope.addDeviceScope.hide).toHaveBeenCalled();
                     }
                 });
 
@@ -659,23 +667,26 @@ describe("NodesListController", function() {
             describe("actionGo", function() {
 
                 it("calls performAction for selected object", function() {
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        $q.defer().promise);
                     var controller = makeController();
                     var object = makeObject(tab);
+                    var spy = spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue($q.defer().promise);
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.tabs[tab].selectedItems = [object];
                     $scope.actionGo(tab);
-                    expect(NodesManager.performAction).toHaveBeenCalledWith(
+                    expect(spy).toHaveBeenCalledWith(
                         object, "start", {});
                 });
 
                 it("calls performAction with osystem and distro_series",
                     function() {
-                        spyOn(NodesManager, "performAction").and.returnValue(
-                            $q.defer().promise);
                         var controller = makeController();
                         var object = makeObject(tab);
+                        var spy = spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(
+                            $q.defer().promise);
                         $scope.tabs[tab].actionOption = { name: "deploy" };
                         $scope.tabs[tab].selectedItems = [object];
                         $scope.tabs[tab].osSelection = {
@@ -683,7 +694,7 @@ describe("NodesListController", function() {
                             release: "ubuntu/trusty"
                         };
                         $scope.actionGo(tab);
-                        expect(NodesManager.performAction).toHaveBeenCalledWith(
+                        expect(spy).toHaveBeenCalledWith(
                             object, "deploy", {
                                 osystem: "ubuntu",
                                 distro_series: "trusty"
@@ -691,44 +702,31 @@ describe("NodesListController", function() {
                 });
 
                 it("calls unselectItem after complete", function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    spyOn(NodesManager, "unselectItem");
                     var controller = makeController();
                     var object = makeObject(tab);
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var spy = spyOn($scope.tabs[tab].manager, "unselectItem");
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.tabs[tab].selectedItems = [object];
                     $scope.actionGo(tab);
                     defer.resolve();
                     $scope.$digest();
-                    expect(NodesManager.unselectItem).toHaveBeenCalled();
-                });
-
-                it("calls unselectItem after complete", function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    spyOn(NodesManager, "unselectItem");
-                    var controller = makeController();
-                    var object = makeObject(tab);
-                    $scope.tabs[tab].actionOption = { name: "start" };
-                    $scope.tabs[tab].selectedItems = [object];
-                    $scope.actionGo(tab);
-                    defer.resolve();
-                    $scope.$digest();
-                    expect(NodesManager.unselectItem).toHaveBeenCalled();
+                    expect(spy).toHaveBeenCalled();
                 });
 
                 it("resets search when in:selected after complete",
                     function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    var object = makeObject(tab);
-                    NodesManager._items = [object];
-                    NodesManager._selectedItems = [object];
                     var controller = makeController();
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var object = makeObject(tab);
+                    $scope.tabs[tab].manager._items.push(object);
+                    $scope.tabs[tab].manager._selectedItems.push(object);
                     $scope.tabs[tab].search = "in:(Selected)";
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.actionGo(tab);
@@ -739,13 +737,14 @@ describe("NodesListController", function() {
 
                 it("ignores search when not in:selected after complete",
                     function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    var object = makeObject(tab);
-                    NodesManager._items = [object];
-                    NodesManager._selectedItems = [object];
                     var controller = makeController();
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var object = makeObject(tab);
+                    $scope.tabs[tab].manager._items.push(object);
+                    $scope.tabs[tab].manager._selectedItems.push(object);
                     $scope.tabs[tab].search = "other";
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.actionGo(tab);
@@ -755,55 +754,82 @@ describe("NodesListController", function() {
                 });
 
                 it("clears action option when complete", function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    var object = makeObject(tab);
-                    NodesManager._items = [object];
-                    NodesManager._selectedItems = [object];
                     var controller = makeController();
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var object = makeObject(tab);
+                    $scope.tabs[tab].manager._items.push(object);
+                    $scope.tabs[tab].manager._selectedItems.push(object);
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.actionGo(tab);
                     defer.resolve();
                     $scope.$digest();
                     expect($scope.tabs[tab].actionOption).toBeNull();
                 });
-
-                it("clears selected os and release when complete", function() {
-                    var defer = $q.defer();
-                    spyOn(NodesManager, "performAction").and.returnValue(
-                        defer.promise);
-                    var object = makeObject(tab);
-                    NodesManager._items = [object];
-                    NodesManager._selectedItems = [object];
-                    var controller = makeController();
-                    $scope.tabs[tab].actionOption = { name: "deploy" };
-                    $scope.tabs[tab].osSelection = {
-                        osystem: "ubuntu",
-                        release: "ubuntu/trusty"
-                    };
-                    $scope.actionGo(tab);
-                    defer.resolve();
-                    $scope.$digest();
-                    expect($scope.tabs[tab].osSelection.osystem).toBe("");
-                    expect($scope.tabs[tab].osSelection.release).toBe("");
-                });
             });
 
             describe("actionSetZone", function () {
                 it("calls performAction with zone",
                     function() {
-                        spyOn(NodesManager, "performAction").and.returnValue(
-                            $q.defer().promise);
                         var controller = makeController();
+                        var spy = spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(
+                            $q.defer().promise);
                         var object = makeObject(tab);
                         $scope.tabs[tab].actionOption = { name: "set-zone" };
                         $scope.tabs[tab].selectedItems = [object];
                         $scope.tabs[tab].zoneSelection = { id: 1 };
                         $scope.actionGo(tab);
-                        expect(NodesManager.performAction).toHaveBeenCalledWith(
+                        expect(spy).toHaveBeenCalledWith(
                             object, "set-zone", { zone_id: 1 });
                 });
+
+                it("clears action option when complete", function() {
+                    var controller = makeController();
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var object = makeObject(tab);
+                    $scope.tabs[tab].manager._items.push(object);
+                    $scope.tabs[tab].manager._selectedItems.push(object);
+                    $scope.tabs[tab].actionOption = { name: "set-zone" };
+                    $scope.tabs[tab].zoneSelection = { id: 1 };
+                    $scope.actionGo(tab);
+                    defer.resolve();
+                    $scope.$digest();
+                    expect($scope.tabs[tab].zoneSelection).toBeNull();
+                });
+            });
+        });
+    });
+
+    describe("tab(nodes)", function() {
+
+        describe("actionGo", function() {
+
+            it("clears selected os and release when complete", function() {
+                var controller = makeController();
+                var defer = $q.defer();
+                spyOn(
+                    NodesManager,
+                    "performAction").and.returnValue(defer.promise);
+                var object = makeObject("nodes");
+                NodesManager._items.push(object);
+                NodesManager._selectedItems.push(object);
+                $scope.tabs.nodes.actionOption = { name: "deploy" };
+                $scope.tabs.nodes.osSelection = {
+                    osystem: "ubuntu",
+                    release: "ubuntu/trusty"
+                };
+                $scope.actionGo("nodes");
+                defer.resolve();
+                $scope.$digest();
+                expect($scope.tabs.nodes.osSelection.osystem).toBe("");
+                expect($scope.tabs.nodes.osSelection.release).toBe("");
             });
         });
     });
