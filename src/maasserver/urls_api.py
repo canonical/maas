@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -77,6 +77,7 @@ from maasserver.api.nodegroups import (
     NodeGroupsHandler,
 )
 from maasserver.api.nodes import (
+    EventsHandler,
     NodeHandler,
     NodesHandler,
 )
@@ -117,6 +118,7 @@ boot_resource_file_upload_handler = RestrictedResource(
     BootResourceFileUploadHandler, authentication=api_auth)
 boot_resources_handler = RestrictedResource(
     BootResourcesHandler, authentication=api_auth)
+events_handler = RestrictedResource(EventsHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
 ipaddresses_handler = RestrictedResource(
@@ -216,6 +218,7 @@ urlpatterns += patterns(
         r'^devices/(?P<system_id>[\w\-]+)/$', device_handler,
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
+    url(r'^events/$', events_handler, name='events_handler'),
     url(
         r'^nodegroups/(?P<uuid>[^/]+)/$',
         nodegroup_handler, name='nodegroup_handler'),

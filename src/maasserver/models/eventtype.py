@@ -7,14 +7,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'EventType',
-    ]
+]
 
 
 import logging
@@ -40,6 +40,14 @@ LOGGING_LEVELS = {
     logging.WARNING: 'WARNING',
     logging.ERROR: 'ERROR',
     logging.CRITICAL: 'CRITICAL',
+}
+
+LOGGING_LEVELS_BY_NAME = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL,
 }
 
 
