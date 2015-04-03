@@ -536,7 +536,8 @@ class ConfigurationFile:
 
     def save(self):
         """Save the configuration."""
-        atomic_write(yaml.safe_dump(self.config), self.path)
+        atomic_write(yaml.safe_dump(self.config, default_flow_style=False),
+                     self.path)
         self.dirty = False
 
     @classmethod
