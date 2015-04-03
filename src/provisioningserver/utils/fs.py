@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -21,11 +21,12 @@ __all__ = [
     'sudo_write_file',
     'tempdir',
     'write_text_file',
-    ]
+]
 
 import codecs
 from contextlib import contextmanager
 import errno
+import hashlib
 from itertools import count
 import os
 from os import environ
@@ -65,7 +66,7 @@ def _write_temp_file(content, filename):
     try:
         temp_fd, temp_file = tempfile.mkstemp(
             dir=directory, suffix=suffix, prefix=prefix)
-    except OSError, error:
+    except OSError as error:
         if error.filename is None:
             error.filename = os.path.join(
                 directory, prefix + "XXXXXX" + suffix)
@@ -86,7 +87,7 @@ def _write_temp_file(content, filename):
         return temp_file
 
 
-def atomic_write(content, filename, overwrite=True, mode=0600):
+def atomic_write(content, filename, overwrite=True, mode=0o600):
     """Write `content` into the file `filename` in an atomic fashion.
 
     This requires write permissions to the directory that `filename` is in.
@@ -202,7 +203,7 @@ def pick_new_mtime(old_mtime=None, starting_age=1000):
         return old_mtime
 
 
-def incremental_write(content, filename, mode=0600):
+def incremental_write(content, filename, mode=0o600):
     """Write the given `content` into the file `filename` and
     increment the modification time by 1 sec.
 
@@ -227,7 +228,7 @@ def get_mtime(filename):
             raise
 
 
-def sudo_write_file(filename, contents, encoding='utf-8', mode=0644):
+def sudo_write_file(filename, contents, encoding='utf-8', mode=0o644):
     """Write (or overwrite) file as root.  USE WITH EXTREME CARE.
 
     Runs an atomic update using non-interactive `sudo`.  This will fail if
@@ -240,7 +241,7 @@ def sudo_write_file(filename, contents, encoding='utf-8', mode=0644):
         'atomic-write',
         '--filename', filename,
         '--mode', oct(mode),
-        ]
+    ]
     proc = Popen(sudo(command), stdin=PIPE)
     stdout, stderr = proc.communicate(raw_contents)
     if proc.returncode != 0:
@@ -259,6 +260,58 @@ def ensure_dir(path):
             raise
         # Otherwise, the error is that the directory already existed.
         # Which is actually success.
+
+
+class FileLockProxy(FileLock):
+    """Create a file lock in /run/lock that implements an OS advisory file
+    lock, by proxy, on the directory or file 'path' (i.e. if you
+    do not have write permissions to the file / directory 'path', or you
+    otherwise do not want a temporary lock file created at the same location).
+
+    By creating the file lock by proxy, the actual mechanics of the
+    underlying file lock are performed on a mock file path, derived from the
+    original 'path's name, in /run/lock.
+
+    The subject path 'path' need not be writable by the calling function,
+    however the calling context obviously must have the applicable permissions
+    for the file operations they intend to perform on 'path'.
+
+    NOTE: The subject file or directory 'path' need not actually exist
+    on the filesystem to acquire a lock on 'path'. No attempt, expressed or
+    implied, is made to verify the validity of 'path' on the filesystem.
+
+    Example use as a context manager:
+
+    >>> with FileLockProxy(my_file) as playground:
+    ...     with open(my_file, 'wb') as handle:
+    ...         handle.write(b"Hello.\n")
+
+    :param path: Path to file or directory to lock (by proxy)
+
+    :param threaded: Is optional, but when set to True (the default) locks
+    will be distinguished between threads in the same process.
+    """
+    @staticmethod
+    def lock_file_path(path):
+        # Create a temp lock file path of the form
+        # /run/lock/maas-<processedfilepath>-<hash>.lock where
+        # <processedfilepath> has replaced the os's path delimiter with '_'.
+        # Occurrences of '_' in the original file are first escaped with an
+        # additional '_' before the replacement, and an md5 hash of the
+        # original file path is added as <hash>, to further help reduce the
+        # probability of name collisions in the generated proxy file names.
+        return os.path.join('/', 'run', 'lock',
+                            'maas-' +
+                            path.replace('_', '__')
+                            .replace(os.sep, '_') +
+                            '-' +
+                            hashlib.md5(path).hexdigest()
+                            )
+
+    def __init__(self, path, threaded=True):
+        FileLock.__init__(self,
+                          self.lock_file_path(path),
+                          threaded=threaded)
 
 
 @contextmanager

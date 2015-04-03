@@ -7,13 +7,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = []
 
+import hashlib
 import os.path
 from random import randint
 from shutil import rmtree
@@ -26,6 +27,7 @@ import sys
 import tempfile
 import time
 
+from lockfile import FileLock
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
@@ -35,6 +37,7 @@ from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     ensure_dir,
+    FileLockProxy,
     get_mtime,
     incremental_write,
     pick_new_mtime,
@@ -104,7 +107,7 @@ class TestAtomicWrite(MAASTestCase):
         # Pick an unusual mode that is also likely to fall outside our
         # umask.  We want this mode set, not treated as advice that may
         # be tightened up by umask later.
-        mode = 0323
+        mode = 0o323
         atomic_write(factory.make_string(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
@@ -119,7 +122,7 @@ class TestAtomicWrite(MAASTestCase):
         self.patch(os, 'rename', Mock(side_effect=record_mode))
         playground = self.make_dir()
         atomic_file = os.path.join(playground, factory.make_name('atomic'))
-        mode = 0323
+        mode = 0o323
         atomic_write(factory.make_string(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
@@ -205,7 +208,7 @@ class TestIncrementalWrite(MAASTestCase):
 
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
-        mode = 0323
+        mode = 0o323
         incremental_write(factory.make_string(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
@@ -278,7 +281,7 @@ class TestSudoWriteFile(MAASTestCase):
         self.assertThat(fs_module.Popen, MockCalledOnceWith([
             'sudo', '-n', 'maas-provision', 'atomic-write',
             '--filename', path, '--mode', '0644',
-            ],
+        ],
             stdin=PIPE))
 
     def test_encodes_contents(self):
@@ -434,6 +437,90 @@ class TestTempDir(MAASTestCase):
         self.assertEqual(
             stat.S_IMODE(mode),
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+
+class TestFileLockProxy(MAASTestCase):
+    def test_lock_file_path(self):
+        tempdir = self.make_dir()
+        expected_result = os.path.join('/', 'run', 'lock',
+                                       'maas-' +
+                                       tempdir.replace('_', '__')
+                                       .replace(os.sep, '_') +
+                                       '-' +
+                                       hashlib.md5(tempdir).hexdigest()
+                                       )
+        observed_result = FileLockProxy.lock_file_path(tempdir)
+        self.assertEqual(expected_result, observed_result)
+
+    def test_lock_file_path_excapes__(self):
+        temppath = self.make_dir()
+        tempfile = factory.make_name('_test_')
+        test_path = os.path.join(temppath, tempfile)
+        expected_path = test_path.replace('_', '__')
+        expected_result = os.path.join('/', 'run', 'lock',
+                                       'maas-' +
+                                       expected_path
+                                       .replace(os.sep, '_') +
+                                       '-' +
+                                       hashlib.md5(test_path).hexdigest()
+                                       )
+        observed_result = FileLockProxy.lock_file_path(test_path)
+        self.assertEqual(expected_result, observed_result)
+
+    def test_locks_proxy_file(self):
+        tempdir = self.make_dir()
+        lock_file_path = FileLockProxy.lock_file_path(tempdir)
+        lock = FileLock(lock_file_path)
+        self.assertFalse(
+            lock.is_locked(),
+            'Lock file path should not be locked prior to testing.')
+        with FileLockProxy(tempdir):
+            self.assertTrue(
+                lock.is_locked(),
+                'Path not properly locked within context')
+
+    def test_cleans_up_on_successful_exit(self):
+        tempdir = self.make_dir()
+        lock_file_path = FileLockProxy.lock_file_path(tempdir)
+        lock = FileLock(lock_file_path)
+        with FileLockProxy(tempdir):
+            pass
+
+        self.assertFalse(
+            lock.is_locked(),
+            'Path is still locked when out of context')
+        self.assertThat(lock_file_path, Not(FileExists()))
+
+    def test_cleans_up_proxy_file_on_exception_exit(self):
+        class DeliberateFailure(Exception):
+            pass
+
+        tempdir = self.make_dir()
+        lock_file_path = FileLockProxy.lock_file_path(tempdir)
+        lock = FileLock(lock_file_path)
+        with ExpectedException(DeliberateFailure):
+            with FileLockProxy(tempdir):
+                factory.make_file(tempdir)
+                raise DeliberateFailure("Exiting context by exception")
+
+        self.assertFalse(lock.is_locked(),
+                         'Path is still locked when out of context')
+        self.assertThat(lock_file_path, Not(FileExists()))
+
+    def test_context_manager_releases_lock_when_context_exits(self):
+        tempdir = self.make_dir()
+        lock_file_path = FileLockProxy.lock_file_path(tempdir)
+        lock = FileLock(lock_file_path)
+        self.assertFalse(
+            lock.is_locked(),
+            'Lock file path should not be locked prior to testing.')
+        with FileLockProxy(tempdir):
+            self.assertTrue(
+                lock.is_locked(),
+                'Path not properly locked within context')
+            self.assertEqual(tempdir, tempdir)
+        self.assertFalse(lock.is_locked(),
+                         'Path is still locked when out of context')
 
 
 class TestReadTextFile(MAASTestCase):
