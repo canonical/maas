@@ -18,6 +18,7 @@ __all__ = [
 
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.node import Device
+from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -126,5 +127,4 @@ class DeviceHandler(TimestampedModelHandler):
         obj = super(DeviceHandler, self).get_object(params)
         if self.user.is_superuser or obj.owner == self.user:
             return obj
-        else:
-            return None
+        raise HandlerDoesNotExistError(params[self._meta.pk])

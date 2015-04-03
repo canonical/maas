@@ -44,6 +44,7 @@ from mock import (
     MagicMock,
     sentinel,
 )
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
@@ -605,17 +606,25 @@ class TestHandler(MAASServerTestCase):
     def test_on_listen_calls_listen(self):
         handler = self.make_nodes_handler()
         mock_listen = self.patch(handler, "listen")
-        mock_listen.return_value = None
+        mock_listen.side_effect = HandlerDoesNotExistError()
         handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
         self.assertThat(
             mock_listen,
             MockCalledOnceWith(
                 sentinel.channel, sentinel.action, sentinel.pk))
 
-    def test_on_listen_returns_None_if_listen_returns_None(self):
+    def test_on_listen_raises_AssertionError_if_listen_returns_None(self):
         handler = self.make_nodes_handler()
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
+        with ExpectedException(AssertionError):
+            handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
+
+    def test_on_listen_returns_None_if_listen_raises_HandlerDoesNotExistError(
+            self):
+        handler = self.make_nodes_handler()
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.side_effect = HandlerDoesNotExistError()
         self.assertIsNone(
             handler.on_listen(
                 sentinel.channel, sentinel.action, sentinel.pk))

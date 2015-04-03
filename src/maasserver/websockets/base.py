@@ -420,9 +420,11 @@ class Handler:
 
         Do not override this method instead override `listen`.
         """
-        obj = self.listen(channel, action, pk)
-        if obj is None:
+        try:
+            obj = self.listen(channel, action, pk)
+        except HandlerDoesNotExistError:
             return None
+        assert obj is not None
         if action == "delete":
             return (self._meta.handler_name, obj)
         else:

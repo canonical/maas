@@ -16,9 +16,11 @@ __all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
+from testtools import ExpectedException
 
 
 class TestDeviceHandler(MAASServerTestCase):
@@ -151,8 +153,9 @@ class TestDeviceHandler(MAASServerTestCase):
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
 
-    def test_get_object_returns_None_if_owner_by_another_user(self):
+    def test_get_object_raises_exception_if_owner_by_another_user(self):
         user = factory.make_User()
         device = factory.make_Node(owner=factory.make_User())
         handler = DeviceHandler(user, {})
-        self.assertIsNone(handler.get_object({"system_id": device.system_id}))
+        with ExpectedException(HandlerDoesNotExistError):
+            handler.get_object({"system_id": device.system_id})
