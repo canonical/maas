@@ -75,6 +75,7 @@ from maasserver.utils import absolute_reverse
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
 from mock import ANY
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.enum import map_enum
@@ -144,7 +145,7 @@ class TestGetNetlocAndPath(MAASServerTestCase):
 class TestGetPreseedFilenames(MAASServerTestCase):
     """Tests for `get_preseed_filenames`."""
 
-    def test_get_preseed_filenames_returns_filenames(self):
+    def test__returns_filenames(self):
         hostname = factory.make_string()
         prefix = factory.make_string()
         osystem = factory.make_string()
@@ -165,7 +166,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(
                 node, prefix, osystem, release, default=True)))
 
-    def test_get_preseed_filenames_if_node_is_None(self):
+    def test__returns_limited_filenames_if_node_is_None(self):
         osystem = factory.make_string()
         release = factory.make_string()
         prefix = factory.make_string()
@@ -177,7 +178,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             ],
             list(get_preseed_filenames(None, prefix, osystem, release)))
 
-    def test_get_preseed_filenames_supports_empty_prefix(self):
+    def test__supports_empty_prefix(self):
         hostname = factory.make_string()
         osystem = factory.make_string()
         release = factory.make_string()
@@ -193,7 +194,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             ],
             list(get_preseed_filenames(node, '', osystem, release)))
 
-    def test_get_preseed_filenames_returns_list_without_default(self):
+    def test__returns_list_without_default(self):
         # If default=False is passed to get_preseed_filenames, the
         # returned list won't include the default template name as a
         # last resort template.
@@ -206,7 +207,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(
                 node, prefix, release, default=True))[-1])
 
-    def test_get_preseed_filenames_returns_list_with_default(self):
+    def test__returns_list_with_default(self):
         # If default=True is passed to get_preseed_filenames, the
         # returned list will include the default template name as a
         # last resort template.
@@ -218,6 +219,53 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             prefix,
             list(get_preseed_filenames(
                 node, prefix, release, default=False))[-1])
+
+    def test__returns_backward_compatible_name_for_ubuntu_without_prefix(self):
+        # If the OS is Ubuntu, also include backward-compatible filenames.
+        # See bug 1439366 for details.
+        hostname = factory.make_string()
+        osystem = UbuntuOS().name
+        release = factory.make_string()
+        node = factory.make_Node(hostname=hostname)
+        arch, subarch = node.architecture.split('/')
+        self.assertSequenceEqual(
+            [
+                '%s_%s_%s_%s_%s' % (osystem, arch, subarch, release, hostname),
+                '%s_%s_%s_%s' % (arch, subarch, release, hostname),
+                '%s_%s_%s_%s' % (osystem, arch, subarch, release),
+                '%s_%s_%s' % (arch, subarch, release),
+                '%s_%s_%s' % (osystem, arch, subarch),
+                '%s_%s' % (arch, subarch),
+                '%s_%s' % (osystem, arch),
+                '%s' % (arch),
+                '%s' % osystem,
+            ],
+            list(get_preseed_filenames(node, '', osystem, release)))
+
+    def test__returns_backward_compatible_name_for_ubuntu_with_prefix(self):
+        # If the OS is Ubuntu, also include backward-compatible filenames.
+        # See bug 1439366 for details.
+        hostname = factory.make_string()
+        osystem = UbuntuOS().name
+        release = factory.make_string()
+        node = factory.make_Node(hostname=hostname)
+        arch, subarch = node.architecture.split('/')
+        prefix = factory.make_string()
+        self.assertSequenceEqual(
+            [
+                '%s_%s_%s_%s_%s_%s' % (
+                    prefix, osystem, arch, subarch, release, hostname),
+                '%s_%s_%s_%s_%s' % (prefix, arch, subarch, release, hostname),
+                '%s_%s_%s_%s_%s' % (prefix, osystem, arch, subarch, release),
+                '%s_%s_%s_%s' % (prefix, arch, subarch, release),
+                '%s_%s_%s_%s' % (prefix, osystem, arch, subarch),
+                '%s_%s_%s' % (prefix, arch, subarch),
+                '%s_%s_%s' % (prefix, osystem, arch),
+                '%s_%s' % (prefix, arch),
+                '%s_%s' % (prefix, osystem),
+                '%s' % prefix,
+            ],
+            list(get_preseed_filenames(node, prefix, osystem, release)))
 
 
 class TestConfiguration(MAASServerTestCase):
