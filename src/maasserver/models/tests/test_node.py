@@ -782,6 +782,16 @@ class TestNode(MAASServerTestCase):
         node.abort_operation(owner)
         self.assertThat(abort_disk_erasing, MockCalledOnceWith(owner))
 
+    def test_abort_operation_aborts_deployment(self):
+        agent_name = factory.make_name('agent-name')
+        user = factory.make_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING,
+            agent_name=agent_name)
+        abort_deploying = self.patch_autospec(node, 'abort_deploying')
+        node.abort_operation(user)
+        self.assertThat(abort_deploying, MockCalledOnceWith(user))
+
     def test_abort_operation_raises_exception_for_unsupported_state(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()

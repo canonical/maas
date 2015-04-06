@@ -240,7 +240,10 @@ class Abort(NodeAction):
     display = "Abort"
     display_sentence = "aborted"
     actionable_statuses = (
-        NODE_STATUS.COMMISSIONING, NODE_STATUS.DISK_ERASING,)
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.DEPLOYING
+    )
     permission = NODE_PERMISSION.ADMIN
     installable_only = True
 

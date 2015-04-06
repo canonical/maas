@@ -1024,6 +1024,62 @@ class Node(CleanSave, TimestampedModel):
 
             return stopping.addErrback(eb_abort, self.hostname)
 
+    @transactional
+    def abort_deploying(self, user):
+        """Power off a deploying node and set its status to ALLOCATED.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to stop the node. This is already registered as a
+            post-commit hook; it should not be added a second time.
+        """
+        if self.status != NODE_STATUS.DEPLOYING:
+            raise NodeStateViolation(
+                "Cannot abort deployment of a non-deploying node: "
+                "node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+
+        # Prepare a transition monitor for later.
+        monitor = TransitionMonitor.fromNode(self)
+
+        try:
+            # Node.stop() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            stopping = self.stop(user)
+        except Exception as error:
+            maaslog.error(
+                "%s: Error when aborting deployment: %s",
+                self.hostname, error)
+            raise
+        else:
+            # Don't permit naive mocking of stop(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(stopping, Deferred) or stopping is None
+
+            post_commit().addCallback(
+                callOut, self._stop_transition_monitor_async, monitor,
+                self.hostname)
+
+            if stopping is None:
+                stopping = post_commit()
+                # MAAS cannot stop the node itself.
+                is_stopping = False
+            else:
+                # MAAS can direct the node to stop.
+                is_stopping = True
+
+            stopping.addCallback(
+                callOut, self._abort_deploying_async, is_stopping,
+                self.hostname, self.system_id)
+
+            def eb_abort(failure, hostname):
+                maaslog.error(
+                    "%s: Error when aborting deployment: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return stopping.addErrback(eb_abort, self.hostname)
+
     @classmethod
     @asynchronous
     def _stop_transition_monitor_async(cls, monitor, hostname):
@@ -1058,6 +1114,26 @@ class Node(CleanSave, TimestampedModel):
             return d.addCallback(
                 callOut, maaslog.warning, "%s: Could not stop node to abort "
                 "commissioning; it must be stopped manually", hostname)
+
+    @classmethod
+    @asynchronous
+    def _abort_deploying_async(cls, is_stopping, hostname, system_id):
+        """Abort deploying, the post-commit bits.
+
+        :param is_stopping: A boolean indicating if MAAS is able to stop this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        :param system_id: The system ID for the node.
+        """
+        d = deferToThread(cls._set_status, system_id,
+                          status=NODE_STATUS.ALLOCATED)
+        if is_stopping:
+            return d.addCallback(
+                callOut, maaslog.info, "%s: Deployment aborted", hostname)
+        else:
+            return d.addCallback(
+                callOut, maaslog.warning, "%s: Could not stop node to abort "
+                "deployment; it must be stopped manually", hostname)
 
     def delete(self):
         """Delete this node."""
@@ -1474,6 +1550,9 @@ class Node(CleanSave, TimestampedModel):
             return
         if self.status == NODE_STATUS.COMMISSIONING:
             self.abort_commissioning(user)
+            return
+        if self.status == NODE_STATUS.DEPLOYING:
+            self.abort_deploying(user)
             return
 
         raise NodeStateViolation(

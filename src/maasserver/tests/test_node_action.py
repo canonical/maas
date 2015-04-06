@@ -299,6 +299,9 @@ class TestAbortAction(MAASTransactionServerTestCase):
         self.assertThat(node_stop, MockCalledOnceWith(owner))
 
     def test_Abort_aborts_commissioning(self):
+        """Makes sure a COMMISSIONING node is returned to NEW status after an
+        abort.
+        """
         with transaction.atomic():
             node = factory.make_Node(
                 mac=True, status=NODE_STATUS.COMMISSIONING,
@@ -317,6 +320,31 @@ class TestAbortAction(MAASTransactionServerTestCase):
         with transaction.atomic():
             node = reload_object(node)
             self.assertEqual(NODE_STATUS.NEW, node.status)
+
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+
+    def test_Abort_aborts_deployment(self):
+        """Makes sure a DEPLOYING node is returned to ALLOCATED status after an
+        abort.
+        """
+        with transaction.atomic():
+            node = factory.make_Node(
+                mac=True, status=NODE_STATUS.DEPLOYING,
+                power_type='virsh')
+            admin = factory.make_admin()
+
+        self.patch_autospec(node, 'stop_transition_monitor')
+        node_stop = self.patch_autospec(node, 'stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
+
+        with post_commit_hooks:
+            with transaction.atomic():
+                Abort(node, admin).execute()
+
+        with transaction.atomic():
+            node = reload_object(node)
+            self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
