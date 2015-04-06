@@ -587,7 +587,7 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
     },
-    '00-maas-07-network-interfaces.out': {
+    '00-maas-05-network-interfaces.out': {
         'content': IPLINK_SCRIPT.encode('ascii'),
         'hook': update_node_network_information,
     },
