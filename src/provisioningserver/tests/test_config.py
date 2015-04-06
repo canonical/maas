@@ -22,6 +22,7 @@ from getpass import getuser
 from io import BytesIO
 from operator import methodcaller
 import os.path
+import random
 import re
 import sqlite3
 from textwrap import dedent
@@ -30,6 +31,7 @@ from uuid import uuid4
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
+from formencode.validators import Invalid
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -50,6 +52,7 @@ from provisioningserver.config import (
     ConfigurationMeta,
     ConfigurationOption,
     Directory,
+    ExtendedURL,
     UUID,
 )
 from provisioningserver.path import get_path
@@ -67,6 +70,27 @@ from testtools.matchers import (
 )
 from twisted.python.filepath import FilePath
 import yaml
+
+
+class TestUUID(MAASTestCase):
+    """Tests for `Directory`."""
+
+    def test__validation_succeeds_when_uuid_is_good(self):
+        uuid = unicode(uuid4())
+        validator = UUID(accept_python=False)
+        self.assertEqual(uuid, validator.from_python(uuid))
+        self.assertEqual(uuid, validator.to_python(uuid))
+
+    def test__validation_fails_when_uuid_is_bad(self):
+        uuid = unicode(uuid4()) + "can't-be-a-uuid"
+        validator = UUID(accept_python=False)
+        expected_exception = ExpectedException(
+            formencode.validators.Invalid, "^%s$" % re.escape(
+                "%r Failed to parse UUID" % uuid))
+        with expected_exception:
+            validator.from_python(uuid)
+        with expected_exception:
+            validator.to_python(uuid)
 
 
 class TestDirectory(MAASTestCase):
@@ -90,25 +114,114 @@ class TestDirectory(MAASTestCase):
             validator.to_python(directory)
 
 
-class TestUUID(MAASTestCase):
-    """Tests for `Directory`."""
+class TestExtendedURL(MAASTestCase):
+    def setUp(self):
+        super(TestExtendedURL, self).setUp()
+        self.validator = ExtendedURL(
+            require_tld=False,
+            accept_python=False)
 
-    def test__validation_succeeds_when_uuid_is_good(self):
-        uuid = unicode(uuid4())
-        validator = UUID(accept_python=False)
-        self.assertEqual(uuid, validator.from_python(uuid))
-        self.assertEqual(uuid, validator.to_python(uuid))
+    def test_takes_numbers_anywhere(self):
+        # Could use factory.make_string() here, as it contains
+        # digits, but this is a little bit more explicit and
+        # clear to troubleshoot.
 
-    def test__validation_fails_when_uuid_is_bad(self):
-        uuid = unicode(uuid4()) + "can't-be-a-uuid"
-        validator = UUID(accept_python=False)
-        expected_exception = ExpectedException(
-            formencode.validators.Invalid, "^%s$" % re.escape(
-                "%r Failed to parse UUID" % uuid))
-        with expected_exception:
-            validator.from_python(uuid)
-        with expected_exception:
-            validator.to_python(uuid)
+        hostname = '%dstart' % random.randint(0, 9)
+        url = factory.make_simple_http_url(netloc=hostname)
+
+        hostname = 'mid%ddle' % random.randint(0, 9)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        hostname = 'end%d' % random.randint(0, 9)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+    def test_takes_hyphen_but_not_start_or_end(self):
+        # Reject leading hyphen
+        hostname = '-start'
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
+
+        # Allow hyphens in the middle
+        hostname = 'mid-dle'
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Reject trailing hyphen
+        hostname = 'end-'
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
+
+    def test_allows_hostnames_as_short_as_a_single_char(self):
+        # Single digit
+        hostname = unicode(random.randint(0, 9))
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Single char
+        hostname = factory.make_string(1)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Reject single hyphen
+        hostname = '-'
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
+
+    def test_allows_hostnames_up_to_63_chars_long(self):
+        max_length = 63
+
+        # Alow 63 chars
+        hostname = factory.make_string(max_length)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Reject 64 chars
+        hostname = factory.make_string(max_length + 1)
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
+
+    def test_allows_domain_names_up_to_63_chars_long(self):
+        max_length = 63
+
+        # Alow 63 chars without hypen
+        hostname = '%s.example.com' % factory.make_string(max_length)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Reject 64 chars without hypen
+        hostname = '%s.example.com' % factory.make_string(max_length + 1)
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
+
+        # Alow 63 chars with hypen
+        hyphen_loc = random.randint(1, max_length - 1)
+        name = factory.make_string(max_length - 1)
+        hname = name[:hyphen_loc] + '-' + name[hyphen_loc:]
+        hostname = '%s.example.com' % (hname)
+        url = factory.make_simple_http_url(netloc=hostname)
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # Reject 64 chars with hypen
+        hyphen_loc = random.randint(1, max_length)
+        name = factory.make_string(max_length)
+        hname = name[:hyphen_loc] + '-' + name[hyphen_loc:]
+        hostname = '%s.example.com' % (hname)
+        url = factory.make_simple_http_url(netloc=hostname)
+        with ExpectedException(Invalid, 'That is not a valid URL'):
+            self.assertEqual(url, self.validator.to_python(url),
+                             "url: %s" % url)
 
 
 class ExampleConfig(ConfigBase, formencode.Schema):

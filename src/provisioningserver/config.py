@@ -160,7 +160,8 @@ class ExtendedURL(URL):
             (?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|
         (?P<ipv6>\[?(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}\]?)|
         (?P<domain>[a-z0-9][a-z0-9\-]{,62}\.)*     # subdomain
-        (?P<tld>[a-z0-9\-]{1,63})  # tld or hostname
+        (?P<tld>[a-zA-Z0-9]{1,63}|
+            [a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])  # tld or hostname
         )
         (?::[0-9]{1,5})?                           # port
         # files/delims/etc
