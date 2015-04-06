@@ -1201,3 +1201,23 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIn(MAC("ec:f4:bb:f9:17:8e"), node2_db_macaddresses)
         self.assertIn(MAC("fe:54:00:02:36:19"), node2_db_macaddresses)
         self.assertIn(MAC("fe:54:00:b4:f1:61"), node2_db_macaddresses)
+
+    def test__mac_ids_are_preserved(self):
+        """Test whether MAC address entities are preserved and not recreated"""
+        node = factory.make_Node(hostname='testmacidsarepreserved')
+
+        # Create a MAC address that we know IS in the test dataset.
+        mac_to_be_preserved = factory.make_MACAddress(node=node)
+        mac_to_be_preserved.mac_address = MAC('38:b1:db:cd:f0:ab')
+        mac_to_be_preserved.save()
+
+        id_to_be_verified = mac_to_be_preserved.id
+
+        output = open(
+            os.path.dirname(__file__) + '/ip_link_results.txt').read()
+        update_node_network_information(node, output, 0)
+
+        post_update_mac_id = MACAddress.objects.get(
+            mac_address=MAC('38:b1:db:cd:f0:ab')).id
+
+        self.assertEqual(id_to_be_verified, post_update_mac_id)

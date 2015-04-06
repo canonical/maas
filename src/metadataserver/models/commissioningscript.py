@@ -166,22 +166,26 @@ def update_node_network_information(node, output, exit_status):
         if line.strip().startswith('link/ether')
     }
 
-    # MAC addresses found in the db but not on the hardware node will be
-    # deleted.
-    for mac_address in node.macaddress_set.all():
-        if mac_address not in hw_macaddresses:
-            mac_address.delete()
+    # Important notice: hw_addresses contains MAC objects while
+    # node.macaddress_set.all() contains MACAddress objects.
 
     # MAC addresses found in the hardware node but not on the db will be
     # created or reassigned.
     for address in hw_macaddresses:
-        if address not in node.macaddress_set.all():
+        if address not in [MAC(m.mac_address)
+                           for m in node.macaddress_set.all()]:
             try:
                 mac_address = MACAddress.objects.get(mac_address=address)
                 mac_address.node = node
                 mac_address.save()
             except MACAddress.DoesNotExist:
                 MACAddress(mac_address=address, node=node).save()
+
+    # MAC addresses found in the db but not on the hardware node will be
+    # deleted.
+    for mac_address in node.macaddress_set.all():
+        if MAC(mac_address.mac_address) not in hw_macaddresses:
+            mac_address.delete()
 
 
 def update_hardware_details(node, output, exit_status):
@@ -583,20 +587,18 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
     },
-    '00-maas-05-dhcp-unconfigured-ifaces': {
+    '00-maas-07-network-interfaces.out': {
+        'content': IPLINK_SCRIPT.encode('ascii'),
+        'hook': update_node_network_information,
+    },
+    '00-maas-06-dhcp-unconfigured-ifaces': {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
     },
-    '00-maas-06-block-devices.out': {
+    '00-maas-07-block-devices.out': {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': update_node_physical_block_devices,
     },
-    # XXX 2015-04-03 rvb, bug=1440090: Disable this because it's breaking
-    # commissioning.  See the bug for details.
-    # '00-maas-07-network-interfaces.out': {
-    #     'content': IPLINK_SCRIPT.encode('ascii'),
-    #     'hook': update_node_network_information,
-    # },
     '99-maas-01-wait-for-lldpd.out': {
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
