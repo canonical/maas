@@ -66,7 +66,7 @@ from twisted.python import log
 from twisted.web import wsgi
 
 
-def make_request(env=None, oauth_env=None):
+def make_request(env=None, oauth_env=None, missing_oauth_param=None):
     # Return a minimal WSGIRequest.
     if oauth_env is None:
         oauth_env = {}
@@ -75,7 +75,8 @@ def make_request(env=None, oauth_env=None):
         "wsgi.input": wsgi._InputStream(io.BytesIO()),
         "SERVER_NAME": "server",
         "SERVER_PORT": 80,
-        "HTTP_AUTHORIZATION": factory.make_oauth_header(**oauth_env),
+        "HTTP_AUTHORIZATION": factory.make_oauth_header(
+            missing_param=missing_oauth_param, **oauth_env),
     }
     if env is not None:
         base_env.update(env)
@@ -168,6 +169,18 @@ class TestDeleteOAuthNonce(MAASTestCase):
         request = make_request(oauth_env=oauth_env)
         # No exception is raised.
         self.assertIsNone(views.delete_oauth_nonce(request))
+
+    def test__skips_non_oauth_request(self):
+        request = make_request(env={'HTTP_AUTHORIZATION': ''})
+        # No exception is raised.
+        self.assertIsNone(views.delete_oauth_nonce(request))
+
+    def test__skips_oauth_request_with_missing_param(self):
+        missing_params = ('oauth_consumer_key', 'oauth_token', 'oauth_nonce')
+        for missing_param in missing_params:
+            request = make_request(missing_oauth_param=missing_param)
+            # No exception is raised.
+            self.assertIsNone(views.delete_oauth_nonce(request))
 
 
 class TestWebApplicationHandler(SerializationFailureTestCase):

@@ -31,6 +31,7 @@ from maasserver.utils.orm import (
     is_serialization_failure,
     post_commit_hooks,
 )
+from oauth.oauth import OAuthError
 from piston.authentication import initialize_server_request
 from piston.models import Nonce
 from provisioningserver.utils.twisted import retries
@@ -63,12 +64,19 @@ def delete_oauth_nonce(request):
 
     This is to allow the exact same request to be retried.
     """
-    oauth_server, oauth_request = initialize_server_request(request)
-    consumer_key = oauth_request.get_parameter('oauth_consumer_key')
-    token_key = oauth_request.get_parameter('oauth_token')
-    nonce = oauth_request.get_parameter('oauth_nonce')
-    Nonce.objects.filter(
-        consumer_key=consumer_key, token_key=token_key, key=nonce).delete()
+    _, oauth_request = initialize_server_request(request)
+    if oauth_request is not None:
+        try:
+            consumer_key = oauth_request.get_parameter('oauth_consumer_key')
+            token_key = oauth_request.get_parameter('oauth_token')
+            nonce = oauth_request.get_parameter('oauth_nonce')
+        except OAuthError:
+            # Missing OAuth parameter: skip Nonce deletion.
+            pass
+        else:
+            Nonce.objects.filter(
+                consumer_key=consumer_key, token_key=token_key,
+                key=nonce).delete()
 
 
 def reset_request(request):

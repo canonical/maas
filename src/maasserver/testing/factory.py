@@ -635,11 +635,14 @@ class Factory(maastesting.factory.Factory):
         fake_file = self.make_file_upload(filename, content)
         return FileStorage.objects.save_file(fake_file.name, fake_file, owner)
 
-    def make_oauth_header(self, **kwargs):
+    def make_oauth_header(self, missing_param=None, **kwargs):
         """Fake an OAuth authorization header.
 
         This will use arbitrary values.  Pass as keyword arguments any
         header items that you wish to override.
+        :param missing_param: Optional parameter name.  This parameter will
+            be omitted from the OAuth header.  This is used to create bogus
+            OAuth headers to make sure the code deals properly with them.
         """
         items = {
             'realm': self.make_string(),
@@ -652,6 +655,8 @@ class Factory(maastesting.factory.Factory):
             'oauth_signature': "%%26%s" % self.make_string(32),
         }
         items.update(kwargs)
+        if missing_param is not None:
+            del items[missing_param]
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
 
