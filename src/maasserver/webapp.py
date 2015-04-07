@@ -21,6 +21,7 @@ import os
 
 from django.conf import settings
 from lxml import html
+from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
 from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
@@ -138,10 +139,9 @@ class WebApplicationService(StreamServerEndpointService):
         into a separate function, so that each server uses the same
         application.
         """
-        from maasserver import start_up
-        start_up.start_up()
-        from maasserver.utils.views import WebApplicationHandler
-        return WebApplicationHandler()
+        from maasserver.start_up import start_up
+        return start_up().addCallback(
+            lambda _: WebApplicationHandler())
 
     def startWebsocket(self, application):
         """Start the websocket factory for the `WebSocketsResource`."""
@@ -174,7 +174,7 @@ class WebApplicationService(StreamServerEndpointService):
 
     def startApplication(self):
         """Start the Django application, and install it."""
-        d = deferToThread(self.prepareApplication)
+        d = self.prepareApplication()
         d.addCallback(self.startWebsocket)
         d.addCallback(self.installApplication)
         d.addErrback(self.installFailed)

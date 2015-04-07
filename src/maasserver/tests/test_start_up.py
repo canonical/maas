@@ -87,14 +87,14 @@ class TestStartUp(MAASServerTestCase):
             None,  # Success.
         ]
         # We don't want to really sleep.
-        sleep = self.patch(start_up, "sleep")
+        pause = self.patch(start_up, "pause")
         # start_up() returns without error.
         start_up.start_up()
         # However, it did call inner_start_up() twice; the first call resulted
         # in the "Boom!" exception so it tried again.
         self.expectThat(inner_start_up, MockCallsMatch(call(), call()))
-        # It also slept once, for 10 seconds, between those attempts.
-        self.expectThat(sleep, MockCalledOnceWith(10.0))
+        # It also slept once, for 3 seconds, between those attempts.
+        self.expectThat(pause, MockCalledOnceWith(3.0))
 
 
 class TestStartImportOnUpgrade(MAASServerTestCase):

@@ -36,7 +36,10 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
-from twisted.internet import reactor
+from twisted.internet import (
+    defer,
+    reactor,
+)
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.python.threadpool import ThreadPool
 from twisted.web.resource import Resource
@@ -105,6 +108,7 @@ class TestWebApplicationService(MAASTestCase):
         # start_up() isn't safe to call right now, but we only really care
         # that it is called.
         self.patch_autospec(start_up, "start_up")
+        start_up.start_up.return_value = defer.succeed(None)
 
         service.startService()
 
@@ -117,8 +121,9 @@ class TestWebApplicationService(MAASTestCase):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
-        start_up_error = factory.make_exception_type()
-        self.patch_autospec(start_up, "start_up").side_effect = start_up_error
+        start_up_error = factory.make_exception()
+        self.patch_autospec(start_up, "start_up")
+        start_up.start_up.return_value = defer.fail(start_up_error)
 
         # The failure is logged.
         with TwistedLoggerFixture() as logger:
@@ -141,8 +146,9 @@ class TestWebApplicationService(MAASTestCase):
 
         # start_up() isn't safe to call right now, but we only really care
         # that it is called.
-        start_up_error = factory.make_exception_type()
-        self.patch_autospec(start_up, "start_up").side_effect = start_up_error
+        start_up_error = factory.make_exception()
+        self.patch_autospec(start_up, "start_up")
+        start_up.start_up.return_value = defer.fail(start_up_error)
 
         # No error is returned.
         service.startService()
@@ -170,6 +176,7 @@ class TestWebApplicationService(MAASTestCase):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
         self.patch_autospec(start_up, "start_up")
+        start_up.start_up.return_value = defer.succeed(None)
 
         service.startService()
 
@@ -184,6 +191,7 @@ class TestWebApplicationService(MAASTestCase):
     def test__stopService_stops_the_service_threadpool_and_the_websocket(self):
         service = self.make_webapp()
         self.patch_autospec(start_up, "start_up")
+        start_up.start_up.return_value = defer.succeed(None)
 
         service.startService()
         service.stopService()

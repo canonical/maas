@@ -17,7 +17,6 @@ __all__ = [
 ]
 
 import logging
-from time import sleep
 
 from django.db import connection
 from django.db.utils import DatabaseError
@@ -46,12 +45,21 @@ from maasserver.utils.orm import (
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.upgrade_cluster import create_gnupg_home
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    FOREVER,
+    pause,
+)
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)
 
 
+@asynchronous(timeout=FOREVER)
+@inlineCallbacks
 def start_up():
     """Perform start-up tasks for this MAAS server.
 
@@ -69,11 +77,11 @@ def start_up():
             # when Sir Topham Hatt graduated Sodor Academy. (Ensure we have a
             # shared-secret so that a cluster on the same host as this region
             # can authenticate.)
-            security.get_shared_secret()
+            yield security.get_shared_secret()
             # Execute other start-up tasks that must not run concurrently with
             # other invocations of themselves, across the whole of this MAAS
             # installation.
-            inner_start_up()
+            yield deferToThread(inner_start_up)
         except SystemExit:
             raise
         except KeyboardInterrupt:
@@ -83,18 +91,21 @@ def start_up():
             if psycopg2_exception is None:
                 maaslog.warn(
                     "Database error during start-up; "
-                    "pausing for 10 seconds.")
+                    "pausing for 3 seconds.")
+            elif psycopg2_exception.pgcode is None:
+                maaslog.warn(
+                    "Database error during start-up (PostgreSQL error "
+                    "not reported); pausing for 3 seconds.")
             else:
                 maaslog.warn(
                     "Database error during start-up (PostgreSQL error %s); "
-                    "pausing for 10 seconds.", psycopg2_exception.pgcode)
-
+                    "pausing for 3 seconds.", psycopg2_exception.pgcode)
             logger.error("Database error during start-up", exc_info=True)
-            sleep(10.0)  # Wait 10 seconds before having another go.
+            yield pause(3.0)  # Wait 3 seconds before having another go.
         except:
-            maaslog.warn(
-                "Unknown Failure during start-up; pausing for 10 seconds.")
-            sleep(10.0)  # Wait 10 seconds before having another go.
+            maaslog.warn("Error during start-up; pausing for 3 seconds.")
+            logger.error("Error during start-up.", exc_info=True)
+            yield pause(3.0)  # Wait 3 seconds before having another go.
         else:
             break
 
