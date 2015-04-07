@@ -331,7 +331,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             get_device_uri(device),
             {
-                'op': 'set_sticky_ip_address',
+                'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -356,7 +356,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             get_device_uri(device),
             {
-                'op': 'set_sticky_ip_address',
+                'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
                 'mac_address': second_mac.mac_address,
             })
@@ -389,7 +389,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             get_device_uri(device),
             {
-                'op': 'set_sticky_ip_address',
+                'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -425,7 +425,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             get_device_uri(device),
             {
-                'op': 'set_sticky_ip_address',
+                'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
                 'mac_address': other_mac.mac_address
             })
