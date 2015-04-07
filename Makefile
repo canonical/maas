@@ -465,16 +465,21 @@ package_branch:
 
 # Make sure an orig tarball generated from the current branch is placed in the
 # build area.
+# If you want to build a .deb from uncommitted changes, you can do:
+#     export MAAS_PACKAGE_EXPORT_EXTRA=--uncommitted
 package_export: VER = $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
 package_export: TARBALL = maas_$(VER).orig.tar.gz
 package_export: package_branch
 	@$(RM) -f ../build-area/$(TARBALL)
 	@mkdir -p ../build-area
-	@bzr export --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
+	@bzr export $(MAAS_PACKAGE_EXPORT_EXTRA) --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
 
 package: package_export
 	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -uc -us
 	@echo Binary packages built, see ../build-area/ directory.
+
+package-dev: MAAS_PACKAGE_EXPORT_EXTRA = --uncommitted
+package-dev: package
 
 source_package: package_export
 	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -S -uc -us
