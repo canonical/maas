@@ -199,6 +199,14 @@ class TestDeviceAPI(APITestCase):
             '/api/1.0/devices/%s/' % system_id,
             reverse('device_handler', args=[system_id]))
 
+    def test_POST_method_doesnt_exist(self):
+        device = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+
+        response = self.client.post(get_device_uri(device))
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
     def test_GET_reads_device(self):
         device = factory.make_Node(
             installable=False, owner=self.logged_in_user)

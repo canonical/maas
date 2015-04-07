@@ -63,6 +63,7 @@ class DeviceHandler(OperationsHandler):
     """
     api_doc_section_name = "Device"
 
+    create = None  # Disable create.
     model = Device
     fields = DISPLAYED_DEVICE_FIELDS
 
