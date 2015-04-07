@@ -19,20 +19,27 @@ from maasserver import (
     locks,
     start_up,
 )
+from maasserver.bootresources import ensure_boot_source_definition
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.models import (
     BootSource,
+    BootSourceSelection,
     NodeGroup,
 )
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
 )
 from mock import call
-from testtools.matchers import HasLength
+from testtools.matchers import (
+    Equals,
+    HasLength,
+)
 
 
 class LockChecker:
@@ -90,6 +97,51 @@ class TestStartUp(MAASServerTestCase):
         self.expectThat(sleep, MockCalledOnceWith(10.0))
 
 
+class TestStartImportOnUpgrade(MAASServerTestCase):
+    """Tests for the `start_import_on_upgrade` function."""
+
+    def setUp(self):
+        super(TestStartImportOnUpgrade, self).setUp()
+        ensure_boot_source_definition()
+        self.mock_import_resources = self.patch(start_up, 'import_resources')
+
+    def test__does_nothing_if_boot_resources_exist(self):
+        mock_list_boot_images = self.patch(start_up, 'list_boot_images')
+        factory.make_BootResource()
+        start_up.start_import_on_upgrade()
+        self.assertThat(mock_list_boot_images, MockNotCalled())
+
+    def test__does_nothing_if_list_boot_images_is_empty(self):
+        self.patch(start_up, 'list_boot_images').return_value = []
+        start_up.start_import_on_upgrade()
+        self.assertThat(self.mock_import_resources, MockNotCalled())
+
+    def test__calls_import_resources(self):
+        self.patch(start_up, 'list_boot_images').return_value = [
+            make_rpc_boot_image(),
+            ]
+        start_up.start_import_on_upgrade()
+        self.assertThat(self.mock_import_resources, MockCalledOnceWith())
+
+    def test__sets_source_selections_based_on_boot_images(self):
+        boot_images = [
+            make_rpc_boot_image()
+            for _ in range(3)
+            ]
+        self.patch(start_up, 'list_boot_images').return_value = boot_images
+        start_up.start_import_on_upgrade()
+
+        boot_source = BootSource.objects.first()
+        for image in boot_images:
+            selection = BootSourceSelection.objects.get(
+                boot_source=boot_source, os=image["osystem"],
+                release=image["release"])
+            self.assertIsNotNone(selection)
+            self.expectThat(selection.arches, Equals([image["architecture"]]))
+            self.expectThat(selection.subarches, Equals(["*"]))
+            self.expectThat(selection.labels, Equals([image["label"]]))
+
+
 class TestInnerStartUp(MAASServerTestCase):
 
     """Tests for the actual work done in `inner_start_up`."""
@@ -127,3 +179,8 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
         self.assertThat(BootSource.objects.all(), HasLength(1))
+
+    def test__calls_start_import_on_upgrade(self):
+        mock_start_import = self.patch(start_up, 'start_import_on_upgrade')
+        start_up.inner_start_up()
+        self.expectThat(mock_start_import, MockCalledOnceWith())
