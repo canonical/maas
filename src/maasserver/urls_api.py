@@ -50,6 +50,7 @@ from maasserver.api.doc_handler import (
     api_doc,
     describe,
 )
+from maasserver.api.events import EventsHandler
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
@@ -77,7 +78,6 @@ from maasserver.api.nodegroups import (
     NodeGroupsHandler,
 )
 from maasserver.api.nodes import (
-    EventsHandler,
     NodeHandler,
     NodesHandler,
 )

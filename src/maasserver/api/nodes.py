@@ -14,22 +14,17 @@ __all__ = [
     "AnonNodesHandler",
     "NodeHandler",
     "NodesHandler",
-    "EventsHandler",
     "store_node_power_parameters",
 ]
 
 from base64 import b64decode
-import logging
-import urllib
 
 import bson
 import crochet
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from formencode.validators import Int
 from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.support import (
@@ -43,7 +38,6 @@ from maasserver.api.utils import (
     get_oauth_token,
     get_optional_list,
     get_optional_param,
-    get_overridden_query_dict,
 )
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.dns.config import dns_update_zones
@@ -70,11 +64,9 @@ from maasserver.forms import (
     NodeActionForm,
 )
 from maasserver.models import (
-    Event,
     MACAddress,
     Node,
 )
-from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
@@ -82,7 +74,6 @@ from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc import getClientFor
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
-from maasserver.views.nodes import event_to_dict
 from piston.utils import rc
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -129,9 +120,6 @@ DISPLAYED_NODE_FIELDS = (
         'tags',
     )),
 )
-
-MAX_EVENT_LOG_COUNT = 1000
-DEFAULT_EVENT_LOG_LIMIT = 100
 
 
 def store_node_power_parameters(node, request):
@@ -203,150 +191,6 @@ def filtered_nodes_list_from_request(request):
         nodes = nodes.filter(agent_name=match_agent_name)
 
     return nodes
-
-
-class EventsHandler(OperationsHandler):
-    """Retrieve filtered node events.
-
-    A specific Node's events is identified by specifying one or more
-    ids, hostnames, or mac addresses as a list.
-    """
-    api_doc_section_name = "Events"
-
-    create = read = update = delete = None
-
-    model = Event
-
-    all_params = (
-        'after',
-        'agent_name',
-        'id',
-        'level',
-        'limit',
-        'mac_address',
-        'op',
-        'zone')
-
-    @classmethod
-    def resource_uri(cls, *args, **kwargs):
-        return ('events_handler', [])
-
-    @operation(idempotent=True)
-    def query(self, request):
-        """List Node events, optionally filtered by various criteria via
-        URL query parameters.
-
-        :param hostname: An optional hostname. Only events relating to the node
-            with the matching hostname will be returned. This can be specified
-            multiple times to get events relating to more than one node.
-        :param mac_address: An optional list of MAC addresses.  Only
-            nodes with matching MAC addresses will be returned.
-        :param id: An optional list of system ids.  Only nodes with
-            matching system ids will be returned.
-        :param zone: An optional name for a physical zone. Only nodes in the
-            zone will be returned.
-        :param agent_name: An optional agent name.  Only nodes with
-            matching agent names will be returned.
-        :param level: Desired minimum log level of returned events. Returns
-            this level of events and greater. Choose from: %(log_levels)s.
-            The default is INFO.
-        """
-
-        # Filter first by optional node id, hostname, or mac
-        nodes = filtered_nodes_list_from_request(request)
-        limit = get_optional_param(
-            request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int)
-
-        start_event_id_param = get_optional_param(
-            request.GET, 'after', None, Int)
-
-        log_level = get_optional_param(request.GET, 'level', 'INFO')
-
-        if limit > MAX_EVENT_LOG_COUNT:
-            raise MAASAPIBadRequest((
-                "Requested number of events %d is greater than"
-                " limit: %d") % (limit, MAX_EVENT_LOG_COUNT))
-
-        if start_event_id_param is not None:
-            node_events = Event.objects.filter(
-                id__gte=start_event_id_param,
-                node=nodes)
-            start_event_id = start_event_id_param
-        else:
-            node_events = Event.objects.filter(node=nodes)
-            start_event_id = 0
-
-        # Filter next by log level >= to 'level', if specified
-        if log_level is None and log_level != 'NOTSET':
-            numeric_log_level = logging.NOTSET
-        elif log_level in LOGGING_LEVELS_BY_NAME:
-            numeric_log_level = LOGGING_LEVELS_BY_NAME[log_level]
-            assert isinstance(numeric_log_level, int)
-        else:
-            raise MAASAPIBadRequest(
-                "Unknown log level: %s" % log_level)
-
-        if log_level is not None and log_level != 'NOTSET':
-            node_events = node_events.exclude(
-                type__level__lt=numeric_log_level)
-
-        # Future feature:
-        # This is where we would filter for events 'since last node deployment'
-        # using a query param like since_last_deployed=true, but we aren't
-        # right now because we don't currently record a timestamp of the last
-        # deployment, and we don't have an event subtype for node status
-        # changes to filter for the deploying status event.
-
-        base_path = reverse('events_handler')
-
-        prev_uri_params = get_overridden_query_dict(
-            request.GET,
-            {'after': max(0, start_event_id - limit)}, self.all_params)
-        prev_uri = '%s?%s' % (base_path,
-                              urllib.urlencode(
-                                  prev_uri_params,
-                                  doseq=True))
-
-        next_uri_params = get_overridden_query_dict(
-            request.GET,
-            {'after': start_event_id + limit}, self.all_params)
-        next_uri = '%s?%s' % (base_path,
-                              urllib.urlencode(
-                                  next_uri_params,
-                                  doseq=True))
-
-        node_events = (
-            node_events.all().order_by('id')
-            .prefetch_related('type')
-            .prefetch_related('node'))
-
-        # Lastly, order by id and return up to 'limit' events
-        if start_event_id_param is not None:
-            # If start_event_id is specified, limit to a window of
-            # 'limit' events with 'start_event_id' being the id
-            # of the oldest event
-            node_events = node_events.order_by('id')
-            node_events = reversed(node_events[:limit])
-        else:
-            # If start_event_id is not specified, limit to most recent
-            # 'limit' events
-            node_events = node_events.order_by('-id')
-            node_events = node_events[:limit]
-
-        # We need to load all of these events at some point, so save them
-        # into a list now so that len() is cheap.
-        node_events = list(node_events)
-
-        displayed_events_count = len(node_events)
-        events_dict = dict(
-            count=displayed_events_count,
-            events=[event_to_dict(event) for event in node_events],
-            next_uri=next_uri,
-            prev_uri=prev_uri,
-        )
-        return events_dict
-
-    query.__doc__ %= {"log_levels": ", ".join(LOGGING_LEVELS_BY_NAME)}
 
 
 class NodeHandler(OperationsHandler):
