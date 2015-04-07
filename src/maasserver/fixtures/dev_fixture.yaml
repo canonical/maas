@@ -2801,7 +2801,7 @@
     osystem: ''
     owner: 3
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:f1:ec:be''}'
+    power_parameters: '{"mac_address": "52:54:00:f1:ec:be"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 1
@@ -2833,7 +2833,7 @@
     osystem: ''
     owner: 3
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:80:cc:02''}'
+    power_parameters: '{"mac_address": "52:54:00:80:cc:02"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 2
@@ -2865,7 +2865,7 @@
     osystem: ''
     owner: 4
     parent: null
-    power_parameters: '{u''52:54:00:b1:cd:b7''}'
+    power_parameters: '{"mac_address": "52:54:00:b1:cd:b7"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 3
@@ -2897,7 +2897,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:d2:0f:ff''}'
+    power_parameters: '{"mac_address": "52:54:00:d2:0f:ff"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 4
@@ -2929,7 +2929,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:a6:d7:94''}'
+    power_parameters: '{"mac_address": "52:54:00:a6:d7:94"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 5
@@ -2961,7 +2961,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:18:dd:1b''}'
+    power_parameters: '{"mac_address": "52:54:00:18:dd:1b"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 6
@@ -2993,9 +2993,9 @@
     osystem: ''
     owner: 4
     parent: null
-    power_parameters: '{}'
+    power_parameters: '{"mac_address": "52:54:00:18:dd:1c"}'
     power_state: 'off'
-    power_type: virsh
+    power_type: ether_wake
     pxe_mac: 7
     status: 10
     swap_size: null
@@ -3025,7 +3025,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''52:54:00:d2:0f:ff''}'
+    power_parameters: '{"mac_address": "52:54:00:d2:0f:ff"}'
     power_state: 'off'
     power_type: ether_wake
     pxe_mac: 8
