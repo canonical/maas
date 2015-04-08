@@ -2,6 +2,17 @@
 Changelog
 =========
 
+1.7.3
+=====
+
+Bug Fix Update
+--------------
+
+#1439359    Automatically set correct boot resources selection and start import
+            after upgrade from MAAS 1.5; Ensures MAAS is usable after upgrade.
+#1439366    Backwards compatibility with MAAS 1.5 preseeds and custom preseeds.
+            Ensures that users dont have to manually change preseeds names.
+
 1.7.2
 =====
 
