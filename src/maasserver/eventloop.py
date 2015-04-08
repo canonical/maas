@@ -50,10 +50,14 @@ __all__ = [
     "stop",
 ]
 
+from errno import ENOPROTOOPT
 from logging import getLogger
 from os import getpid
 import socket
-from socket import gethostname
+from socket import (
+    error as socket_error,
+    gethostname,
+)
 
 from django.db import connections
 from provisioningserver.utils.twisted import asynchronous
@@ -155,7 +159,17 @@ def make_WebApplicationService():
     # not yet official support for setting socket options.
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    try:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except socket_error as e:
+        # Python's socket module was compiled using modern headers
+        # thus defining SO_REUSEPORT would cause issues as it might
+        # running in older kernel that does not support SO_REUSEPORT.
+
+        # XXX andreserl 2015-04-08 bug=1441684: We need to add a warning
+        # log message when we see this error, and a test for it.
+        if e.errno != ENOPROTOOPT:
+            raise e
     s.bind(('0.0.0.0', site_port))
     # Use a backlog of 50, which seems to be fairly common.
     s.listen(50)
