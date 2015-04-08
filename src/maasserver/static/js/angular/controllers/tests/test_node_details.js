@@ -1007,8 +1007,16 @@ describe("NodeDetailsController", function() {
 
     describe("editNameInvalid", function() {
 
+        it("returns false if not editing", function() {
+            var controller = makeController();
+            $scope.nameHeader.editing = false;
+            $scope.nameHeader.value = "abc_invalid.local";
+            expect($scope.editNameInvalid()).toBe(false);
+        });
+
         it("returns true for bad values", function() {
             var controller = makeController();
+            $scope.nameHeader.editing = true;
             var values = [
                 {
                     input: "aB0-z",

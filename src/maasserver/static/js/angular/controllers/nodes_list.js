@@ -5,9 +5,9 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$location', 'NodesManager', 'DevicesManager',
+    '$scope', '$rootScope', '$routeParams', 'NodesManager', 'DevicesManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
-    function($scope, $rootScope, $location, NodesManager, DevicesManager,
+    function($scope, $rootScope, $routeParams, NodesManager, DevicesManager,
         GeneralManager, ManagerHelperService, SearchService, ZonesManager) {
 
         // Mapping of device.ip_assignment to viewable text.
@@ -176,6 +176,12 @@ angular.module('MAAS').controller('NodesListController', [
             $scope.currentpage = tab;
         };
 
+        // Clear the search bar.
+        $scope.clearSearch = function(tab) {
+            $scope.tabs[tab].search = "";
+            shouldClearAction(tab);
+        };
+
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node, tab) {
             if($scope.tabs[tab].manager.isSelected(node.system_id)) {
@@ -249,6 +255,21 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].searchValid = true;
             }
             shouldClearAction(tab);
+        };
+
+        // Sorts the table by predicate.
+        $scope.sortTable = function(predicate, tab) {
+            $scope.tabs[tab].predicate = predicate;
+            $scope.tabs[tab].reverse = !$scope.tabs[tab].reverse;
+        };
+
+        // Sets the viewable column or sorts.
+        $scope.selectColumnOrSort = function(predicate, tab) {
+            if($scope.tabs[tab].column !== predicate) {
+                $scope.tabs[tab].column = predicate;
+            } else {
+                $scope.sortTable(predicate, tab);
+            }
         };
 
         // Return True if the node supports the action.
@@ -385,4 +406,10 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.$on("$destroy", function() {
             GeneralManager.stopPolling("osinfo");
         });
+
+        // Set the query if the present in $routeParams.
+        var query = $routeParams.query;
+        if(angular.isString(query)) {
+            $scope.tabs.nodes.search = query;
+        }
     }]);

@@ -612,6 +612,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the value in nameHeader is invalid.
         $scope.editNameInvalid = function() {
+            // Not invalid unless editing.
+            if(!$scope.nameHeader.editing) {
+                return false;
+            }
+
             // The value cannot be blank.
             var value = $scope.nameHeader.value;
             if(value.length === 0) {

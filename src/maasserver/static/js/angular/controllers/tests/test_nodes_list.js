@@ -10,12 +10,13 @@ describe("NodesListController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $scope, $q;
+    var $controller, $rootScope, $scope, $q, $routeParams;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
+        $routeParams = {};
     }));
 
     // Load the NodesManager, DevicesManager, GeneralManager,
@@ -60,6 +61,7 @@ describe("NodesListController", function() {
         return $controller("NodesListController", {
             $scope: $scope,
             $rootScope: $rootScope,
+            $routeParams: $routeParams,
             NodesManager: NodesManager,
             DevicesManager: DevicesManager,
             ManagerHelperService: ManagerHelperService,
@@ -129,6 +131,14 @@ describe("NodesListController", function() {
                 [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
         });
 
+    it("sets nodes search from $routeParams.query",
+        function() {
+            var query = makeName("query");
+            $routeParams.query = query;
+            var controller = makeController();
+            expect($scope.tabs.nodes.search).toBe(query);
+        });
+
     describe("toggleTab", function() {
 
         it("sets $rootScope.title", function() {
@@ -196,6 +206,25 @@ describe("NodesListController", function() {
     angular.forEach(["nodes", "devices"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
+
+            describe("clearSearch", function() {
+
+                it("sets search to empty string", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].search = makeName("search");
+                    $scope.clearSearch(tab);
+                    expect($scope.tabs[tab].search).toBe("");
+                });
+
+                it("resets actionOption", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = {
+                        name: "deploy"
+                    };
+                    $scope.clearSearch(tab);
+                    expect($scope.tabs[tab].actionOption).toBeNull();
+                });
+            });
 
             describe("toggleChecked", function() {
 
@@ -442,6 +471,43 @@ describe("NodesListController", function() {
                                 SearchService.emptyFilter);
                         expect($scope.tabs[tab].searchValid).toBe(false);
                     });
+            });
+
+            describe("sortTable", function() {
+
+                it("sets predicate", function() {
+                    var controller = makeController();
+                    var predicate = makeName('predicate');
+                    $scope.sortTable(predicate, tab);
+                    expect($scope.tabs[tab].predicate).toBe(predicate);
+                });
+
+                it("reverses reverse", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].reverse = true;
+                    $scope.sortTable(makeName('predicate'), tab);
+                    expect($scope.tabs[tab].reverse).toBe(false);
+                });
+            });
+
+            describe("selectColumnOrSort", function() {
+
+                it("sets column if different", function() {
+                    var controller = makeController();
+                    var column = makeName('column');
+                    $scope.selectColumnOrSort(column, tab);
+                    expect($scope.tabs[tab].column).toBe(column);
+                });
+
+                it("calls sortTable if column already set", function() {
+                    var controller = makeController();
+                    var column = makeName('column');
+                    $scope.tabs[tab].column = column;
+                    spyOn($scope, "sortTable");
+                    $scope.selectColumnOrSort(column, tab);
+                    expect($scope.sortTable).toHaveBeenCalledWith(
+                        column, tab);
+                });
             });
 
             describe("supportsAction", function() {

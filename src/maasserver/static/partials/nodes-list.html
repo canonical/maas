@@ -390,7 +390,9 @@
                     type="search" placeholder="Search nodes" class="search__input"
                     data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
                     data-ng-class="{ error: !tabs.nodes.searchValid }" />
-                <input type="submit" class="search__submit" />
+                <input type="submit" class="search__submit"
+                    data-ng-class="{ close: tabs.nodes.search.length > 0 }"
+                    data-ng-click="clearSearch('nodes')" />
             </div>
             <table class="table-listing " id="nodes-listing">
                 <thead>
@@ -402,41 +404,41 @@
                         </th>
                         <th colspan="2" class="table-listing__header fixed">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
+                            <a href="" data-ng-click="selectColumnOrSort('fqdn', 'nodes')">
                                 <acronym title="Fully Qualified Domain Name">FQDN</acronym>
                             </a> |
-                            <a href="" data-ng-click="predicate='pxe_mac'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='pxe_mac'">
+                            <a href="" data-ng-click="selectColumnOrSort('pxe_mac', 'nodes')">
                                 <acronym title="Media Access Control addresses">MAC</acronym>
                             </a>
                         </th>
                         <th class="align-center">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" class="align-center" data-ng-click="tabs.nodes.predicate='power_state'; tabs.nodes.reverse=!tabs.nodes.reverse">Power</a>
+                            <a href="" class="align-center" data-ng-click="sortTable('power_state', 'nodes')">Power</a>
                         </th>
                         <th>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='status'; tabs.nodes.reverse=!tabs.nodes.reverse">Status</a>
+                            <a href="" data-ng-click="sortTable('status', 'nodes')">Status</a>
                         </th>
                         <th>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='owner'; tabs.nodes.reverse=!tabs.nodes.reverse">Owner</a>
+                            <a href="" data-ng-click="sortTable('owner', 'nodes')">Owner</a>
                         </th>
 
                         <th class="align-right">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='cpu_count'; tabs.nodes.reverse=!tabs.nodes.reverse">Cores</a>
+                            <a href="" data-ng-click="sortTable('cpu_count', 'nodes')">Cores</a>
                         </th>
                         <th class="align-right">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='memory'; tabs.nodes.reverse=!tabs.nodes.reverse">RAM (GB)</a>
+                            <a href="" data-ng-click="sortTable('memory', 'nodes')">RAM (GB)</a>
                         </th>
                         <th class="align-right">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='disks'; tabs.nodes.reverse=!tabs.nodes.reverse">Disks</a>
+                            <a href="" data-ng-click="sortTable('disks', 'nodes')">Disks</a>
                         </th>
                         <th class="align-right">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.nodes.predicate='storage'; tabs.nodes.reverse=!tabs.nodes.reverse">Storage (GB)</a>
+                            <a href="" data-ng-click="sortTable('storage', 'nodes')">Storage (GB)</a>
                         </th>
                     </tr>
                 </thead>
@@ -444,8 +446,7 @@
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
                     <tr class="table-listing__row table-listing-row"
                         data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
-                        data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }"
-                        data-ng-click="toggleChecked(node, 'nodes')">
+                        data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }">
                         <td>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
@@ -482,7 +483,9 @@
                     type="search" placeholder="Search devices" class="search__input"
                     data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
                     data-ng-class="{ error: !tabs.devices.searchValid }" />
-                <input type="submit" class="search__submit" />
+                <input type="submit" class="search__submit"
+                    data-ng-class="{ close: tabs.devices.search.length > 0 }"
+                    data-ng-click="clearSearch('devices')" />
             </div>
             <table class="table-listing" id="nodes-listing">
                 <thead>
@@ -494,24 +497,24 @@
                         </th>
                         <th class="table-listing__header t24">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
+                            <a href="" data-ng-click="sortTable('fqdn', 'devices')">
                                 <acronym title="Fully Qualified Domain Name">FQDN</acronym>
                             </a>
                         </th>
                         <th class="table-listing__header t25">
-                            <a href="" data-ng-click="tabs.devices.predicate='primary_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
+                            <a href="" data-ng-click="sortTable('primary_mac', 'devices')">
                                 <acronym title="Media Access Control addresses">MAC</acronym>
                             </a>
                         </th>
                         <th class="table-listing__header t15">
-                            <a href="" data-ng-click="tabs.devices.predicate='ip_assignment'; tabs.devices.reverse=!tabs.devices.reverse">IP assignment</a>
+                            <a href="" data-ng-click="sortTable('ip_assignment', 'devices')">IP assignment</a>
                         </th>
                         <th class="table-listing__header t20">
-                            <a href="" data-ng-click="tabs.devices.predicate='ip_address'; tabs.devices.reverse=!tabs.devices.reverse">IP</a>
+                            <a href="" data-ng-click="sortTable('ip_address', 'devices')">IP</a>
                         </th>
                         <th class="table-listing__header t15">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
+                            <a href="" data-ng-click="sortTable('owner', 'devices')">Owner</a>
                         </th>
                     </tr>
                 </thead>
