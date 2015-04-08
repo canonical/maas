@@ -24,7 +24,7 @@
     <header class="banner global fixed" role="banner">
         <nav role="navigation" class="nav-primary nav-right">
             <div class="logo">
-                <a class="logo-ubuntu" href="{% url 'index' %}">
+                <a class="logo-ubuntu" href="#/nodes">
                     <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
                 </a>
             </div>
@@ -57,7 +57,7 @@
             {% if user.is_authenticated %}
             <ul id="right-nav" class="nav">
                 <li id="user-link">
-                    <a href="#">
+                    <a href="">
                         <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
                         <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
                         {{ user.username }}
