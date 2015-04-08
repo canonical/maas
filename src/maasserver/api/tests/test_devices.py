@@ -405,7 +405,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         # Host maps are updated on all the clusters for which DHCP is managed.
         static_mappings = defaultdict(dict)
         dhcp_managed_clusters = [
-            cluster.manages_dhcp() for cluster in NodeGroup.objects.all()]
+            cluster for cluster in NodeGroup.objects.all()
+            if cluster.manages_dhcp()
+        ]
         for cluster in dhcp_managed_clusters:
             static_mappings[cluster] = {
                 requested_address: device.get_primary_mac().mac_address

@@ -193,8 +193,10 @@ class DeviceHandler(OperationsHandler):
                     requested_address, request.user)
                 sticky_ips = [sticky_ip]
                 dhcp_managed_clusters = [
-                    cluster.manages_dhcp()
-                    for cluster in NodeGroup.objects.all()]
+                    cluster
+                    for cluster in NodeGroup.objects.all()
+                    if cluster.manages_dhcp()
+                ]
                 device.update_host_maps(
                     [(sticky_ip.ip, mac_address.mac_address.get_raw())],
                     dhcp_managed_clusters)
