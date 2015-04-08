@@ -23,7 +23,7 @@ from maasserver.components import get_persistent_errors
 from maasserver.models import Config
 from maasserver.utils.version import (
     get_maas_doc_version,
-    get_maas_version,
+    get_maas_version_ui,
 )
 
 
@@ -88,6 +88,6 @@ def global_options(context):
             'site_name': Config.objects.get_config('maas_name'),
         },
         'debug': settings.DEBUG,
-        'version': get_maas_version(),
+        'version': get_maas_version_ui(),
         'doc_version': get_maas_doc_version(),
     }

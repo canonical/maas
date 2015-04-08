@@ -21,6 +21,7 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import version as version_module
 
 
 class TestFindingResources(MAASServerTestCase):
@@ -31,6 +32,10 @@ class TestFindingResources(MAASServerTestCase):
             '/api/1.0/version/', reverse('version'))
 
     def test_GET_returns_details(self):
+        mock_apt = self.patch(version_module, "get_version_from_apt")
+        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
+        self.patch(version_module, "_cache", {})
+
         response = self.client.get(reverse('version'))
         self.assertEqual(httplib.OK, response.status_code)
 
@@ -38,5 +43,7 @@ class TestFindingResources(MAASServerTestCase):
         self.assertEqual(
             {
                 'capabilities': API_CAPABILITIES_LIST,
+                'version': '1.8.0',
+                'subversion': 'alpha4+bzr356',
             },
             parsed_result)

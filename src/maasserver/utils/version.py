@@ -14,7 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     "get_maas_doc_version",
-    "get_maas_version",
+    "get_maas_version_subversion",
+    "get_maas_version_ui",
     ]
 
 import apt_pkg
@@ -28,9 +29,6 @@ except ImportError:
 
 # Initialize apt_pkg.
 apt_pkg.init()
-
-# Holds the version of maas.
-MAAS_VERSION = None
 
 # Name of maas package to get version from.
 REGION_PACKAGE_NAME = "maas-region-controller-min"
@@ -50,34 +48,16 @@ def get_version_from_apt(package):
         return ""
 
 
-def format_version(version):
-    """Format `version` into a better looking string for the UI."""
+def extract_version_subversion(version):
+    """Return a tuple (version, subversion) from the given apt version."""
     if "~" in version:
         main_version, extra = version.split("~", 1)
-        return "%s (%s)" % (main_version, extra.split("-", 1)[0])
+        return main_version, extra.split("-", 1)[0]
     elif "+" in version:
         main_version, extra = version.split("+", 1)
-        return "%s (+%s)" % (main_version, extra.split("-", 1)[0])
+        return main_version, "+" + extra.split("-", 1)[0]
     else:
-        return version.split("-", 1)[0]
-
-
-def get_maas_region_package_version():
-    """Return the dpkg version for `REGION_PACKAGE_NAME`.
-
-    Lazy loads the version. Once loaded it will not be loaded again.
-    This is to speed up the call to this method and also to require the
-    region to be restarted to see the new version.
-    """
-    global MAAS_VERSION
-    if MAAS_VERSION is None:
-        MAAS_VERSION = get_version_from_apt(REGION_PACKAGE_NAME)
-        # Possibly this returned an empty string, meaning it's not installed
-        # and no need to call again.
-        if MAAS_VERSION:
-            # It is a valid version so set the correct format.
-            MAAS_VERSION = format_version(MAAS_VERSION)
-    return MAAS_VERSION
+        return version.split("-", 1)[0], ''
 
 
 def get_maas_branch():
@@ -90,41 +70,62 @@ def get_maas_branch():
         return None
 
 
-def get_maas_version():
-    """Return the version string for the running MAAS region."""
-    # MAAS is installed from package, return the version string.
-    version = get_maas_region_package_version()
-    if version:
-        return version
+_cache = {}
+
+
+# A very simply memoize function: when we switch to Django 1.7 we should use
+# Django's lru_cache method.
+def simple_cache(fun):
+    def wrapped(*args, **kwargs):
+        key = hash(repr(fun) + repr(args) + repr(kwargs))
+        if not key in _cache:
+            _cache[key] = fun(*args, **kwargs)
+        return _cache[key]
+
+    wrapped.__doc__ = "%s %s" % (fun.__doc__, "(cached)")
+    return wrapped
+
+
+@simple_cache
+def get_maas_package_version():
+    """Return the apt version for the main MAAS package."""
+    return get_version_from_apt(REGION_PACKAGE_NAME)
+
+
+@simple_cache
+def get_maas_version_subversion():
+    """Return a tuple with the MAAS version and the MAAS subversion."""
+    apt_version = get_maas_package_version()
+    if apt_version:
+        return extract_version_subversion(apt_version)
     else:
         # Get the branch information
         branch = get_maas_branch()
         if branch is None:
             # Not installed not in branch, then no way to identify. This should
             # not happen, but just in case.
-            return "unknown"
+            return "unknown", ''
         else:
-            return "from source (+bzr%s)" % branch.revno()
+            return "from source (+bzr%s)" % branch.revno(), ''
 
 
-def get_maas_main_version():
-    """Return the main version for the running MAAS region."""
-    # MAAS is installed from package, return the version string.
-    version = get_maas_region_package_version()
-    if version:
-        if " " in version:
-            return version.split(" ")[0]
-        else:
-            return version
-    else:
-        return ""
+@simple_cache
+def get_maas_version_ui():
+    """Return the version string for the running MAAS region.
+
+    The returned string is suitable to display in the UI.
+    """
+    version, subversion = get_maas_version_subversion()
+    return "%s (%s)" % (version, subversion) if subversion else version
 
 
+@simple_cache
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
-    main_version = get_maas_main_version()
     doc_prefix = 'docs'
-    if not main_version:
-        return doc_prefix
+    apt_version = get_maas_package_version()
+    if apt_version:
+        version, _ = extract_version_subversion(apt_version)
+        return doc_prefix + '.'.join(version.split('.')[:2])
     else:
-        return doc_prefix + '.'.join(main_version.split('.')[:2])
+        return doc_prefix

@@ -20,6 +20,7 @@ import httplib
 
 from django.http import HttpResponse
 from maasserver.api.support import AnonymousOperationsHandler
+from maasserver.utils.version import get_maas_version_subversion
 
 # MAAS capabilities. See docs/capabilities.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = 'networks-management'
@@ -39,6 +40,8 @@ class VersionHandler(AnonymousOperationsHandler):
     This returns a JSON dictionary with information about this
     MAAS instance.
     {
+        'version': '1.8.0',
+        'subversion': 'alpha10+bzr3750',
         'capabilities': ['capability1', 'capability2', ...]
     }
     """
@@ -46,8 +49,12 @@ class VersionHandler(AnonymousOperationsHandler):
     create = update = delete = None
 
     def read(self, request):
+        version, subversion = get_maas_version_subversion()
         version_info = {
             'capabilities': API_CAPABILITIES_LIST,
+            'version': version,
+            'subversion': subversion,
+
         }
         return HttpResponse(
             version_info, mimetype='application/json; charset=utf-8',
