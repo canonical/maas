@@ -8,6 +8,8 @@ Changelog
 Bug Fix Update
 --------------
 
+#1441133    MAAS version not exposed over the API
+#1437094    Sorting by mac address on webui causes internal server error
 #1439359    Automatically set correct boot resources selection and start import
             after upgrade from MAAS 1.5; Ensures MAAS is usable after upgrade.
 #1439366    Backwards compatibility with MAAS 1.5 preseeds and custom preseeds.
