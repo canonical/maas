@@ -32,8 +32,10 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
+    ClaimIPForm,
     DeviceForm,
     DeviceWithMACsForm,
+    ReleaseIPForm,
 )
 from maasserver.models import (
     MACAddress,
@@ -162,42 +164,48 @@ class DeviceHandler(OperationsHandler):
         """
         device = Node.devices.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        raw_mac = request.POST.get('mac_address', None)
-        if raw_mac is None:
-            mac_address = device.get_primary_mac()
+        form = ClaimIPForm(request.POST)
+
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
         else:
-            try:
-                mac_address = MACAddress.objects.get(
-                    mac_address=raw_mac, node=device)
-            except MACAddress.DoesNotExist:
-                raise MAASAPIBadRequest(
-                    "mac_address %s not found on the device" % raw_mac)
-        requested_address = request.POST.get('requested_address', None)
-        if requested_address is None:
-            sticky_ips = mac_address.claim_static_ips(
-                alloc_type=IPADDRESS_TYPE.STICKY,
-                requested_address=requested_address)
-            claims = [
-                (static_ip.ip, mac_address.mac_address.get_raw())
-                for static_ip in sticky_ips]
-            device.update_host_maps(claims)
-        else:
-            sticky_ip = mac_address.set_static_ip(
-                requested_address, request.user)
-            sticky_ips = [sticky_ip]
-            dhcp_managed_clusters = [
-                cluster.manages_dhcp() for cluster in NodeGroup.objects.all()]
-            device.update_host_maps(
-                [(sticky_ip.ip, mac_address.mac_address.get_raw())],
-                dhcp_managed_clusters)
-        # Use the master cluster DNS zone for devices.
-        # This is a temporary measure until we support setting a specific
-        # zone for each MAC.
-        dns_update_zones([NodeGroup.objects.ensure_master()])
-        maaslog.info(
-            "%s: Sticky IP address(es) allocated: %s", device.hostname,
-            ', '.join(allocation.ip for allocation in sticky_ips))
-        return device
+            raw_mac = request.POST.get('mac_address', None)
+            if raw_mac is None:
+                mac_address = device.get_primary_mac()
+            else:
+                try:
+                    mac_address = MACAddress.objects.get(
+                        mac_address=raw_mac, node=device)
+                except MACAddress.DoesNotExist:
+                    raise MAASAPIBadRequest(
+                        "mac_address %s not found on the device" % raw_mac)
+            requested_address = request.POST.get('requested_address', None)
+            if requested_address is None:
+                sticky_ips = mac_address.claim_static_ips(
+                    alloc_type=IPADDRESS_TYPE.STICKY,
+                    requested_address=requested_address)
+                claims = [
+                    (static_ip.ip, mac_address.mac_address.get_raw())
+                    for static_ip in sticky_ips]
+                device.update_host_maps(claims)
+            else:
+                sticky_ip = mac_address.set_static_ip(
+                    requested_address, request.user)
+                sticky_ips = [sticky_ip]
+                dhcp_managed_clusters = [
+                    cluster.manages_dhcp()
+                    for cluster in NodeGroup.objects.all()]
+                device.update_host_maps(
+                    [(sticky_ip.ip, mac_address.mac_address.get_raw())],
+                    dhcp_managed_clusters)
+            # Use the master cluster DNS zone for devices.
+            # This is a temporary measure until we support setting a specific
+            # zone for each MAC.
+            dns_update_zones([NodeGroup.objects.ensure_master()])
+            maaslog.info(
+                "%s: Sticky IP address(es) allocated: %s", device.hostname,
+                ', '.join(allocation.ip for allocation in sticky_ips))
+            return device
 
     @operation(idempotent=False)
     def release_sticky_ip_address(self, request, system_id):
@@ -211,23 +219,30 @@ class DeviceHandler(OperationsHandler):
         """
         device = Node.devices.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        address = request.POST.get('address', None)
+        form = ReleaseIPForm(request.POST)
 
-        # Note: this call handles deleting the host maps, and updating the DNS
-        # zones (unlike the claim_static_ips() call in mac_address used above)
-        deallocated_ips = device.deallocate_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
-
-        if len(deallocated_ips) == 0 and address is not None:
-                raise MAASAPIBadRequest(
-                    "%s: could not deallocate sticky IP address: %s",
-                    device.hostname, address)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
         else:
-            maaslog.info(
-                "%s: Sticky IP address(es) deallocated: %s", device.hostname,
-                ', '.join(unicode(ip) for ip in deallocated_ips))
+            address = request.POST.get('address', None)
 
-        return device
+            # Note: this call handles deleting the host maps, and updating the
+            # DNS zones (unlike the claim_static_ips() call in mac_address
+            # used above)
+            deallocated_ips = device.deallocate_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
+
+            if len(deallocated_ips) == 0 and address is not None:
+                    raise MAASAPIBadRequest(
+                        "%s: could not deallocate sticky IP address: %s",
+                        device.hostname, address)
+            else:
+                maaslog.info(
+                    "%s: Sticky IP address(es) deallocated: %s",
+                    device.hostname,
+                    ', '.join(unicode(ip) for ip in deallocated_ips))
+
+            return device
 
 
 class DevicesHandler(OperationsHandler):

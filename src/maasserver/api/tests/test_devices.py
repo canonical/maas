@@ -417,6 +417,44 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             dns_update_zones,
             MockCalledOnceWith([NodeGroup.objects.ensure_master()]))
 
+    def test_rejects_invalid_ip(self):
+        requested_address = factory.make_name('bogus')
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        mac = device.macaddress_set.all()[0]
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'claim_sticky_ip_address',
+                'requested_address': requested_address,
+                'mac_address': mac.mac_address
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
+
+    def test_rejects_invalid_mac(self):
+        mac_address = factory.make_name('bogus')
+        requested_address = factory.make_ip_address()
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'claim_sticky_ip_address',
+                'requested_address': requested_address,
+                'mac_address': mac_address
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(
+                mac_address=[
+                    "'%s' is not a valid MAC address." % mac_address]),
+            json.loads(response.content))
+
     def test_rejects_unrelated_mac(self):
         # Create an other device.
         other_device = factory.make_Node(
@@ -463,6 +501,22 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
         self.expectThat(parsed_device["ip_addresses"], HasLength(0))
+
+    def test__rejects_invalid_ip(self):
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'release_sticky_ip_address',
+                'address': factory.make_name('bogus'),
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            dict(address=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
 
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)

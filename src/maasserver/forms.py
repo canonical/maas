@@ -20,6 +20,7 @@ __all__ = [
     "BootSourceSettingsForm",
     "BulkNodeActionForm",
     "create_Network_from_NodeGroupInterface",
+    "ClaimIPForm",
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
@@ -38,6 +39,7 @@ __all__ = [
     "NodeGroupInterfaceForm",
     "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
+    "ReleaseIPForm",
     "SSHKeyForm",
     "SSLKeyForm",
     "TagForm",
@@ -2866,3 +2868,14 @@ class BootResourceNoContentForm(BootResourceForm):
         return BootResourceFile.objects.create(
             resource_set=resource_set, largefile=largefile,
             filename=filetype, filetype=filetype)
+
+
+class ClaimIPForm(Form):
+    """Form used to claim an IP address for a device."""
+    mac_address = MACAddressFormField(required=False)
+    requested_address = forms.GenericIPAddressField(required=False)
+
+
+class ReleaseIPForm(Form):
+    """Form used to release a device IP address."""
+    address = forms.GenericIPAddressField(required=False)
