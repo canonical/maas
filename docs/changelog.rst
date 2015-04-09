@@ -8,6 +8,7 @@ Changelog
 Bug Fix Update
 --------------
 
+#1441933    Internal Server Error when saving a cluster without Router IP
 #1441133    MAAS version not exposed over the API
 #1437094    Sorting by mac address on webui causes internal server error
 #1439359    Automatically set correct boot resources selection and start import
