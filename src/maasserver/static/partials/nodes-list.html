@@ -354,6 +354,16 @@
                     </ul>
                 </div>
             </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.storage_tags.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Storage Tags</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="tag in tabs.nodes.metadata.storage_tags | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('storage_tags', tag.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('storage_tags', tag.name, 'nodes')">{$ tag.name $} ({$ tag.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.networks.length">
                 <h4 class="accordion__tab-title maas-accordion-tab">Networks</h4>
                 <div class="accordion__tab-content">

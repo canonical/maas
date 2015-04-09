@@ -26,7 +26,8 @@ angular.module('MAAS').factory(
                 "zone": function(node) {
                     return node.zone.name;
                 },
-                "networks": null
+                "networks": null,
+                "storage_tags": null
             };
 
             // Listen for notify events for the node object.

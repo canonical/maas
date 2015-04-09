@@ -160,7 +160,7 @@ class TestNodeHandler(MAASServerTestCase):
             for mac_address in node.macaddress_set.all().order_by('id')
             ], key=itemgetter('is_pxe'), reverse=True)
 
-    def get_all_disk_tags(self, physicalblockdevices):
+    def get_all_storage_tags(self, physicalblockdevices):
         tags = set()
         for blockdevice in physicalblockdevices:
             tags = tags.union(blockdevice.tags)
@@ -192,7 +192,6 @@ class TestNodeHandler(MAASServerTestCase):
             "created": dehydrate_datetime(node.created),
             "disable_ipv4": node.disable_ipv4,
             "disks": len(physicalblockdevices),
-            "disk_tags": self.get_all_disk_tags(physicalblockdevices),
             "distro_series": node.get_distro_series(),
             "error": node.error,
             "error_description": node.error_description,
@@ -247,6 +246,7 @@ class TestNodeHandler(MAASServerTestCase):
                 blockdevice.size
                 for blockdevice in physicalblockdevices
                 ]) / (1000 ** 3)),
+            "storage_tags": self.get_all_storage_tags(physicalblockdevices),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
@@ -270,8 +270,8 @@ class TestNodeHandler(MAASServerTestCase):
                 "tags",
                 "networks",
                 "disks",
-                "disk_tags",
                 "storage",
+                "storage_tags",
                 ]
             for key in data.keys():
                 if key not in allowed_fields:

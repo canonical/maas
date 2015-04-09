@@ -175,12 +175,12 @@ class NodeHandler(TimestampedModelHandler):
 
         physicalblockdevices = self.get_physicalblockdevices_for(obj)
         data["disks"] = len(physicalblockdevices)
-        data["disk_tags"] = self.get_all_disk_tags(physicalblockdevices)
         data["storage"] = "%3.1f" % (
             sum([
                 blockdevice.size
                 for blockdevice in physicalblockdevices
                 ]) / (1000 ** 3))
+        data["storage_tags"] = self.get_all_storage_tags(physicalblockdevices)
 
         data["tags"] = [
             tag.name
@@ -352,8 +352,8 @@ class NodeHandler(TimestampedModelHandler):
             for network in mac_address.get_networks()
         })
 
-    def get_all_disk_tags(self, physicalblockdevices):
-        """Return list of all disk tags in `physicalblockdevices`."""
+    def get_all_storage_tags(self, physicalblockdevices):
+        """Return list of all storage tags in `physicalblockdevices`."""
         tags = set()
         for blockdevice in physicalblockdevices:
             tags = tags.union(blockdevice.tags)
