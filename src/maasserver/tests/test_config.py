@@ -14,10 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from fixtures import EnvironmentVariableFixture
+
 from maasserver import config
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
+from maastesting.fixtures import ImportErrorFixture
 from maastesting.testcase import MAASTestCase
 
 
@@ -104,11 +105,8 @@ class TestConfig(MAASTestCase):
     """Tests for `maasserver.config`."""
 
     def test_is_dev_environment_returns_false(self):
-        self.useFixture(EnvironmentVariableFixture(
-            'DJANGO_SETTINGS_MODULE', 'Harry'))
+        self.useFixture(ImportErrorFixture('maastesting', 'root'))
         self.assertFalse(config.is_dev_environment())
 
     def test_is_dev_environment_returns_true(self):
-        self.useFixture(EnvironmentVariableFixture(
-            'DJANGO_SETTINGS_MODULE', 'maas.development'))
         self.assertTrue(config.is_dev_environment())

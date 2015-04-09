@@ -17,9 +17,9 @@ __all__ = [
     'is_dev_environment',
     'get_region_variable',
     'set_region_variable',
+    'REGIOND_DB_STATIC_ROUTE',
+    'REGION_CONFIG',
 ]
-
-import os
 
 from formencode.validators import UnicodeString
 from provisioningserver.config import (
@@ -79,7 +79,12 @@ controller's RegionConfiguration store
 
 
 def is_dev_environment():
-    return os.getenv('DJANGO_SETTINGS_MODULE') == 'maas.development'
+    try:
+        from maastesting import root  # noqa
+    except:
+        return False
+
+    return True
 
 
 def get_region_variable(var):
