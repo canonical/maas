@@ -114,6 +114,7 @@ describe("NodesListController", function() {
             }
         ]);
         expect($scope.addHardwareScope).toBeNull();
+        expect($scope.loading).toBe(true);
     });
 
     it("calls stopPolling when scope destroyed", function() {
@@ -130,6 +131,14 @@ describe("NodesListController", function() {
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
         });
+
+    it("sets loading to false with loadManagers resolves", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        expect($scope.loading).toBe(false);
+    });
 
     it("sets nodes search from $routeParams.query",
         function() {

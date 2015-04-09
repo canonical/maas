@@ -173,6 +173,9 @@ describe("Manager", function() {
                 expect(webSocket.receivedData.length).toBe(4);
                 expect(
                     angular.fromJson(
+                        webSocket.sentData[0]).params.limit).toBe(50);
+                expect(
+                    angular.fromJson(
                         webSocket.receivedData[3]).result).toEqual([]);
                 done();
             });

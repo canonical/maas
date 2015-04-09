@@ -12,6 +12,10 @@
                     data-ng-class="{ active: currentpage === 'devices' }"
                     data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
                 </a>
+                <span class="power-status--power" data-ng-show="loading">
+                    <span class="loader"></span>
+                    Loading...
+                </span>
             </span>
         </h1>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->

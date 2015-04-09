@@ -125,7 +125,7 @@ angular.module('MAAS').service(
             var method = this._handler + ".list";
             function callLoad() {
                 var params = self._initBatchLoadParameters();
-                params.count = 50;
+                params.limit = 50;
 
                 // Get the last pk in the list so the region knows to
                 // start at that offset.

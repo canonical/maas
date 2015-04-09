@@ -27,6 +27,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.devices = DevicesManager.getItems();
         $scope.currentpage = "nodes";
         $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.loading = true;
 
         $scope.tabs = {};
         // Nodes tab.
@@ -400,7 +401,10 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Load NodesManager, DevicesManager, GeneralManager and ZonesManager.
         ManagerHelperService.loadManagers(
-            [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
+            [NodesManager, DevicesManager, GeneralManager, ZonesManager]).then(
+            function() {
+                $scope.loading = false;
+            });
 
         // Stop polling when the scope is destroyed.
         $scope.$on("$destroy", function() {
