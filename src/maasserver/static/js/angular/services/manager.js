@@ -552,14 +552,14 @@ angular.module('MAAS').service(
             }
         };
 
-        // Update the metadata entry in `metadatas` for the array item with
-        // field and based on the action.
+        // Update the metadata entry in `metadatas` for the array value and
+        // based on the action.
         Manager.prototype._updateMetadataArrayEntry = function(
-                metadatas, item, field, action, oldItem) {
+                metadatas, newValue, action, oldValue) {
             var self = this;
 
             if(action === METADATA_ACTIONS.CREATE) {
-                angular.forEach(item[field], function(value) {
+                angular.forEach(newValue, function(value) {
                     // On create ignore empty values.
                     if(value === '') {
                         return;
@@ -567,16 +567,16 @@ angular.module('MAAS').service(
                     self._addMetadataValue(metadatas, value);
                 });
             } else if(action === METADATA_ACTIONS.DELETE) {
-                angular.forEach(item[field], function(value) {
+                angular.forEach(newValue, function(value) {
                     self._removeMetadataValue(metadatas, value);
                 });
             } else if(action === METADATA_ACTIONS.UPDATE &&
-                angular.isDefined(oldItem)) {
+                angular.isDefined(oldValue)) {
                 // Any values in added are new on the item, and any values left
                 // in oldArray have been removed.
                 var added = [];
-                var oldArray = angular.copy(oldItem[field]);
-                angular.forEach(item[field], function(value) {
+                var oldArray = angular.copy(oldValue);
+                angular.forEach(newValue, function(value) {
                     var idx = oldArray.indexOf(value);
                     if(idx === -1) {
                         // Value not in oldArray so it has been added.
@@ -599,48 +599,46 @@ angular.module('MAAS').service(
             }
         };
 
-        // Update the metadata entry in `metadatas` for the item with field and
-        // based on the action.
+        // Update the metadata entry in `metadatas` for the newValue and based
+        // on the action. Method does not work with array values, use
+        // _updateMetadataArrayEntry for values that are arrays.
         Manager.prototype._updateMetadataValueEntry = function(
-                metadatas, item, field, action, oldItem) {
-            var value = item[field];
+                metadatas, newValue, action, oldValue) {
             if(action === METADATA_ACTIONS.CREATE) {
                 // On create ignore empty values.
-                if(value === '') {
+                if(newValue === '') {
                     return;
                 }
-                this._addMetadataValue(metadatas, value);
+                this._addMetadataValue(metadatas, newValue);
             } else if(action === METADATA_ACTIONS.DELETE) {
-                this._removeMetadataValue(metadatas, value);
-            } else if(action === METADATA_ACTIONS.UPDATE) {
-                // Possible to receive and update before a create if the
-                // message is received out of order. So we allow the oldItem
-                // not to exist.
-                if(angular.isDefined(oldItem) && oldItem[field] !== value) {
-                    if(oldItem[field] !== "") {
+                this._removeMetadataValue(metadatas, newValue);
+            } else if(action === METADATA_ACTIONS.UPDATE &&
+                angular.isDefined(oldValue)) {
+                if(oldValue !== newValue) {
+                    if(oldValue !== "") {
                         // Decrement the old value
-                        this._removeMetadataValue(metadatas, oldItem[field]);
+                        this._removeMetadataValue(metadatas, oldValue);
                     }
 
                     // Increment the new value with the "create"
                     // operation.
                     this._updateMetadataEntry(
-                        metadatas, item, field,
-                        METADATA_ACTIONS.CREATE, oldItem);
+                        metadatas, newValue, METADATA_ACTIONS.CREATE, oldValue);
                 }
             }
         };
 
-        // Update the metadata entry in `metadatas` for the item with field and
-        // based on the action.
+        // Update the metadata entry in `metadatas` with the newValue and based
+        // on the action. Update action will use the oldValue to remove it from
+        // the metadata.
         Manager.prototype._updateMetadataEntry = function(
-                metadatas, item, field, action, oldItem) {
-            if(angular.isArray(item[field])) {
+                metadatas, newValue, action, oldValue) {
+            if(angular.isArray(newValue)) {
                 this._updateMetadataArrayEntry(
-                    metadatas, item, field, action, oldItem);
+                    metadatas, newValue, action, oldValue);
             } else {
                 this._updateMetadataValueEntry(
-                    metadatas, item, field, action, oldItem);
+                    metadatas, newValue, action, oldValue);
             }
         };
 
@@ -661,12 +659,24 @@ angular.module('MAAS').service(
                     oldItem = this._items[idx];
                 }
             }
-            angular.forEach(this._metadataAttributes, function(attr) {
+            angular.forEach(this._metadataAttributes, function(func, attr) {
                 if(angular.isUndefined(self._metadata[attr])) {
                     self._metadata[attr] = [];
                 }
+                var newValue, oldValue;
+                if(angular.isFunction(func)) {
+                    newValue = func(item);
+                    if(angular.isObject(oldItem)) {
+                        oldValue = func(oldItem);
+                    }
+                } else {
+                    newValue = item[attr];
+                    if(angular.isObject(oldItem)) {
+                        oldValue = oldItem[attr];
+                    }
+                }
                 self._updateMetadataEntry(
-                    self._metadata[attr], item, attr, action, oldItem);
+                    self._metadata[attr], newValue, action, oldValue);
             });
         };
 

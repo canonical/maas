@@ -45,7 +45,8 @@ describe("DevicesManager", function() {
     it("set requires attributes", function() {
         expect(DevicesManager._pk).toBe("system_id");
         expect(DevicesManager._handler).toBe("device");
-        expect(DevicesManager._metadataAttributes).toEqual(["owner", "tags"]);
+        expect(Object.keys(DevicesManager._metadataAttributes)).toEqual(
+            ["owner", "tags", "zone"]);
     });
 
     describe("performAction", function() {

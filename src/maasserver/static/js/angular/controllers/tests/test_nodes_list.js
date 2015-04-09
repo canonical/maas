@@ -139,6 +139,14 @@ describe("NodesListController", function() {
             expect($scope.tabs.nodes.search).toBe(query);
         });
 
+    it("calls updateFilters for nodes if search from $routeParams.query",
+        function() {
+            var query = makeName("query");
+            $routeParams.query = query;
+            var controller = makeController();
+            expect($scope.tabs.nodes.filters._).toEqual([query]);
+        });
+
     describe("toggleTab", function() {
 
         it("sets $rootScope.title", function() {
@@ -216,13 +224,11 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].search).toBe("");
                 });
 
-                it("resets actionOption", function() {
+                it("calls updateFilters", function() {
                     var controller = makeController();
-                    $scope.tabs[tab].actionOption = {
-                        name: "deploy"
-                    };
+                    spyOn($scope, "updateFilters");
                     $scope.clearSearch(tab);
-                    expect($scope.tabs[tab].actionOption).toBeNull();
+                    expect($scope.updateFilters).toHaveBeenCalledWith(tab);
                 });
             });
 

@@ -46,8 +46,8 @@ describe("NodesManager", function() {
     it("set requires attributes", function() {
         expect(NodesManager._pk).toBe("system_id");
         expect(NodesManager._handler).toBe("node");
-        expect(NodesManager._metadataAttributes).toEqual(
-            ["status", "owner", "tags"]);
+        expect(Object.keys(NodesManager._metadataAttributes)).toEqual(
+            ["status", "owner", "tags", "zone"]);
     });
 
     describe("create", function() {

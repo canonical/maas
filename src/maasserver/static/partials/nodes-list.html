@@ -354,6 +354,16 @@
                     </ul>
                 </div>
             </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.zone.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Zones</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="zone in tabs.nodes.metadata.zone | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('zone', zone.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('zone', zone.name, 'nodes')">{$ zone.name $} ({$ zone.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </aside>
     <aside id="sidebar" class="ng-hide" data-ng-show="currentpage === 'devices'">
@@ -376,6 +386,16 @@
                     <ul class="accordion__tab-list">
                         <li class="accordion__tab-item" data-ng-repeat="tag in tabs.devices.metadata.tags | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('tags', tag.name, 'devices') }">
                             <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('tags', tag.name, 'devices')">{$ tag.name $} ({$ tag.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.devices.metadata.zone.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Zones</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="zone in tabs.devices.metadata.zone | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('zone', zone.name, 'devices') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('zone', zone.name, 'devices')">{$ zone.name $} ({$ zone.count $})</a>
                         </li>
                     </ul>
                 </div>

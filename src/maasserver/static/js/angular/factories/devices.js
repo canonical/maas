@@ -19,10 +19,13 @@ angular.module('MAAS').factory(
 
             this._pk = "system_id";
             this._handler = "device";
-            this._metadataAttributes = [
-                "owner",
-                "tags"
-            ];
+            this._metadataAttributes = {
+                "owner": null,
+                "tags": null,
+                "zone": function(device) {
+                    return device.zone.name;
+                }
+            };
 
             // Listen for notify events for the device object.
             var self = this;

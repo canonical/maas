@@ -19,11 +19,14 @@ angular.module('MAAS').factory(
 
             this._pk = "system_id";
             this._handler = "node";
-            this._metadataAttributes = [
-                "status",
-                "owner",
-                "tags"
-            ];
+            this._metadataAttributes = {
+                "status": null,
+                "owner": null,
+                "tags": null,
+                "zone": function(node) {
+                    return node.zone.name;
+                }
+            };
 
             // Listen for notify events for the node object.
             var self = this;

@@ -179,7 +179,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Clear the search bar.
         $scope.clearSearch = function(tab) {
             $scope.tabs[tab].search = "";
-            shouldClearAction(tab);
+            $scope.updateFilters(tab);
         };
 
         // Mark a node as selected or unselected.
@@ -411,5 +411,6 @@ angular.module('MAAS').controller('NodesListController', [
         var query = $routeParams.query;
         if(angular.isString(query)) {
             $scope.tabs.nodes.search = query;
+            $scope.updateFilters('nodes');
         }
     }]);

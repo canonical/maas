@@ -28,11 +28,14 @@ describe("Manager", function() {
             Manager.call(this);
             this._pk = "system_id";
             this._handler = "node";
-            this._metadataAttributes = [
-                "status",
-                "owner",
-                "tags"
-            ];
+            this._metadataAttributes = {
+                "status": null,
+                "owner": null,
+                "tags": null,
+                "zone": function(node) {
+                    return node.zone.name;
+                }
+            };
 
             // Listen for notify events for the node object.
             var self = this;
@@ -96,7 +99,10 @@ describe("Manager", function() {
             tags: [
                 makeName("tag"),
                 makeName("tag")
-            ]
+            ],
+            zone: {
+                name: makeName("zone")
+            }
         };
         if(angular.isDefined(selected)) {
             node.$selected = selected;
@@ -974,17 +980,27 @@ describe("Manager", function() {
         });
     });
 
-    var scenarios = ['status', 'owner'];
+    var scenarios = ['status', 'owner', 'zone'];
 
     angular.forEach(scenarios, function(scenario) {
 
         describe("_updateMetadata:" + scenario, function() {
 
+            // Helper that gets the value from the node.
+            function getValueFromNode(node, attr) {
+                var func = NodesManager._metadataAttributes[attr];
+                if(angular.isFunction(func)) {
+                    return func(node);
+                } else {
+                    return node[attr];
+                }
+            }
+
             it("adds value if missing", function() {
                 var node = makeNode();
                 NodesManager._updateMetadata(node, "create");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: node[scenario],
+                    name: getValueFromNode(node, scenario),
                     count: 1
                 }]);
             });
@@ -993,17 +1009,17 @@ describe("Manager", function() {
                 var node = makeNode();
                 NodesManager._updateMetadata(node, "create");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: node[scenario],
+                    name: getValueFromNode(node, scenario),
                     count: 1
                 }]);
                 NodesManager._updateMetadata(node, "create");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: node[scenario],
+                    name: getValueFromNode(node, scenario),
                     count: 2
                 }]);
                 NodesManager._updateMetadata(node, "create");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: node[scenario],
+                    name: getValueFromNode(node, scenario),
                     count: 3
                 }]);
             });
@@ -1014,7 +1030,7 @@ describe("Manager", function() {
                 NodesManager._updateMetadata(node, "create");
                 NodesManager._updateMetadata(node, "delete");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: node[scenario],
+                    name: getValueFromNode(node, scenario),
                     count: 1
                 }]);
             });
@@ -1042,11 +1058,11 @@ describe("Manager", function() {
                 NodesManager._updateMetadata(updatedNode, "update");
                 expect(NodesManager._metadata[scenario]).toEqual([
                     {
-                        name: node[scenario],
+                        name: getValueFromNode(node, scenario),
                         count: 1
                     },
                     {
-                        name: updatedNode[scenario],
+                        name: getValueFromNode(updatedNode, scenario),
                         count: 1
                     }]);
             });
@@ -1059,7 +1075,7 @@ describe("Manager", function() {
                 updatedNode[scenario] = makeName(scenario);
                 NodesManager._updateMetadata(updatedNode, "update");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: updatedNode[scenario],
+                    name: getValueFromNode(updatedNode, scenario),
                     count: 1
                 }]);
             });
@@ -1068,6 +1084,7 @@ describe("Manager", function() {
                 var node = makeNode();
                 node.owner = "";
                 node.status = "";
+                node.zone.name = "";
                 NodesManager._updateMetadata(node, "create");
                 expect(NodesManager._metadata[scenario]).toEqual([]);
             });
@@ -1081,7 +1098,7 @@ describe("Manager", function() {
                 updatedNode[scenario] = makeName(scenario);
                 NodesManager._updateMetadata(updatedNode, "update");
                 expect(NodesManager._metadata[scenario]).toEqual([{
-                    name: updatedNode[scenario],
+                    name: getValueFromNode(updatedNode, scenario),
                     count: 1
                 }]);
             });
@@ -1091,7 +1108,11 @@ describe("Manager", function() {
                 NodesManager._updateMetadata(node, "create");
                 NodesManager._items.push(node);
                 var updatedNode = angular.copy(node);
-                updatedNode[scenario] = "";
+                if(scenario === "zone") {
+                    updatedNode.zone.name = "";
+                } else {
+                    updatedNode[scenario] = "";
+                }
                 NodesManager._updateMetadata(updatedNode, "update");
                 expect(NodesManager._metadata[scenario]).toEqual([]);
             });
