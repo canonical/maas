@@ -7,19 +7,21 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = []
 
+import __builtin__
 import os
 
 from fixtures import EnvironmentVariableFixture
 from maastesting import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import (
+    ImportErrorFixture,
     ProxiesDisabledFixture,
     TempDirectory,
     TempWDFixture,
@@ -29,6 +31,34 @@ from testtools.matchers import (
     DirExists,
     Not,
 )
+from testtools.testcase import ExpectedException
+
+
+class TestImportErrorFixture(MAASTestCase):
+    """Tests for :class:`TestImportErrorFixture`."""
+
+    def test_import_non_targeted_module_successfull(self):
+        self.useFixture(ImportErrorFixture('maastesting', 'root'))
+        from maastesting import bindir  # noqa
+
+    def test_import_targeted_module_unsuccessfull(self):
+        self.useFixture(ImportErrorFixture('maastesting', 'root'))
+        with ExpectedException(ImportError):
+            from maastesting import root  # noqa
+
+    def test_import_restores_original__import__(self):
+        __real_import = __builtin__.__import__
+        with ImportErrorFixture('maastesting', 'root'):
+            self.assertNotEqual(
+                __real_import,
+                __builtin__.__import__,
+                'ImportErrorFixture did not properly '
+                'patch __builtin__.__import__')
+        self.assertEqual(
+            __real_import,
+            __builtin__.__import__,
+            'ImportErrorFixture did not properly restore '
+            'the original __builtin__.__import__ upon cleanup')
 
 
 class TestProxiedDisabledFixture(MAASTestCase):

@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -18,8 +18,9 @@ __all__ = [
     "ProxiesDisabledFixture",
     "SSTFixture",
     "TempDirectory",
-    ]
+]
 
+import __builtin__
 import logging
 import os
 from subprocess import (
@@ -34,6 +35,44 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
 )
+
+
+class ImportErrorFixture(Fixture):
+    """Fixture to generate an artificial ImportError when the
+    interpreter would otherwise successfully import the given module.
+
+    While this fixture is within context, any import of the form:
+
+        from <module_name> import <sub_name>
+
+    will raise an ImportError.
+
+    :param module_name: name of the module to import from
+    :param sub_name: submodule to import from the module named <module_name>
+    """
+
+    def __init__(self, module_name, sub_name):
+        super(ImportErrorFixture, self).__init__()
+        self.module_name = module_name
+        self.sub_name = sub_name
+
+    def setUp(self):
+        super(ImportErrorFixture, self).setUp()
+
+        def mock_import(name, *import_args, **kwargs):
+            if name == self.module_name:
+                module_list = import_args[2]
+                if self.sub_name in module_list:
+                    raise ImportError("ImportErrorFixture raising ImportError "
+                                      "exception on targeted import: %s.%s" % (
+                                          self.module_name, self.sub_name))
+
+            return self.__real_import(name, *import_args, **kwargs)
+
+        self.__real_import = __builtin__.__import__
+        __builtin__.__import__ = mock_import
+
+        self.addCleanup(setattr, __builtin__, "__import__", self.__real_import)
 
 
 class LoggerSilencerFixture(Fixture):
@@ -94,7 +133,7 @@ class DisplayFixture(Fixture):
         return (
             "xvfb-run", "--server-args", args, "--auto-servernum", "--",
             "bash", "-c", "echo $DISPLAY && exec cat",
-            )
+        )
 
     def setUp(self):
         super(DisplayFixture, self).setUp()
