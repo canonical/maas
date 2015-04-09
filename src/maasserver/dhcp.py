@@ -67,7 +67,7 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         'broadcast_ip': interface.broadcast_ip,
         'interface': interface.interface,
         'router_ip': (
-            None if not interface.router_ip
+            '' if not interface.router_ip
             else unicode(interface.router_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,

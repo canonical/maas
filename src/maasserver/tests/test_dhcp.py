@@ -214,7 +214,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         post_commit_hooks.fire()
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
-        self.assertEqual(None, config['router_ip'])
+        self.assertEqual('', config['router_ip'])
 
 
 class TestDoConfigureDHCP(MAASServerTestCase):
