@@ -474,12 +474,17 @@ package_export: package_branch
 	@mkdir -p ../build-area
 	@bzr export $(MAAS_PACKAGE_EXPORT_EXTRA) --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
 
+package-clean:
+	@$(RM) -f ../build-area/*
+
 package: package_export
 	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -uc -us
 	@echo Binary packages built, see ../build-area/ directory.
 
 package-dev: MAAS_PACKAGE_EXPORT_EXTRA = --uncommitted
 package-dev: package
+
+package-dev-clean: package-clean package-dev
 
 source_package: package_export
 	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -S -uc -us

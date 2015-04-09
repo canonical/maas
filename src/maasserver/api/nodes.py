@@ -733,7 +733,7 @@ def create_node(request):
             altered_query_data['architecture'] += '/generic'
 
     if 'nodegroup' not in altered_query_data:
-        # If 'nodegroup' is not explicitely specified, get the origin of the
+        # If 'nodegroup' is not explicitly specified, get the origin of the
         # request to figure out which nodegroup the new node should be
         # attached to.
         if request.data.get('autodetect_nodegroup', None) is None:
@@ -773,29 +773,40 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
     @operation(idempotent=False)
     def new(self, request):
+        # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Node.
 
         Adding a server to a MAAS puts it on a path that will wipe its disks
-        and re-install its operating system.  In anonymous enlistment and when
-        the enlistment is done by a non-admin, the node is held in the
-        "New" state for approval by a MAAS admin.
+        and re-install its operating system, in the event that it PXE boots.
+        In anonymous enlistment (and when the enlistment is done by a
+        non-admin), the node is held in the "New" state for approval by a MAAS
+        admin.
 
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        autodetect_nodegroup=True
 
         :param architecture: A string containing the architecture type of
-            the node.
-        :param mac_addresses: One or more MAC addresses for the node.
+            the node. (For example, "i386", or "amd64".) To determine the
+            supported architectures, use the boot-resources endpoint.
+        :param subarchitecture: A string containing the subarchitecture type
+            of the node. (For example, "generic" or "hwe-t".) To determine
+            the supported subarchitectures, use the boot-resources endpoint.
+        :param mac_addresses: One or more MAC addresses for the node. To
+            specify more than one MAC address, the parameter must be specified
+            twice. (such as "nodes new mac_addresses=01:02:03:04:05:06
+            mac_addresses=02:03:04:05:06:07")
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
+        :param autodetect_nodegroup: (boolean) Whether or not to attempt
+            nodegroup detection for this node. The nodegroup is determined
+            based on the requestor's IP address range. (if the API request
+            comes from an IP range within a known nodegroup, that nodegroup
+            will be used.)
+        :param nodegroup: The id of the nodegroup this node belongs to.
         """
-        # XXX 2014-02-11 bug=1278685
-        # There's no documentation here on what parameters can be passed!
-
-        # Note that request.autodetect_nodegroup is treated as a
-        # boolean; its presence indicates True.
         return create_node(request)
 
     @operation(idempotent=True)
@@ -836,21 +847,39 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def new(self, request):
+        # Note: this docstring is duplicated above. Be sure to update both.
         """Create a new Node.
 
-        When a node has been added to MAAS by an admin MAAS user, it is
-        ready for allocation to services running on the MAAS.
+        Adding a server to a MAAS puts it on a path that will wipe its disks
+        and re-install its operating system, in the event that it PXE boots.
+        In anonymous enlistment (and when the enlistment is done by a
+        non-admin), the node is held in the "New" state for approval by a MAAS
+        admin.
 
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        autodetect_nodegroup=True
 
         :param architecture: A string containing the architecture type of
-            the node.
-        :param mac_addresses: One or more MAC addresses for the node.
+            the node. (For example, "i386", or "amd64".) To determine the
+            supported architectures, use the boot-resources endpoint.
+        :param subarchitecture: A string containing the subarchitecture type
+            of the node. (For example, "generic" or "hwe-t".) To determine
+            the supported subarchitectures, use the boot-resources endpoint.
+        :param mac_addresses: One or more MAC addresses for the node. To
+            specify more than one MAC address, the parameter must be specified
+            twice. (such as "nodes new mac_addresses=01:02:03:04:05:06
+            mac_addresses=02:03:04:05:06:07")
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
+        :param autodetect_nodegroup: (boolean) Whether or not to attempt
+            nodegroup detection for this node. The nodegroup is determined
+            based on the requestor's IP address range. (if the API request
+            comes from an IP range within a known nodegroup, that nodegroup
+            will be used.)
+        :param nodegroup: The id of the nodegroup this node belongs to.
         """
         node = create_node(request)
         if request.user.is_superuser:
