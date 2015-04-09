@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -16,6 +16,7 @@ __all__ = [
     'WebApplicationHandler',
 ]
 
+import httplib
 from itertools import count
 import logging
 import sys
@@ -26,6 +27,7 @@ from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler
 from django.core.urlresolvers import get_resolver
 from django.db import transaction
+from django.template.response import SimpleTemplateResponse
 from maasserver.utils.orm import (
     gen_retry_intervals,
     is_serialization_failure,
@@ -102,6 +104,28 @@ def reset_request(request):
         wsgi_input.seek(0)
 
     return request.__class__(request.environ)
+
+
+class MAASDjangoTemplateResponse(SimpleTemplateResponse):
+    def __init__(self, response=None):
+        super(MAASDjangoTemplateResponse, self).__init__(
+            '%d.html' % self.status_code)
+
+        # If we are passed an original response object 'response',
+        # transfer over the content from the original response
+        # for type 200 responses, if such content exists.
+        # Subsequently calling render() on the new object should
+        # not replace the transfered content, while calling render()
+        # on the new object when the original was content-less
+        # will render as a template with the new status code.
+        if response is not None and hasattr(response, 'status_code'):
+            if response.status_code == httplib.OK and hasattr(
+                    response, 'content'):
+                self.content = response.content
+
+
+class HttpResponseConflict(MAASDjangoTemplateResponse):
+    status_code = httplib.CONFLICT
 
 
 class WebApplicationHandler(WSGIHandler):
@@ -192,7 +216,10 @@ class WebApplicationHandler(WSGIHandler):
                 if attempt == retry_attempts or wait == 0:
                     # Time's up: this was the final attempt.
                     log_final_failed_attempt(request, attempt, elapsed)
-                    return response
+                    conflict_response = HttpResponseConflict(response)
+                    conflict_response.render()
+                    return conflict_response
+
                 # We'll retry after a brief interlude.
                 log_failed_attempt(request, attempt, elapsed, remaining, wait)
                 delete_oauth_nonce(request)

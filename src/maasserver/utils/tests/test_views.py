@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -32,13 +32,13 @@ from django.core.handlers.wsgi import (
 from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpResponse
-from django.http.response import HttpResponseServerError
+from django.http.response import REASON_PHRASES
 from fixtures import FakeLogger
-#from maastesting.factory import factory
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import views
 from maasserver.utils.orm import validate_in_transaction
+from maasserver.utils.views import HttpResponseConflict
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -284,7 +284,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(
             get_response, MockCalledOnceWith(request))
         self.assertThat(
-            response, IsInstance(HttpResponseServerError))
+            response, IsInstance(HttpResponseConflict))
 
     def test__get_response_sends_signal_on_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
@@ -319,8 +319,10 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
     def test__get_response_tries_multiple_times(self):
         handler = views.WebApplicationHandler(3)
-        # An iterable of responses, the last of which will be the final result
-        # of get_response().
+        # An iterable of responses, the last of which will be
+        # an HttpResponseConflict (HTTP 409 - Conflict) error
+        # indicating that the request reached its maximum
+        # number of retry attempts.
         responses = iter((sentinel.r1, sentinel.r2, sentinel.r3))
 
         def set_retry(request):
@@ -341,7 +343,11 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(
             get_response, MockCallsMatch(
                 call(request), call(request), call(request)))
-        self.assertThat(response, Is(sentinel.r3))
+        self.assertThat(response, IsInstance(HttpResponseConflict))
+        self.expectThat(response.status_code, Equals(httplib.CONFLICT))
+        self.expectThat(
+            response.reason_phrase,
+            Equals(REASON_PHRASES[httplib.CONFLICT]))
 
     def test__get_response_logs_retry_and_resets_request(self):
         timeout = 1.0 + (random() * 99)
