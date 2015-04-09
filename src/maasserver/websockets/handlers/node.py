@@ -69,6 +69,7 @@ class NodeHandler(TimestampedModelHandler):
             Node.nodes.filter(installable=True)
                 .select_related('nodegroup', 'pxe_mac', 'owner')
                 .prefetch_related('macaddress_set')
+                .prefetch_related('macaddress_set__networks')
                 .prefetch_related('nodegroup__nodegroupinterface_set')
                 .prefetch_related('zone')
                 .prefetch_related('tags')
@@ -185,6 +186,7 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
             ]
+        data["networks"] = self.dehydrate_networks(obj)
         if not for_list:
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
@@ -341,6 +343,14 @@ class NodeHandler(TimestampedModelHandler):
             }
             for event in events
             ]
+
+    def dehydrate_networks(self, obj):
+        """Dehydrate all the networks this node belongs to."""
+        return list({
+            network.name
+            for mac_address in obj.macaddress_set.all()
+            for network in mac_address.get_networks()
+        })
 
     def get_all_disk_tags(self, physicalblockdevices):
         """Return list of all disk tags in `physicalblockdevices`."""

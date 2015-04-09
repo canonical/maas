@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 
+from operator import attrgetter
 import re
 
 from django.db.models import (
@@ -185,7 +186,9 @@ class MACAddress(CleanSave, TimestampedModel):
 
     def get_networks(self):
         """Return networks to which this MAC is connected, sorted by name."""
-        return self.networks.all().order_by('name')
+        # Sort in python not using `order_by` so another query will not
+        # be made if the networks where prefetched.
+        return sorted(self.networks.all(), key=attrgetter('name'))
 
     def get_cluster_interfaces(self):
         """Return all cluster interfaces to which this MAC connects.

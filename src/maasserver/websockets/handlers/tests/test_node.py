@@ -72,6 +72,11 @@ from testtools.matchers import Equals
 from twisted.internet.threads import deferToThread
 
 
+l = logging.getLogger('django.db.backends')
+l.setLevel(logging.DEBUG)
+l.addHandler(logging.StreamHandler())
+
+
 class TestNodeHandler(MAASServerTestCase):
 
     def dehydrate_physicalblockdevice(self, blockdevice):
@@ -211,6 +216,11 @@ class TestNodeHandler(MAASServerTestCase):
             "interfaces": self.dehydrate_interfaces(node),
             "license_key": node.license_key,
             "memory": node.display_memory(),
+            "networks": list({
+                network.name
+                for mac_address in node.macaddress_set.all()
+                for network in mac_address.get_networks()
+                }),
             "nodegroup": {
                 "id": node.nodegroup.id,
                 "uuid": node.nodegroup.uuid,
@@ -258,6 +268,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "pxe_mac_vendor",
                 "extra_macs",
                 "tags",
+                "networks",
                 "disks",
                 "disk_tags",
                 "storage",
@@ -349,7 +360,7 @@ class TestNodeHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEquals(
-            query_10_count, 7,
+            query_10_count, 8,
             "Number of queries has changed, make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,
