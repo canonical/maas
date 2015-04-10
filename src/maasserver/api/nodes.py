@@ -151,6 +151,8 @@ def store_node_power_parameters(node, request):
 def filtered_nodes_list_from_request(request):
     """List Nodes visible to the user, optionally filtered by criteria.
 
+    Nodes are sorted by id (i.e. most recent last).
+
     :param hostname: An optional hostname. Only events relating to the node
         with the matching hostname will be returned. This can be specified
         multiple times to get events relating to more than one node.
@@ -190,7 +192,7 @@ def filtered_nodes_list_from_request(request):
     if match_agent_name is not None:
         nodes = nodes.filter(agent_name=match_agent_name)
 
-    return nodes
+    return nodes.order_by('id')
 
 
 class NodeHandler(OperationsHandler):

@@ -178,11 +178,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
         ids = [factory.make_Node().system_id for _ in range(3)]
         matching_id = ids[0]
         query = RequestFixture({'id': [matching_id]}, 'id')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertItemsEqual(
             [matching_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_nonexistent_id_returns_empty_list(self):
         # Trying to list a nonexistent node id returns a list containing
@@ -190,24 +190,29 @@ class TestFilteredNodesListFromRequest(APITestCase):
         existing_id = factory.make_Node().system_id
         nonexistent_id = existing_id + factory.make_string()
         query = RequestFixture({'id': [nonexistent_id]}, 'id')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertItemsEqual(
             [],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_ids_orders_by_id(self):
         # Even when ids are passed to "list," nodes are returned in id
         # order, not necessarily in the order of the id arguments.
-        ids = [factory.make_Node().system_id for _ in range(3)]
-        random.shuffle(ids)
+        all_nodes = [factory.make_Node() for _ in range(3)]
+        system_ids = [node.system_id for node in all_nodes]
+        random.shuffle(system_ids)
 
-        query = RequestFixture({'id': list(ids)}, 'id')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        query = RequestFixture({'id': list(system_ids)}, 'id')
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
+        sorted_system_ids = [
+            node.system_id
+            for node in sorted(all_nodes, key=lambda node: node.id)
+        ]
         self.assertSequenceEqual(
-            sorted(ids),
-            extract_system_ids_from_nodes(response))
+            sorted_system_ids,
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_some_matching_ids_returns_matching_nodes(self):
         # If some nodes match the requested ids and some don't, only the
@@ -216,11 +221,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
         nonexistent_id = existing_id + factory.make_string()
 
         query = RequestFixture({'id': [existing_id, nonexistent_id]}, 'id')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertItemsEqual(
             [existing_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_hostname_returns_matching_nodes(self):
         # The list operation takes optional "hostname" parameters. Only nodes
@@ -230,11 +235,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
         matching_system_id = nodes[0].system_id
 
         query = RequestFixture({'hostname': [matching_hostname]}, 'hostname')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertItemsEqual(
             [matching_system_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_macs_returns_matching_nodes(self):
         # The "list" operation takes optional "mac_address" parameters. Only
@@ -244,11 +249,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
         matching_system_id = macs[0].node.system_id
 
         query = RequestFixture({'mac_address': [matching_mac]}, 'mac_address')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertItemsEqual(
             [matching_system_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_invalid_macs_returns_sensible_error(self):
         # If specifying an invalid MAC, make sure the error that's
@@ -260,13 +265,14 @@ class TestFilteredNodesListFromRequest(APITestCase):
         mac_list = [bad_mac1, bad_mac2, ok_mac]
 
         query = RequestFixture({'mac_address': mac_list}, 'mac_address')
-        expected_msg = ("[u'Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, "
-                        "00:E0:81:DD:D1:XX']")
-
-        ex = self.assertRaises(MAASAPIValidationError,
-                               nodes_module.filtered_nodes_list_from_request,
-                               query)
-        self.assertEqual(expected_msg, unicode(ex))
+        expected_msg = [
+            "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX"
+        ]
+        ex = self.assertRaises(
+            MAASAPIValidationError,
+            nodes_module.filtered_nodes_list_from_request,
+            query)
+        self.assertEqual(expected_msg, ex.messages)
 
     def test_node_list_with_agent_name_filters_by_agent_name(self):
         non_listed_node = factory.make_Node(
@@ -276,22 +282,22 @@ class TestFilteredNodesListFromRequest(APITestCase):
         node = factory.make_Node(agent_name=agent_name)
 
         query = RequestFixture({'agent_name': agent_name}, 'agent_name')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(
             [node.system_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_agent_name_filters_with_empty_string(self):
         factory.make_Node(agent_name=factory.make_name('agent-name'))
         node = factory.make_Node(agent_name='')
 
         query = RequestFixture({'agent_name': ''}, 'agent_name')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(
             [node.system_id],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_without_agent_name_does_not_filter(self):
         nodes = [
@@ -299,11 +305,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
             for _ in range(3)]
 
         query = RequestFixture({}, '')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
     def test_node_list_doesnt_list_devices(self):
         nodes = [
@@ -315,9 +321,9 @@ class TestFilteredNodesListFromRequest(APITestCase):
             for _ in range(3)]
 
         query = RequestFixture({}, '')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        system_ids = extract_system_ids_from_nodes(response)
+        system_ids = extract_system_ids_from_nodes(node_list)
         self.assertEqual(
             [],
             [node.system_id for node in nodes if node.system_id in system_ids],
@@ -331,21 +337,21 @@ class TestFilteredNodesListFromRequest(APITestCase):
         node = factory.make_Node(zone=zone)
 
         query = RequestFixture({'zone': zone.name}, 'zone')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(
-            [node.system_id], extract_system_ids_from_nodes(response))
+            [node.system_id], extract_system_ids_from_nodes(node_list))
 
     def test_node_list_without_zone_does_not_filter(self):
         nodes = [factory.make_Node(zone=factory.make_Zone())
                  for _ in range(3)]
 
         query = RequestFixture({}, '')
-        response = nodes_module.filtered_nodes_list_from_request(query)
+        node_list = nodes_module.filtered_nodes_list_from_request(query)
 
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
-            extract_system_ids_from_nodes(response))
+            extract_system_ids_from_nodes(node_list))
 
 
 class TestNodesAPI(APITestCase):
