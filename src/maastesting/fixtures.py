@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CaptureStandardIO",
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
@@ -21,6 +22,8 @@ __all__ = [
 ]
 
 import __builtin__
+import codecs
+from io import BytesIO
 import logging
 import os
 from subprocess import (
@@ -35,6 +38,7 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
 )
+from testtools.monkey import MonkeyPatcher
 
 
 class ImportErrorFixture(Fixture):
@@ -217,3 +221,122 @@ class ChromiumWebDriverFixture(Fixture):
 
         # Stop service on cleanup.
         self.addCleanup(service.stop)
+
+
+class CaptureStandardIO(Fixture):
+    """Capture stdin, stdout, and stderr.
+
+    Reading from `sys.stdin` will yield *unicode* strings, much like the
+    default in Python 3. This differs from the usual behaviour in Python 2, so
+    beware.
+
+    Writing unicode strings to `sys.stdout` or `sys.stderr` will work; they'll
+    be encoded with the `encoding` chosen when creating this fixture.
+
+    `addInput(...)` should be used to prepare more input to be read.
+
+    The `output` and `error` properties can be used to obtain what's been
+    written to stdout and stderr.
+
+    The buffers used internally have the same lifetime as the fixture
+    *instance* itself, so the `output`, and `error` properties remain useful
+    even after the fixture has been cleaned-up, and there's no need to capture
+    them before exiting.
+
+    However, `clearInput()`, `clearOutput()`, `clearError()`, and `clearAll()`
+    can be used to truncate the buffers during this fixture's lifetime.
+    """
+
+    stdin = None
+    stdout = None
+    stderr = None
+
+    def __init__(self, encoding="utf-8"):
+        super(CaptureStandardIO, self).__init__()
+        self.codec = codecs.lookup(encoding)
+        # Create new buffers.
+        self._buf_in = BytesIO()
+        self._buf_out = BytesIO()
+        self._buf_err = BytesIO()
+
+    def setUp(self):
+        super(CaptureStandardIO, self).setUp()
+        self.patcher = MonkeyPatcher()
+        self.addCleanup(self.patcher.restore)
+        # Convenience.
+        reader = self.codec.streamreader
+        writer = self.codec.streamwriter
+        # Patch sys.std* and self.std*.
+        self._addStream("stdin", reader(self._buf_in))
+        self._addStream("stdout", writer(self._buf_out))
+        self._addStream("stderr", writer(self._buf_err))
+        self.patcher.patch()
+
+    def _addStream(self, name, stream):
+        self.patcher.add_patch(self, name, stream)
+        self.patcher.add_patch(sys, name, stream)
+
+    def addInput(self, data):
+        """Add input to be read later, as a unicode string."""
+        position = self._buf_in.tell()
+        stream = self.codec.streamwriter(self._buf_in)
+        try:
+            self._buf_in.seek(0, 2)
+            stream.write(data)
+        finally:
+            self._buf_in.seek(position)
+
+    def getInput(self):
+        """The input remaining to be read, as a unicode string."""
+        position = self._buf_in.tell()
+        if self.stdin is None:
+            stream = self.codec.streamreader(self._buf_in)
+        else:
+            stream = self.stdin
+        try:
+            return stream.read()
+        finally:
+            self._buf_in.seek(position)
+
+    def getOutput(self):
+        """The output written thus far, as a unicode string."""
+        if self.stdout is not None:
+            self.stdout.flush()
+        output_bytes = self._buf_out.getvalue()
+        output_string, _ = self.codec.decode(output_bytes)
+        return output_string
+
+    def getError(self):
+        """The error written thus far, as a unicode string."""
+        if self.stderr is not None:
+            self.stderr.flush()
+        error_bytes = self._buf_err.getvalue()
+        error_string, _ = self.codec.decode(error_bytes)
+        return error_string
+
+    def clearInput(self):
+        """Truncate the input buffer."""
+        self._buf_in.seek(0, 0)
+        self._buf_in.truncate()
+        if self.stdin is not None:
+            self.stdin.seek(0, 0)
+
+    def clearOutput(self):
+        """Truncate the output buffer."""
+        self._buf_out.seek(0, 0)
+        self._buf_out.truncate()
+        if self.stdout is not None:
+            self.stdout.seek(0, 0)
+
+    def clearError(self):
+        """Truncate the error buffer."""
+        self._buf_err.seek(0, 0)
+        self._buf_err.truncate()
+        if self.stderr is not None:
+            self.stderr.seek(0, 0)
+
+    def clearAll(self):
+        """Truncate all buffers."""
+        self.clearInput()
+        self.clearOutput()
+        self.clearError()

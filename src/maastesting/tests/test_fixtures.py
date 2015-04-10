@@ -1,5 +1,5 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2012-2015 Canonical Ltd. This software is licensed under the GNU
+# Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maastesting.fixtures`."""
 
@@ -16,19 +16,26 @@ __all__ = []
 
 import __builtin__
 import os
+import sys
 
 from fixtures import EnvironmentVariableFixture
 from maastesting import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import (
+    CaptureStandardIO,
     ImportErrorFixture,
     ProxiesDisabledFixture,
     TempDirectory,
     TempWDFixture,
 )
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import sample_binary_data
+from mock import call
 from testtools.matchers import (
     DirExists,
+    Equals,
+    Is,
     Not,
 )
 from testtools.testcase import ExpectedException
@@ -112,3 +119,125 @@ class TestTempWDFixture(MAASTestCase):
         final_cwd = os.getcwd()
         self.assertEqual(orig_cwd, final_cwd)
         self.assertFalse(os.path.isdir(new_cwd))
+
+
+class TestCaptureStandardIO(MAASTestCase):
+    """Test `CaptureStandardIO`."""
+
+    def test__captures_stdin(self):
+        stdin_before = sys.stdin
+        with CaptureStandardIO():
+            stdin_during = sys.stdin
+        stdin_after = sys.stdin
+
+        self.expectThat(stdin_during, Not(Is(stdin_before)))
+        self.expectThat(stdin_during, Not(Is(stdin_after)))
+        self.expectThat(stdin_after, Is(stdin_before))
+
+    def test__captures_stdout(self):
+        stdout_before = sys.stdout
+        with CaptureStandardIO():
+            stdout_during = sys.stdout
+        stdout_after = sys.stdout
+
+        self.expectThat(stdout_during, Not(Is(stdout_before)))
+        self.expectThat(stdout_during, Not(Is(stdout_after)))
+        self.expectThat(stdout_after, Is(stdout_before))
+
+    def test__captures_stderr(self):
+        stderr_before = sys.stderr
+        with CaptureStandardIO():
+            stderr_during = sys.stderr
+        stderr_after = sys.stderr
+
+        self.expectThat(stderr_during, Not(Is(stderr_before)))
+        self.expectThat(stderr_during, Not(Is(stderr_after)))
+        self.expectThat(stderr_after, Is(stderr_before))
+
+    def test__addInput_feeds_stdin(self):
+        text = factory.make_name("text")
+        with CaptureStandardIO() as stdio:
+            stdio.addInput(text + "111")
+            self.expectThat(sys.stdin.read(2), Equals(text[:2]))
+            stdio.addInput(text + "222")
+            self.expectThat(sys.stdin.read(), Equals(
+                text[2:] + "111" + text + "222"))
+
+    def test__getInput_returns_data_waiting_to_be_read(self):
+        stdio = CaptureStandardIO()
+        stdio.addInput("one\ntwo\n")
+        with stdio:
+            self.expectThat(sys.stdin.readline(), Equals("one\n"))
+            self.expectThat(stdio.getInput(), Equals("two\n"))
+
+    def test__getOutput_returns_data_written_to_stdout(self):
+        self.assert_getter_returns_data_written_to_stream(
+            CaptureStandardIO.getOutput, "stdout")
+
+    def test__getError_returns_data_written_to_stderr(self):
+        self.assert_getter_returns_data_written_to_stream(
+            CaptureStandardIO.getError, "stderr")
+
+    def assert_getter_returns_data_written_to_stream(self, getter, name):
+        stream = self.patch(sys, name)
+
+        before = factory.make_name("before")
+        during = factory.make_name("during")
+        after = factory.make_name("after")
+        end = factory.make_name("end")
+
+        print(before, file=getattr(sys, name), end=end)
+        with CaptureStandardIO() as stdio:
+            print(during, file=getattr(sys, name), end=end)
+        print(after, file=getattr(sys, name), end=end)
+
+        self.expectThat(getter(stdio), Equals(during + end))
+        self.expectThat(stream.write, MockCallsMatch(
+            call(before), call(end), call(after), call(end)))
+
+    def test__clearInput_clears_input(self):
+        text = factory.make_name("text")
+        with CaptureStandardIO() as stdio:
+            stdio.addInput(text + "111")
+            sys.stdin.read(2)
+            stdio.clearInput()
+            self.expectThat(sys.stdin.read(2), Equals(""))
+
+    def test__clearOutput_clears_output(self):
+        text = factory.make_name("text")
+        with CaptureStandardIO() as stdio:
+            sys.stdout.write(text)
+            self.expectThat(stdio.getOutput(), Equals(text))
+            stdio.clearOutput()
+            self.expectThat(stdio.getOutput(), Equals(""))
+
+    def test__clearError_clears_error(self):
+        text = factory.make_name("text")
+        with CaptureStandardIO() as stdio:
+            sys.stderr.write(text)
+            self.expectThat(stdio.getError(), Equals(text))
+            stdio.clearError()
+            self.expectThat(stdio.getError(), Equals(""))
+
+    def test__clearAll_clears_input_output_and_error(self):
+        text = factory.make_name("text")
+        with CaptureStandardIO() as stdio:
+            stdio.addInput(text)
+            sys.stdout.write(text)
+            sys.stderr.write(text)
+            stdio.clearAll()
+            self.expectThat(stdio.getInput(), Equals(""))
+            self.expectThat(stdio.getOutput(), Equals(""))
+            self.expectThat(stdio.getError(), Equals(""))
+
+    def test__non_text_strings_are_rejected_on_stdout(self):
+        with CaptureStandardIO():
+            error = self.assertRaises(
+                UnicodeError, sys.stdout.write, sample_binary_data)
+        self.assertDocTestMatches("... codec can't decode ...", unicode(error))
+
+    def test__non_text_strings_are_rejected_on_stderr(self):
+        with CaptureStandardIO():
+            error = self.assertRaises(
+                UnicodeError, sys.stderr.write, sample_binary_data)
+        self.assertDocTestMatches("... codec can't decode ...", unicode(error))
