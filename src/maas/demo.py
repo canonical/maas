@@ -31,10 +31,6 @@ import_settings(development)
 
 MEDIA_ROOT = abspath("media/demo")
 
-MIDDLEWARE_CLASSES += (
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-)
-
 # Connect to the DNS server.
 DNS_CONNECT = True
 
