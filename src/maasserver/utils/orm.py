@@ -22,7 +22,6 @@ __all__ = [
     'macs_contain',
     'macs_do_not_contain',
     'make_serialization_failure',
-    'outside_atomic_block',
     'post_commit',
     'post_commit_do',
     'psql_array',
@@ -51,6 +50,7 @@ from django.db import (
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
+from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
@@ -413,7 +413,10 @@ def commit_within_atomic_block(using="default"):
 
     This relies on the fact that an atomic block commits when exiting the
     outer-most context.
+
+    :deprecated: Absolutely don't use this.
     """
+    warn_deprecated("use post-commit hooks instead")
     with outside_atomic_block(using):
         pass  # We just want to exit and enter.
 
