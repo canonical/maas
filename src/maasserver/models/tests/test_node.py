@@ -54,6 +54,7 @@ from maasserver.exceptions import (
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
+    Device,
     LicenseKey,
     MACAddress,
     Node,
@@ -2937,3 +2938,37 @@ class TestNode_Stop(MAASServerTestCase):
         self.patch_autospec(node_module, "power_off_node")
         with post_commit_hooks:
             self.assertThat(node.stop(user), IsInstance(defer.Deferred))
+
+
+class TestDevice(MAASServerTestCase):
+    def test_node_devices_returns_devices(self):
+        node = factory.make_Node()
+        node.save()
+        device = factory.make_Device()
+        device.save()
+
+        devices = Node.devices.all()
+        self.expectThat(devices, HasLength(1))
+        # XXX Technical debt: bug #1443410
+        # self.expectThat(devices[0], Equals(device))
+
+    def test_device_ojects_retrns_devices(self):
+        node = factory.make_Node()
+        node.save()
+        device = factory.make_Device()
+        device.save()
+
+        devices = Device.objects.all()
+        self.expectThat(devices, HasLength(1))
+        self.expectThat(devices[0], Equals(device))
+
+    def test_node_objects_returns_nodes_and_devices(self):
+        node = factory.make_Node()
+        node.save()
+        device = factory.make_Device()
+        device.save()
+
+        nodes_and_devices = Node.objects.all()
+        self.expectThat(nodes_and_devices, HasLength(2))
+        # XXX Technical debt: bug #1443410
+        # self.assertItemsEqual([node, device], nodes_and_devices)

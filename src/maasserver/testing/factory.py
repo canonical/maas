@@ -50,6 +50,7 @@ from maasserver.models import (
     BootSource,
     BootSourceCache,
     BootSourceSelection,
+    Device,
     DHCPLease,
     DownloadProgress,
     Event,
@@ -219,6 +220,15 @@ class Factory(maastesting.factory.Factory):
             node.save()
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
+
+    def make_Device(self, hostname=None, nodegroup=None, **kwargs):
+        if hostname is None:
+            hostname = self.make_string(20)
+        if nodegroup is None:
+            nodegroup = self.make_NodeGroup()
+        device = Device(hostname=hostname, nodegroup=nodegroup, **kwargs)
+        device.save()
+        return device
 
     def make_Node(self, mac=False, hostname=None, status=None,
                   architecture="i386/generic", installable=True, updated=None,

@@ -2021,5 +2021,10 @@ class Node(CleanSave, TimestampedModel):
 class Device(Node):
     """A non-installable node."""
 
+    objects = DeviceManager()
+
     class Meta:
         proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Device, self).__init__(installable=False, *args, **kwargs)

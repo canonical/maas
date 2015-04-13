@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -687,6 +687,15 @@ class DeviceForm(MAASModelForm):
         instance = kwargs.get('instance')
         # Are we creating a new device object?
         self.new_device = (instance is None)
+        self.set_up_initial_device(instance)
+
+    def set_up_initial_device(self, instance):
+        """Initialize the 'parent' field if a device instance was given.
+
+        This is a workaround for Django bug #17657.
+        """
+        if instance is not None and instance.parent is not None:
+            self.initial['parent'] = instance.parent.system_id
 
     def save(self, commit=True):
         device = super(DeviceForm, self).save(commit=False)
@@ -697,7 +706,6 @@ class DeviceForm(MAASModelForm):
             device.nodegroup = NodeGroup.objects.ensure_master()
         device.save()
         return device
-
 
 CLUSTER_NOT_AVAILABLE = mark_safe(
     "The cluster controller for this node is not responding; power type "

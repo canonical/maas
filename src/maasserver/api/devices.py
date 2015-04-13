@@ -39,7 +39,6 @@ from maasserver.forms import (
 )
 from maasserver.models import (
     MACAddress,
-    Node,
     NodeGroup,
 )
 from maasserver.models.node import Device
@@ -102,12 +101,15 @@ class DeviceHandler(OperationsHandler):
         """Update a specific device.
 
         :param hostname: The new hostname for this device.
+        :param parent: Optional system_id to indicate this device's parent.
+            If the parent is already set and this parameter is omitted,
+            the parent will be unchanged.
         :type hostname: unicode
 
         Returns 404 if the device is not found.
         Returns 403 if the user does not have permission to update the device.
         """
-        device = Node.devices.get_node_or_404(
+        device = Device.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         form = DeviceForm(data=request.data, instance=device)
 
@@ -123,7 +125,7 @@ class DeviceHandler(OperationsHandler):
         Returns 403 if the user does not have permission to delete the device.
         Returns 204 if the device is successfully deleted.
         """
-        device = Node.devices.get_node_or_404(
+        device = Device.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
         device.delete()
@@ -162,7 +164,7 @@ class DeviceHandler(OperationsHandler):
         Returns 503 if the requested_address falls in a dynamic range.
         Returns 503 if the requested_address is already allocated.
         """
-        device = Node.devices.get_node_or_404(
+        device = Device.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         form = ClaimIPForm(request.POST)
 
@@ -219,7 +221,7 @@ class DeviceHandler(OperationsHandler):
         Returns 400 if the specified addresses could not be deallocated
         Returns 404 if the device is not found.
         """
-        device = Node.devices.get_node_or_404(
+        device = Device.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         form = ReleaseIPForm(request.POST)
 
