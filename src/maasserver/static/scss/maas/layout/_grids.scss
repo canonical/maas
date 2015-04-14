@@ -1,35 +1,45 @@
-@charset 'UTF8';
-
-/**
- * MAAS grid styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
- */
+////
+/// MAAS grid
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
 
 .wrapper {
     min-height: 100%;
-    padding-top: 48px;
-    margin: -48px auto -112px; /* the bottom margin is the negative value of the footer's height */
-    overflow: visible;
+    height: auto !important; /* This line and the next line are not necessary unless you need IE6 support */
+    height: 100%;
+    margin: 0 auto -112px; /* the bottom margin is the negative value of the footer's height */
     position: relative;
-    background-color: rgba(255, 255, 255, .6);
+    background: rgba(255,255,255,0.6);
+
+    &:after {
+        content: '';
+        position: absolute;
+        display: block;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: url('../img/backgrounds/image-background-paper.png');
+        height: 100%;
+        width: 100%;
+        z-index: -1;
+    }
 }
 
 .inner-wrapper {
     max-width: 1480px;
     padding: 0px 20px;
+    margin: 0 auto;
+    position: relative;
 }
 
 .push,
 .footer-wrapper {
     height: 112px;
-}
-
-.footer-wrapper {
-    margin-top: -48px;
 }
 
 .row {

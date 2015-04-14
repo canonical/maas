@@ -13,12 +13,11 @@ table {
     text-align: left;
     width: 100%;
     margin-bottom: 40px;
-    border-collapse: collapse;
+    border-collapse: separate;
     border-spacing: 0;
 
     th,
     td {
-        border: none;
         background: transparent;
         text-align: left;
         padding: 13px 10px;
@@ -29,6 +28,7 @@ table {
         th {
             background: transparent;
             color: #B2B2B2;
+            border: none;
             border-bottom: 1px solid #B2B2B2;
 
             a:link,
@@ -54,18 +54,22 @@ table {
     tbody {
 
         tr {
-            &:hover .icon-controls {
+            &:hover .icon-controls a {
                 opacity: 1;
             }
         }
 
         td {
+            border: none;
             border-bottom: 1px dotted #B2B2B2;
             position: relative;
 
             &.icon-controls {
                 text-align: right;
-                opacity: 0;
+
+                a {
+                    opacity: 0;
+                }
             }
 
             input[type="text"] {
@@ -82,10 +86,14 @@ table {
     text-align: left;
     width: 100%;
     margin-bottom: 40px;
-    border-collapse: collapse;
+    border-collapse: separate;
     border-spacing: 0;
 
     .table-listing__row {
+
+        &:hover .table-listing__cell {
+            background-color: #FFF;
+        }
 
         &.error {
             background-color: #F3E3E2;
@@ -107,6 +115,7 @@ table {
     .table-listing__header {
         background: transparent;
         color: #B2B2B2;
+        border: none;
         border-bottom: 1px solid #B2B2B2;
 
         a {
@@ -134,6 +143,8 @@ table {
     }
 
     .table-listing__cell {
+        @include box-sizing();
+        border: none;
         border-bottom: 1px dotted #B2B2B2;
         position: relative;
 

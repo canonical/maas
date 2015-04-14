@@ -46,14 +46,17 @@
                 background-image: url('../img/icons/accordion-close.svg');
 
                 & + .accordion__tab-content {
-                    display: block;
+                    max-height: 1000px;
+                    transition: max-height .5s ease-in;
                 }
             }
         }
 
         // Filter list
         .accordion__tab-content {
-            display: none;
+            max-height: 0;
+            transition: max-height .5s ease-out;
+            overflow: hidden;
 
             .accordion__tab-list {
                 list-style-type: none;

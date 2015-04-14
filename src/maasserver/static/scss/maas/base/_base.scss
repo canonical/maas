@@ -23,8 +23,12 @@
  * @section general
  */
 
+* {
+    -webkit-backface-visibility: hidden;
+    margin: 0;
+}
+
 html {
-    background: url('../img/backgrounds/image-background-paper.png');
     height: 100%;
 }
 
@@ -66,10 +70,10 @@ a:focus {
 
 ::selection {
     color: #FFF;
-    background: #F07746;
+    background: $ubuntu-orange;
 }
 
 ::-moz-selection {
     color: #FFF;
-    background: #F07746;
+    background: $ubuntu-orange;
 }

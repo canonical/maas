@@ -373,15 +373,25 @@ header.banner {
     .page-header__dropdown {
         float: left;
         width: 100%;
-        padding: 13px 0;
-        border-top: 1px dotted #888;
+        max-height: 1000px;
+        transition: max-height 0.3s ease-in;
+        overflow: hidden;
+
+        &.ng-hide {
+            display: block !important;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
 
         /**
          * Feedback style, mainly used for actions feedback
          */
         .page-header__feedback {
+            border-top: 1px dotted #888;
             display: inline-block;
             width: 100%;
+            padding: 13px 0;
 
             .page-header__feedback-message {
                 @include box-sizing();
@@ -395,7 +405,7 @@ header.banner {
                 &.info {
                     background-image: url('../img/icons/error.png');
                     background-image: url('../img/icons/error.svg'), none;
-                    background-position: 0px 6px;
+                    background-position: 0px 9px;
                 }
             }
         }

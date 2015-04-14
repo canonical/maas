@@ -48,16 +48,18 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <form class="form-inline" data-ng-hide="isActionError()">
-                        <span class="ng-hide" data-ng-show="actionOption.name === 'deploy'">
-                            <label for="image">Choose your image</label>
-                            <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
-                        </span>
-                        <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
-                            <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
-                        </div>
-                    </form>
+                    <div class="page-header__feedback ng-hide" data-ng-hide="isActionError()">
+                        <form class="form-inline">
+                            <span class="ng-hide" data-ng-show="actionOption.name === 'deploy'">
+                                <label for="image">Choose your image</label>
+                                <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
+                            </span>
+                            <div class="right">
+                                <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                                <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
+                            </div>
+                        </form>
+                    </div>
 
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <div class="page-header__feedback ng-hide" data-ng-show="isActionError()">

@@ -21,83 +21,85 @@
     {% include "maasserver/js-conf.html" %}
 </head>
 <body data-ng-init="site = '{{ global_options.site_name }}'">
-    <header class="banner global fixed" role="banner">
-        <nav role="navigation" class="nav-primary nav-right">
-            <div class="logo">
-                <a class="logo-ubuntu" href="#/nodes">
-                    <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
-                </a>
-            </div>
-            <ul id="main-nav" class="nav">
-                {% if user.is_authenticated %}
-                <li>
-                    <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
-                </li>
-                {% if user.is_superuser %}
-                <li>
-                    <a data-ng-class="{ active: page === 'clusters' }" href="{% url 'cluster-list' %}">Clusters</a>
-                </li>
-                {% endif %}
-                <li>
-                    <a data-ng-class="{ active: page === 'images' }" href="{% url 'images' %}">Images</a>
-                </li>
-                <li>
-                    <a data-ng-class="{ active: page === 'zones' }" href="{% url 'zone-list' %}">Zones</a>
-                </li>
-                <li>
-                    <a data-ng-class="{ active: page === 'networks' }" href="{% url 'network-list' %}">Networks</a>
-                </li>
-                {% if user.is_superuser %}
-                <li>
-                    <a data-ng-class="{ active: page == 'settings' }" href="{% url 'settings' %}">Settings</a>
-                </li>
-                {% endif %}
-                {% endif %}
-            </ul>
-            {% if user.is_authenticated %}
-            <ul id="right-nav" class="nav">
-                <li id="user-link">
-                    <a href="">
-                        <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
-                        <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
-                        {{ user.username }}
+    <div class="wrapper">
+        <header class="banner global fixed" role="banner">
+            <nav role="navigation" class="nav-primary nav-right">
+                <div class="logo">
+                    <a class="logo-ubuntu" href="#/nodes">
+                        <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
                     </a>
-                    <ul class="nav" id="user-options">
-                        <li>
-                            <a data-ng-class="{ active: page == 'account' }" href="{% url 'prefs' %}">Account</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'logout' %}">Logout</a>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
-            {% endif %}
-        </nav>
-        <div class="nav-toggles">
-            <a href="#canonlist" class="nav-toggle open"></a>
-            <a href="#" class="nav-toggle close"></a>
-        </div>
-    </header>
-    <main id="body" class="wrapper">
-        <div id="main-content">
-            {% if user.is_authenticated %}
-            <ul id="flash-messages"  class="flash-messages hidden">
-                {% for persistent_error in persistent_errors %}
-                <li class="flash-messages__item warning">{{ persistent_error }}</li>
-                {% endfor %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
-                    {% endfor %}
+                </div>
+                <ul id="main-nav" class="nav">
+                    {% if user.is_authenticated %}
+                    <li>
+                        <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li>
+                        <a data-ng-class="{ active: page === 'clusters' }" href="{% url 'cluster-list' %}">Clusters</a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a data-ng-class="{ active: page === 'images' }" href="{% url 'images' %}">Images</a>
+                    </li>
+                    <li>
+                        <a data-ng-class="{ active: page === 'zones' }" href="{% url 'zone-list' %}">Zones</a>
+                    </li>
+                    <li>
+                        <a data-ng-class="{ active: page === 'networks' }" href="{% url 'network-list' %}">Networks</a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li>
+                        <a data-ng-class="{ active: page == 'settings' }" href="{% url 'settings' %}">Settings</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                </ul>
+                {% if user.is_authenticated %}
+                <ul id="right-nav" class="nav">
+                    <li id="user-link">
+                        <a href="">
+                            <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
+                            <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
+                            {{ user.username }}
+                        </a>
+                        <ul class="nav" id="user-options">
+                            <li>
+                                <a data-ng-class="{ active: page == 'account' }" href="{% url 'prefs' %}">Account</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'logout' %}">Logout</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
                 {% endif %}
-            </ul>
-            {% endif %}
-            <div id="content" data-ng-view>
+            </nav>
+            <div class="nav-toggles">
+                <a href="#canonlist" class="nav-toggle open"></a>
+                <a href="#" class="nav-toggle close"></a>
             </div>
-        </div>
-        <div class="push"></div>
-    </main>
+        </header>
+        <main id="body">
+            <div id="main-content">
+                {% if user.is_authenticated %}
+                <ul id="flash-messages"  class="flash-messages hidden">
+                    {% for persistent_error in persistent_errors %}
+                    <li class="flash-messages__item warning">{{ persistent_error }}</li>
+                    {% endfor %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+                {% endif %}
+                <div id="content" data-ng-view>
+                </div>
+            </div>
+            <div class="push"></div>
+        </main>
+    </div>
     <div class="footer-wrapper">
         <footer class="global inner-wrapper clearfix">
             <div class="legal clearfix">

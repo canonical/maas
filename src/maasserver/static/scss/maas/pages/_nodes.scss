@@ -180,10 +180,12 @@
 --------------------------------------------------------------------*/
 
 .add-machine__list {
+    padding: 13px 0 20px;
+    border-top: 1px dotted #888;
+    margin-bottom: 0;
 
     .add-machine__details {
         @extend %border-bottom;
-        margin-bottom: 13px;
         background: transparent url('../img/icons/accordion-open.svg') top 12px right 10px no-repeat;
 
         > div {
@@ -267,5 +269,3 @@
     animation: spin 1s infinite linear;
     padding: 0;
 }
-
-

@@ -182,20 +182,10 @@ audio:not([controls]) {
 }
 
 html {
-	-moz-transition: background-position 100 ease;
-	-ms-text-size-adjust: 100%;
-	-o-transition: background-position 100 ease;
-	-webkit-text-size-adjust: 100%;
-	-webkit-transition: background-position 100 ease;
-  background: url('#{$asset-path}backgrounds/image-background-paper.png') repeat-y fixed center top $light-grey;
   font-size: 100%;
-  overflow-y: scroll;
-  text-size-adjust: 100%;
-  transition: background-position 100 ease;
 }
 
 body {
-	background: url('#{$asset-path}backgrounds/image-background-paper.png') repeat-y center top $light-grey;
   color: #333;
   font-family: Ubuntu, Arial, "libra sans", sans-serif;
   font-weight: 300;

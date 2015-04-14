@@ -31,93 +31,95 @@
     {% endblock %}
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
-    {% block html_includes %}{% endblock %}
-    <header class="banner global" role="banner" id="banner">
-        <nav role="navigation" class="nav-primary nav-right" id="canonlist">
-            <div class="logo">
-                <a class="logo-ubuntu" href="{% url 'index' %}">
-                    <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
-                </a>
-            </div>
-            <ul id="main-nav" class="nav">
-                {% if user.is_authenticated %}
-                <li>
-                    <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'index' %}#/nodes">Nodes</a>
-                </li>
-                {% if user.is_superuser %}
-                <li>
-                    <a class="{% block nav-active-cluster-list %}{% endblock %}" href="{% url 'cluster-list' %}">Clusters</a>
-                </li>
-                {% endif %}
-                <li>
-                    <a class="{% block nav-active-images %}{% endblock %}" href="{% url 'images' %}">Images</a>
-                </li>
-                <li>
-                    <a class="{% block nav-active-zone-list %}{% endblock %}" href="{% url 'zone-list' %}">Zones</a>
-                </li>
-                <li>
-                    <a class="{% block nav-active-network-list %}{% endblock %}" href="{% url 'network-list' %}">Networks</a>
-                </li>
-                {% if user.is_superuser %}
-                <li>
-                    <a class="{% block nav-active-settings %}{% endblock %}" href="{% url 'settings' %}">Settings</a>
-                </li>
-                {% endif %}
-                {% endif %}
-            </ul>
-            {% if user.is_authenticated %}
-            <ul id="right-nav" class="nav">
-                <li id="user-link">
-                    <a href="#">
-                        <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
-                        <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
-                        {{ user.username }}
+    <div class="wrapper">
+        {% block html_includes %}{% endblock %}
+        <header class="banner global" role="banner" id="banner">
+            <nav role="navigation" class="nav-primary nav-right" id="canonlist">
+                <div class="logo">
+                    <a class="logo-ubuntu" href="{% url 'index' %}">
+                        <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
                     </a>
-                    <ul class="nav" id="user-options">
-                        <li>
-                            <a class="{% block nav-active-prefs %}{% endblock %}" href="{% url 'prefs' %}">Account</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'logout' %}">Logout</a>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
-            {% endif %}
-        </nav>
-        <div class="nav-toggles">
-            <a href="#canonlist" class="nav-toggle open"></a>
-            <a href="#" class="nav-toggle close"></a>
-        </div>
-    </header>
-    <main id="body" class="wrapper">
-        {% if user.is_authenticated %}
-        <ul id="flash-messages" class="flash-messages">
-            {% for persistent_error in persistent_errors %}
-            <li class="flash-messages__item warning">{{ persistent_error }}</li>
-            {% endfor %}
-            {% if messages %}
-                {% for message in messages %}
-                    <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
-                {% endfor %}
-            {% endif %}
-        </ul>
-        {% endif %}
-        <div id="main-content" class="row no-border">
-            <div class="inner-wrapper" id="content">
-                {% block page-title-block %}
-                <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
-                {% endblock %}
-                {% block content %}
-                {% endblock %}
-                <aside id="sidebar">
-                    {% block sidebar %}
-                    {% endblock %}
-                </aside>
+                </div>
+                <ul id="main-nav" class="nav">
+                    {% if user.is_authenticated %}
+                    <li>
+                        <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'index' %}#/nodes">Nodes</a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li>
+                        <a class="{% block nav-active-cluster-list %}{% endblock %}" href="{% url 'cluster-list' %}">Clusters</a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a class="{% block nav-active-images %}{% endblock %}" href="{% url 'images' %}">Images</a>
+                    </li>
+                    <li>
+                        <a class="{% block nav-active-zone-list %}{% endblock %}" href="{% url 'zone-list' %}">Zones</a>
+                    </li>
+                    <li>
+                        <a class="{% block nav-active-network-list %}{% endblock %}" href="{% url 'network-list' %}">Networks</a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li>
+                        <a class="{% block nav-active-settings %}{% endblock %}" href="{% url 'settings' %}">Settings</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                </ul>
+                {% if user.is_authenticated %}
+                <ul id="right-nav" class="nav">
+                    <li id="user-link">
+                        <a href="#">
+                            <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
+                            <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
+                            {{ user.username }}
+                        </a>
+                        <ul class="nav" id="user-options">
+                            <li>
+                                <a class="{% block nav-active-prefs %}{% endblock %}" href="{% url 'prefs' %}">Account</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'logout' %}">Logout</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                {% endif %}
+            </nav>
+            <div class="nav-toggles">
+                <a href="#canonlist" class="nav-toggle open"></a>
+                <a href="#" class="nav-toggle close"></a>
             </div>
-        </div>
-        <div class="push"></div>
-    </main>
+        </header>
+        <main id="body">
+            <div id="main-content" class="row no-border">
+                {% if user.is_authenticated %}
+                <ul id="flash-messages" class="flash-messages">
+                    {% for persistent_error in persistent_errors %}
+                    <li class="flash-messages__item warning">{{ persistent_error }}</li>
+                    {% endfor %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+                {% endif %}
+                <div class="inner-wrapper" id="content">
+                    {% block page-title-block %}
+                    <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+                    {% endblock %}
+                    {% block content %}
+                    {% endblock %}
+                    <aside id="sidebar">
+                        {% block sidebar %}
+                        {% endblock %}
+                    </aside>
+                </div>
+            </div>
+            <div class="push"></div>
+        </main>
+    </div>
     <div class="footer-wrapper">
         <footer class="global inner-wrapper clearfix">
             <div class="legal clearfix">
