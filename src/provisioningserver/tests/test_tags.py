@@ -106,7 +106,7 @@ class TestMergeDetailsCleanly(PservTestCase):
 
     def setUp(self):
         super(TestMergeDetailsCleanly, self).setUp()
-        self.logger = self.useFixture(FakeLogger())
+        self.logger = self.useFixture(FakeLogger("maas"))
 
     def test_merge_with_no_details(self):
         xml = self.do_merge_details({})

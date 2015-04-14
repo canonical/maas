@@ -260,8 +260,13 @@ if DEBUG:
         'django.contrib.admin',
     )
 
-# See http://docs.djangoproject.com/en/dev/topics/logging for
-# more details on how to customize the logging configuration.
+# See http://docs.djangoproject.com/en/dev/topics/logging for more details on
+# how to customize the logging configuration.
+#
+# NOTE CAREFULLY that django.utils.log.DEFAULT_LOGGING is applied *before*
+# applying the configuration below. This means that you need to mentally
+# combine the settings in both DEFAULT_LOGGING and LOGGING to understand the
+# resultant behaviour.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -280,26 +285,11 @@ LOGGING = {
     },
     'root': {
         'handlers': ['stdout'],
+        'level': DEFAULT_LOG_LEVEL,
     },
+    # Do *not* set any options for the `maas` logger here because config done
+    # elsewhere -- by configure_root_logger() -- will be clobbered.
     'loggers': {
-        'maas': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
-        'maasserver': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
-        'metadataserver': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
-        'django.request': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
-        'django.db.backends': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
-        'sstreams': {
-            'level': DEFAULT_LOG_LEVEL,
-        },
         'urllib3': {
             'level': 'WARN',
         },

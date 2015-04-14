@@ -60,11 +60,14 @@ def configure_root_logger():
     root = get_maas_logger()
     if len(root.handlers) == 0:
         # It has not yet been configured.
-        handler = SysLogHandler("/dev/log")
+        handler = SysLogHandler(
+            "/dev/log", facility=SysLogHandler.LOG_DAEMON)
         handler.setFormatter(logging.Formatter(
             "%(name)s: [%(levelname)s] %(message)s"))
         root.addHandler(handler)
         root.setLevel(logging.INFO)
+        # Don't propagate logs up to the root logger.
+        root.propagate = 0
     return root
 
 
