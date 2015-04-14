@@ -37,15 +37,13 @@ from maasserver.websockets import handlers
 from maasserver.websockets.listener import PostgresListener
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.utils.twisted import synchronous
-from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import (
     Factory,
     Protocol,
 )
-from twisted.internet.threads import deferToThreadPool
+from twisted.internet.threads import deferToThread
 from twisted.python import log
-from twisted.python.threadpool import ThreadPool
 from twisted.web.server import NOT_DONE_YET
 
 
@@ -177,9 +175,7 @@ class WebSocketProtocol(Protocol):
                 "Error authenticating user: %s" % failure.getErrorMessage())
             return None
 
-        d = deferToThreadPool(
-            reactor, self.factory.threadpool,
-            self.getUserFromSessionId, session_id)
+        d = deferToThread(self.getUserFromSessionId, session_id)
         d.addCallbacks(got_user, got_user_error)
 
         return d
@@ -258,8 +254,7 @@ class WebSocketProtocol(Protocol):
         # performed. The execution of this method is defered to a thread
         # because it interacts with the database which is blocking.
         transactional_execute = transactional(handler.execute)
-        d = deferToThreadPool(
-            reactor, self.factory.threadpool,
+        d = deferToThread(
             transactional_execute, method, message.get("params", {}))
         d.addCallbacks(
             partial(self.sendResult, request_id),
@@ -305,31 +300,22 @@ class WebSocketProtocol(Protocol):
 
 
 class WebSocketFactory(Factory):
-    """Factory for WebSocketProtocol.
-
-    :ivar threadpool: The thread-pool used for servicing websocket
-        requests.
-    """
 
     handlers = {}
     clients = []
 
     def __init__(self):
-        self.threadpool = ThreadPool(name=self.__class__.__name__)
         self.listener = PostgresListener()
         self.cacheHandlers()
         self.registerNotifiers()
 
     def startFactory(self):
-        """Start the thread pool and the listener."""
-        self.threadpool.start()
+        """Start the listener."""
         return self.listener.start()
 
     def stopFactory(self):
-        """Stop the thread pool and the listener."""
-        stopped = self.listener.stop()
-        self.threadpool.stop()
-        return stopped
+        """Stop the listener."""
+        return self.listener.stop()
 
     def getSessionEngine(self):
         """Returns the session engine being used by Django.
@@ -373,8 +359,7 @@ class WebSocketFactory(Factory):
     def onNotify(self, handler_class, channel, action, obj_id):
         for client in self.clients:
             handler = handler_class(client.user, client.cache)
-            data = yield deferToThreadPool(
-                reactor, self.threadpool,
+            data = yield deferToThread(
                 self.processNotify, handler, channel, action, obj_id)
             if data is not None:
                 (name, data) = data
