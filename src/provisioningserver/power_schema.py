@@ -185,12 +185,15 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'vsphere',
-        'description': 'VMWare vSphere/ESX/ESXi (python-pyvmomi)',
+        'description': 'VMWare (python-pyvmomi)',
         'fields': [
-            make_json_field('power_uuid', "Server UUID"),
-            make_json_field('power_address', "VMware API hostname"),
-            make_json_field('power_user', "VMware API username"),
-            make_json_field('power_pass', "VMware API password"),
+            make_json_field(
+                'power_vm_name', "VM Name (if UUID unknown)", required=False),
+            make_json_field(
+                'power_uuid', "VM UUID (if known)", required=False),
+            make_json_field('power_address', "VMware hostname"),
+            make_json_field('power_user', "VMware username"),
+            make_json_field('power_pass', "VMware password"),
             make_json_field(
                 'power_port', "VMware API port (optional)", required=False),
             make_json_field(

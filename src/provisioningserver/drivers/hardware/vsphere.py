@@ -38,11 +38,23 @@ except ImportError:
 maaslog = get_maas_logger("drivers.vsphere")
 
 
-class VsphereError(Exception):
-    """Failure talking to the vSphere API. """
+class VMwareAPIException(Exception):
+    """Failure talking to the VMware API."""
 
 
-class VsphereAPI(object):
+class VMwareVMNotFound(VMwareAPIException):
+    """The specified virtual machine was not found."""
+
+
+class VMwareClientNotFound(VMwareAPIException):
+    """A usable VMware API client was not found."""
+
+
+class VMwareAPIConnectionFailed(VMwareAPIException):
+    """The VMware API endpoint could not be contacted."""
+
+
+class VMwareAPI(object):
     """Abstract base class to represent a MAAS-capable VMware API. The API
     must be capable of:
     - Gathering names, UUID, and MAC addresses of each virtual machine
@@ -128,11 +140,11 @@ class VsphereAPI(object):
         raise NotImplementedError
 
 
-class VspherePyvmomi(VsphereAPI):
+class VMwarePyvmomiAPI(VMwareAPI):
     def __init__(
             self, host, username, password, port=None, protocol=None):
-        super(VspherePyvmomi, self).__init__(host, username, password,
-                                             port=port, protocol=protocol)
+        super(VMwarePyvmomiAPI, self).__init__(
+            host, username, password, port=port, protocol=protocol)
         self.service_instance = None
 
     def connect(self):
@@ -151,7 +163,8 @@ class VspherePyvmomi(VsphereAPI):
                                                        **extra_args)
 
         if not self.service_instance:
-            raise VsphereError("Could not connect to vSphere service API")
+            raise VMwareAPIConnectionFailed(
+                "Could not connect to vSphere service API")
 
         return self.service_instance is not None
 
@@ -184,6 +197,24 @@ class VspherePyvmomi(VsphereAPI):
             return vm.summary.config.uuid
         return None
 
+    def _get_vm_list(self):
+        vms = []
+        content = self.service_instance.RetrieveContent()
+        for child in content.rootFolder.childEntity:
+            if hasattr(child, 'vmFolder'):
+                datacenter = child
+                vm_folder = datacenter.vmFolder
+                vm_list = vm_folder.childEntity
+                vms = vms + vm_list
+        return vms
+
+    def find_vm_by_name(self, vm_name):
+        vm_list = self._get_vm_list()
+        for vm in vm_list:
+            if vm_name == vm.summary.config.name:
+                return vm
+        return None
+
     def find_vm_by_uuid(self, uuid):
         content = self.service_instance.RetrieveContent()
 
@@ -213,7 +244,8 @@ class VspherePyvmomi(VsphereAPI):
 
     @staticmethod
     def get_maas_power_state(vm):
-        return VspherePyvmomi.pyvmomi_to_maas_powerstate(vm.runtime.powerState)
+        return VMwarePyvmomiAPI.pyvmomi_to_maas_powerstate(
+            vm.runtime.powerState)
 
     @staticmethod
     def set_power_state(vm, power_change):
@@ -223,8 +255,9 @@ class VspherePyvmomi(VsphereAPI):
             elif power_change == 'off':
                 vm.PowerOff()
             else:
-                raise VsphereError("set_power_state: Invalid power_change "
-                                   "state: {state}".format(power_change))
+                raise ValueError(
+                    "set_power_state: Invalid power_change state: {state}"
+                    .format(power_change))
 
     def _get_vm_properties(self, vm):
         """Gathers the properties for the specified VM, for inclusion into
@@ -254,16 +287,11 @@ class VspherePyvmomi(VsphereAPI):
         # are returned in is important to the user.
         virtual_machines = OrderedDict()
 
-        content = self.service_instance.RetrieveContent()
-        for child in content.rootFolder.childEntity:
-            if hasattr(child, 'vmFolder'):
-                datacenter = child
-                vm_folder = datacenter.vmFolder
-                vm_list = vm_folder.childEntity
-                for vm in vm_list:
-                    vm_name = vm.summary.config.name
-                    vm_properties = self._get_vm_properties(vm)
-                    virtual_machines[vm_name] = vm_properties
+        vm_list = self._get_vm_list()
+        for vm in vm_list:
+            vm_name = vm.summary.config.name
+            vm_properties = self._get_vm_properties(vm)
+            virtual_machines[vm_name] = vm_properties
 
         return virtual_machines
 
@@ -272,11 +300,11 @@ def _get_vsphere_api(
         host, username, password, port=None, protocol=None):
     if pyVmomi is not None:
         # Attempt to detect the best available VMware API
-        return VspherePyvmomi(
+        return VMwarePyvmomiAPI(
             host, username, password, port=port, protocol=protocol)
     else:
-        raise VsphereError("Could not find a suitable "
-                           "vSphere API (install python-pyvmomi)")
+        raise VMwareClientNotFound(
+            "Could not find a suitable VMware API (install python-pyvmomi)")
 
 
 def get_vsphere_servers(
@@ -315,6 +343,7 @@ def probe_vsphere_and_enlist(
             continue
         properties = servers[system_name]
         params = {
+            'power_vm_name': system_name,
             'power_uuid': properties['uuid'],
             'power_address': host,
             'power_port': port,
@@ -323,7 +352,8 @@ def probe_vsphere_and_enlist(
             'power_pass': password,
         }
         maaslog.info(
-            "Creating vSphere node with MACs: %s", properties['macs'])
+            "Creating vSphere node with MACs: %s (%s)",
+            properties['macs'], system_name)
 
         system_id = create_node(
             properties['macs'], properties['architecture'],
@@ -333,22 +363,39 @@ def probe_vsphere_and_enlist(
             commission_node(system_id, user).wait(30)
 
 
+def _find_vm_by_uuid_or_name(api, uuid, vm_name):
+    if uuid:
+        vm = api.find_vm_by_uuid(uuid)
+    elif vm_name:
+        vm = api.find_vm_by_name(vm_name)
+    else:
+        raise VMwareVMNotFound(
+            "Failed to find VM; need a UUID or a VM name for power control")
+    return vm
+
+
 def power_control_vsphere(
-        host, username, password, uuid, power_change,
+        host, username, password, vm_name, uuid, power_change,
         port=None, protocol=None):
     api = _get_vsphere_api(
         host, username, password, port=port, protocol=protocol)
 
     if api.connect():
         try:
-            vm = api.find_vm_by_uuid(uuid)
+            vm = _find_vm_by_uuid_or_name(api, uuid, vm_name)
+
             if vm is None:
-                raise VsphereError("Failed to find VM based on UUID: {uuid}"
-                                   .format(uuid=uuid))
+                raise VMwareVMNotFound(
+                    "Failed to find VM; uuid={uuid}, name={name}"
+                    .format(uuid=uuid, name=vm_name))
 
             api.set_power_state(vm, power_change)
+        except VMwareAPIException:
+            raise
         except:
-            raise VsphereError(
+            # This is to cover what might go wrong in set_power_state(), if
+            # an exception occurs while poweriing on or off.
+            raise VMwareAPIException(
                 "Failed to set power state to {state} for uuid={uuid}"
                 .format(state=power_change, uuid=uuid), traceback.format_exc())
         finally:
@@ -356,7 +403,7 @@ def power_control_vsphere(
 
 
 def power_query_vsphere(
-        host, username, password, uuid, port=None, protocol=None):
+        host, username, password, vm_name, uuid, port=None, protocol=None):
     """Return the power state for the VM with the specified UUID,
      using the vSphere API."""
     api = _get_vsphere_api(
@@ -364,11 +411,13 @@ def power_query_vsphere(
 
     if api.connect():
         try:
-            vm = api.find_vm_by_uuid(uuid)
+            vm = _find_vm_by_uuid_or_name(api, uuid, vm_name)
             if vm is not None:
                 return api.get_maas_power_state(vm)
+        except VMwareAPIException:
+            raise
         except:
-            raise VsphereError(
+            raise VMwareAPIException(
                 "Failed to get power state for uuid={uuid}"
                 .format(uuid=uuid), traceback.format_exc())
         finally:

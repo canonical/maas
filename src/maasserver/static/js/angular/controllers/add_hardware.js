@@ -211,7 +211,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             },
             {
                 name: 'vsphere',
-                description: 'VMWare vSphere/ESX/ESXi (python-vmomi)',
+                description: 'VMWare (python-vmomi)',
                 fields: [
                     {
                         name: 'host',

@@ -24,7 +24,10 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from provisioningserver.drivers.hardware import vsphere
-from provisioningserver.drivers.hardware.vsphere import VspherePyvmomi
+from provisioningserver.drivers.hardware.vsphere import (
+    VMwarePyvmomiAPI,
+    VMwareVMNotFound,
+)
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -46,18 +49,23 @@ except ImportError:
 
 
 class FakeVmomiVMSummaryConfig(object):
-    def __init__(self, name):
+    def __init__(self, name, has_instance_uuid=None, has_uuid=None):
         self.name = name
         self.guestId = random.choice(["otherLinux64Guest", "otherLinuxGuest"])
-        has_instance_uuid = random.choice([True, True, False])
+        if has_instance_uuid is None:
+            has_instance_uuid = random.choice([True, False])
         if has_instance_uuid:
             self.instanceUuid = factory.make_UUID()
-        self.uuid = factory.make_UUID()
+        if has_uuid is None:
+            has_uuid = random.choice([True, False])
+        if has_uuid:
+            self.uuid = factory.make_UUID()
 
 
 class FakeVmomiVMSummary(object):
-    def __init__(self, name):
-        self.config = FakeVmomiVMSummaryConfig(name)
+    def __init__(self, name, has_instance_uuid=None, has_uuid=None):
+        self.config = FakeVmomiVMSummaryConfig(
+            name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
 
 
 class FakeVmomiVMRuntime(object):
@@ -104,14 +112,16 @@ class FakeVmomiVMConfig(object):
 
 
 class FakeVmomiVM(object):
-    def __init__(self, name=None, nics=None):
+    def __init__(
+            self, name=None, nics=None, has_instance_uuid=None, has_uuid=None):
 
         if name is None:
             self._name = factory.make_hostname()
         else:
             self._name = name
 
-        self.summary = FakeVmomiVMSummary(self._name)
+        self.summary = FakeVmomiVMSummary(
+            self._name, has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
         self.runtime = FakeVmomiVMRuntime()
         self.config = FakeVmomiVMConfig(nics=nics)
 
@@ -123,21 +133,26 @@ class FakeVmomiVM(object):
 
 
 class FakeVmomiVmFolder(object):
-    def __init__(self, servers=0):
+    def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
         self.childEntity = []
         for i in range(0, servers):
-            vm = FakeVmomiVM()
+            vm = FakeVmomiVM(
+                has_instance_uuid=has_instance_uuid, has_uuid=has_uuid)
             self.childEntity.append(vm)
 
 
 class FakeVmomiDatacenter(object):
-    def __init__(self, servers=0):
-        self.vmFolder = FakeVmomiVmFolder(servers=servers)
+    def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
+        self.vmFolder = FakeVmomiVmFolder(
+            servers=servers, has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid)
 
 
 class FakeVmomiRootFolder(object):
-    def __init__(self, servers=0):
-        self.childEntity = [FakeVmomiDatacenter(servers=servers)]
+    def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
+        self.childEntity = [FakeVmomiDatacenter(
+            servers=servers, has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid)]
 
 
 class FakeVmomiSearchIndex(object):
@@ -175,14 +190,18 @@ class FakeVmomiSearchIndex(object):
 
 
 class FakeVmomiContent(object):
-    def __init__(self, servers=0):
-        self.rootFolder = FakeVmomiRootFolder(servers=servers)
+    def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
+        self.rootFolder = FakeVmomiRootFolder(
+            servers=servers, has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid)
         self.searchIndex = FakeVmomiSearchIndex(self)
 
 
 class FakeVmomiServiceInstance(object):
-    def __init__(self, servers=0):
-        self.content = FakeVmomiContent(servers=servers)
+    def __init__(self, servers=0, has_instance_uuid=None, has_uuid=None):
+        self.content = FakeVmomiContent(
+            servers=servers, has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid)
 
     def RetrieveContent(self):
         return self.content
@@ -194,10 +213,12 @@ class TestVspherePyvmomi(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def configure_vmomi_api(self, servers=10):
+    def configure_vmomi_api(
+            self, servers=10, has_instance_uuid=None, has_uuid=None):
         mock_vmomi_api = self.patch(vsphere, 'vmomi_api')
         mock_vmomi_api.SmartConnect.return_value = FakeVmomiServiceInstance(
-            servers=servers)
+            servers=servers, has_instance_uuid=has_instance_uuid,
+            has_uuid=has_uuid)
         return mock_vmomi_api
 
     def setUp(self):
@@ -207,7 +228,7 @@ class TestVspherePyvmomi(MAASTestCase):
 
     def test_api_connection(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=0)
-        api = VspherePyvmomi(
+        api = VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username())
@@ -223,11 +244,11 @@ class TestVspherePyvmomi(MAASTestCase):
     def test_api_failed_connection(self):
         mock_vmomi_api = self.patch(vsphere, 'vmomi_api')
         mock_vmomi_api.SmartConnect.return_value = None
-        api = VspherePyvmomi(
+        api = VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username())
-        with ExpectedException(vsphere.VsphereError):
+        with ExpectedException(vsphere.VMwareAPIConnectionFailed):
             api.connect()
         self.expectThat(api.service_instance, Is(None))
         self.expectThat(api.is_connected(), Equals(False))
@@ -253,6 +274,63 @@ class TestVspherePyvmomi(MAASTestCase):
             factory.make_username())
         self.expectThat(servers, Not(Equals({})))
 
+    def test_get_server_by_instance_uuid(self):
+        mock_vmomi_api = self.configure_vmomi_api(
+            servers=1, has_instance_uuid=True, has_uuid=False)
+        search_index = \
+            mock_vmomi_api.SmartConnect.return_value.content.searchIndex
+        instance_uuids = search_index.vms_by_instance_uuid.keys()
+        for uuid in instance_uuids:
+            vm = vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
+            self.assertIsNotNone(vm)
+
+    def test_get_server_by_uuid(self):
+        mock_vmomi_api = self.configure_vmomi_api(
+            servers=1, has_instance_uuid=True, has_uuid=False)
+        search_index = \
+            mock_vmomi_api.SmartConnect.return_value.content.searchIndex
+        uuids = search_index.vms_by_uuid.keys()
+        for uuid in uuids:
+            vm = vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
+            self.assertIsNotNone(vm)
+
+    def test_get_server_by_name(self):
+        mock_vmomi_api = self.configure_vmomi_api(
+            servers=1, has_instance_uuid=False, has_uuid=True)
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+        servers = vsphere.get_vsphere_servers(host, username, password)
+        for vm_name in servers.keys():
+            vm = vsphere._find_vm_by_uuid_or_name(
+                mock_vmomi_api, None, vm_name)
+            self.assertIsNotNone(vm)
+
+    def test_get_missing_server_raises_VMwareVMNotFound(self):
+        mock_vmomi_api = self.configure_vmomi_api(
+            servers=1, has_instance_uuid=True, has_uuid=True)
+        with ExpectedException(VMwareVMNotFound):
+            vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, None, None)
+
+    def test_power_control_missing_server_raises_VMwareVMNotFound(self):
+        self.configure_vmomi_api(
+            servers=1, has_instance_uuid=True, has_uuid=True)
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+        with ExpectedException(VMwareVMNotFound):
+            vsphere.power_control_vsphere(
+                host, username, password, None, None, "on")
+
+    def test_power_query_missing_server_raises_VMwareVMNotFound(self):
+        self.configure_vmomi_api(
+            servers=1, has_instance_uuid=True, has_uuid=True)
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+        with ExpectedException(VMwareVMNotFound):
+            vsphere.power_query_vsphere(host, username, password, None, None)
+
     def test_power_control(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=100)
 
@@ -271,25 +349,35 @@ class TestVspherePyvmomi(MAASTestCase):
 
         # at least one should have a randomly-invalid state (just checking
         # for coverage, but since it's random, don't want to assert)
+        vm_name = None
+
         for uuid in bios_uuids:
-            vsphere.power_query_vsphere(host, username, password, uuid)
+            vsphere.power_query_vsphere(
+                host, username, password, vm_name, uuid)
         for uuid in instance_uuids:
-            vsphere.power_query_vsphere(host, username, password, uuid)
+            vsphere.power_query_vsphere(
+                host, username, password, vm_name, uuid)
+        for vm_name in servers.keys():
+            vsphere.power_query_vsphere(
+                host, username, password, vm_name, None)
 
         # turn on a set of VMs, then verify they are on
         for uuid in bios_uuids:
-            vsphere.power_control_vsphere(host, username, password, uuid, "on")
+            vsphere.power_control_vsphere(
+                host, username, password, vm_name, uuid, "on")
 
         for uuid in bios_uuids:
-            state = vsphere.power_query_vsphere(host, username, password, uuid)
+            state = vsphere.power_query_vsphere(
+                host, username, password, vm_name, uuid)
             self.expectThat(state, Equals("on"))
 
         # turn off a set of VMs, then verify they are off
         for uuid in instance_uuids:
-            vsphere.power_control_vsphere(host, username, password, uuid,
-                                          "off")
+            vsphere.power_control_vsphere(
+                host, username, password, vm_name, uuid, "off")
         for uuid in instance_uuids:
-            state = vsphere.power_query_vsphere(host, username, password, uuid)
+            state = vsphere.power_query_vsphere(
+                host, username, password, vm_name, uuid)
             self.expectThat(state, Equals("off"))
 
         self.expectThat(servers, Not(Equals({})))
