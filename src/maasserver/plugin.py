@@ -38,10 +38,6 @@ class RegionServiceMaker:
 
     def makeService(self, options):
         """Construct a service."""
-        from twisted.internet import reactor
-        # This is a workaround until we implement proper unbounded threadpool
-        # with a cleanup method.
-        reactor.suggestThreadPoolSize(1024 * 10)
         # Get something going with the logs.
         from provisioningserver import logger
         logger.basicConfig()

@@ -25,7 +25,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import MultiService
-from twisted.internet import reactor
 
 
 class TestOptions(MAASTestCase):
@@ -73,7 +72,6 @@ class TestRegionServiceMaker(MAASTestCase):
             "rpc-advertise",
             "web",
         ]
-        self.assertEqual(1024 * 10, reactor.getThreadPool().max)
         self.assertItemsEqual(expected_services, service.namedServices)
         self.assertEqual(
             len(service.namedServices), len(service.services),
