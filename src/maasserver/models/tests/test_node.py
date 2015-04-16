@@ -19,8 +19,8 @@ from datetime import (
     timedelta,
 )
 import random
+import threading
 
-import crochet
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -2313,39 +2313,34 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
         mock_datetime.now.return_value = nowish_timestamp
 
     def test__start_transition_monitor_starts_monitor(self):
+        done = threading.Event()
         rpc_fixture = self.prepare_rpc()
         now = datetime.now(tz=amp.utc)
         self.patch_datetime_now(now)
         node = factory.make_Node()
-        cluster = rpc_fixture.makeCluster(node.nodegroup, StartMonitors)
-        monitor_timeout = random.randint(1, 100)
-        node.start_transition_monitor(monitor_timeout)
-        monitors = [{
-            'deadline': now + timedelta(seconds=monitor_timeout),
-            'id': node.system_id,
-            'context': {
-                'timeout': monitor_timeout,
-                'node_status': node.status,
-                },
-            }]
-        self.assertThat(
-            cluster.StartMonitors, MockCalledOnceWith(ANY, monitors=monitors)
-        )
 
-    def test__start_transition_monitor_copes_with_timeouterror(self):
-        now = datetime.now(tz=amp.utc)
-        self.patch_datetime_now(now)
-        node = factory.make_Node()
-        monitor_start = self.patch(node_module.TransitionMonitor, "start")
-        monitor_start.side_effect = crochet.TimeoutError("error")
+        def handle(self, monitors):
+            done.set()  # Tell the calling thread.
+            return defer.succeed({})
+
+        cluster = rpc_fixture.makeCluster(node.nodegroup, StartMonitors)
+        cluster.StartMonitors.side_effect = handle
+
         monitor_timeout = random.randint(1, 100)
-        logger = self.useFixture(LoggerFixture("maas"))
-        # start_transition_monitor() does not crash.
         node.start_transition_monitor(monitor_timeout)
-        # However, the problem has been logged.
-        self.assertDocTestMatches(
-            "...: Unable to start transition monitor: ...",
-            logger.output)
+        post_commit_hooks.fire()
+
+        self.assertTrue(done.wait(5))
+        self.assertThat(
+            cluster.StartMonitors,
+            MockCalledOnceWith(ANY, monitors=[{
+                'deadline': now + timedelta(seconds=monitor_timeout),
+                'id': node.system_id,
+                'context': {
+                    'timeout': monitor_timeout,
+                    'node_status': node.status,
+                },
+            }]))
 
 
 class TestClaimStaticIPAddresses(MAASServerTestCase):
@@ -2671,11 +2666,9 @@ class TestNode_Start(MAASServerTestCase):
         node = self.make_acquired_node_with_mac(user)
         power_info = node.get_effective_power_info()
 
-        start_transition_monitor = self.patch_autospec(
-            node, 'start_transition_monitor')
-
         power_on_node = self.patch(node_module, "power_on_node")
         power_on_node.return_value = defer.succeed(None)
+        self.patch_autospec(node, '_start_transition_monitor_async')
 
         with post_commit_hooks:
             node.start(user)
@@ -2689,8 +2682,8 @@ class TestNode_Start(MAASServerTestCase):
 
         # A transition monitor was started.
         self.expectThat(
-            start_transition_monitor, MockCalledOnceWith(
-                node.get_deployment_time()))
+            node._start_transition_monitor_async,
+            MockCalledOnceWith(ANY, node.hostname))
 
     def test__raises_failures_when_power_action_fails(self):
         class PraiseBeToJTVException(Exception):

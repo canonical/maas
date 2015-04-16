@@ -29,7 +29,6 @@ from operator import attrgetter
 from string import whitespace
 from uuid import uuid1
 
-import crochet
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -127,6 +126,7 @@ from provisioningserver.utils.twisted import (
     callOutToThread,
     synchronous,
 )
+from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
@@ -581,27 +581,17 @@ class Node(CleanSave, TimestampedModel):
             TransitionMonitor.fromNode(self)
             .within(seconds=timeout)
             .status_should_be(self.status))
-        try:
-            monitor.start()
-        except crochet.TimeoutError as error:
-            maaslog.error(
-                "%s: Unable to start transition monitor: %s",
-                self.hostname, error)
-        else:
-            maaslog.info("%s: Started transition monitor", self.hostname)
+        post_commit().addCallback(
+            callOut, self._start_transition_monitor_async, monitor,
+            self.hostname)
 
     @synchronous
     def stop_transition_monitor(self):
         """Stop cluster-side transition monitor."""
         monitor = TransitionMonitor.fromNode(self)
-        try:
-            monitor.stop()
-        except crochet.TimeoutError as error:
-            maaslog.error(
-                "%s: Unable to stop transition monitor: %s",
-                self.hostname, error)
-        else:
-            maaslog.info("%s: Stopped transition monitor", self.hostname)
+        post_commit().addCallback(
+            callOut, self._stop_transition_monitor_async, monitor,
+            self.hostname)
 
     def handle_monitor_expired(self, context):
         """Handle a monitor expired event."""
@@ -944,13 +934,16 @@ class Node(CleanSave, TimestampedModel):
         :param monitor: An instance of `TransitionMonitor`.
         :param hostname: The node's hostname, for logging.
         """
+        def start():
+            # Start the transition monitor. Only log failures; don't crash.
+            return monitor.start().addErrback(eb_start, hostname)
+
         def eb_start(failure, hostname):
             maaslog.warning(
                 "%s: Could not start transition monitor: %s",
                 hostname, failure.getErrorMessage())
 
-        # Start the transition monitor. Only log failures; don't crash.
-        return monitor.start().addErrback(eb_start, hostname)
+        reactor.callLater(0, start)
 
     @classmethod
     @asynchronous
@@ -1088,13 +1081,16 @@ class Node(CleanSave, TimestampedModel):
         :param monitor: An instance of `TransitionMonitor`.
         :param hostname: The node's hostname, for logging.
         """
+        def stop():
+            # Stop the transition monitor. Only log failures; don't crash.
+            return monitor.stop().addErrback(eb_stop, hostname)
+
         def eb_stop(failure, hostname):
             maaslog.warning(
                 "%s: Could not stop transition monitor: %s",
                 hostname, failure.getErrorMessage())
 
-        # Stop the transition monitor. Only log failures; don't crash.
-        return monitor.stop().addErrback(eb_stop, hostname)
+        reactor.callLater(0, stop)
 
     @classmethod
     @asynchronous
@@ -1928,10 +1924,13 @@ class Node(CleanSave, TimestampedModel):
                 self.update_host_maps(claims)
 
         if self.status == NODE_STATUS.ALLOCATED:
-            transition_timeout = self.get_deployment_time()
+            transition_monitor = (
+                TransitionMonitor.fromNode(self)
+                .within(seconds=self.get_deployment_time())
+                .status_should_be(self.status))
             self.start_deployment()
         else:
-            transition_timeout = None
+            transition_monitor = None
 
         # Update the DNS zone with the new static IP info as necessary.
         dns_update_zones(self.nodegroup)
@@ -1954,10 +1953,10 @@ class Node(CleanSave, TimestampedModel):
 
         def pc_power_on_node(system_id, hostname, nodegroup_uuid, power_info):
             d = power_on_node(system_id, hostname, nodegroup_uuid, power_info)
-            if transition_timeout is not None:
+            if transition_monitor is not None:
                 d.addCallback(
-                    callOutToThread, pc_start_transition_monitor,
-                    transition_timeout)
+                    callOut, self._start_transition_monitor_async,
+                    transition_monitor, hostname)
             d.addErrback(callOutToThread, pc_deallocate_by_node)
             return d
 

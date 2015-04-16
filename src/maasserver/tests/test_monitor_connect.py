@@ -16,8 +16,8 @@ __all__ = []
 
 
 import random
+import threading
 
-from maasserver import node_query
 from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
@@ -29,9 +29,11 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
 from provisioningserver.rpc.cluster import CancelMonitor
+from twisted.internet import defer
 
 
 class TestCancelMonitor(MAASServerTestCase):
@@ -48,16 +50,27 @@ class TestCancelMonitor(MAASServerTestCase):
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
 
     def test_changing_status_of_monitored_node_cancels_related_monitor(self):
+        from maasserver import node_query  # Circular import.
         self.addCleanup(node_query.enable)
         node_query.disable()
 
+        done = threading.Event()
         rpc_fixture = self.prepare_rpc()
         status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
+
+        def handle(self, id):
+            done.set()  # Tell the calling thread.
+            return defer.succeed({})
+
         cluster = rpc_fixture.makeCluster(node.nodegroup, CancelMonitor)
+        cluster.CancelMonitor.side_effect = handle
+
         node.status = get_failed_status(status)
         node.save()
+        post_commit_hooks.fire()
 
+        self.assertTrue(done.wait(5))
         self.assertThat(
             cluster.CancelMonitor,
             MockCalledOnceWith(ANY, id=node.system_id))
