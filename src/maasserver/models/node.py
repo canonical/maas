@@ -562,7 +562,7 @@ class Node(CleanSave, TimestampedModel):
 
         This is the maximum time that releasing is allowed to take.
         """
-        return timedelta(minutes=1).total_seconds()
+        return timedelta(minutes=5).total_seconds()
 
     def start_deployment(self):
         """Mark a node as being deployed."""
