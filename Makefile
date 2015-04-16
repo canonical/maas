@@ -185,10 +185,12 @@ bin/sass:
 test: test-scripts-all = $(wildcard bin/test.*)
 # Don't run bin/test.e2e for now; it breaks.
 test: test-scripts = $(filter-out bin/test.e2e,$(test-scripts-all))
-test: export NOSE_WITH_COVERAGE = 1
 test: build
 	@$(RM) coverage.data
 	@echo $(test-scripts) | xargs --verbose -n1 env
+
+test+coverage: export NOSE_WITH_COVERAGE = 1
+test+coverage: test
 
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
@@ -341,11 +343,15 @@ define phony_targets
   lint-py
   man
   package
+  package-clean
+  package-dev
+  package-dev-clean
   sampledata
   source_package
   styles
   syncdb
   test
+  test+coverage
 endef
 
 #

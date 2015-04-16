@@ -21,6 +21,9 @@ import os
 import socket
 from socket import error as socket_error
 
+from provisioningserver.utils.debug import (
+    register_sigusr2_thread_dump_handler,
+)
 from twisted.application.internet import TCPServer
 from twisted.application.service import IServiceMaker
 from twisted.cred.checkers import ICredentialsChecker
@@ -200,6 +203,9 @@ class ProvisioningServiceMaker:
 
     def makeService(self, options):
         """Construct a service."""
+
+        register_sigusr2_thread_dump_handler()
+
         from provisioningserver import services
         from provisioningserver.config import Config
 

@@ -8,6 +8,10 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from provisioningserver.utils.debug import (
+    register_sigusr2_thread_dump_handler,
+)
+
 
 str = None
 
@@ -38,6 +42,8 @@ class RegionServiceMaker:
 
     def makeService(self, options):
         """Construct a service."""
+        register_sigusr2_thread_dump_handler()
+
         # Get something going with the logs.
         from provisioningserver import logger
         logger.basicConfig()
