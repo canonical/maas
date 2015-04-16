@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -456,6 +456,23 @@ class TestDeployAction(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(""))
         self.expectThat(node.distro_series, Equals(""))
 
+    def test_Deploy_allocates_node_if_node_not_already_allocated(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
+        action = Deploy(node, user)
+        action.execute()
+
+        self.assertEqual(user, node.owner)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+
+
+class TestDeployActionTransactional(MAASTransactionServerTestCase):
+    '''The following TestDeployAction tests require
+        MAASTransactionServerTestCase, and thus, have been separated
+        from the TestDeployAction above.
+    '''
+
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
@@ -466,24 +483,15 @@ class TestDeployAction(MAASServerTestCase):
         # Narrow the available IP range and pre-claim the only address.
         ngi.static_ip_range_high = ngi.static_ip_range_low
         ngi.save()
-        StaticIPAddress.objects.allocate_new(
-            ngi.static_ip_range_high, ngi.static_ip_range_low)
+        with transaction.atomic():
+            StaticIPAddress.objects.allocate_new(
+                ngi.static_ip_range_high, ngi.static_ip_range_low)
 
         e = self.assertRaises(NodeActionError, Deploy(node, user).execute)
         self.expectThat(
             e.message, Equals(
                 "%s: Failed to start, static IP addresses are exhausted." %
                 node.hostname))
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
-
-    def test_Deploy_allocates_node_if_node_not_already_allocated(self):
-        user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        self.patch(node, 'start')
-        action = Deploy(node, user)
-        action.execute()
-
-        self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
 
@@ -669,7 +677,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
     scenarios = [
         (exception_class.__name__, {"exception_class": exception_class})
         for exception_class in exceptions
-        ]
+    ]
 
     def make_exception(self):
         if self.exception_class is MultipleFailures:

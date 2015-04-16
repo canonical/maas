@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -81,7 +81,10 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import (
     post_commit,
@@ -1064,7 +1067,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, 'static_ip_addresses').return_value = [
             ipv4_address,
             ipv6_address,
-            ]
+        ]
         self.assertItemsEqual(
             [ipv4_address, ipv6_address],
             node.ip_addresses())
@@ -1076,7 +1079,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, 'dynamic_ip_addresses').return_value = [
             ipv4_address,
             ipv6_address,
-            ]
+        ]
         self.assertItemsEqual(
             [ipv4_address, ipv6_address],
             node.ip_addresses())
@@ -1088,7 +1091,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, 'static_ip_addresses').return_value = [
             ipv4_address,
             ipv6_address,
-            ]
+        ]
         self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_ip_addresses_strips_dynamic_ipv4_addresses_if_ipv4_disabled(self):
@@ -1098,7 +1101,7 @@ class TestNode(MAASServerTestCase):
         self.patch(node, 'dynamic_ip_addresses').return_value = [
             ipv4_address,
             ipv6_address,
-            ]
+        ]
         self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_get_static_ip_mappings_returns_static_ip_and_mac(self):
@@ -1282,7 +1285,7 @@ class TestNode(MAASServerTestCase):
         accepted_states = [
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.READY,
-            ]
+        ]
         nodes = {
             status: factory.make_Node(status=status)
             for status in accepted_states}
@@ -1307,7 +1310,7 @@ class TestNode(MAASServerTestCase):
             NODE_STATUS.NEW,
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.READY,
-            ]
+        ]
         unacceptable_states = set(all_states) - set(acceptable_states)
         nodes = {
             status: factory.make_Node(status=status)
@@ -1877,7 +1880,7 @@ class TestNode(MAASServerTestCase):
             ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
             ("local", {"status": NODE_STATUS.DEPLOYED}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
-            ]
+        ]
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         mock_get_boot_images_for = self.patch(
             preseed_module, 'get_boot_images_for')
@@ -2080,7 +2083,7 @@ class NodeManagerTest(MAASServerTestCase):
             factory.make_User(),
             factory.make_admin(),
             admin,
-            ]
+        ]
         nodes = [self.make_node(owner) for owner in owners]
         self.assertItemsEqual(
             nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.VIEW))
@@ -2124,7 +2127,7 @@ class NodeManagerTest(MAASServerTestCase):
                 from_nodes=Node.objects.filter(id__in=(
                     matching_node.id,
                     invisible_node.id,
-                    ))))
+                ))))
 
     def test_get_nodes_with_edit_perm_for_user_lists_owned_nodes(self):
         user = factory.make_User()
@@ -2142,7 +2145,7 @@ class NodeManagerTest(MAASServerTestCase):
             factory.make_User(),
             factory.make_admin(),
             admin,
-            ]
+        ]
         nodes = [self.make_node(owner) for owner in owners]
         self.assertItemsEqual(
             nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.EDIT))
@@ -2448,6 +2451,13 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             node2.claim_static_ip_addresses(
                 alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)
 
+
+class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):
+    '''The following TestClaimStaticIPAddresses tests require
+        MAASTransactionServerTestCase, and thus have been separated
+        from the TestClaimStaticIPAddresses above.
+    '''
+
     def test__claims_and_deallocates_multiple_sticky_ip_addresses(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
@@ -2463,8 +2473,9 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
                 node=node, cluster_interface=cluster_if)
             macs.append(mac)
 
-        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY)[0]
+        with transaction.atomic():
+            pxe_ip, pxe_mac = node.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY)[0]
 
         mac = MACAddress.objects.get(mac_address=pxe_mac)
         ip = mac.ip_addresses.all()[0]
@@ -2473,8 +2484,9 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
 
         sips = []
         for mac in macs:
-            sips.append(node.claim_static_ip_addresses(
-                mac=mac, alloc_type=IPADDRESS_TYPE.STICKY)[0])
+            with transaction.atomic():
+                sips.append(node.claim_static_ip_addresses(
+                    mac=mac, alloc_type=IPADDRESS_TYPE.STICKY)[0])
 
         # try removing just the IP on the PXE MAC first
         deallocated = node.deallocate_static_ip_addresses(
@@ -2509,8 +2521,8 @@ class TestDeploymentStatus(MAASServerTestCase):
             NODE_STATUS, but_not=[
                 NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED,
                 NODE_STATUS.FAILED_DEPLOYMENT
-                ]
-            )
+            ]
+        )
         node = factory.make_Node(status=status)
         self.assertEqual("Not in deployment", node.get_deployment_status())
 
@@ -2638,7 +2650,7 @@ class TestNode_Start(MAASServerTestCase):
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = [
             Failure(exception_type("Please, don't do that.")),
-            ]
+        ]
 
         self.assertRaises(exception_type, node.start, user)
 
@@ -2735,7 +2747,7 @@ class TestNode_Start(MAASServerTestCase):
             can_be_queried=True,
             power_type=node.get_effective_power_type(),
             power_parameters=node.get_effective_power_parameters(),
-            )
+        )
         self.patch(node, 'get_effective_power_info').return_value = power_info
         power_on_node = self.patch(node_module, "power_on_node")
         node.start(user)
@@ -2788,7 +2800,7 @@ class TestNode_Start(MAASServerTestCase):
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = [
             Failure(exception_type("You steaming nit, you!"))
-            ]
+        ]
         deallocate_ips = self.patch(
             node_module.StaticIPAddress.objects, 'deallocate_by_node')
 

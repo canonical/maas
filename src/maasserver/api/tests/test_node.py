@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -22,6 +22,7 @@ import sys
 
 import bson
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from maasserver import forms
 from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
@@ -137,7 +138,8 @@ class TestNodeAPI(APITestCase):
             '/api/1.0/nodes/node-name/',
             reverse('node_handler', args=['node-name']))
 
-    def get_node_uri(self, node):
+    @staticmethod
+    def get_node_uri(node):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
 
@@ -232,14 +234,14 @@ class TestNodeAPI(APITestCase):
         devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
-            ]
+        ]
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         parsed_devices = [
             device['name']
             for device in parsed_result['physicalblockdevice_set']
-            ]
+        ]
         self.assertItemsEqual(
             [device.name for device in devices], parsed_devices)
 
@@ -347,7 +349,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node), {
                 'op': 'start',
                 'distro_series': distro_series
-                })
+            })
         self.assertEqual(
             (httplib.OK, node.system_id),
             (response.status_code, json.loads(response.content)['system_id']))
@@ -390,7 +392,7 @@ class TestNodeAPI(APITestCase):
                 'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
-                })
+            })
         self.assertEqual(
             (httplib.OK, node.system_id),
             (response.status_code, json.loads(response.content)['system_id']))
@@ -412,7 +414,7 @@ class TestNodeAPI(APITestCase):
                 'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
-                })
+            })
         self.assertEqual(
             (
                 httplib.BAD_REQUEST,
@@ -440,23 +442,9 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node), {
                 'op': 'start',
                 'user_data': b64encode(user_data),
-                })
+            })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
-
-    def test_POST_start_returns_error_when_static_ips_exhausted(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
-        ngi = node.get_primary_mac().cluster_interface
-
-        # Narrow the available IP range and pre-claim the only address.
-        ngi.static_ip_range_high = ngi.static_ip_range_low
-        ngi.save()
-        StaticIPAddress.objects.allocate_new(
-            ngi.static_ip_range_high, ngi.static_ip_range_low)
-
-        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
-        self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
     def test_POST_release_releases_owned_node(self):
         self.patch(node_module, 'power_off_node')
@@ -464,7 +452,7 @@ class TestNodeAPI(APITestCase):
         owned_statuses = [
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
-            ]
+        ]
         owned_nodes = [
             factory.make_Node(
                 owner=self.logged_in_user, status=status, power_type='ipmi',
@@ -632,7 +620,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node),
             {field: factory.make_string()}
-            )
+        )
 
         self.assertEqual(httplib.OK, response.status_code)
 
@@ -647,7 +635,7 @@ class TestNodeAPI(APITestCase):
         self.client.put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
-            )
+        )
 
         self.assertEqual(
             new_power_type, reload_object(node).power_type)
@@ -660,7 +648,7 @@ class TestNodeAPI(APITestCase):
         self.client.put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
-            )
+        )
 
         self.assertEqual(
             original_power_type, reload_object(node).power_type)
@@ -1074,7 +1062,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.assertEqual(
             (existing_ip.ip, IPADDRESS_TYPE.STICKY),
             (returned_ip, existing_ip.alloc_type)
-            )
+        )
 
     def test_claim_sticky_ip_address_rtns_error_if_clashing_type_exists(self):
         self.become_admin()
@@ -1251,10 +1239,33 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
 
+class TestNodeAPITransactional(APITransactionTestCase):
+    '''The following TestNodeAPI tests require APITransactionTestCase,
+        and thus, have been separated from the TestNodeAPI above.
+    '''
+
+    def test_POST_start_returns_error_when_static_ips_exhausted(self):
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        ngi = node.get_primary_mac().cluster_interface
+
+        # Narrow the available IP range and pre-claim the only address.
+        ngi.static_ip_range_high = ngi.static_ip_range_low
+        ngi.save()
+        with transaction.atomic():
+            StaticIPAddress.objects.allocate_new(
+                ngi.static_ip_range_high, ngi.static_ip_range_low)
+
+        response = self.client.post(
+            TestNodeAPI.get_node_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
+
+
 class TestNodeReleaseStickyIpAddressAPI(APITestCase):
     """Tests for /api/1.0/nodes/?op=release_sticky_ip_address."""
 
-    def get_node_uri(self, node):
+    @staticmethod
+    def get_node_uri(node):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
 
@@ -1277,6 +1288,13 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         parsed_node = json.loads(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
 
+
+class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
+    '''The following TestNodeReleaseStickyIpAddressAPI tests require
+        APITransactionTestCase, and thus, have been separated
+        from the TestNodeReleaseStickyIpAddressAPI above.
+    '''
+
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
@@ -1287,11 +1305,13 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         self.patch(node_module, "remove_host_maps")
         self.assertThat(MACAddress.objects.all(), HasLength(5))
         for mac in MACAddress.objects.all():
-            allocated = node.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            with transaction.atomic():
+                allocated = node.claim_static_ip_addresses(
+                    alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
             self.expectThat(allocated, HasLength(1))
         response = self.client.post(
-            self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
+            TestNodeReleaseStickyIpAddressAPI.get_node_uri(node),
+            {'op': 'release_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_node = json.loads(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
@@ -1307,13 +1327,14 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         self.assertThat(MACAddress.objects.all(), HasLength(2))
         ips = []
         for mac in MACAddress.objects.all():
-            allocated = node.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            with transaction.atomic():
+                allocated = node.claim_static_ip_addresses(
+                    alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
             self.expectThat(allocated, HasLength(1))
             # Note: 'allocated' is a list of (ip,mac) tuples
             ips.append(allocated[0][0])
         response = self.client.post(
-            self.get_node_uri(node),
+            TestNodeReleaseStickyIpAddressAPI.get_node_uri(node),
             {
                 'op': 'release_sticky_ip_address',
                 'address': ips[0]
@@ -1328,10 +1349,12 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch(node_module, "update_host_maps")
         self.patch(node_module, "remove_host_maps")
-        node.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
+        with transaction.atomic():
+            node.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertThat(StaticIPAddress.objects.all(), HasLength(1))
         response = self.client.post(
-            self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
+            TestNodeReleaseStickyIpAddressAPI.get_node_uri(node),
+            {'op': 'release_sticky_ip_address'})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
         self.assertThat(StaticIPAddress.objects.all(), HasLength(1))

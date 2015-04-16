@@ -14,14 +14,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'StaticIPAddress',
-    ]
+]
 
 from collections import defaultdict
 
@@ -54,12 +54,17 @@ from maasserver.utils.dns import (
     get_ip_based_hostname,
     validate_hostname,
 )
-from maasserver.utils.orm import make_serialization_failure
+from maasserver.utils.orm import (
+    make_serialization_failure,
+    transactional,
+)
 from netaddr import (
     IPAddress,
     IPRange,
 )
 from provisioningserver.utils.enum import map_enum_reverse
+from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.threads import deferToThread
 
 
 class StaticIPAddressManager(Manager):
@@ -157,9 +162,19 @@ class StaticIPAddressManager(Manager):
         static_range = IPRange(range_low, range_high)
 
         if requested_address is None:
-            return self._find_free_ip(
-                range_low, range_high, static_range, alloc_type, user,
-                hostname=hostname)
+            with locks.staticip_acquire:
+                requested_address = self._async_find_free_ip(
+                    range_low, range_high, static_range, alloc_type, user,
+                    hostname=hostname).wait(30)
+                try:
+                    return self._attempt_allocation(
+                        requested_address, alloc_type, user,
+                        hostname=hostname)
+                except StaticIPAddressUnavailable:
+                    # This is phantom read: another transaction has
+                    # taken this IP.  Raise a serialization failure to
+                    # let the retry mechanism do its thing.
+                    raise make_serialization_failure()
         else:
             requested_address = IPAddress(requested_address)
             if requested_address not in static_range:
@@ -180,43 +195,39 @@ class StaticIPAddressManager(Manager):
             mappings.append((hostname, ip))
         return mappings
 
+    @asynchronous
+    def _async_find_free_ip(self, *args, **kwargs):
+        return deferToThread(
+            transactional(self._find_free_ip), *args, **kwargs)
+
     def _find_free_ip(self, range_low, range_high, static_range, alloc_type,
                       user, hostname=None):
         """Helper function that finds a free IP address using a lock."""
-        with locks.staticip_acquire:
-            # The set of _allocated_ addresses in the range is going to be
-            # smaller or at least no bigger than the set of addresses in the
-            # whole range, so we materialise a Python set of only allocated
-            # addreses. We can iterate through `static_range` without
-            # materialising every address within. This is critical for IPv6,
-            # where ranges may contain 2^64 addresses without blinking.
-            existing = self.filter(
-                ip__gte=range_low.format(),
-                ip__lte=range_high.format(),
-            )
-            # We might consider limiting this query, but that's premature. If
-            # MAAS is managing even as many as 10k nodes in a single network
-            # then my hat is most certainly on the menu. However, we do care
-            # only about the IP address field here.
-            existing = existing.values_list("ip", flat=True)
-            # Now materialise the set.
-            existing = {IPAddress(ip) for ip in existing}
-            # Now find the first free address in the range.
-            for requested_address in static_range:
-                if requested_address not in existing:
-                    try:
-                        return self._attempt_allocation(
-                            requested_address, alloc_type, user,
-                            hostname=hostname)
-                    except StaticIPAddressUnavailable:
-                        # This is phantom read: another transaction has
-                        # taken this IP.  Raise a serialization failure to
-                        # let the retry mechanism do its thing.
-                        raise make_serialization_failure()
-            else:
-                raise StaticIPAddressExhaustion(
-                    "No more IPs available in range %s-%s" % (
-                        range_low.format(), range_high.format()))
+        # The set of _allocated_ addresses in the range is going to be
+        # smaller or at least no bigger than the set of addresses in the
+        # whole range, so we materialise a Python set of only allocated
+        # addreses. We can iterate through `static_range` without
+        # materialising every address within. This is critical for IPv6,
+        # where ranges may contain 2^64 addresses without blinking.
+        existing = self.filter(
+            ip__gte=range_low.format(),
+            ip__lte=range_high.format(),
+        )
+        # We might consider limiting this query, but that's premature. If
+        # MAAS is managing even as many as 10k nodes in a single network
+        # then my hat is most certainly on the menu. However, we do care
+        # only about the IP address field here.
+        existing = existing.values_list("ip", flat=True)
+        # Now materialise the set.
+        existing = {IPAddress(ip) for ip in existing}
+        # Now find the first free address in the range.
+        for requested_address in static_range:
+            if requested_address not in existing:
+                return requested_address
+        else:
+            raise StaticIPAddressExhaustion(
+                "No more IPs available in range %s-%s" % (
+                    range_low.format(), range_high.format()))
 
     @classmethod
     def _deallocate(cls, queryset):

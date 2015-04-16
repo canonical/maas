@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 from testtools.matchers import HasLength
 
 
@@ -27,7 +27,10 @@ from maasserver.exceptions import (
 )
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -40,9 +43,10 @@ from netaddr import (
 )
 from provisioningserver.utils.enum import map_enum
 from random import randint
+from django.db import transaction
 
 
-class StaticIPAddressManagerTest(MAASServerTestCase):
+class TestStaticIPAddressManager(MAASServerTestCase):
 
     def test_allocate_new_returns_ip_in_correct_range(self):
         low, high = factory.make_ip_range()
@@ -56,16 +60,6 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         ipaddress = StaticIPAddress.objects.allocate_new(low, high)
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertIn(IPAddress(ipaddress.ip), IPRange(low, high))
-
-    def test_allocate_new_raises_when_addresses_exhausted(self):
-        low = high = "192.168.230.1"
-        StaticIPAddress.objects.allocate_new(low, high)
-        e = self.assertRaises(
-            StaticIPAddressExhaustion,
-            StaticIPAddress.objects.allocate_new, low, high)
-        self.assertEqual(
-            "No more IPs available in range %s-%s" % (low, high),
-            unicode(e))
 
     def test_allocate_new_sets_user(self):
         low, high = factory.make_ip_range()
@@ -199,7 +193,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertItemsEqual(
             [ip1.ip.format(), ip2.ip.format()],
             observed
-            )
+        )
 
     def test_deallocate_by_node_ignores_other_nodes(self):
         node1 = factory.make_Node()
@@ -248,7 +242,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertItemsEqual(
             [ip1.ip.format(), ip2.ip.format()],
             observed
-            )
+        )
 
     def test_delete_by_node_ignores_other_nodes(self):
         node1 = factory.make_Node()
@@ -272,7 +266,26 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
 
-class StaticIPAddressManagerMappingTest(MAASServerTestCase):
+class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
+    '''The following TestStaticIPAddressManager tests require
+        MAASTransactionServerTestCase, and thus have been separated
+        from the TestStaticIPAddressManager above.
+    '''
+
+    def test_allocate_new_raises_when_addresses_exhausted(self):
+        low = high = "192.168.230.1"
+        with transaction.atomic():
+            StaticIPAddress.objects.allocate_new(low, high)
+        with transaction.atomic():
+            e = self.assertRaises(
+                StaticIPAddressExhaustion,
+                StaticIPAddress.objects.allocate_new, low, high)
+        self.assertEqual(
+            "No more IPs available in range %s-%s" % (low, high),
+            unicode(e))
+
+
+class TestStaticIPAddressManagerMapping(MAASServerTestCase):
     """Tests for get_hostname_ip_mapping()."""
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
@@ -371,7 +384,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         self.assertEqual({node.hostname: [ipv6_address.ip]}, mapping)
 
 
-class StaticIPAddressTest(MAASServerTestCase):
+class TestStaticIPAddress(MAASServerTestCase):
 
     def test_repr_with_valid_type(self):
         actual = "%s" % factory.make_StaticIPAddress(
@@ -403,7 +416,7 @@ class StaticIPAddressTest(MAASServerTestCase):
         self.assertEqual([ipaddress2], list(StaticIPAddress.objects.all()))
 
 
-class UserReservedStaticIPAddressTest(MAASServerTestCase):
+class TestUserReservedStaticIPAddress(MAASServerTestCase):
 
     def test_user_reserved_addresses_have_default_hostnames(self):
         num_ips = randint(3, 5)

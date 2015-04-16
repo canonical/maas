@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -20,6 +20,7 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from maasserver.api import devices as api_devices
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -34,7 +35,10 @@ from maasserver.models import (
     NodeGroup,
     StaticIPAddress,
 )
-from maasserver.testing.api import APITestCase
+from maasserver.testing.api import (
+    APITestCase,
+    APITransactionTestCase,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
@@ -55,7 +59,7 @@ class TestDevicesAPI(APITestCase):
         macs = {
             factory.make_mac_address()
             for _ in range(random.randint(1, 2))
-            }
+        }
         response = self.client.post(
             reverse('devices_handler'),
             {
@@ -81,7 +85,7 @@ class TestDevicesAPI(APITestCase):
         macs = {
             factory.make_mac_address()
             for _ in range(random.randint(1, 2))
-            }
+        }
         response = self.client.post(
             reverse('devices_handler'),
             {
@@ -287,7 +291,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.assertEqual(
             (given_ip.ip, IPADDRESS_TYPE.STICKY),
             (returned_ip, given_ip.alloc_type)
-            )
+        )
 
     def test__creates_host_DHCP_and_DNS_mappings_with_implicit_ip(self):
         parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
@@ -349,7 +353,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.assertEqual(
             (given_ip.ip, requested_address, IPADDRESS_TYPE.STICKY),
             (returned_ip, returned_ip, given_ip.alloc_type)
-            )
+        )
         self.assertItemsEqual(
             [device.get_primary_mac()], given_ip.macaddress_set.all())
 
@@ -375,7 +379,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.assertEqual(
             (given_ip.ip, requested_address, IPADDRESS_TYPE.STICKY),
             (returned_ip, returned_ip, given_ip.alloc_type)
-            )
+        )
         self.assertItemsEqual([second_mac], given_ip.macaddress_set.all())
 
     def test_creates_host_DHCP_and_DNS_mappings_with_given_ip(self):
@@ -520,6 +524,12 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
             dict(address=["Enter a valid IPv4 or IPv6 address."]),
             json.loads(response.content))
 
+
+class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
+    '''The following TestDeviceReleaseStickyIpAddressAPI tests require
+        APITransactionTestCase, and thus, have been separated
+        from the TestDeviceReleaseStickyIpAddressAPI above.
+    '''
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
         device = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
@@ -530,8 +540,9 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
         self.patch(node_module, "remove_host_maps")
         self.assertThat(MACAddress.objects.all(), HasLength(5))
         for mac in MACAddress.objects.all():
-            allocated = device.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            with transaction.atomic():
+                allocated = device.claim_static_ip_addresses(
+                    alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
             self.expectThat(allocated, HasLength(1))
         response = self.client.post(
             get_device_uri(device), {'op': 'release_sticky_ip_address'})
@@ -550,8 +561,9 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
         self.assertThat(MACAddress.objects.all(), HasLength(2))
         ips = []
         for mac in MACAddress.objects.all():
-            allocated = device.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            with transaction.atomic():
+                allocated = device.claim_static_ip_addresses(
+                    alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
             self.expectThat(allocated, HasLength(1))
             # Note: 'allocated' is a list of (ip,mac) tuples
             ips.append(allocated[0][0])
@@ -573,7 +585,8 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch(node_module, "update_host_maps")
         self.patch(node_module, "remove_host_maps")
-        device.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
+        with transaction.atomic():
+            device.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertThat(StaticIPAddress.objects.all(), HasLength(1))
         response = self.client.post(
             get_device_uri(device), {'op': 'release_sticky_ip_address'})
