@@ -9,6 +9,12 @@ describe("maasDblClickOverlay", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
+    // Get the BrowserService before each test.
+    var BrowserService;
+    beforeEach(inject(function($injector) {
+        BrowserService = $injector.get("BrowserService");
+    }));
+
     // Create a new scope before each test.
     var $scope;
     beforeEach(inject(function($rootScope) {
@@ -119,5 +125,19 @@ describe("maasDblClickOverlay", function() {
         var overlay = directive.find('div.maas-dbl-overlay--overlay');
         directive.scope().$destroy();
         expect($._data(angular.element(overlay)[0], 'events')).toBeUndefined();
+    });
+
+    it("hides overlay if on firefox", function() {
+        BrowserService.browser = "firefox";
+        var directive = compileDirective("div", "");
+        var overlay = directive.find('div.maas-dbl-overlay--overlay');
+        expect(overlay.hasClass("ng-hide")).toBe(true);
+    });
+
+    it("doesnt hide overlay if on firefox", function() {
+        BrowserService.browser = "chrome";
+        var directive = compileDirective("div", "");
+        var overlay = directive.find('div.maas-dbl-overlay--overlay');
+        expect(overlay.hasClass("ng-hide")).toBe(false);
     });
 });

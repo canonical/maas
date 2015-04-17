@@ -54,6 +54,7 @@ def static_resources(context):
             'js/angular/services/managerhelper.js',
             'js/angular/services/error.js',
             'js/angular/services/validation.js',
+            'js/angular/services/browser.js',
             'js/angular/directives/call_to_action.js',
             'js/angular/directives/power_parameters.js',
             'js/angular/directives/os_select.js',

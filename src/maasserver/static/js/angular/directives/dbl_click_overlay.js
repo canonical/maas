@@ -44,71 +44,83 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     ].join(''));
 }]);
 
-angular.module('MAAS').directive('maasDblClickOverlay', function() {
-    return {
-        restrict: "A",
-        transclude: true,
-        replace: true,
-        scope: {
-            maasDblClickOverlay: '&'
-        },
-        templateUrl: 'directive/templates/double_click_overlay.html',
-        link: function(scope, element, attrs) {
-            // Create the click function that will be called when the overlay
-            // is clicked. This changes based on the element that is
-            // transcluded into this directive.
-            var overlay = element.find(".maas-dbl-overlay--overlay");
-            var transclude = element.find("span[ng-transclude]").children()[0];
-            var clickElement;
-            if(transclude.tagName === "SELECT") {
-                clickElement = function() {
-                    // Have to create a custom mousedown event for the
-                    // select click to be handled. Using 'click()' or 'focus()'
-                    // will not work.
-                    var evt = document.createEvent('MouseEvents');
-                    evt.initMouseEvent('mousedown', true, true, window);
-                    transclude.dispatchEvent(evt);
+angular.module('MAAS').directive('maasDblClickOverlay', ['BrowserService',
+    function(BrowserService) {
+        return {
+            restrict: "A",
+            transclude: true,
+            replace: true,
+            scope: {
+                maasDblClickOverlay: '&'
+            },
+            templateUrl: 'directive/templates/double_click_overlay.html',
+            link: function(scope, element, attrs) {
+                // Create the click function that will be called when the
+                // overlay is clicked. This changes based on the element that
+                // is transcluded into this directive.
+                var overlay = element.find(".maas-dbl-overlay--overlay");
+                var transclude = element.find(
+                    "span[ng-transclude]").children()[0];
+                var clickElement;
+                if(transclude.tagName === "SELECT") {
+                    clickElement = function() {
+                        // Have to create a custom mousedown event for the
+                        // select click to be handled. Using 'click()' or
+                        //'focus()' will not work.
+                        var evt = document.createEvent('MouseEvents');
+                        evt.initMouseEvent(
+                            'mousedown', true, true, window, 0, 0, 0, 0, 0,
+                            false, false, false, false, 0, null);
+                        transclude.dispatchEvent(evt);
+                    };
+
+                    // Selects use a pointer for the cursor.
+                    overlay.css({ cursor: "pointer" });
+                } else if(transclude.tagName === "INPUT") {
+                    clickElement = function() {
+                        // An input will become in focus when clicked.
+                        angular.element(transclude).focus();
+                    };
+
+                    // Inputs use a text for the cursor.
+                    overlay.css({ cursor: "text" });
+                } else {
+                    clickElement = function() {
+                        // Standard element just call click on that element.
+                        angular.element(transclude).click();
+                    };
+
+                    // Don't set cursor on other element types.
+                }
+
+                // Add the click and double click handlers.
+                var overlayClick = function(evt) {
+                    clickElement();
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                };
+                var overlayDblClick = function(evt) {
+                    // Call the double click handler with in the scope.
+                    scope.$apply(scope.maasDblClickOverlay);
+                    evt.preventDefault();
+                    evt.stopPropagation();
                 };
 
-                // Selects use a pointer for the cursor.
-                overlay.css({ cursor: "pointer" });
-            } else if(transclude.tagName === "INPUT") {
-                clickElement = function() {
-                    // An input will become in focus when clicked.
-                    angular.element(transclude).focus();
-                };
+                // Enable the handlers if not Firefox. It firefox, then hide
+                // the overlay as Firefox does not allow sending click events
+                // to select elements.
+                if(BrowserService.browser !== "firefox") {
+                    overlay.on("click", overlayClick);
+                    overlay.on("dblclick", overlayDblClick);
+                } else {
+                    overlay.addClass("ng-hide");
+                }
 
-                // Inputs use a text for the cursor.
-                overlay.css({ cursor: "text" });
-            } else {
-                clickElement = function() {
-                    // Standard element just call click on that element.
-                    angular.element(transclude).click();
-                };
-
-                // Don't set cursor on other element types.
+                // Remove the handlers when the scope is destroyed.
+                scope.$on("$destroy", function() {
+                    overlay.off("click", overlayClick);
+                    overlay.off("dblclick", overlayDblClick);
+                });
             }
-
-            // Add the click and double click handlers.
-            var overlayClick = function(evt) {
-                clickElement();
-                evt.preventDefault();
-                evt.stopPropagation();
-            };
-            var overlayDblClick = function(evt) {
-                // Call the double click handler with in the scope.
-                scope.$apply(scope.maasDblClickOverlay);
-                evt.preventDefault();
-                evt.stopPropagation();
-            };
-            overlay.on("click", overlayClick);
-            overlay.on("dblclick", overlayDblClick);
-
-            // Remove the handlers when the scope is destroyed.
-            scope.$on("$destroy", function() {
-                overlay.off("click", overlayClick);
-                overlay.off("dblclick", overlayDblClick);
-            });
-        }
-    };
-});
+        };
+    }]);
