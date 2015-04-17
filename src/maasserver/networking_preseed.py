@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Network configuration preseed code.
@@ -96,7 +96,8 @@ def extract_network_interfaces(node):
     if lshw_xml is None:
         return []
     network_nodes = etree.fromstring(lshw_xml).xpath(
-        "//node[starts-with(@id, 'network')]")
+        "//node[starts-with(@id, 'network')] | "
+        "//node[@id = 'bridge' and starts-with(./description, 'Ethernet')]")
     interfaces = [
         extract_network_interface_data(xml_node)
         for xml_node in network_nodes
