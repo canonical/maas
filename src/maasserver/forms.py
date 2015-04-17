@@ -20,7 +20,7 @@ __all__ = [
     "BootSourceSettingsForm",
     "BulkNodeActionForm",
     "create_Network_from_NodeGroupInterface",
-    "ClaimIPForm",
+    "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
@@ -2879,11 +2879,18 @@ class BootResourceNoContentForm(BootResourceForm):
 
 
 class ClaimIPForm(Form):
-    """Form used to claim an IP address for a device."""
-    mac_address = MACAddressFormField(required=False)
+    """Form used to claim an IP address."""
     requested_address = forms.GenericIPAddressField(required=False)
+
+
+class ClaimIPForMACForm(ClaimIPForm):
+    """Form used to claim an IP address for a device or node."""
+    mac_address = MACAddressFormField(required=False)
 
 
 class ReleaseIPForm(Form):
     """Form used to release a device IP address."""
     address = forms.GenericIPAddressField(required=False)
+
+    # unfortunately, we aren't consistent; some APIs just call this "ip"
+    ip = forms.GenericIPAddressField(required=False)

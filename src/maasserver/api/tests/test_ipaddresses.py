@@ -272,6 +272,21 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
 
+    def test_POST_reserve_rejects_invalid_ip(self):
+        response = self.post_reservation_request(
+            requested_address="1690.254.0.1")
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
+
+    def test_POST_release_rejects_invalid_ip(self):
+        response = self.post_release_request("1690.254.0.1")
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(ip=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
+
     def test_GET_returns_ipaddresses(self):
         original_ipaddress = factory.make_StaticIPAddress(
             user=self.logged_in_user)

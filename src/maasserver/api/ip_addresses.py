@@ -8,6 +8,10 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from maasserver.forms import (
+    ClaimIPForm,
+    ReleaseIPForm,
+)
 
 
 str = None
@@ -34,6 +38,7 @@ from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     StaticIPAlreadyExistsForMACAddress,
+    MAASAPIValidationError
 )
 from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
@@ -158,6 +163,10 @@ class IPAddressesHandler(OperationsHandler):
         hostname = get_optional_param(request.POST, "hostname")
         mac_address = get_optional_param(request.POST, "mac")
 
+        form = ClaimIPForm(request.POST)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+
         if requested_address is not None:
             try:
                 # Validate the passed address.
@@ -200,6 +209,11 @@ class IPAddressesHandler(OperationsHandler):
         Returns 404 if the provided IP address is not found.
         """
         ip = get_mandatory_param(request.POST, "ip")
+
+        form = ReleaseIPForm(request.POST)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+
         staticaddress = get_object_or_404(
             StaticIPAddress, ip=ip, user=request.user)
 

@@ -58,10 +58,12 @@ from maasserver.exceptions import (
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
     BulkNodeActionForm,
+    ClaimIPForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
     NodeActionForm,
+    ReleaseIPForm,
 )
 from maasserver.models import (
     MACAddress,
@@ -528,6 +530,11 @@ class NodeHandler(OperationsHandler):
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the node" % raw_mac)
         requested_address = request.POST.get('requested_address', None)
+
+        form = ClaimIPForm(request.POST)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+
         sticky_ips = mac_address.claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY,
             requested_address=requested_address)
@@ -555,6 +562,10 @@ class NodeHandler(OperationsHandler):
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         address = request.POST.get('address', None)
+
+        form = ReleaseIPForm(request.POST)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
 
         # Note: this call handles deleting the host maps, and updating the DNS
         # zones (unlike the claim_static_ips() call in mac_address used above)

@@ -1047,6 +1047,17 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             "Sticky IP cannot be assigned to a node that is allocated",
             response.content)
 
+    def test_claim_sticky_ip_address_validates_ip_address(self):
+        self.become_admin()
+        node = factory.make_Node()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address',
+                                      'requested_address': '192.168.1000.1'})
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
+
     def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
         self.become_admin()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
@@ -1288,13 +1299,25 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         parsed_node = json.loads(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
 
+    def test__validates_ip_address(self):
+        self.become_admin()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            disable_ipv4=False)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release_sticky_ip_address',
+                                      'address': '192.168.1000.1'})
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(address=["Enter a valid IPv4 or IPv6 address."]),
+            json.loads(response.content))
+
 
 class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
-    '''The following TestNodeReleaseStickyIpAddressAPI tests require
+    """The following TestNodeReleaseStickyIpAddressAPI tests require
         APITransactionTestCase, and thus, have been separated
         from the TestNodeReleaseStickyIpAddressAPI above.
-    '''
-
+    """
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(

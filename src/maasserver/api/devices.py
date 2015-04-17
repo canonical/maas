@@ -32,7 +32,7 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
-    ClaimIPForm,
+    ClaimIPForMACForm,
     DeviceForm,
     DeviceWithMACsForm,
     ReleaseIPForm,
@@ -166,7 +166,7 @@ class DeviceHandler(OperationsHandler):
         """
         device = Device.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        form = ClaimIPForm(request.POST)
+        form = ClaimIPForMACForm(request.POST)
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
