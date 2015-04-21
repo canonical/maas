@@ -302,7 +302,9 @@ class VersionIndexHandler(MetadataViewHandler):
         elif node.status == NODE_STATUS.DEPLOYING:
             self._store_installation_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
-                node.mark_failed("Failed to get installation result.")
+                node.mark_failed(
+                    "Installation failed (refer to the installation log "
+                    "for more information).")
             target_status = None
         elif node.status == NODE_STATUS.DISK_ERASING:
             if status == SIGNAL_STATUS.OK:
