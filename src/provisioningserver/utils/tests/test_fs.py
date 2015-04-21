@@ -32,7 +32,11 @@ from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
@@ -94,7 +98,7 @@ class TestAtomicWrite(MAASTestCase):
     def test_atomic_write_does_not_leak_temp_file_on_failure(self):
         # If the overwrite fails, atomic_write does not leak its
         # temporary file.
-        self.patch(os, 'rename', Mock(side_effect=OSError()))
+        self.patch(fs_module, 'rename', Mock(side_effect=OSError()))
         filename = self.make_file()
         with ExpectedException(OSError):
             atomic_write(factory.make_string(), filename)
@@ -119,13 +123,32 @@ class TestAtomicWrite(MAASTestCase):
             """Stub for os.rename: get source file's access mode."""
             recorded_modes.append(os.stat(source).st_mode)
 
-        self.patch(os, 'rename', Mock(side_effect=record_mode))
+        self.patch(fs_module, 'rename', Mock(side_effect=record_mode))
         playground = self.make_dir()
         atomic_file = os.path.join(playground, factory.make_name('atomic'))
         mode = 0o323
         atomic_write(factory.make_string(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
+
+    def test_atomic_write_preserves_ownership_before_moving_into_place(self):
+        atomic_file = self.make_file('atomic')
+
+        self.patch(fs_module, 'isfile').return_value = True
+        self.patch(fs_module, 'chown')
+        self.patch(fs_module, 'rename')
+        self.patch(fs_module, 'stat')
+
+        ret_stat = fs_module.stat.return_value
+        ret_stat.st_uid = sentinel.uid
+        ret_stat.st_gid = sentinel.gid
+        ret_stat.st_mode = stat.S_IFREG
+
+        atomic_write(factory.make_string(), atomic_file)
+
+        self.assertThat(fs_module.stat, MockCalledOnceWith(atomic_file))
+        self.assertThat(fs_module.chown, MockCalledOnceWith(
+            ANY, sentinel.uid, sentinel.gid))
 
     def test_atomic_write_sets_OSError_filename_if_undefined(self):
         # When the filename attribute of an OSError is undefined when

@@ -29,7 +29,12 @@ import errno
 import hashlib
 from itertools import count
 import os
-from os import environ
+from os import (
+    environ,
+    rename,
+    stat,
+    chown,
+)
 from os.path import isdir
 from random import randint
 from shutil import rmtree
@@ -101,15 +106,25 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
     """
     temp_file = _write_temp_file(content, filename)
     os.chmod(temp_file, mode)
+
+    # Copy over ownership attributes if file exists
+    try:
+        prev_stats = stat(filename)
+    except OSError as error:
+        if error.errno != errno.ENOENT:
+            raise  # Something's seriously wrong.
+    else:
+        chown(temp_file, prev_stats.st_uid, prev_stats.st_gid)
+
     try:
         if overwrite:
-            os.rename(temp_file, filename)
+            rename(temp_file, filename)
         else:
             lock = FileLock(filename)
             lock.acquire()
             try:
                 if not os.path.isfile(filename):
-                    os.rename(temp_file, filename)
+                    rename(temp_file, filename)
             finally:
                 lock.release()
     finally:
