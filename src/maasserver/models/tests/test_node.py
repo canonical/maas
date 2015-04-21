@@ -119,7 +119,10 @@ from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import always_succeed_with
-from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.enum import (
+    map_enum,
+    map_enum_reverse,
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -746,7 +749,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node._set_status, MockCalledOnceWith(
             node, node.system_id, status=NODE_STATUS.FAILED_DISK_ERASING))
         # It's logged too.
-        self.assertThat(logger.output, Equals(
+        self.assertThat(logger.output, Contains(
             "%s: Could not start node for disk erasure: %s\n"
             % (node.hostname, error_message)))
 
@@ -1438,7 +1441,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node._set_status, MockCalledOnceWith(
             node, node.system_id, status=status))
         # It's logged too.
-        self.assertThat(logger.output, Equals(
+        self.assertThat(logger.output, Contains(
             "%s: Could not start node for commissioning: %s\n"
             % (node.hostname, error_message)))
 
@@ -1552,6 +1555,22 @@ class TestNode(MAASServerTestCase):
             self.assertRaises(
                 NodeStateViolation, node.abort_commissioning,
                 factory.make_admin())
+
+    def test_full_clean_logs_node_status_transition(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
+        node.status = NODE_STATUS.DEPLOYED
+
+        with LoggerFixture("maas") as logger:
+            node.full_clean()
+
+        stat = map_enum_reverse(NODE_STATUS)
+        self.assertThat(logger.output.strip(), Equals(
+            "%s: Status transition from %s to %s" % (
+                node.hostname, stat[NODE_STATUS.DEPLOYING],
+                stat[NODE_STATUS.DEPLOYED])
+            )
+        )
 
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.

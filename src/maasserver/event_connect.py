@@ -45,7 +45,7 @@ def emit_state_transition_event(instance, old_values, **kwargs):
         NODE_STATUS_CHOICES_DICT[node.status],
     )
 
-    # Special-case for allocating ndoes: we can include usernames here
+    # Special-case for allocating nodes: we can include usernames here
     # to make the event log more useful.
     if node.status == NODE_STATUS.ALLOCATED:
         description += " (to %s)" % node.owner.username

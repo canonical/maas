@@ -726,8 +726,8 @@ class Node(CleanSave, TimestampedModel):
             # Valid transition.
             if old_status is not None:
                 stat = map_enum_reverse(NODE_STATUS, ignore=['DEFAULT'])
-                maaslog.debug(
-                    "%s: Transition status from %s to %s",
+                maaslog.info(
+                    "%s: Status transition from %s to %s",
                     self.hostname, stat[old_status], stat[self.status])
             pass
         else:
