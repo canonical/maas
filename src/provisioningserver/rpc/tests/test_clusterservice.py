@@ -485,7 +485,8 @@ class TestClusterClientService(MAASTestCase):
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(getPage, MockCalledOnceWith(sentinel.rpc_info_url))
+        self.assertThat(getPage, MockCalledOnceWith(
+            sentinel.rpc_info_url, agent=ANY))
         dump = logger.dump()
         self.assertIn(
             "Region not available: Connection was refused by other side.",

@@ -105,6 +105,7 @@ from twisted.internet.error import (
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
 import twisted.web.client
 from twisted.web.client import getPage
@@ -779,9 +780,10 @@ class ClusterClientService(TimerService, object):
         url = url.geturl()
         return ascii_url(url)
 
-    @staticmethod
-    def _fetch_rpc_info(url):
-        return getPage(url).addCallback(json.loads)
+    @classmethod
+    def _fetch_rpc_info(cls, url):
+        d = getPage(url, agent=fullyQualifiedName(cls))
+        return d.addCallback(json.loads)
 
     def _calculate_interval(self, num_eventloops, num_connections):
         """Calculate the update interval.

@@ -61,6 +61,7 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
 )
+from twisted.python.reflect import fullyQualifiedName
 from twisted.web.client import getPage
 import twisted.web.error
 
@@ -85,8 +86,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
     matching the MAC address is so narrowly defined: PXELINUX attempts to
     fetch files at many similar paths which must not be passed on.
     """
-
-    get_page = staticmethod(getPage)
 
     def __init__(self, base_path, generator_url):
         """
@@ -125,6 +124,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
             if params is not None:
                 returnValue((method, params))
         returnValue((None, None))
+
+    @classmethod
+    def get_page(cls, url):
+        return getPage(url, agent=fullyQualifiedName(cls))
 
     @deferred
     def get_kernel_params(self, params):
