@@ -77,9 +77,9 @@ QUERY_POWER_TYPES = [
 ]
 
 
-# Timeout for change_power_state(). We set it to 2 minutes by default,
+# Timeout for change_power_state(). We set it to 5 minutes by default,
 # but it would be lovely if this was configurable.
-CHANGE_POWER_STATE_TIMEOUT = timedelta(minutes=2).total_seconds()
+CHANGE_POWER_STATE_TIMEOUT = timedelta(minutes=5).total_seconds()
 
 
 maaslog = get_maas_logger("power")
