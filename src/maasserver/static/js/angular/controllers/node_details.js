@@ -25,6 +25,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.availableActionOptions = [];
         $scope.actionError = null;
         $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.osSelection = {
+            osystem: "",
+            release: ""
+        };
         $scope.checkingPower = false;
 
         // Holds errors that are displayed on the details page.
@@ -555,14 +559,32 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Perform the action.
         $scope.actionGo = function() {
+            var extra = {};
+            // Set deploy parameters if a deploy.
+            if($scope.actionOption.name === "deploy" &&
+                angular.isString($scope.osSelection.osystem) &&
+                angular.isString($scope.osSelection.release)) {
+
+                // Set extra. UI side the release is structured os/release, but
+                // when it is sent over the websocket only the "release" is
+                // sent.
+                extra.osystem = $scope.osSelection.osystem;
+                var release = $scope.osSelection.release;
+                release = release.split("/");
+                release = release[release.length-1];
+                extra.distro_series = release;
+            }
+
             NodesManager.performAction(
-                $scope.node, $scope.actionOption.name).then(function() {
+                $scope.node, $scope.actionOption.name, extra).then(function() {
                     // If the action was delete, then go back to listing.
                     if($scope.actionOption.name === "delete") {
                         $location.path("/nodes");
                     }
                     $scope.actionOption = null;
                     $scope.actionError = null;
+                    $scope.osSelection.osystem = "";
+                    $scope.osSelection.release = "";
                 }, function(error) {
                     $scope.actionError = error;
                 });

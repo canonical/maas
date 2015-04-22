@@ -169,6 +169,10 @@ describe("NodeDetailsController", function() {
         expect($scope.availableActionOptions).toEqual([]);
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
+        expect($scope.osSelection).toEqual({
+            osystem: "",
+            release: ""
+        });
     });
 
     it("sets initial values for summary section", function() {
@@ -828,11 +832,31 @@ describe("NodeDetailsController", function() {
                 $q.defer().promise);
             $scope.node = node;
             $scope.actionOption = {
-                name: "deploy"
+                name: "release"
             };
             $scope.actionGo();
             expect(NodesManager.performAction).toHaveBeenCalledWith(
-                node, "deploy");
+                node, "release", {});
+        });
+
+        it("calls performAction with osystem and distro_series", function() {
+            var controller = makeController();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            $scope.osSelection = {
+                osystem: "ubuntu",
+                release: "ubuntu/trusty"
+            };
+            $scope.actionGo();
+            expect(NodesManager.performAction).toHaveBeenCalledWith(
+                node, "deploy", {
+                    osystem: "ubuntu",
+                    distro_series: "trusty"
+                });
         });
 
         it("clears actionOption on resolve", function() {
@@ -848,6 +872,28 @@ describe("NodeDetailsController", function() {
             defer.resolve();
             $rootScope.$digest();
             expect($scope.actionOption).toBeNull();
+        });
+
+        it("clears osSelection on resolve", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            $scope.osSelection = {
+                osystem: "ubuntu",
+                release: "ubuntu/trusty"
+            };
+            $scope.actionGo();
+            defer.resolve();
+            $rootScope.$digest();
+            expect($scope.osSelection).toEqual({
+                osystem: "",
+                release: ""
+            });
         });
 
         it("clears actionError on resolve", function() {
