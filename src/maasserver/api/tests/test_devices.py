@@ -524,6 +524,19 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
             dict(address=["Enter a valid IPv4 or IPv6 address."]),
             json.loads(response.content))
 
+    def test__rejects_empty_ip(self):
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'release_sticky_ip_address',
+                'address': '',
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
 
 class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
     '''The following TestDeviceReleaseStickyIpAddressAPI tests require

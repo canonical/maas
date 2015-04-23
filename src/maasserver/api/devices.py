@@ -230,6 +230,11 @@ class DeviceHandler(OperationsHandler):
         else:
             address = request.POST.get('address', None)
 
+            if address is not None and address.strip() == '':
+                raise MAASAPIBadRequest(
+                    {'address':
+                     "Cannot be empty if supplied."})
+
             # Note: this call handles deleting the host maps, and updating the
             # DNS zones (unlike the claim_static_ips() call in mac_address
             # used above)
@@ -237,9 +242,9 @@ class DeviceHandler(OperationsHandler):
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
 
             if len(deallocated_ips) == 0 and address is not None:
-                    raise MAASAPIBadRequest(
-                        "%s: could not deallocate sticky IP address: %s",
-                        device.hostname, address)
+                raise MAASAPIBadRequest(
+                    "%s: could not deallocate sticky IP address: %s" %
+                    (device.hostname, address))
             else:
                 maaslog.info(
                     "%s: Sticky IP address(es) deallocated: %s",
