@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -1065,6 +1065,7 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def list(self, request):
+        """List all nodes."""
         nodes = filtered_nodes_list_from_request(request)
 
         # Prefetch related objects that are needed for rendering the result.

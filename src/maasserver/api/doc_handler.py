@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Restful MAAS API.
@@ -73,10 +73,11 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from docutils import core
 from maasserver.api.doc import (
-    describe_resource,
+    describe_api,
     find_api_resources,
     generate_api_docs,
     generate_power_types_doc,
+    get_api_description_hash,
 )
 from maasserver.utils import build_absolute_uri
 import simplejson as json
@@ -166,42 +167,27 @@ def api_doc(request):
 
 
 def describe(request):
-    """Return a description of the whole MAAS API.
+    """Render a description of the whole MAAS API.
 
-    :param request: The http request for this document.  This is used to
-        derive the URL where the client expects to see the MAAS API.
-    :return: A JSON object describing the whole MAAS API.  Links to the API
-        will use the same scheme and hostname that the client used in
-        `request`.
+    :param request: A "related" HTTP request. This is used to derive the URL
+        where the client expects to see the MAAS API.
+    :return: An `HttpResponse` containing a JSON description of the whole MAAS
+        API. Links to the API will use the same scheme and hostname that the
+        client used in `request`.
     """
-    from maasserver import urls_api as urlconf
-    resources = [
-        describe_resource(resource)
-        for resource in find_api_resources(urlconf)
-        ]
+    description = describe_api()
+    # Add hash so that client can check if things are up to date.
+    description["hash"] = get_api_description_hash()
     # Make all URIs absolute. Clients - and the command-line client in
     # particular - expect that all handler URIs are absolute, not just paths.
     # The handler URIs returned by describe_resource() are relative paths.
     absolute = partial(build_absolute_uri, request)
-    for resource in resources:
+    for resource in description["resources"]:
         for handler_type in "anon", "auth":
             handler = resource[handler_type]
             if handler is not None:
                 handler["uri"] = absolute(handler["path"])
-    # Package it all up.
-    description = {
-        "doc": "MAAS API",
-        "resources": resources,
-        }
-    # For backward compatibility, add "handlers" as an alias for all not-None
-    # anon and auth handlers in "resources".
-    description["handlers"] = []
-    description["handlers"].extend(
-        resource["anon"] for resource in description["resources"]
-        if resource["anon"] is not None)
-    description["handlers"].extend(
-        resource["auth"] for resource in description["resources"]
-        if resource["auth"] is not None)
+    # Return as a JSON document.
     return HttpResponse(
         json.dumps(description),
         content_type="application/json")

@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django DEVELOPMENT settings for maas project."""
@@ -30,6 +30,7 @@ from provisioningserver.utils.url import compose_URL
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
 INSTALLED_APPS = None
+LOGGING = None
 
 # Extend base settings.
 import_settings(settings)
@@ -80,6 +81,11 @@ INSTALLED_APPS += (
     'maastesting',
     'django_nose',
 )
+
+# Prevent 'No handlers could be found for logger ...' messages. By default,
+# Nose clears all log handlers and captures logs itself. However, it doesn't
+# change `propagate` which is set (once) by `configure_root_logger`.
+LOGGING["loggers"]["maas"] = {"propagate": 1}
 
 INTERNAL_IPS = ('127.0.0.1',)
 

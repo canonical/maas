@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Supporting infrastructure for Piston-based APIs in MAAS."""
@@ -23,6 +23,7 @@ from functools import wraps
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
+from maasserver.api.doc import get_api_description_hash
 from maasserver.exceptions import MAASAPIBadRequest
 from piston.handler import (
     AnonymousBaseHandler,
@@ -45,6 +46,12 @@ class OperationsResource(Resource):
 
     crudmap = Resource.callmap
     callmap = dict.fromkeys(crudmap, "dispatch")
+
+    def __call__(self, request, *args, **kwargs):
+        upcall = super(OperationsResource, self).__call__
+        response = upcall(request, *args, **kwargs)
+        response["X-MAAS-API-Hash"] = get_api_description_hash()
+        return response
 
     def error_handler(self, e, request, meth, em_format):
         """

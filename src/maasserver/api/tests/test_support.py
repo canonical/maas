@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for API helpers."""
@@ -20,6 +20,7 @@ import httplib
 
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from maasserver.api.doc import get_api_description_hash
 from maasserver.api.support import (
     admin_method,
     OperationsHandlerMixin,
@@ -36,6 +37,7 @@ from mock import (
     Mock,
     sentinel,
 )
+from testtools.matchers import Equals
 
 
 class TestOperationsResource(APITestCase):
@@ -62,6 +64,17 @@ class TestOperationsResource(APITestCase):
         self.assertEqual(
             httplib.INTERNAL_SERVER_ERROR, response.status_code,
             response.content)
+
+    def test_api_hash_is_set_in_headers(self):
+        Config.objects.set_config("maas_name", factory.make_name("name"))
+        self.become_admin()
+        response = self.client.get(
+            reverse('maas_handler'),
+            {'op': 'get_config', 'name': "maas_name"},
+        )
+        self.assertThat(
+            response["X-MAAS-API-Hash"],
+            Equals(get_api_description_hash()))
 
 
 class TestAdminMethodDecorator(APITestCase):

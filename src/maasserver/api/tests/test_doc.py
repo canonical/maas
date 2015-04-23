@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API documentation functionality."""
@@ -27,11 +27,15 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
+    describe_api,
+    describe_canonical,
     describe_handler,
     describe_resource,
     find_api_resources,
     generate_api_docs,
     generate_power_types_doc,
+    get_api_description_hash,
+    hash_canonical,
 )
 from maasserver.api.doc_handler import render_api_docs
 from maasserver.api.support import (
@@ -41,12 +45,30 @@ from maasserver.api.support import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import (
+    IsCallable,
+    MockCalledOnceWith,
+)
+from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
 from piston.resource import Resource
 from provisioningserver.power_schema import make_json_field
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    ContainsAll,
+    Equals,
+    HasLength,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesAny,
+    MatchesDict,
+    MatchesStructure,
+    Not,
+)
 
 
 class TestFindingResources(MAASServerTestCase):
@@ -269,7 +291,7 @@ class TestDescribingAPI(MAASServerTestCase):
             set(observed))
         self.assertEqual(ExampleHandler.__doc__, observed["doc"])
         self.assertEqual(ExampleHandler.__name__, observed["name"])
-        self.assertEqual(["p_foo", "p_bar"], observed["params"])
+        self.assertEqual(("p_foo", "p_bar"), observed["params"])
         self.assertItemsEqual(expected_actions, observed["actions"])
 
     def test_describe_handler_with_maas_handler(self):
@@ -348,6 +370,51 @@ class TestDescribingAPI(MAASServerTestCase):
             }
         self.assertEqual(expected, describe_resource(resource))
 
+    def test_describe_api_returns_description_document(self):
+        is_list = IsInstance(list)
+        is_tuple = IsInstance(tuple)
+        is_text = MatchesAll(IsInstance((unicode, bytes), Not(HasLength(0))))
+        is_bool = IsInstance(bool)
+
+        is_operation = MatchesAny(Is(None), is_text)
+
+        is_http_method = MatchesAny(
+            Equals("GET"), Equals("POST"),
+            Equals("PUT"), Equals("DELETE"),
+        )
+
+        is_action = MatchesDict({
+            "doc": is_text,
+            "method": is_http_method,
+            "name": is_text,
+            "op": is_operation,
+            "restful": is_bool,
+        })
+
+        is_handler = MatchesDict({
+            "actions": MatchesAll(is_list, AllMatch(is_action)),
+            "doc": is_text,
+            "name": is_text,
+            "params": is_tuple,
+            "path": is_text,
+        })
+
+        is_resource = MatchesDict({
+            "anon": MatchesAny(Is(None), is_handler),
+            "auth": is_handler,
+            "name": is_text,
+        })
+
+        is_resource_list = MatchesAll(is_list, AllMatch(is_resource))
+        is_legacy_handler_list = MatchesAll(is_list, AllMatch(is_handler))
+
+        self.assertThat(
+            describe_api(), MatchesDict({
+                "doc": Equals("MAAS API"),
+                "resources": is_resource_list,
+                "handlers": is_legacy_handler_list,
+            }))
+
 
 class TestGeneratePowerTypesDoc(MAASServerTestCase):
     """Tests for `generate_power_types_doc`."""
@@ -373,3 +440,189 @@ class TestGeneratePowerTypesDoc(MAASServerTestCase):
         self.assertThat(
             doc,
             ContainsAll([name, description, param_name, param_description]))
+
+
+class TestDescribeCanonical(MAASTestCase):
+
+    def test__passes_True_False_and_None_through(self):
+        self.expectThat(describe_canonical(True), Is(True))
+        self.expectThat(describe_canonical(False), Is(False))
+        self.expectThat(describe_canonical(None), Is(None))
+
+    def test__passes_numbers_through(self):
+        self.expectThat(
+            describe_canonical(1), MatchesAll(
+                IsInstance(int), Equals(1)))
+        self.expectThat(
+            describe_canonical(1L), MatchesAll(
+                IsInstance(long), Equals(1L)))
+        self.expectThat(
+            describe_canonical(1.0), MatchesAll(
+                IsInstance(float), Equals(1.0)))
+
+    def test__passes_unicode_strings_through(self):
+        string = factory.make_string()
+        self.assertThat(string, IsInstance(unicode))
+        self.expectThat(describe_canonical(string), Is(string))
+
+    def test__decodes_byte_strings(self):
+        string = factory.make_string().encode("utf-8")
+        self.expectThat(
+            describe_canonical(string), MatchesAll(
+                IsInstance(unicode), Not(Is(string)),
+                Equals(string.decode("utf-8"))))
+
+    def test__returns_sequences_as_tuples(self):
+        self.expectThat(describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
+
+    def test__recursively_calls_sequence_elements(self):
+        self.expectThat(
+            describe_canonical([1, [2, 3]]),
+            Equals((1, (2, 3))))
+
+    def test__sorts_sequences(self):
+        self.expectThat(
+            describe_canonical([3, 1, 2]),
+            Equals((1, 2, 3)))
+        self.expectThat(
+            describe_canonical([[1, 2], [1, 1]]),
+            Equals(((1, 1), (1, 2))))
+
+    def test__returns_mappings_as_tuples(self):
+        self.expectThat(describe_canonical({1: 2}), Equals(((1, 2),)))
+
+    def test__recursively_calls_mapping_keys_and_values(self):
+        mapping = {"key\u1234".encode("utf-8"): ["b", "a", "r"]}
+        expected = (
+            ("key\u1234", ("a", "b", "r")),
+        )
+        self.expectThat(
+            describe_canonical(mapping),
+            Equals(expected))
+
+    def test__sorts_mappings(self):
+        self.expectThat(
+            describe_canonical({2: 1, 1: 1}),
+            Equals(((1, 1), (2, 1))))
+
+    def test__sorts_mappings_by_key_and_value(self):
+
+        class inth(int):
+            """An `int` that hashes independently from its value.
+
+            This lets us use the same numeric key twice in a dict. Strictly
+            this is an abuse, but it helps to demonstrate a point here, that
+            values are considered when sorting.
+            """
+            __hash__ = object.__hash__
+
+        mapping = {
+            (1, inth(2)): "foo",
+            (1, inth(2)): "bar",
+            (1, inth(1)): "foo",
+            (1, inth(1)): "bar",
+        }
+        expected = (
+            ((1, 1), "bar"),
+            ((1, 1), "foo"),
+            ((1, 2), "bar"),
+            ((1, 2), "foo"),
+        )
+        self.expectThat(
+            describe_canonical(mapping),
+            Equals(expected))
+
+    def test__rejects_other_types(self):
+        self.assertRaises(TypeError, describe_canonical, lambda: None)
+
+
+class TestHashCanonical(MAASTestCase):
+    """Tests for `hash_canonical`."""
+
+    def test__canonicalizes_argument(self):
+        describe_canonical = self.patch(doc_module, "describe_canonical")
+        describe_canonical.return_value = b""
+        hash_canonical(sentinel.desc)
+        self.assertThat(describe_canonical, MockCalledOnceWith(sentinel.desc))
+
+    def test__returns_hash_object(self):
+        hasher = hash_canonical(factory.make_string())
+        self.assertThat(hasher, MatchesStructure(
+            block_size=Equals(64),
+            digest=IsCallable(),
+            digestsize=Equals(20),
+            hexdigest=IsCallable(),
+            name=Equals("sha1"),
+            update=IsCallable(),
+        ))
+
+    def test__misc_digests(self):
+
+        def hexdigest(data):
+            return hash_canonical(data).hexdigest()
+
+        def has_digest(digest):
+            return AfterPreprocessing(hexdigest, Equals(digest))
+
+        self.expectThat(
+            None, has_digest("2be88ca4242c76e8253ac62474851065032d6833"))
+        self.expectThat(
+            False, has_digest("7cb6efb98ba5972a9b5090dc2e517fe14d12cb04"))
+        self.expectThat(
+            True, has_digest("5ffe533b830f08a0326348a9160afafc8ada44db"))
+
+        self.expectThat(
+            (1, 2, 3), has_digest(
+                "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85"))
+        self.expectThat(
+            [1, 2, 3], has_digest(
+                "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85"))
+
+        self.expectThat(
+            ((1, 2), (3, 4)), has_digest(
+                "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"))
+        self.expectThat(
+            {1: 2, 3: 4}, has_digest(
+                "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"))
+
+
+class TestGetAPIDescriptionHash(MAASTestCase):
+    """Tests for `get_api_description_hash`."""
+
+    def setUp(self):
+        super(TestGetAPIDescriptionHash, self).setUp()
+        self.addCleanup(self.clear_hash_cache)
+        self.clear_hash_cache()
+
+    def clear_hash_cache(self):
+        # Clear the API description hash cache.
+        with doc_module.api_description_hash_lock:
+            doc_module.api_description_hash = None
+
+    def test__calculates_hash_from_api_description(self):
+        # Fake the API description.
+        api_description = factory.make_string()
+        api_description_hasher = hash_canonical(api_description)
+        self.patch(doc_module, "describe_api").return_value = api_description
+        # The hash is generated from the faked API description.
+        self.assertThat(
+            get_api_description_hash(),
+            Equals(api_description_hasher.hexdigest()))
+
+    def test__caches_hash(self):
+        # Fake the API description.
+        api_description = factory.make_string()
+        api_description_hasher = hash_canonical(api_description)
+        # The description can only be fetched once before crashing.
+        self.patch(doc_module, "describe_api").side_effect = [
+            api_description, factory.make_exception_type(),
+        ]
+        # The hash is generated and cached.
+        self.assertThat(
+            get_api_description_hash(),
+            Equals(api_description_hasher.hexdigest()))
+        self.assertThat(
+            get_api_description_hash(),
+            Equals(api_description_hasher.hexdigest()))
+        # Calling `describe_api` a second time would have failed.
+        self.assertRaises(Exception, doc_module.describe_api)
