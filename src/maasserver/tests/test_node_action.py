@@ -485,7 +485,8 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         ngi.save()
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                ngi.static_ip_range_high, ngi.static_ip_range_low)
+                ngi.network, ngi.static_ip_range_low, ngi.static_ip_range_high,
+                ngi.ip_range_low, ngi.ip_range_high)
 
         e = self.assertRaises(NodeActionError, Deploy(node, user).execute)
         self.expectThat(

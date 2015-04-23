@@ -267,51 +267,200 @@ describe("ValidationService", function() {
             });
     });
 
-    describe("validateIPInRange", function() {
+    describe("validateIPInNetwork", function() {
 
         var scenarios = [
             {
                 ip: "192.168.2.1",
-                range: "192.168.1.0/24",
+                network: "192.168.1.0/24",
                 valid: false
             },
             {
                 ip: "192.168.1.1",
-                range: "192.168.1.0/24",
+                network: "192.168.1.0/24",
                 valid: true
             },
             {
                 ip: "192.168.1.1",
-                range: "172.16.0.0/16",
+                network: "172.16.0.0/16",
                 valid: false
             },
             {
                 ip: "172.17.1.1",
-                range: "172.16.0.0/16",
+                network: "172.16.0.0/16",
                 valid: false
             },
             {
                 ip: "172.16.1.1",
-                range: "172.16.0.0/16",
+                network: "172.16.0.0/16",
                 valid: true
             },
             {
                 ip: "11.1.1.1",
-                range: "10.0.0.0/8",
+                network: "10.0.0.0/8",
                 valid: false
             },
             {
                 ip: "10.1.1.1",
-                range: "10.0.0.0/8",
+                network: "10.0.0.0/8",
                 valid: true
+            },
+            {
+                ip: "2001:67C:1562::16",
+                network: "2001:67C:1562::0/32",
+                valid: true
+            },
+            {
+                ip: "2002:67C:1562::16",
+                network: "2001:67C:1562::0/32",
+                valid: false
+            },
+            {
+                ip: "2001:67C:1561::16",
+                network: "2001:67C:1562::0/64",
+                valid: false
             }
         ];
 
         angular.forEach(scenarios, function(scenario) {
-            it("validates: " + scenario.ip + " in range: " + scenario.range,
+            it("validates: " + scenario.ip + " in network: " + scenario.network,
+                function() {
+                    var result = ValidationService.validateIPInNetwork(
+                        scenario.ip, scenario.network);
+                    expect(result).toBe(scenario.valid);
+                });
+        });
+    });
+
+    describe("validateIPInRange", function() {
+
+        var scenarios = [
+            {
+                ip: "192.168.1.1",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: false
+            },
+            {
+                ip: "192.168.1.2",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: true
+            },
+            {
+                ip: "192.168.1.3",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: true
+            },
+            {
+                ip: "192.168.1.100",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: true
+            },
+            {
+                ip: "192.168.1.101",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: false
+            },
+            {
+                ip: "192.168.1.2",
+                network: "192.168.2.0/24",
+                range: {
+                    low: "192.168.2.2",
+                    high: "192.168.2.100"
+                },
+                valid: false
+            },
+            {
+                ip: "2001:67C:1562::1",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: false
+            },
+            {
+                ip: "2001:67C:1562::2",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: true
+            },
+            {
+                ip: "2001:67C:1562::3",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: true
+            },
+            {
+                ip: "2001:67C:1562::FFFF:FFFE",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: true
+            },
+            {
+                ip: "2001:67C:1562::FFFF:FFFF",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: true
+            },
+            {
+                ip: "2001:67C:1562::1:0:0",
+                network: "2001:67C:1562::0/32",
+                range: {
+                    low: "2001:67C:1562::2",
+                    high: "2001:67C:1562::FFFF:FFFF"
+                },
+                valid: false
+            },
+            {
+                ip: "2001:67C:1562::2",
+                network: "2001:67C:1563::0/64",
+                range: {
+                    low: "2001:67C:1563::2",
+                    high: "2001:67C:1563::FFFF:FFFF"
+                },
+                valid: false
+            }
+        ];
+
+        angular.forEach(scenarios, function(scenario) {
+            it("validates: " + scenario.ip + " in range: " +
+                scenario.range.low + " - " + scenario.range.high,
                 function() {
                     var result = ValidationService.validateIPInRange(
-                        scenario.ip, scenario.range);
+                        scenario.ip, scenario.network,
+                        scenario.range.low, scenario.range.high);
                     expect(result).toBe(scenario.valid);
                 });
         });

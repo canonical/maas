@@ -213,6 +213,25 @@ class TestNetworksAPI(APITestCase):
         self.expectThat(returned_address["ip"], Equals(ip_in_network))
         self.expectThat(staticipaddress.ip, Equals(ip_in_network))
 
+    def test_POST_reserve_creates_address_outside_of_static_range(self):
+        interface = self.make_interface()
+        interface.ip_range_high = unicode(
+            IPAddress(interface.ip_range_high) - 1)
+        interface.save()
+        net = interface.network
+        ip_in_network = unicode(
+            IPAddress(interface.ip_range_high) + 1)
+        response = self.post_reservation_request(
+            net=net, requested_address=ip_in_network)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        returned_address = json.loads(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            returned_address["alloc_type"],
+            Equals(IPADDRESS_TYPE.USER_RESERVED))
+        self.expectThat(returned_address["ip"], Equals(ip_in_network))
+        self.expectThat(staticipaddress.ip, Equals(ip_in_network))
+
     def test_POST_reserve_requested_address_detects_in_use_address(self):
         interface = self.make_interface()
         net = interface.network
@@ -227,13 +246,11 @@ class TestNetworksAPI(APITestCase):
             response.content, Equals(
                 "The IP address %s is already in use." % ip_in_network))
 
-    def test_POST_reserve_requested_address_detects_out_of_range_addr(self):
+    def test_POST_reserve_requested_address_rejects_ip_in_dynamic_range(self):
         interface = self.make_interface()
         net = interface.network
-        ip_not_in_network = unicode(
-            IPAddress(interface.static_ip_range_low) - 1)
-        response = self.post_reservation_request(
-            net=net, requested_address=ip_not_in_network)
+        ip_in_network = interface.ip_range_low
+        response = self.post_reservation_request(net, ip_in_network)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 

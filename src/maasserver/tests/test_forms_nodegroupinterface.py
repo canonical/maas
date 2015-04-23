@@ -212,7 +212,9 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             network=network)
         [interface] = nodegroup.get_managed_interfaces()
         StaticIPAddress.objects.allocate_new(
-            interface.static_ip_range_low, interface.static_ip_range_high)
+            interface.network, interface.static_ip_range_low,
+            interface.static_ip_range_high, interface.ip_range_low,
+            interface.ip_range_high)
         form = NodeGroupInterfaceForm(
             data={'static_ip_range_low': '', 'static_ip_range_high': ''},
             instance=interface)

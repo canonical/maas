@@ -49,7 +49,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def test_raises_error_when_allocated_ips_fall_outside_new_range(self):
         interface = self.make_interface()
-        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         error = self.assertRaises(
             ValidationError,
             validate_new_static_ip_ranges,
@@ -62,7 +63,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def test_removing_static_range_raises_error_if_ips_allocated(self):
         interface = self.make_interface()
-        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         error = self.assertRaises(
             ValidationError,
             validate_new_static_ip_ranges,
@@ -75,7 +77,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def test_allows_range_expansion(self):
         interface = self.make_interface()
-        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.40',
             static_ip_range_high='10.1.0.100')
@@ -83,7 +86,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def test_allows_allocated_ip_as_upper_bound(self):
         interface = self.make_interface()
-        StaticIPAddress.objects.allocate_new('10.1.0.55', '10.1.0.55')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
             interface,
             static_ip_range_low=interface.static_ip_range_low,
@@ -92,7 +96,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def test_allows_allocated_ip_as_lower_bound(self):
         interface = self.make_interface()
-        StaticIPAddress.objects.allocate_new('10.1.0.55', '10.1.0.55')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.55',
             static_ip_range_high=interface.static_ip_range_high)
@@ -103,7 +108,9 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()
         StaticIPAddress.objects.allocate_new(
-            interface.static_ip_range_low, interface.static_ip_range_high)
+            interface.network, interface.static_ip_range_low,
+            interface.static_ip_range_high, interface.ip_range_low,
+            interface.ip_range_high)
         is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
@@ -114,7 +121,8 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         interface.static_ip_range_low = None
         interface.static_ip_range_high = None
         interface.save()
-        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        StaticIPAddress.objects.allocate_new(
+            '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
@@ -123,7 +131,9 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
     def test_ignores_unchanged_static_range(self):
         interface = self.make_interface()
         StaticIPAddress.objects.allocate_new(
-            interface.static_ip_range_low, interface.static_ip_range_high)
+            interface.network, interface.static_ip_range_low,
+            interface.static_ip_range_high, interface.ip_range_low,
+            interface.ip_range_high)
         is_valid = validate_new_static_ip_ranges(
             interface,
             static_ip_range_low=interface.static_ip_range_low,

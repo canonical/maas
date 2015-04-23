@@ -155,7 +155,7 @@ angular.module('MAAS').service('ValidationService', function() {
         };
 
         // Return true if the ipAddress is in the network.
-        this.validateIPInRange = function(ipAddress, network) {
+        this.validateIPInNetwork = function(ipAddress, network) {
             var networkSplit = network.split('/');
             var networkAddress = networkSplit[0];
             var cidrBits = parseInt(networkSplit[1], 10);
@@ -172,6 +172,53 @@ angular.module('MAAS').service('ValidationService', function() {
                     ipv6ToOctets(ipAddress),
                     ipv6ToOctets(networkAddress),
                     16, cidrBits);
+            }
+            return false;
+        };
+
+        // Return true if the ipAddress is in the network and between the
+        // lowAddress and highAddress inclusive.
+        this.validateIPInRange = function(
+            ipAddress, network, lowAddress, highAddress) {
+            // If the ip address is not even in the network then its
+            // not in the range.
+            if(!this.validateIPInNetwork(ipAddress, network)) {
+                return false;
+            }
+
+            var i, ipOctets, lowOctets, highOctets;
+            if(this.validateIPv4(ipAddress) &&
+                this.validateIPv4(lowAddress) &&
+                this.validateIPv4(highAddress)) {
+
+                // Check that each octet is of the ip address is more or equal
+                // to the low address and less or equal to the high address.
+                ipOctets = ipv4ToOctets(ipAddress);
+                lowOctets = ipv4ToOctets(lowAddress);
+                highOctets = ipv4ToOctets(highAddress);
+                for(i = 0; i < 4; i++) {
+                    if(ipOctets[i] > highOctets[i] ||
+                        ipOctets[i] < lowOctets[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if(this.validateIPv6(ipAddress) &&
+                this.validateIPv6(lowAddress) &&
+                this.validateIPv6(highAddress)) {
+
+                // Check that each octet is of the ip address is more or equal
+                // to the low address and less or equal to the high address.
+                ipOctets = ipv6ToOctets(ipAddress);
+                lowOctets = ipv6ToOctets(lowAddress);
+                highOctets = ipv6ToOctets(highAddress);
+                for(i = 0; i < 8; i++) {
+                    if(ipOctets[i] > highOctets[i] ||
+                        ipOctets[i] < lowOctets[i]) {
+                        return false;
+                    }
+                }
+                return true;
             }
             return false;
         };

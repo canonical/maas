@@ -403,6 +403,19 @@ describe("AddDeviceController", function() {
             };
             expect($scope.ipHasError()).toBe(true);
         });
+
+        it("returns true if static ip in dynamic range of network", function() {
+            var controller = makeController();
+            var nic = makeManagedClusterInterface();
+            var cluster = makeCluster([nic]);
+            $scope.clusters = [cluster];
+            $scope.device.ipAddress = nic.dynamic_range.low;
+            $scope.device.clusterInterfaceId = nic.id;
+            $scope.device.ipAssignment = {
+                name: "static"
+            };
+            expect($scope.ipHasError()).toBe(true);
+        });
     });
 
     describe("deviceHasError", function() {

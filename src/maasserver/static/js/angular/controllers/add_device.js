@@ -139,16 +139,16 @@ angular.module('MAAS').controller('AddDeviceController', [
             if(!ValidationService.validateIP($scope.device.ipAddress)) {
                 return true;
             }
-            var i, inRange, managedInterfaces = $scope.getManagedInterfaces();
+            var i, inNetwork, managedInterfaces = $scope.getManagedInterfaces();
             if(angular.isObject($scope.device.ipAssignment)){
                 if($scope.device.ipAssignment.name === "external") {
                     // External IP address cannot be within a managed interface
                     // on one of the clusters.
                     for(i = 0; i < managedInterfaces.length; i++) {
-                        inRange = ValidationService.validateIPInRange(
+                        inNetwork = ValidationService.validateIPInNetwork(
                             $scope.device.ipAddress,
                             managedInterfaces[i].network);
-                        if(inRange) {
+                        if(inNetwork) {
                             return true;
                         }
                     }
@@ -158,9 +158,13 @@ angular.module('MAAS').controller('AddDeviceController', [
                     // of the selected clusterInterface.
                     var clusterInterface = getInterfaceById(
                         $scope.device.clusterInterfaceId);
-                    inRange = ValidationService.validateIPInRange(
+                    inNetwork = ValidationService.validateIPInNetwork(
                         $scope.device.ipAddress, clusterInterface.network);
-                    if(!inRange) {
+                    var inDynamicRange = ValidationService.validateIPInRange(
+                        $scope.device.ipAddress, clusterInterface.network,
+                        clusterInterface.dynamic_range.low,
+                        clusterInterface.dynamic_range.high);
+                    if(!inNetwork || inDynamicRange) {
                         return true;
                     }
                 }

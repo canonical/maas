@@ -238,8 +238,11 @@ class MACAddress(CleanSave, TimestampedModel):
             )
 
         new_sip = StaticIPAddress.objects.allocate_new(
+            cluster_interface.network,
             cluster_interface.static_ip_range_low,
             cluster_interface.static_ip_range_high,
+            cluster_interface.ip_range_low,
+            cluster_interface.ip_range_high,
             alloc_type, requested_address=requested_address,
             user=user)
         MACStaticIPAddressLink(mac_address=self, ip_address=new_sip).save()

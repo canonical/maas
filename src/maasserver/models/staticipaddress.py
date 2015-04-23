@@ -131,13 +131,24 @@ class StaticIPAddressManager(Manager):
             ipaddress.save()
             return ipaddress
 
-    def allocate_new(self, range_low, range_high,
-                     alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-                     requested_address=None, hostname=None):
+    def allocate_new(
+            self, network, static_range_low, static_range_high,
+            dynamic_range_low, dynamic_range_high,
+            alloc_type=IPADDRESS_TYPE.AUTO, user=None,
+            requested_address=None, hostname=None):
         """Return a new StaticIPAddress.
 
-        :param range_low: The lowest address to allocate in a range
-        :param range_high: The highest address to allocate in a range
+        :param network: The network the address should be allocated in.
+        :param static_range_low: The lowest static address to allocate in a
+            range. Used if `requested_address` is not passed.
+        :param static_range_high: The highest static address to allocate in a
+            range. Used if `requested_address` is not passed.
+        :param dynamic_range_low: The lowest dynamic address. Used if
+            `requested_address` is passed, check that its not inside the
+            dynamic range.
+        :param dynamic_range_high: The highest dynamic address. Used if
+            `requested_address` is passed, check that its not inside the
+            dynamic range.
         :param alloc_type: What sort of IP address to allocate in the
             range of choice in IPADDRESS_TYPE.
         :param user: If providing a user, the alloc_type must be
@@ -157,15 +168,15 @@ class StaticIPAddressManager(Manager):
         # taken, and so we must first eliminate all other possible causes.
         self._verify_alloc_type(alloc_type, user)
 
-        range_low = IPAddress(range_low)
-        range_high = IPAddress(range_high)
-        static_range = IPRange(range_low, range_high)
-
         if requested_address is None:
+            static_range_low = IPAddress(static_range_low)
+            static_range_high = IPAddress(static_range_high)
+            static_range = IPRange(static_range_low, static_range_high)
+
             with locks.staticip_acquire:
                 requested_address = self._async_find_free_ip(
-                    range_low, range_high, static_range, alloc_type, user,
-                    hostname=hostname).wait(30)
+                    static_range_low, static_range_high, static_range,
+                    alloc_type, user, hostname=hostname).wait(30)
                 try:
                     return self._attempt_allocation(
                         requested_address, alloc_type, user,
@@ -176,12 +187,20 @@ class StaticIPAddressManager(Manager):
                     # let the retry mechanism do its thing.
                     raise make_serialization_failure()
         else:
+            dynamic_range_low = IPAddress(dynamic_range_low)
+            dynamic_range_high = IPAddress(dynamic_range_high)
+            dynamic_range = IPRange(dynamic_range_low, dynamic_range_high)
+
             requested_address = IPAddress(requested_address)
-            if requested_address not in static_range:
+            if requested_address not in network:
                 raise StaticIPAddressOutOfRange(
-                    "%s is not inside the range %s to %s" % (
-                        requested_address.format(), range_low.format(),
-                        range_high.format()))
+                    "%s is not inside the network %s" % (
+                        requested_address.format(), network))
+            if requested_address in dynamic_range:
+                raise StaticIPAddressOutOfRange(
+                    "%s is inside the dynamic range %s to %s" % (
+                        requested_address.format(), dynamic_range_low.format(),
+                        dynamic_range_high.format()))
             return self._attempt_allocation(
                 requested_address, alloc_type, user=user, hostname=hostname)
 

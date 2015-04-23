@@ -81,12 +81,14 @@ class IPAddressesHandler(OperationsHandler):
         """
         if mac is None:
             sip = StaticIPAddress.objects.allocate_new(
-                range_low=interface.static_ip_range_low,
-                range_high=interface.static_ip_range_high,
+                network=interface.network,
+                static_range_low=interface.static_ip_range_low,
+                static_range_high=interface.static_ip_range_high,
+                dynamic_range_low=interface.ip_range_low,
+                dynamic_range_high=interface.ip_range_high,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=requested_address,
                 user=user, hostname=hostname)
-            commit_within_atomic_block()
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
             # The user has requested a static IP linked to a MAC

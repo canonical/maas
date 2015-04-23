@@ -1208,11 +1208,12 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         [observed_static_ip] = StaticIPAddress.objects.all()
         self.assertEqual(observed_static_ip.ip, requested_address)
 
-    def test_claim_sticky_ip_address_detects_out_of_range_requested_ip(self):
+    def test_claim_sticky_ip_address_detects_out_of_network_requested_ip(self):
         self.become_admin()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         ngi = node.get_primary_mac().cluster_interface
-        requested_address = IPAddress(ngi.static_ip_range_low) - 1
+        other_network = factory.make_ipv4_network(but_not=ngi.network)
+        requested_address = factory.pick_ip_in_network(other_network)
 
         response = self.client.post(
             self.get_node_uri(node),
@@ -1265,7 +1266,8 @@ class TestNodeAPITransactional(APITransactionTestCase):
         ngi.save()
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                ngi.static_ip_range_high, ngi.static_ip_range_low)
+                ngi.network, ngi.static_ip_range_low, ngi.static_ip_range_high,
+                ngi.ip_range_low, ngi.ip_range_high)
 
         response = self.client.post(
             TestNodeAPI.get_node_uri(node), {'op': 'start'})
