@@ -24,6 +24,7 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import COMPONENT
+from maasserver.models.component_error import ComponentError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.utils.enum import map_enum
@@ -86,3 +87,19 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         error = factory.make_name('error')
         register_persistent_error(component, error)
         self.assertEqual(error, get_persistent_error(component))
+
+    def test_register_persistent_error_reuses_component_errors(self):
+        """When registering a persistent error that already has an error
+        recorded for that component, reuse the error instead of deleting and
+        recreating it."""
+        component = factory.make_name('component')
+        error1 = factory.make_name('error')
+        error2 = factory.make_name('error')
+        register_persistent_error(component, error1)
+        error = ComponentError.objects.get(component=component)
+        self.assertEqual(error.error, error1)  # Should be our error
+        error_id = error.id
+        register_persistent_error(component, error2)
+        error = ComponentError.objects.get(component=component)
+        self.assertEqual(error.error, error2)  # Should update the message
+        self.assertEqual(error.id, error_id)  # Should reuse the same id

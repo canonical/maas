@@ -38,8 +38,13 @@ def register_persistent_error(component, error_message):
     :param component: An enum value of :class:`COMPONENT`.
     :param error_message: Human-readable error text.
     """
-    discard_persistent_error(component)
-    ComponentError.objects.create(component=component, error=error_message)
+    component_error, created = ComponentError.objects.get_or_create(
+        component=component, defaults={'error': error_message})
+    # If we didn't create a new object, we may need to update it if the error
+    # message is different.
+    if not created and component_error.error != error_message:
+        component_error.error = error_message
+        component_error.save()
 
 
 def get_persistent_error(component):
