@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maastftp Twisted plugin."""
@@ -53,16 +53,19 @@ from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.pserv_services import tftp as tftp_module
 from provisioningserver.pserv_services.tftp import (
+    log_request,
     Port,
     TFTPBackend,
     TFTPService,
     UDPServer,
 )
+from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
     Equals,
+    HasLength,
     IsInstance,
     MatchesAll,
     MatchesStructure,
@@ -81,6 +84,7 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.protocol import Protocol
+from twisted.internet.task import Clock
 from twisted.python import context
 from zope.interface.verify import verifyObject
 
@@ -111,6 +115,12 @@ class TestTFTPBackend(MAASTestCase):
     """Tests for `provisioningserver.tftp.TFTPBackend`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super(TestTFTPBackend, self).setUp()
+        from provisioningserver import boot
+        self.patch(boot, "find_mac_via_arp")
+        self.patch(tftp_module, 'log_request')
 
     def test_init(self):
         temp_dir = self.make_dir()
@@ -149,7 +159,6 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
         # paths not matching re_config_file.
-        self.patch(tftp_module, 'send_event_node_mac_address')
         self.patch(tftp_module, 'get_remote_mac')
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
@@ -160,7 +169,6 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_handles_backslashes_in_path(self):
-        self.patch(tftp_module, 'send_event_node_mac_address')
         self.patch(tftp_module, 'get_remote_mac')
 
         data = factory.make_string().encode("ascii")
@@ -182,26 +190,22 @@ class TestTFTPBackend(MAASTestCase):
     @inlineCallbacks
     def test_get_reader_logs_node_event_with_mac_address(self):
         mac_address = factory.make_mac_address()
-        self.patch_autospec(tftp_module, 'send_event_node_mac_address')
         self.patch(tftp_module, 'get_remote_mac').return_value = mac_address
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
         self.assertThat(
-            tftp_module.send_event_node_mac_address,
-            MockCalledOnceWith(
-                event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-                mac_address=mac_address, description=ANY))
+            tftp_module.log_request,
+            MockCalledOnceWith(mac_address, ANY))
 
     @inlineCallbacks
     def test_get_reader_does_not_log_when_mac_cannot_be_found(self):
-        self.patch_autospec(tftp_module, 'send_event_node_mac_address')
         self.patch(tftp_module, 'get_remote_mac').return_value = None
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
         self.assertThat(
-            tftp_module.send_event_node_mac_address,
+            tftp_module.log_request,
             MockNotCalled())
 
     @inlineCallbacks
@@ -209,9 +213,8 @@ class TestTFTPBackend(MAASTestCase):
         # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
         # returns a Deferred that will yield a BytesReader.
         cluster_uuid = factory.make_UUID()
-        self.patch(tftp_module, 'get_cluster_uuid').return_value = (
-            cluster_uuid)
-        self.patch(tftp_module, 'send_event_node_mac_address')
+        get_cluster_uuid = self.patch(tftp_module, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = cluster_uuid
         mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
@@ -309,9 +312,8 @@ class TestTFTPBackend(MAASTestCase):
         # arch field of the parameters (mapping from pxe to maas
         # namespace).
         cluster_uuid = factory.make_UUID()
-        self.patch(tftp_module, 'get_cluster_uuid').return_value = (
-            cluster_uuid)
-        self.patch(tftp_module, 'send_event_node_mac_address')
+        get_cluster_uuid = self.patch(tftp_module, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = cluster_uuid
         config_path = "pxelinux.cfg/default-arm"
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
@@ -509,3 +511,41 @@ class TestUDPServer(MAASTestCase):
         port = server._getPort()
         self.addCleanup(port.stopListening)
         self.assertEqual(AF_INET6, port.addressFamily)
+
+
+class TestLogRequest(MAASTestCase):
+    """Tests for `log_request`."""
+
+    def test__defers_log_call_later(self):
+        clock = Clock()
+        log_request(sentinel.macaddr, sentinel.filename, clock)
+        self.expectThat(clock.calls, HasLength(1))
+        [call] = clock.calls
+        self.expectThat(call.getTime(), Equals(0.0))
+
+    def test__sends_event_later(self):
+        send_event = self.patch(tftp_module, "send_event_node_mac_address")
+        clock = Clock()
+        log_request(sentinel.macaddr, sentinel.filename, clock)
+        self.assertThat(send_event, MockNotCalled())
+        clock.advance(0.0)
+        self.assertThat(send_event, MockCalledOnceWith(
+            mac_address=sentinel.macaddr, description=sentinel.filename,
+            event_type=EVENT_TYPES.NODE_TFTP_REQUEST))
+
+    def test__logs_when_sending_event_errors(self):
+        send_event = self.patch(tftp_module, "send_event_node_mac_address")
+        send_event.side_effect = factory.make_exception()
+        clock = Clock()
+        log_request(sentinel.macaddr, sentinel.filename, clock)
+        self.assertThat(send_event, MockNotCalled())
+        with TwistedLoggerFixture() as logger:
+            clock.advance(0.0)
+        self.assertDocTestMatches(
+            """\
+            Logging TFTP request failed.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """,
+            logger.output)

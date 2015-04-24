@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin for the MAAS TFTP server."""
@@ -50,7 +50,10 @@ from tftp.errors import FileNotFound
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
-from twisted.internet import udp
+from twisted.internet import (
+    reactor,
+    udp,
+)
 from twisted.internet.abstract import isIPv6Address
 from twisted.internet.address import (
     IPv4Address,
@@ -61,9 +64,24 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
 )
+from twisted.internet.task import deferLater
+from twisted.python import log
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web.client import getPage
 import twisted.web.error
+
+
+def log_request(mac_address, file_name, clock=reactor):
+    """Log a TFTP request.
+
+    This will be logged at a later iteration of the `clock` so as to not delay
+    the task currently in progress.
+    """
+    d = deferLater(
+        clock, 0, send_event_node_mac_address,
+        event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
+        mac_address=mac_address, description=file_name)
+    d.addErrback(log.err, "Logging TFTP request failed.")
 
 
 class TFTPBackend(FilesystemSynchronousBackend):
@@ -218,9 +236,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         file_name = file_name.replace('\\', '/')
         mac_address = get_remote_mac()
         if mac_address is not None:
-            send_event_node_mac_address(
-                event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-                mac_address=mac_address, description=file_name)
+            log_request(mac_address, file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.get_page_errback, file_name)
