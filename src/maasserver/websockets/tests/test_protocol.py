@@ -49,6 +49,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
 )
+from twisted.internet import defer
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
@@ -90,12 +91,23 @@ class TestWebSocketProtocol(MAASServerTestCase):
         call = protocol.transport.write.call_args_list.pop()
         return json.loads(call[0][0])
 
-    def test_connectionMade_adds_self_to_factory(self):
+    def test_connectionMade_adds_self_to_factory_if_auth_succeeds(self):
         protocol, factory = self.make_protocol()
+        mock_authenticate = self.patch(protocol, "authenticate")
+        user = maas_factory.make_User()
+        mock_authenticate.return_value = defer.succeed(user)
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
-        self.assertItemsEqual(
-            [protocol], factory.clients)
+        self.assertItemsEqual([protocol], factory.clients)
+
+    def test_connectionMade_doesnt_add_self_to_factory_if_auth_fails(self):
+        protocol, factory = self.make_protocol()
+        mock_authenticate = self.patch(protocol, "authenticate")
+        fake_error = maas_factory.make_name()
+        mock_authenticate.return_value = defer.fail(Exception(fake_error))
+        protocol.connectionMade()
+        self.addCleanup(lambda: protocol.connectionLost(""))
+        self.assertNotIn(protocol, factory.clients)
 
     def test_connectionMade_extracts_sessionid_and_csrftoken(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
@@ -118,10 +130,16 @@ class TestWebSocketProtocol(MAASServerTestCase):
 
     def test_connectionLost_removes_self_from_factory(self):
         protocol, factory = self.make_protocol()
+        mock_authenticate = self.patch(protocol, "authenticate")
+        mock_authenticate.return_value = defer.succeed(None)
         protocol.connectionMade()
         protocol.connectionLost("")
-        self.assertItemsEqual(
-            [], factory.clients)
+        self.assertItemsEqual([], factory.clients)
+
+    def test_connectionLost_succeeds_if_client_hasnt_been_recorded(self):
+        protocol, factory = self.make_protocol()
+        self.assertIsNone(protocol.connectionLost(""))
+        self.assertItemsEqual([], factory.clients)
 
     def test_loseConnection_writes_to_log(self):
         protocol, factory = self.make_protocol()
@@ -571,8 +589,8 @@ class TestWebSocketFactory(MAASTestCase):
         protocol.transport = MagicMock()
         if user is None:
             user = maas_factory.make_User()
-        protocol.user = user
-        self.patch(protocol, "authenticate")
+        mock_authenticate = self.patch(protocol, "authenticate")
+        mock_authenticate.return_value = defer.succeed(user)
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
         return protocol, factory

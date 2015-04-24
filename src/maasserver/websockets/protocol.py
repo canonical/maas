@@ -36,7 +36,10 @@ from maasserver.utils.orm import transactional
 from maasserver.websockets import handlers
 from maasserver.websockets.listener import PostgresListener
 from maasserver.websockets.websockets import STATUSES
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import (
+    deferred,
+    synchronous,
+)
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import (
@@ -89,21 +92,29 @@ class WebSocketProtocol(Protocol):
 
     def connectionMade(self):
         """Connection has been made to client."""
-        self.factory.clients.append(self)
-
         # Using the provided cookies on the connection request, authenticate
         # the client. If this fails or if the CSRF token can't be found, it
         # will call loseConnection. A websocket connection is only allowed
         # from an authenticated user.
         cookies = self.transport.cookies
-        self.authenticate(
+        d = self.authenticate(
             get_cookie(cookies, 'sessionid'),
             get_cookie(cookies, 'csrftoken'),
         )
 
+        # Only add the client to the list of known clients if/when the
+        # authentication succeeds.
+        def add_client(user):
+            if user is not None:
+                self.factory.clients.append(self)
+        d.addCallback(add_client)
+
     def connectionLost(self, reason):
         """Connection to the client has been lost."""
-        self.factory.clients.remove(self)
+        # If the connection is lost before the authentication happens, the
+        # 'client' will not have been added to the list.
+        if self in self.factory.clients:
+            self.factory.clients.remove(self)
 
     def loseConnection(self, status, reason):
         """Close connection with status and reason."""
@@ -146,6 +157,7 @@ class WebSocketProtocol(Protocol):
         else:
             return None
 
+    @deferred
     def authenticate(self, session_id, csrftoken):
         """Authenticate the connection.
 
@@ -170,6 +182,7 @@ class WebSocketProtocol(Protocol):
                 self.user = user
 
             self.processMessages()
+            return self.user
 
         def got_user_error(failure):
             self.loseConnection(
