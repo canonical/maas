@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # Exit immediately if a command exits with a non-zero status.
 set -o errexit
 # Treat unset variables as an error when substituting.
 set -o nounset
+
+# Remember where here is.
+here="$(pwd)"
 
 # Move to the project root.
 cd "$(dirname "$0")/../.."
@@ -27,4 +30,5 @@ export MAAS_DNS_DEFAULT_CONTROLS=0
 
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/twistd.region)"
-exec "${script}" --nodaemon --pidfile="" maas-regiond
+exec "${script}" --nodaemon --pidfile="" \
+    maas-regiond --introspect="unix:${here}/introspect:lockfile=0"

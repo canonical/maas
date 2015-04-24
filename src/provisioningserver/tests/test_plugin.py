@@ -64,7 +64,7 @@ class TestOptions(MAASTestCase):
 
     def test_defaults(self):
         options = Options()
-        expected = {"config-file": "pserv.yaml"}
+        expected = {"config-file": "pserv.yaml", "introspect": None}
         self.assertEqual(expected, options.defaults)
 
     def test_parse_minimal_options(self):

@@ -7,6 +7,9 @@ set -o errexit
 # Treat unset variables as an error when substituting.
 set -o nounset
 
+# Remember where here is.
+here="$(pwd)"
+
 # Move to the project root.
 cd "$(dirname "$0")/../.."
 
@@ -24,4 +27,6 @@ export CLUSTER_UUID
 export MAAS_URL
 
 exec $(command -v authbind && echo --deep) \
-    "${script}" --nodaemon --pidfile="" maas-clusterd --config-file "${config}"
+    "${script}" --nodaemon --pidfile="" maas-clusterd \
+    --introspect="unix:${here}/introspect:lockfile=0" \
+    --config-file "${config}"

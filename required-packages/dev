@@ -28,4 +28,5 @@ python-testscenarios
 python-testtools
 python-unittest2
 python-virtualenv
+socat
 xvfb

@@ -32,7 +32,7 @@ class TestOptions(MAASTestCase):
 
     def test_defaults(self):
         options = Options()
-        self.assertEqual({}, options.defaults)
+        self.assertEqual({"introspect": None}, options.defaults)
 
     def test_parse_minimal_options(self):
         options = Options()

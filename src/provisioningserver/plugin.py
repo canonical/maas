@@ -83,12 +83,24 @@ class ProvisioningRealm:
         raise NotImplementedError()
 
 
+def serverFromString(description):
+    """Lazy import from `provisioningserver.utils.introspect`."""
+    from provisioningserver.utils import introspect
+    return introspect.serverFromString(description)
+
+
 class Options(usage.Options):
     """Command line options for the provisioning server."""
 
     optParameters = [
         ["config-file", "c", "pserv.yaml", "Configuration file to load."],
-        ]
+        ["introspect", None, None,
+         ("Allow introspection, allowing unhindered access to the internals "
+          "of MAAS. This should probably only be used for debugging. Supply "
+          "an argument in 'endpoint' form; the document 'Getting Connected "
+          "with Endpoints' on the Twisted Wiki may help."),
+         serverFromString],
+    ]
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -201,9 +213,16 @@ class ProvisioningServiceMaker:
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
-    def makeService(self, options):
-        """Construct a service."""
+    def _makeIntrospectionService(self, endpoint):
+        from provisioningserver.utils import introspect
+        introspect_service = (
+            introspect.IntrospectionShellService(
+                location="cluster", endpoint=endpoint, namespace={}))
+        introspect_service.setName("introspect")
+        return introspect_service
 
+    def makeService(self, options):
+        """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
 
         from provisioningserver import services
@@ -231,5 +250,9 @@ class ProvisioningServiceMaker:
 
         lease_upload_service = self._makeLeaseUploadService(rpc_service)
         lease_upload_service.setServiceParent(services)
+
+        if options["introspect"] is not None:
+            introspect = self._makeIntrospectionService(options["introspect"])
+            introspect.setServiceParent(services)
 
         return services
