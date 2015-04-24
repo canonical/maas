@@ -266,6 +266,14 @@ describe("RegionConnection", function() {
             expect(RegionConnection.connect).toHaveBeenCalledWith(url);
         });
 
+        it("onclose sets error", function() {
+            RegionConnection.connect(url);
+            webSocket.onclose();
+            $timeout.flush();
+            expect(RegionConnection.error).toBe(
+                "Unable to connect to: " + url);
+        });
+
         it("calls onMessage when onmessage called", function() {
             var sampleData = { sample: "data" };
             spyOn(RegionConnection, "onMessage");

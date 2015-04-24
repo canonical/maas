@@ -34,6 +34,7 @@ angular.module('MAAS').factory(
             this.connected = false;
             this.autoReconnect = true;
             this.retryTimeout = 5000;
+            this.error = null;
 
             // Defer used for defaultConnect. If defaultConnect is called
             // quickly only the first one will start the connection. The
@@ -135,6 +136,7 @@ angular.module('MAAS').factory(
             };
             this.websocket.onclose = function(evt) {
                 self.connected = false;
+                self.error = "Unable to connect to: " + self.url.split("?")[0];
                 angular.forEach(self.handlers.close, function(func) {
                     func(evt);
                 });

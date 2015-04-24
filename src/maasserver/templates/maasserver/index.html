@@ -81,7 +81,7 @@
             </div>
         </header>
         <main id="body">
-            <div id="main-content">
+            <div id="main-content" data-maas-error-overlay>
                 {% if user.is_authenticated %}
                 <ul id="flash-messages"  class="flash-messages hidden">
                     {% for persistent_error in persistent_errors %}
@@ -100,7 +100,7 @@
             <div class="push"></div>
         </main>
     </div>
-    <div class="footer-wrapper">
+    <div class="footer-wrapper" data-maas-error-toggle>
         <footer class="global inner-wrapper clearfix">
             <div class="legal clearfix">
                 <div class="legal-inner">

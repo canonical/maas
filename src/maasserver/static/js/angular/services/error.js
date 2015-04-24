@@ -4,22 +4,17 @@
  * MAAS Error Service
  */
 
-angular.module('MAAS').service('ErrorService', ['$location',
-    function($location) {
+angular.module('MAAS').service('ErrorService', function() {
 
-        // Holds the raised error and url when the error was raised.
+        // Holds the client error.
         this._error = null;
-        this._backUrl = null;
 
-        // Raise this error in the UI. Will cause the page to redirect to the
-        // error page.
+        // Raise this error in the UI.
         this.raiseError = function(error) {
-            // Possible that this method is called more than once, before the
-            // location is changed. Only take the first error.
+            // Possible that this method is called more than once.
+            // Only take the first error.
             if(!angular.isString(this._error)) {
                 this._error = error;
-                this._backUrl = $location.url();
             }
-            $location.path('/error');
         };
-    }]);
+    });
