@@ -547,7 +547,7 @@ class TestConfig(MAASTestCase):
     default_development_config = deepcopy(default_production_config)
     default_development_config.update(logfile="/dev/null")
     default_development_config["tftp"].update(
-        port=5244, generator="http://localhost:5240/api/1.0/pxeconfig/")
+        port=5244, generator="http://localhost:5240/MAAS/api/1.0/pxeconfig/")
 
     def test_get_defaults_returns_default_config(self):
         # The default configuration is production-ready.

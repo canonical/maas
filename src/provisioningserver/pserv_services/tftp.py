@@ -46,7 +46,10 @@ from provisioningserver.utils import tftp
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import deferred
 from tftp.backend import FilesystemSynchronousBackend
-from tftp.errors import FileNotFound
+from tftp.errors import (
+    BackendError,
+    FileNotFound,
+)
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
@@ -196,6 +199,9 @@ class TFTPBackend(FilesystemSynchronousBackend):
         if status_int == httplib.NO_CONTENT:
             # Convert HTTP No Content to a TFTP file not found
             raise FileNotFound(file_name)
+        elif status_int == httplib.NOT_FOUND:
+            # Convert HTTP NotFound to a TFTP file not found
+            raise FileNotFound(file_name)
         else:
             # Otherwise propogate the unknown error
             return failure
@@ -222,6 +228,18 @@ class TFTPBackend(FilesystemSynchronousBackend):
         d = self.get_boot_method_reader(boot_method, params)
         return d
 
+    @staticmethod
+    def all_is_lost_errback(failure):
+        if failure.check(BackendError):
+            # This failure is something that the TFTP server knows how to deal
+            # with, so pass it through.
+            return failure
+        else:
+            # Something broke badly; record it.
+            log.err(failure, "Starting TFTP back-end failed.")
+            # Don't keep people waiting; tell them something broke right now.
+            raise BackendError(failure.getErrorMessage())
+
     @deferred
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
@@ -240,6 +258,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.get_page_errback, file_name)
+        d.addErrback(self.all_is_lost_errback)
         return d
 
 

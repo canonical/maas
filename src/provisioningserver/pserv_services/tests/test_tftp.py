@@ -15,9 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 from functools import partial
+import httplib
 import json
 import os
 import random
+import re
 from socket import (
     AF_INET,
     AF_INET6,
@@ -28,6 +30,7 @@ from urlparse import (
     urlparse,
 )
 
+from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -61,6 +64,7 @@ from provisioningserver.pserv_services.tftp import (
 )
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -71,6 +75,10 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from tftp.backend import IReader
+from tftp.errors import (
+    BackendError,
+    FileNotFound,
+)
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
@@ -86,6 +94,7 @@ from twisted.internet.defer import (
 from twisted.internet.protocol import Protocol
 from twisted.internet.task import Clock
 from twisted.python import context
+import twisted.web.error
 from zope.interface.verify import verifyObject
 
 
@@ -207,6 +216,41 @@ class TestTFTPBackend(MAASTestCase):
         self.assertThat(
             tftp_module.log_request,
             MockNotCalled())
+
+    @inlineCallbacks
+    def test_get_reader_converts_404s_to_tftp_error(self):
+        self.useFixture(EnvironmentVariable("CLUSTER_UUID", "foobar"))
+
+        backend = TFTPBackend(self.make_dir(), "http://example.com/")
+        get_page = self.patch(backend, 'get_page')
+        get_page.side_effect = twisted.web.error.Error(httplib.NOT_FOUND)
+
+        with ExpectedException(FileNotFound):
+            yield backend.get_reader('pxelinux.cfg/default')
+
+    @inlineCallbacks
+    def test_get_reader_converts_other_exceptions_to_tftp_error(self):
+        self.useFixture(EnvironmentVariable("CLUSTER_UUID", "foobar"))
+
+        exception_type = factory.make_exception_type()
+        exception_message = factory.make_string()
+        backend = TFTPBackend(self.make_dir(), "http://example.com/")
+        get_page = self.patch(backend, 'get_page')
+        get_page.side_effect = exception_type(exception_message)
+
+        with TwistedLoggerFixture() as logger:
+            with ExpectedException(BackendError, re.escape(exception_message)):
+                yield backend.get_reader('pxelinux.cfg/default')
+
+        # The original exception is logged.
+        self.assertDocTestMatches(
+            """\
+            Starting TFTP back-end failed.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """,
+            logger.output)
 
     @inlineCallbacks
     def _test_get_render_file(self, local, remote):
