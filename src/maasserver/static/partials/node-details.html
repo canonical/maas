@@ -243,27 +243,27 @@
             <form>
                 <div class="twelve-col">
                     <h3 class="title">Network</h3>
+                    <table class="table-listing">
+                        <thead>
+                            <tr class="table-listing__row table-listing-row">
+                                <th class="t30">MAC</th>
+                                <th class="t35">IP</th>
+                                <th class="t35">Network</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-listing__row table-listing-row"
+                                data-ng-repeat="interface in node.interfaces">
+                                <td class="t30">
+                                    {$ interface.mac_address $}
+                                    <span class="ng-hide" data-ng-show="interface.is_pxe">(PXE)</span>
+                                </td>
+                                <td class="t35">{$ getIPAddressText(interface) $}</td>
+                                <td class="t35">{$ getNetworkText(interface) $}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <table class="table-listing">
-                    <thead>
-                        <tr class="table-listing__row table-listing-row">
-                            <th class="t30">MAC</th>
-                            <th class="t35">IP</th>
-                            <th class="t35">Network</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-listing__row table-listing-row"
-                            data-ng-repeat="interface in node.interfaces">
-                            <td class="t30">
-                                {$ interface.mac_address $}
-                                <span class="ng-hide" data-ng-show="interface.is_pxe">(PXE)</span>
-                            </td>
-                            <td class="t35">{$ getIPAddressText(interface) $}</td>
-                            <td class="t35">{$ getNetworkText(interface) $}</td>
-                        </tr>
-                    </tbody>
-                </table>
             </form>
         </div>
     </div>
@@ -272,39 +272,39 @@
             <form>
                 <div class="twelve-col">
                     <h3 class="title">Storage</h3>
+                    <h4 data-ng-hide="node.physical_disks.length">
+                        No storage information. Commissioning this node will gather the storage information.
+                    </h4>
+                    <table class="table-listing ng-hide" data-ng-show="node.physical_disks.length">
+                        <thead>
+                            <tr>
+                                <th class="t20">Name</th>
+                                <th class="t25">Path</th>
+                                <th class="t10">Size (GB)</th>
+                                <th class="t25" colspan="2">
+                                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                                    <a href="" data-ng-click="storage.column = 'model'">
+                                        Model
+                                    </a> |
+                                    <a href="" data-ng-click="storage.column = 'serial'">
+                                        Serial
+                                    </a>
+                                </th>
+                                <th class="t20">Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-listing__row" data-ng-repeat="disk in node.physical_disks">
+                                <td class="t20">{$ disk.name $}</td>
+                                <td class="t25">{$ disk.path $}</td>
+                                <td class="t10">{$ disk.size_gb $}</td>
+                                <td class="t25" colspan="2" data-ng-show="storage.column === 'model'">{$ disk.model $}</td>
+                                <td class="t25 ng-hide" colspan="2" data-ng-show="storage.column === 'serial'">{$ disk.serial $}</td>
+                                <td class="t20">{$ disk.tags.join(', ') $}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <h4 data-ng-hide="node.physical_disks.length">
-                    No storage information. Commissioning this node will gather the storage information.
-                </h4>
-                <table class="table-listing ng-hide" data-ng-show="node.physical_disks.length">
-                    <thead>
-                        <tr>
-                            <th class="t20">Name</th>
-                            <th class="t25">Path</th>
-                            <th class="t10">Size (GB)</th>
-                            <th class="t25" colspan="2">
-                                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                                <a href="" data-ng-click="storage.column = 'model'">
-                                    Model
-                                </a> |
-                                <a href="" data-ng-click="storage.column = 'serial'">
-                                    Serial
-                                </a>
-                            </th>
-                            <th class="t20">Tags</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-listing__row" data-ng-repeat="disk in node.physical_disks">
-                            <td class="t20">{$ disk.name $}</td>
-                            <td class="t25">{$ disk.path $}</td>
-                            <td class="t10">{$ disk.size_gb $}</td>
-                            <td class="t25" colspan="2" data-ng-show="storage.column === 'model'">{$ disk.model $}</td>
-                            <td class="t25 ng-hide" colspan="2" data-ng-show="storage.column === 'serial'">{$ disk.serial $}</td>
-                            <td class="t20">{$ disk.tags.join(', ') $}</td>
-                        </tr>
-                    </tbody>
-                </table>
             </form>
         </div>
     </div>
@@ -312,29 +312,29 @@
         <div class="inner-wrapper">
             <div class="twelve-col">
                 <h3 class="title">Latest machine events <span>{$ node.events_total $} total events</span></h3>
+                <h4 data-ng-hide="node.events.length">
+                    No events.
+                </h4>
+                <table class="table-listing no-hover" data-ng-show="node.events.length">
+                    <thead>
+                        <tr class="table-listing__row">
+                            <th class="t1"></th>
+                            <th class="t75">Event</th>
+                            <th class="t24">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-listing__row"
+                            data-ng-repeat="event in node.events | limitTo:events.limit">
+                            <td class="t1 no-padding-right no-padding-left">
+                                <span class="icon {$ event.type.level $}"></span>
+                            </td>
+                            <td class="t75">{$ getEventText(event) $}</td>
+                            <td class="t24">{$ event.created $}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <h4 data-ng-hide="node.events.length">
-                No events.
-            </h4>
-            <table class="table-listing no-hover" data-ng-show="node.events.length">
-                <thead>
-                    <tr class="table-listing__row">
-                        <th class="t1"></th>
-                        <th class="t75">Event</th>
-                        <th class="t24">Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="table-listing__row"
-                        data-ng-repeat="event in node.events | limitTo:events.limit">
-                        <td class="t1 no-padding-right no-padding-left">
-                            <span class="icon {$ event.type.level $}"></span>
-                        </td>
-                        <td class="t75">{$ getEventText(event) $}</td>
-                        <td class="t24">{$ event.created $}</td>
-                    </tr>
-                </tbody>
-            </table>
             <div class="controls four-col last-col no-margin-bottom" data-ng-show="node.events.length">
                 <div class="two-col no-margin-bottom">
                    <a href="" class="link-cta-ubuntu clear right"></a>
