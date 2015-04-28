@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
@@ -213,6 +213,12 @@ class ProvisioningServiceMaker:
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
+    def _makeNeighboursService(self):
+        from provisioningserver.pserv_services import neighbours
+        neighbours_service = neighbours.NeighboursService()
+        neighbours_service.setName("neighbours")
+        return neighbours_service
+
     def _makeIntrospectionService(self, endpoint):
         from provisioningserver.utils import introspect
         introspect_service = (
@@ -250,6 +256,9 @@ class ProvisioningServiceMaker:
 
         lease_upload_service = self._makeLeaseUploadService(rpc_service)
         lease_upload_service.setServiceParent(services)
+
+        neighbours_service = self._makeNeighboursService()
+        neighbours_service.setServiceParent(services)
 
         if options["introspect"] is not None:
             introspect = self._makeIntrospectionService(options["introspect"])
