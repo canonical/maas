@@ -2,6 +2,15 @@
 Changelog
 =========
 
+1.7.4
+=====
+
+Bug Fix Update
+--------------
+
+#1387859    When MAAS has too many leases, and lease parsing fails, MAAS fails
+            to auto-map NIC with network
+
 1.7.3
 =====
 

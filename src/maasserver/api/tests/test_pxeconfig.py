@@ -599,3 +599,17 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params_out = self.get_pxeconfig(params)
         self.assertEqual(commissioning_osystem, params_out['osystem'])
         self.assertEqual(commissioning_series, params_out['release'])
+
+    def test_pxeconfig_updates_cluster_interface_for_request_mac(self):
+        params = self.get_mac_params()
+        node = factory.make_Node(mac=True)
+        params['cluster_uuid'] = node.nodegroup.uuid
+        params['mac'] = node.get_primary_mac()
+        update_mac_cluster_interfaces = self.patch(
+            pxeconfig_module, 'update_mac_cluster_interfaces')
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(
+            update_mac_cluster_interfaces,
+            MockCalledOnceWith(
+                params['remote'], unicode(params['mac']), node.nodegroup))
