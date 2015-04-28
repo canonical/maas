@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities related to the Twisted/Crochet execution environment."""
@@ -19,6 +19,7 @@ __all__ = [
     'DeferredValue',
     'deferWithTimeout',
     'FOREVER',
+    'PageFetcher',
     'pause',
     'reactor_sync',
     'retries',
@@ -47,7 +48,9 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 from twisted.python import threadable
 from twisted.python.failure import Failure
+from twisted.python.reflect import fullyQualifiedName
 from twisted.python.threadable import isInIOThread
+from twisted.web.client import getPage
 
 
 undefined = object()
@@ -530,3 +533,48 @@ class DeferredValue:
         if capturing is not None:
             capturing.cancel()
         self.observing = None
+
+
+class PageFetcher:
+    """Fetches pages, coalescing concurrent requests.
+
+    If a request comes in for, say, ``http://example.com/FOO`` then it is
+    dispatched, and a `Deferred` is returned.
+
+    If another request comes in for ``http://example.com/FOO`` before the
+    first has finished then a `Deferred` is still returned, but no new request
+    is dispatched. The second request piggy-backs onto the first.
+
+    If a request comes in for ``http://example.com/BAR`` at a similar time
+    then this is treated as a completely separate request. URLs are compared
+    textually; coalescing does not occur under other circumstances.
+
+    Once the first request for ``http://example.com/FOO`` is complete, all the
+    interested parties are notified, but this object then forgets all about
+    it. A subsequent request is treated as new.
+    """
+
+    def __init__(self, agent=None):
+        super(PageFetcher, self).__init__()
+        self.pending = {}
+        if agent is None:
+            self.agent = fullyQualifiedName(self.__class__)
+        elif isinstance(agent, (bytes, unicode)):
+            self.agent = agent  # This is fine.
+        else:
+            self.agent = fullyQualifiedName(agent)
+
+    def get(self, url, timeout=90):
+        """Issue an ``HTTP GET`` for the given URL."""
+        if url in self.pending:
+            dvalue = self.pending[url]
+        else:
+            fetch = getPage(url, agent=self.agent, timeout=timeout)
+            fetch.addBoth(callOut, self.pending.pop, url, None)
+            dvalue = self.pending[url] = DeferredValue()
+            dvalue.capture(fetch)
+
+        assert not dvalue.isSet, (
+            "Reference to completed fetch result for %s found." % url)
+
+        return dvalue.get()

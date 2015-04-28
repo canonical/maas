@@ -44,7 +44,10 @@ from provisioningserver.events import (
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.utils import tftp
 from provisioningserver.utils.network import get_all_interface_addresses
-from provisioningserver.utils.twisted import deferred
+from provisioningserver.utils.twisted import (
+    deferred,
+    PageFetcher,
+)
 from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import (
     BackendError,
@@ -69,8 +72,6 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 from twisted.python import log
-from twisted.python.reflect import fullyQualifiedName
-from twisted.web.client import getPage
 import twisted.web.error
 
 
@@ -118,6 +119,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
         super(TFTPBackend, self).__init__(
             base_path, can_read=True, can_write=False)
         self.generator_url = urlparse(generator_url)
+        self.fetcher = PageFetcher(agent=self.__class__)
+        self.get_page = self.fetcher.get
 
     def get_generator_url(self, params):
         """Calculate the URL, including query, from which we can fetch
@@ -145,10 +148,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
             if params is not None:
                 returnValue((method, params))
         returnValue((None, None))
-
-    @classmethod
-    def get_page(cls, url):
-        return getPage(url, agent=fullyQualifiedName(cls))
 
     @deferred
     def get_kernel_params(self, params):
