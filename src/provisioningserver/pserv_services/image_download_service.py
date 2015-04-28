@@ -69,7 +69,7 @@ class ImageDownloadService(TimerService, object):
         the maas log.
         """
         def download_failure(failure):
-            log.err(failure)
+            log.err(failure, "Downloading images failed.")
             maaslog.error(
                 "Failed to download images: %s", failure.getErrorMessage())
 

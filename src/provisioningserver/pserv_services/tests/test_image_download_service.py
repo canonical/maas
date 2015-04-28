@@ -185,7 +185,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         maybe_start_download.return_value = defer.fail(
             ZeroDivisionError("Such a shame I can't divide by zero"))
 
-        with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
+        with FakeLogger("maas") as maaslog, TwistedLoggerFixture() as logger:
             d = service.try_download()
 
         self.assertEqual(None, extract_result(d))
@@ -193,6 +193,13 @@ class TestPeriodicImageDownloadService(PservTestCase):
             "Failed to download images: "
             "Such a shame I can't divide by zero",
             maaslog.output)
+        self.assertDocTestMatches(
+            """\
+            Downloading images failed.
+            Traceback (most recent call last):
+            Failure: exceptions.ZeroDivisionError: Such a shame ...
+            """,
+            logger.output)
 
 
 class TestGetBootSources(PservTestCase):
