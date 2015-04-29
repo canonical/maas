@@ -128,6 +128,7 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
+from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 
 
@@ -1603,7 +1604,7 @@ class Node(CleanSave, TimestampedModel):
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
         if deallocate_ip_address:
-            self.deallocate_static_ip_addresses()
+            self._async_deallocate_static_ip_addresses()
 
         # If this node has non-installable children, remove them.
         self.children.all().delete()
@@ -1709,7 +1710,7 @@ class Node(CleanSave, TimestampedModel):
             self.status = NODE_STATUS.READY
             self.owner = None
             self.stop_transition_monitor()
-            self.deallocate_static_ip_addresses()
+            self._async_deallocate_static_ip_addresses()
         self.save()
 
     def claim_static_ip_addresses(
@@ -1778,11 +1779,8 @@ class Node(CleanSave, TimestampedModel):
         """Release the `StaticIPAddress` that is assigned to this node and
         remove the host mapping on the cluster.
 
-        This should only be done when the node is in an unused state.
-
-        If an address is supplied, only deallocate the specified address.
-
-        :param:address: string
+        This should only be done when the node is in an unused state. If `ip`
+        is supplied, only deallocate the specified address.
         """
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(
             self, alloc_type=alloc_type, ip=ip)
@@ -1793,6 +1791,18 @@ class Node(CleanSave, TimestampedModel):
             dns_update_zones([self.nodegroup])
 
         return deallocated_ips
+
+    def _async_deallocate_static_ip_addresses(self):
+        """Schedule for the `deallocate_static_ip_addresses` to be called
+        later from within the reactor.
+
+        This prevents the running task from blocking waiting for
+        this task to finish. This can cause blocking and thread starvation
+        inside the reactor threadpool.
+        """
+        return deferLater(
+            reactor, 0, deferToThread,
+            transactional(self.deallocate_static_ip_addresses))
 
     def get_boot_purpose(self):
         """
