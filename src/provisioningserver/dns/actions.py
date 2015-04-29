@@ -119,7 +119,7 @@ def bind_write_configuration(zones, trusted_networks):
     dns_config.write_config(trusted_networks=trusted_networks)
 
 
-def bind_write_options(upstream_dns):
+def bind_write_options(upstream_dns, dnssec_validation):
     """Write BIND options.
 
     :param upstream_dns: A sequence of upstream DNS servers.
@@ -129,7 +129,8 @@ def bind_write_options(upstream_dns):
     assert not isinstance(upstream_dns, (bytes, unicode))
     assert isinstance(upstream_dns, collections.Sequence)
 
-    set_up_options_conf(upstream_dns=upstream_dns)
+    set_up_options_conf(
+        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation)
 
 
 def bind_write_zones(zones):

@@ -46,9 +46,10 @@ class Command(BaseCommand):
     help = (
         "Edit the named.conf.options file so that it includes the "
         "named.conf.options.inside.maas file, which contains the "
-        "'forwarders' setting.  A backup of the old file will be made "
-        "with the suffix '.maas-YYYY-MM-DDTHH:MM:SS.mmmmmm'.  This "
-        "program must be run as root.")
+        "'forwarders' and 'dnssec-validation' settings.  A backup "
+        "of the old file will be made with the suffix "
+        "'.maas-YYYY-MM-DDTHH:MM:SS.mmmmmm'.  This program must be run as "
+        "root.")
 
     def read_file(self, config_path):
         """Open the named file and return its contents as a string."""
@@ -95,6 +96,16 @@ class Command(BaseCommand):
         if 'forwarders' in options_block:
             del options_block['forwarders']
 
+    def remove_dnssec_validation(self, options_block):
+        """Remove existing dnssec-validation from the options block.
+
+        It's a syntax error to have more than one in the combined
+        configuration for named so we just remove whatever was there.
+        There is no data loss due to the backup file made later.
+        """
+        if 'dnssec-validation' in options_block:
+            del options_block['dnssec-validation']
+
     def back_up_existing_file(self, config_path):
         now = datetime.now().isoformat()
         backup_destination = config_path + '.' + now
@@ -116,6 +127,7 @@ class Command(BaseCommand):
         # Modify the config.
         self.set_up_include_statement(options_block, config_path)
         self.remove_forwarders(options_block)
+        self.remove_dnssec_validation(options_block)
         new_content = MakeISC(config_dict)
 
         # Back up and write new file.

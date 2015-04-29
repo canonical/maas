@@ -197,7 +197,9 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
     # expect this side-effect from calling dns_update_all_zones_now(), and
     # some that call it for this side-effect alone. At present all it does is
     # set the upstream DNS servers, nothing to do with serving zones at all!
-    bind_write_options(upstream_dns=get_upstream_dns())
+    bind_write_options(
+        upstream_dns=get_upstream_dns(),
+        dnssec_validation=get_dnssec_validation())
 
     # Nor should we be rewriting ACLs that are related only to allowing
     # recursive queries to the upstream DNS servers. Again, this is legacy,
@@ -355,6 +357,14 @@ def get_upstream_dns():
     """
     upstream_dns = Config.objects.get_config("upstream_dns")
     return [] if upstream_dns is None else upstream_dns.split()
+
+
+def get_dnssec_validation():
+    """Return the configuration option for DNSSEC validation.
+
+    :return: "on", "off", or "auto"
+    """
+    return Config.objects.get_config("dnssec_validation")
 
 
 def get_trusted_networks():

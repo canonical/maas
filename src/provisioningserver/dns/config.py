@@ -192,6 +192,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     # specify it. If it's not set, the substitution will fail with the default
     # template that uses this value.
     kwargs.setdefault("upstream_dns")
+    kwargs.setdefault("dnssec_validation", "auto")
     try:
         rendered = template.substitute(kwargs)
     except NameError as error:

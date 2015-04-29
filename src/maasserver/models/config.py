@@ -33,6 +33,11 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 DEFAULT_OS = UbuntuOS()
+DNSSEC_VALIDATION_CHOICES = [
+    ("auto", "Automatic (use default root key)"),
+    ("yes", "Yes (manually configured root key)"),
+    ("no", "No (Disable DNSSEC; useful when upstream DNS is misconfigured)")
+]
 
 
 def get_default_config():
@@ -53,6 +58,7 @@ def get_default_config():
         'default_distro_series': DEFAULT_OS.get_default_release(),
         'http_proxy': None,
         'upstream_dns': None,
+        'dnssec_validation': "auto",
         'ntp_server': 'ntp.ubuntu.com',
         # RPC configuration.
         'rpc_region_certificate': None,

@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -28,6 +28,7 @@ from django.core.exceptions import ValidationError
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
+    DNSSEC_VALIDATION_CHOICES,
 )
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
@@ -102,6 +103,19 @@ def make_commissioning_distro_series_field(*args, **kwargs):
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'commissioning_distro_series', commissioning_choices)
+        },
+        **kwargs)
+    return field
+
+
+def make_dnssec_validation_field(*args, **kwargs):
+    """Build and return the make_dnssec_validation_field field."""
+    field = forms.ChoiceField(
+        initial=Config.objects.get_config('dnssec_validation'),
+        choices=DNSSEC_VALIDATION_CHOICES,
+        error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'dnssec_validation', DNSSEC_VALIDATION_CHOICES)
         },
         **kwargs)
     return field
@@ -194,6 +208,19 @@ CONFIG_ITEMS = {
             'help_text': (
                 "Only used when MAAS is running its own DNS server. This "
                 "value is used as the value of 'forwarders' in the DNS "
+                "server config.")
+        }
+    },
+    'dnssec_validation': {
+        'default': 'auto',
+        'form': make_dnssec_validation_field,
+        'form_kwargs': {
+            'label': (
+                "Enable DNSSEC validation of upstream zones"),
+            'required': False,
+            'help_text': (
+                "Only used when MAAS is running its own DNS server. This "
+                "value is used as the value of 'dnssec_validation' in the DNS "
                 "server config.")
         }
     },

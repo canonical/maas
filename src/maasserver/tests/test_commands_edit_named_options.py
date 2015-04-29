@@ -40,6 +40,15 @@ OPTIONS_FILE = textwrap.dedent("""\
     };
 """)
 
+OPTIONS_FILE_WITH_DNSSEC = textwrap.dedent("""\
+    options {
+        directory "/var/cache/bind";
+        dnssec-validation auto;
+        auth-nxdomain no;    # conform to RFC1035
+        listen-on-v6 { any; };
+    };
+""")
+
 OPTIONS_FILE_WITH_FORWARDERS = textwrap.dedent("""\
     options {
         directory "/var/cache/bind";
@@ -102,6 +111,19 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
             options_file,
             Not(FileContains(
                 matcher=Contains('forwarders'))))
+
+    def test_removes_existing_dnssec_validation_config(self):
+        options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
+        call_command(
+            "edit_named_options", config_path=options_file,
+            stdout=self.stdout)
+
+        # Check that the file was re-written without forwarders (since
+        # that's now in the included file).
+        self.assertThat(
+            options_file,
+            Not(FileContains(
+                matcher=Contains('dnssec-validation'))))
 
     def test_normal_operation(self):
         options_file = self.make_file(contents=OPTIONS_FILE)

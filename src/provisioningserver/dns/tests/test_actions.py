@@ -251,7 +251,10 @@ class TestConfiguration(PservTestCase):
             factory.make_ipv4_address(),
             factory.make_ipv4_address(),
         ]
-        actions.bind_write_options(upstream_dns=upstream_dns)
+        dnssec_validation = random.choice(["auto", "yes", "no"])
+        expected_dnssec_validation = dnssec_validation
+        actions.bind_write_options(
+            upstream_dns=upstream_dns, dnssec_validation=dnssec_validation)
         expected_options_file = join(
             self.dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
         self.assertThat(expected_options_file, FileExists())
@@ -261,11 +264,15 @@ class TestConfiguration(PservTestCase):
             %s;
         };
 
+        dnssec-validation %s;
+
         allow-query { any; };
         allow-recursion { trusted; };
         allow-query-cache { trusted; };
         """)
-        expected_options_content %= tuple(upstream_dns)
+        expected_options_content %= (
+            tuple(upstream_dns) + (expected_dnssec_validation,))
+
         self.assertThat(
             expected_options_file,
             FileContains(expected_options_content))

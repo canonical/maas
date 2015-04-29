@@ -503,7 +503,8 @@ class TestDNSConfigModifications(TestDNSServer):
         dns_update_all_zones_now()
         self.assertThat(
             bind_write_options,
-            MockCalledOnceWith(upstream_dns=[random_ip]))
+            MockCalledOnceWith(
+                dnssec_validation='auto', upstream_dns=[random_ip]))
 
     def test_dns_update_all_zones_now_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
