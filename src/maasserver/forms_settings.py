@@ -111,7 +111,7 @@ def make_commissioning_distro_series_field(*args, **kwargs):
 def make_dnssec_validation_field(*args, **kwargs):
     """Build and return the make_dnssec_validation_field field."""
     field = forms.ChoiceField(
-        initial=Config.objects.get_config('dnssec_validation'),
+        initial=CONFIG_ITEMS['dnssec_validation']['default'],
         choices=DNSSEC_VALIDATION_CHOICES,
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
