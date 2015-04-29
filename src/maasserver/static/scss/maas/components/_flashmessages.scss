@@ -10,7 +10,7 @@
  */
 
 .flash-messages {
-    margin: 0px auto 20px;
+    margin: 0px auto;
     padding: 0;
     max-width: 1440px;
 
@@ -29,7 +29,7 @@
         background:#FFF;
         background-position: top 50% left 15px;
         background-repeat: no-repeat;
-        margin: 20px 0 0;
+        margin: 0 0 20px;
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
 
         &.info {

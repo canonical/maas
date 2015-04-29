@@ -1,49 +1,28 @@
 @charset "UTF-8";
 
-/* -------------------------------------------------------------------
-----------------------------------------------------------------------
-
-    MAAS header styles
-
-    @project     MAAS
-    @author      Web Team at Canonical Ltd
-    @copyright   2015 Canonical Ltd
-
-----------------------------------------------------------------------
-------------------------------------------------------------------- */
+////
+/// MAAS header styles
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
 
 
-/* INTRODUCTION ------------------------------------------------------
-----------------------------------------------------------------------
-
-    1. VARIABLES
-    2. GLOBAL HEADER   -- Main page header style
-    3. PAGE HEADER     -- Default fix page header style
-
-----------------------------------------------------------------------
-------------------------------------------------------------------- */
-
-
-/* 1. VARIABLES ------------------------------------------------------
---------------------------------------------------------------------*/
-
-/**
- * Main page title font size
- */
+// Main page title font size
 $title-size:            2.00em;
 
-/**
- * Sub action title font size
- */
+// Sub action title font size
 $title-action-size:     0.60em;
 
 
-/* 2. GLOBAL HEADER --------------------------------------------------
---------------------------------------------------------------------*/
-
+/// Global Header
 header.banner {
     overflow: visible;
     z-index: 20;
+    position: fixed;
+    top: 0;
 
     nav.nav-primary {
         border-bottom: none;
@@ -220,26 +199,24 @@ header.banner {
 
 }
 
-/* 3. PAGE HEADER ----------------------------------------------------
---------------------------------------------------------------------*/
-
+/// page header
 .page-header {
     @include box-sizing();
     background:#FFF;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
     width: 100%;
     float: left;
-    position: relative;
+    position: fixed;
     z-index: 10;
+    top: 48px;
 
     .page-header__nav {
         position: absolute;
         top: 10px;
         z-index: 1000;
     }
-    /**
-     * Main page title
-     */
+
+    // Main page title
     .page-header__title {
         font-size: $title-size;
         width: auto;
@@ -282,10 +259,8 @@ header.banner {
             }
         }
 
-        /**
-         * Title identicator is used to show any sub pages and where
-         * a user is currently.
-         */
+        // Title identicator is used to show any sub pages and where
+        // a user is currently.
         .page-header__title--identicator {
             font-size: $title-action-size;
             width: auto;
@@ -336,10 +311,8 @@ header.banner {
         }
     }
 
-    /**
-     * Page actions container, used to hold any call to action buttons
-     * and links
-     */
+    // Page actions container, used to hold any call to action buttons
+    // and links
     .page-header__actions {
         float: right;
         padding: 34px 0;
@@ -351,10 +324,8 @@ header.banner {
             height: auto;
             max-height: 36px;
 
-            /**
-             * Feedback container for the cta, will contain positive or
-             * negative feedback
-             */
+            // Feedback container for the cta, will contain positive or
+            // negative feedback
             .page-header__cta-feedback {
                 display: inline-block;
                 position: relative;
@@ -366,10 +337,8 @@ header.banner {
         }
     }
 
-    /**
-     * Header dropdown section, can contain secondary information i.e
-     * flash messages or form controls / actions
-     */
+    // Header dropdown section, can contain secondary information i.e
+    // flash messages or form controls / actions
     .page-header__dropdown {
         float: left;
         width: 100%;
@@ -384,9 +353,7 @@ header.banner {
             transition: max-height 0.3s ease-out;
         }
 
-        /**
-         * Feedback style, mainly used for actions feedback
-         */
+        // Feedback style, mainly used for actions feedback
         .page-header__feedback {
             border-top: 1px dotted #888;
             display: inline-block;

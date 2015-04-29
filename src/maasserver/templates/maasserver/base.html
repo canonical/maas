@@ -92,6 +92,13 @@
             </div>
         </header>
         <main id="body">
+            {% block page-title-block %}
+            <header class="page-header margin-bottom">
+                <div class="inner-wrapper">
+                    <h1 class="page-header__title eight-col">{% block page-title %}{% endblock %}</h1>
+                </div>
+            </header>
+            {% endblock %}
             <div id="main-content" class="row no-border">
                 {% if user.is_authenticated %}
                 <ul id="flash-messages" class="flash-messages">
@@ -106,9 +113,6 @@
                 </ul>
                 {% endif %}
                 <div class="inner-wrapper" id="content">
-                    {% block page-title-block %}
-                    <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
-                    {% endblock %}
                     {% block content %}
                     {% endblock %}
                     <aside id="sidebar">
