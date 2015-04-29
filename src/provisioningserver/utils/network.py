@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generic helpers for `netaddr` and network-related types."""
@@ -18,15 +18,13 @@ __all__ = [
     'find_mac_via_arp',
     'get_all_addresses_for_interface',
     'get_all_interface_addresses',
+    'make_network',
+    'resolve_hostname',
     'intersect_iprange',
     'ip_range_within_network',
-    'make_network',
-    'NeighboursProtocol',
-    'resolve_hostname',
     ]
 
-from collections import defaultdict
-import io
+
 from socket import (
     AF_INET,
     AF_INET6,
@@ -37,17 +35,12 @@ from socket import (
 )
 
 from netaddr import (
-    EUI,
     IPAddress,
     IPNetwork,
     IPRange,
 )
 import netifaces
-import provisioningserver
-from twisted.internet.defer import Deferred
-from twisted.internet.error import ProcessDone
-from twisted.internet.protocol import ProcessProtocol
-from twisted.python import log
+from provisioningserver.utils.shell import call_and_check
 
 
 def make_network(ip_address, netmask_or_bits, **kwargs):
@@ -80,16 +73,14 @@ def find_ip_via_arp(mac):
 
     :param mac: The mac address, e.g. '1c:6f:65:d5:56:98'.
     """
-    try:
-        neighbours = provisioningserver.services.getServiceNamed("neighbours")
-    except KeyError:
-        return None
-    else:
-        ipaddr = neighbours.find_ip_address(EUI(mac))
-        if ipaddr is None:
-            return None
-        else:
-            return unicode(ipaddr).lower()
+
+    output = call_and_check(['arp', '-n']).split('\n')
+
+    for line in sorted(output):
+        columns = line.split()
+        if len(columns) == 5 and columns[2].lower() == mac.lower():
+            return columns[0]
+    return None
 
 
 def find_mac_via_arp(ip):
@@ -103,16 +94,33 @@ def find_mac_via_arp(ip):
 
     :param ip: The ip address, e.g. '192.168.1.1'.
     """
-    try:
-        neighbours = provisioningserver.services.getServiceNamed("neighbours")
-    except KeyError:
-        return None
-    else:
-        macaddr = neighbours.find_mac_address(IPAddress(ip))
-        if macaddr is None:
-            return None
-        else:
-            return unicode(macaddr).lower().replace("-", ":")
+    # Normalise ip.  IPv6 has a wealth of alternate notations, so we can't
+    # just look for the string; we have to parse.
+    ip = IPAddress(ip)
+    # Use "C" locale; we're parsing output so we don't want any translations.
+    output = call_and_check(['ip', 'neigh'], env={'LC_ALL': 'C'})
+
+    for line in sorted(output.splitlines()):
+        columns = line.split()
+        if len(columns) < 4:
+            raise Exception(
+                "Output line from 'ip neigh' does not look like a neighbour "
+                "entry: '%s'" % line)
+        # Normal "ip neigh" output lines look like:
+        #   <IP> dev <interface> lladdr <MAC> [router] <status>
+        #
+        # Where <IP> is an IPv4 or IPv6 address, <interface> is a network
+        # interface name such as eth0, <MAC> is a MAC address, and status
+        # can be REACHABLE, STALE, etc.
+        #
+        # However sometimes you'll also see lines like:
+        #   <IP> dev <interface>  FAILED
+        #
+        # Note the missing lladdr entry.
+        if IPAddress(columns[0]) == ip and columns[3] == 'lladdr':
+            # Found matching IP address.  Return MAC.
+            return columns[4]
+    return None
 
 
 def clean_up_netifaces_address(address, interface):
@@ -215,88 +223,3 @@ def ip_range_within_network(ip_range, network):
             IPAddress(network.first), IPAddress(network.last))
     return all([
         intersect_iprange(cidr, network) for cidr in ip_range.cidrs()])
-
-
-class NeighboursProtocol(ProcessProtocol, object):
-    """An `IProcessProtocol` to parse the output from `ip neigh`.
-
-    Specifically, it's interested only in mapping between IPv4/IPv6 addresses
-    and related link-layer addresses.
-
-    Rationale: `ip neigh` can take 2-3ms to run. When run frequently -- as was
-    previously done when handling TFTP requests via `subprocess` -- this ends
-    up blocking the reactor for too long.
-    """
-
-    def __init__(self):
-        super(NeighboursProtocol, self).__init__()
-        self.done = Deferred()
-
-    def connectionMade(self):
-        self.out = io.BytesIO()
-        self.err = io.BytesIO()
-
-    def outReceived(self, data):
-        self.out.write(data)
-
-    def errReceived(self, data):
-        self.err.write(data)
-
-    def processEnded(self, reason):
-        error = self.err.getvalue().decode("ascii", "replace")
-        if len(error) != 0:
-            log.msg(
-                "`ip neigh` wrote to stderr (an error may be "
-                "reported separately): %s" % error)
-
-        if reason.check(ProcessDone):
-            try:
-                output = self.out.getvalue().decode("ascii")
-                lladdrs = self.parseOutput(output.splitlines())
-                neighbours = self.collateNeighbours(lladdrs)
-            except:
-                self.done.errback()
-            else:
-                self.done.callback(neighbours)
-        else:
-            self.done.errback(reason)
-
-    @staticmethod
-    def parseOutput(lines):
-        """Parse the output of `ip neigh`, looking for 'lladdr' records.
-
-        Normal ``ip neigh`` output lines look like::
-
-          <IP> dev <interface> lladdr <MAC> [router] <status>
-
-        where ``<IP>`` is an IPv4 or IPv6 address, ``<interface>`` is a
-        network interface name such as ``eth0``, ``<MAC>`` is a MAC address,
-        and status can be ``REACHABLE``, ``STALE``, etc.
-
-        However sometimes you'll also see lines like::
-
-          <IP> dev <interface>  FAILED
-
-        Note the missing ``lladdr`` entry.
-
-        :return: A generator, yielding ``(ip-address, mac-address)`` tuples,
-            where ``ip-address`` is an `netaddr.IPAddress` and ``mac-address``
-            is a `netaddr.EUI`.
-        """
-        for line in lines:
-            columns = line.strip().split()
-            assert len(columns) >= 4, (
-                "Output line from `ip neigh` does not look like a "
-                "neighbour entry: %r" % line)
-            if columns[3] == "lladdr":
-                ipaddr, macaddr = columns[0], columns[4]
-                yield IPAddress(ipaddr), EUI(macaddr)
-
-    @staticmethod
-    def collateNeighbours(lladdrs):
-        ip_to_mac = defaultdict(set)
-        mac_to_ip = defaultdict(set)
-        for ipaddr, macaddr in lladdrs:
-            ip_to_mac[ipaddr].add(macaddr)
-            mac_to_ip[macaddr].add(ipaddr)
-        return ip_to_mac, mac_to_ip

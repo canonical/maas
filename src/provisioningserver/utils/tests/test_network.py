@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for network helpers."""
@@ -20,18 +20,12 @@ from socket import (
     EAI_NONAME,
     gaierror,
 )
-from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase
 import mock
-from mock import sentinel
 from netaddr import (
-    EUI,
     IPAddress,
     IPNetwork,
     IPRange,
@@ -42,10 +36,7 @@ from netifaces import (
     AF_INET,
     AF_INET6,
 )
-from provisioningserver.pserv_services.testing.neighbours import (
-    NeighboursServiceFixture,
-)
-from provisioningserver.rpc.testing import TwistedLoggerFixture
+import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
     clean_up_netifaces_address,
@@ -56,26 +47,9 @@ from provisioningserver.utils.network import (
     intersect_iprange,
     ip_range_within_network,
     make_network,
-    NeighboursProtocol,
     resolve_hostname,
 )
-from testtools.deferredruntest import extract_result
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    Not,
-)
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.error import (
-    ProcessDone,
-    ProcessTerminated,
-)
-from twisted.python.failure import Failure
+from testtools.matchers import Equals
 
 
 class TestMakeNetwork(MAASTestCase):
@@ -95,44 +69,61 @@ class TestMakeNetwork(MAASTestCase):
 
 class TestFindIPViaARP(MAASTestCase):
 
-    def setUp(self):
-        super(TestFindIPViaARP, self).setUp()
-        self.neighbours = self.useFixture(NeighboursServiceFixture())
+    def patch_call(self, output):
+        """Replace `call_and_check` with one that returns `output`."""
+        fake = self.patch(network_module, 'call_and_check')
+        fake.return_value = output
+        return fake
 
     def test__resolves_MAC_address_to_IP(self):
-        sample = dedent("""\
-        192.168.122.20 dev virbr0 lladdr 52:54:00:02:86:4b
-        192.168.0.1 dev eth0 lladdr 90:f6:52:f6:17:92
-        """)
-        self.neighbours.setFromOutput(sample)
+        sample = """\
+        Address HWtype  HWaddress Flags Mask            Iface
+        192.168.100.20 (incomplete)                              virbr1
+        192.168.0.104 (incomplete)                              eth0
+        192.168.0.5 (incomplete)                              eth0
+        192.168.0.2 (incomplete)                              eth0
+        192.168.0.100 (incomplete)                              eth0
+        192.168.122.20 ether   52:54:00:02:86:4b   C                     virbr0
+        192.168.0.4 (incomplete)                              eth0
+        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
+        """
+
+        call_and_check = self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
+        self.assertThat(call_and_check, MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)
 
     def test__returns_consistent_output(self):
         mac = factory.make_mac_address()
-        ips = ['10.0.0.11', '10.0.0.99']
-        lines = ['%s dev eth0 lladdr %s' % (ip, mac) for ip in ips]
-        self.neighbours.setFromOutput('\n'.join(lines))
+        ips = [
+            '10.0.0.11',
+            '10.0.0.99',
+            ]
+        lines = ['%s ether %s C eth0' % (ip, mac) for ip in ips]
+        self.patch_call('\n'.join(lines))
         one_result = find_ip_via_arp(mac)
-        self.neighbours.setFromOutput('\n'.join(reversed(lines)))
+        self.patch_call('\n'.join(reversed(lines)))
         other_result = find_ip_via_arp(mac)
 
         self.assertIn(one_result, ips)
         self.assertEqual(one_result, other_result)
 
     def test__ignores_case(self):
-        sample = "192.168.0.1 dev eth0 lladdr 90:f6:52:f6:17:92"
-        self.neighbours.setFromOutput(sample)
+        sample = """\
+        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
+        """
+        self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92".upper())
         self.assertEqual("192.168.0.1", ip_address_observed)
 
 
 class TestFindMACViaARP(MAASTestCase):
 
-    def setUp(self):
-        super(TestFindMACViaARP, self).setUp()
-        self.neighbours = self.useFixture(NeighboursServiceFixture())
-        self.patch_call = self.neighbours.setFromOutput
+    def patch_call(self, output):
+        """Replace `call_and_check` with one that returns `output`."""
+        fake = self.patch(provisioningserver.utils.network, 'call_and_check')
+        fake.return_value = output
+        return fake
 
     def make_output_line(self, ip=None, mac=None, dev=None):
         """Compose an `ip neigh` output line for given `ip` and `mac`."""
@@ -143,15 +134,35 @@ class TestFindMACViaARP(MAASTestCase):
         if dev is None:
             dev = factory.make_name('eth', sep='')
         return "%(ip)s dev %(dev)s lladdr %(mac)s\n" % {
-            'ip': ip, 'dev': dev, 'mac': mac}
+            'ip': ip,
+            'dev': dev,
+            'mac': mac,
+            }
+
+    def test__calls_ip_neigh(self):
+        call_and_check = self.patch_call('')
+        find_mac_via_arp(factory.make_ipv4_address())
+        self.assertThat(
+            call_and_check,
+            MockCalledOnceWith(['ip', 'neigh'], env={'LC_ALL': 'C'}))
+
+    def test__works_with_real_call(self):
+        find_mac_via_arp(factory.make_ipv4_address())
+        # No error.
+        pass
+
+    def test__fails_on_nonsensical_output(self):
+        self.patch_call("Weird output...")
+        self.assertRaises(
+            Exception, find_mac_via_arp, factory.make_ipv4_address())
 
     def test__returns_None_if_not_found(self):
-        self.neighbours.setFromOutput(self.make_output_line())
+        self.patch_call(self.make_output_line())
         self.assertIsNone(find_mac_via_arp(factory.make_ipv4_address()))
 
     def test__resolves_IPv4_address_to_MAC(self):
         sample = "10.55.60.9 dev eth0 lladdr 3c:41:92:68:2e:00 REACHABLE\n"
-        self.neighbours.setFromOutput(sample)
+        self.patch_call(sample)
         mac_address_observed = find_mac_via_arp('10.55.60.9')
         self.assertEqual('3c:41:92:68:2e:00', mac_address_observed)
 
@@ -159,24 +170,23 @@ class TestFindMACViaARP(MAASTestCase):
         sample = (
             "fd10::a76:d7fe:fe93:7cb dev eth0 lladdr 3c:41:92:6b:2e:00 "
             "REACHABLE\n")
-        self.neighbours.setFromOutput(sample)
+        self.patch_call(sample)
         mac_address_observed = find_mac_via_arp('fd10::a76:d7fe:fe93:7cb')
         self.assertEqual('3c:41:92:6b:2e:00', mac_address_observed)
 
     def test__ignores_failed_neighbours(self):
         ip = factory.make_ipv4_address()
-        self.neighbours.setFromOutput("%s dev eth0  FAILED\n" % ip)
+        self.patch_call("%s dev eth0  FAILED\n" % ip)
         self.assertIsNone(find_mac_via_arp(ip))
 
     def test__is_not_fooled_by_prefixing(self):
-        self.neighbours.setFromOutput(self.make_output_line('10.1.1.10'))
+        self.patch_call(self.make_output_line('10.1.1.10'))
         self.assertIsNone(find_mac_via_arp('10.1.1.1'))
         self.assertIsNone(find_mac_via_arp('10.1.1.100'))
 
     def test__is_not_fooled_by_different_notations(self):
         mac = factory.make_mac_address()
-        self.neighbours.setFromOutput(
-            self.make_output_line('9::0:05', mac=mac))
+        self.patch_call(self.make_output_line('9::0:05', mac=mac))
         self.assertEqual(mac, find_mac_via_arp('09:0::5'))
 
     def test__returns_consistent_output(self):
@@ -186,23 +196,13 @@ class TestFindMACViaARP(MAASTestCase):
             '90:f6:52:f6:17:92',
             ]
         lines = [self.make_output_line(ip, mac) for mac in macs]
-        self.neighbours.setFromOutput(''.join(lines))
+        self.patch_call(''.join(lines))
         one_result = find_mac_via_arp(ip)
-        self.neighbours.setFromOutput(''.join(reversed(lines)))
+        self.patch_call(''.join(reversed(lines)))
         other_result = find_mac_via_arp(ip)
 
         self.assertIn(one_result, macs)
         self.assertEqual(one_result, other_result)
-
-
-class TestFindingAddressesWhenNeighboursServiceNotRunning(MAASTestCase):
-    """Behaviour of `find_ip_via_arp` and `find_mac_via_arp`."""
-
-    def test_ip_via_arp_returns_None(self):
-        self.assertIsNone(find_ip_via_arp(sentinel.ignored))
-
-    def test_mac_via_arg_returns_None(self):
-        self.assertIsNone(find_mac_via_arp(sentinel.ignored))
 
 
 def patch_interfaces(testcase, interfaces):
@@ -487,140 +487,3 @@ class TestIPRangeWithinNetwork(MAASTestCase):
         network_1 = IPNetwork('10.0.0.0/16')
         network_2 = IPNetwork('10.0.0.0/24')
         self.assertTrue(ip_range_within_network(network_2, network_1))
-
-
-class TestNeighboursProtocol(MAASTestCase):
-    """Tests for `NeighboursProtocol`."""
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    is_set = IsInstance(set)
-    is_not_empty = Not(HasLength(0))
-
-    is_ip_address = IsInstance(IPAddress)
-    is_ip_address_set = MatchesAll(
-        is_set, is_not_empty, AllMatch(is_ip_address), first_only=True)
-
-    is_mac_address = IsInstance(EUI)
-    is_mac_address_set = MatchesAll(
-        is_set, is_not_empty, AllMatch(is_mac_address), first_only=True)
-
-    @inlineCallbacks
-    def test__works_with_real_call(self):
-        proto = NeighboursProtocol()
-        reactor.spawnProcess(proto, b"ip", (b"ip", b"neigh"))
-        result = yield proto.done
-
-        self.assertThat(result, HasLength(2))
-        ip_to_mac, mac_to_ip = result
-
-        # ip_to_mac is a mapping of IP addresses to sets of MAC addresses.
-        self.expectThat(ip_to_mac, AfterPreprocessing(
-            dict.keys, AllMatch(self.is_ip_address)))
-        self.expectThat(ip_to_mac, AfterPreprocessing(
-            dict.values, AllMatch(self.is_mac_address_set)))
-
-        # mac_to_ip is a mapping of MAC addresses to sets of IP addresses.
-        self.expectThat(mac_to_ip, AfterPreprocessing(
-            dict.keys, AllMatch(self.is_mac_address)))
-        self.expectThat(mac_to_ip, AfterPreprocessing(
-            dict.values, AllMatch(self.is_ip_address_set)))
-
-    def test__fails_on_nonsensical_output_from_ip_neigh(self):
-        proto = NeighboursProtocol()
-        proto.connectionMade()
-        proto.outReceived(b"Weird output...")
-        proto.processEnded(Failure(ProcessDone(0)))
-        self.assertRaises(AssertionError, extract_result, proto.done)
-
-    def test__captures_stderr_and_prints_it_when_process_ends(self):
-        logger = TwistedLoggerFixture()
-        self.useFixture(logger)
-
-        message = factory.make_name("message")
-
-        proto = NeighboursProtocol()
-        proto.connectionMade()
-        proto.errReceived(message.encode("ascii"))
-        proto.processEnded(Failure(ProcessDone(0)))
-
-        self.assertThat(extract_result(proto.done), Equals(({}, {})))
-        self.assertThat(logger.output, Equals(
-            "`ip neigh` wrote to stderr (an error may be reported "
-            "separately): %s" % message))
-
-    def test__propagates_errors_when_processing_output(self):
-        proto = NeighboursProtocol()
-        exception = factory.make_exception_type()
-        self.patch(proto, "collateNeighbours").side_effect = exception
-        proto.connectionMade()
-        proto.outReceived(b"Weird output...")
-        proto.processEnded(Failure(ProcessDone(0)))
-        self.assertRaises(exception, extract_result, proto.done)
-
-    def test__propagates_errors_from_ip_neigh(self):
-        proto = NeighboursProtocol()
-        proto.connectionMade()
-        reason = Failure(ProcessTerminated(1))
-        proto.processEnded(reason)
-        self.assertRaises(ProcessTerminated, extract_result, proto.done)
-
-    def test_parseOutput_parses_example_output(self):
-        example_output = dedent("""\
-        fe80::9e97:26ff:fe94:f884 dev eth0 lladdr \
-            9c:97:26:94:f8:84 router REACHABLE
-        2001:8b0:1219::fe94:f884 dev eth0 lladdr \
-            9c:97:26:94:f8:84 router STALE
-        172.16.1.254 dev eth1 lladdr 00:50:56:f9:33:8e STALE
-        192.168.1.254 dev eth0 lladdr 9c:97:26:94:f8:84 DELAY
-        172.16.1.1 dev eth1 lladdr 00:50:56:c0:00:01 STALE
-        10.0.3.166 dev lxcbr0 lladdr 00:16:3e:da:8b:9e STALE
-        """)
-        parsed = NeighboursProtocol.parseOutput(example_output.splitlines())
-        self.assertThat(list(parsed), Equals([
-            (IPAddress("fe80::9e97:26ff:fe94:f884"), EUI("9c:97:26:94:f8:84")),
-            (IPAddress("2001:8b0:1219::fe94:f884"), EUI("9c:97:26:94:f8:84")),
-            (IPAddress("172.16.1.254"), EUI("00:50:56:f9:33:8e")),
-            (IPAddress("192.168.1.254"), EUI("9c:97:26:94:f8:84")),
-            (IPAddress("172.16.1.1"), EUI("00:50:56:c0:00:01")),
-            (IPAddress("10.0.3.166"), EUI("00:16:3e:da:8b:9e")),
-        ]))
-
-    def test_parseOutput_ignores_failed_neighbours(self):
-        ipaddr = factory.make_ipv4_address()
-        example_output = "%s dev eth0  FAILED\n" % ipaddr
-        parsed = NeighboursProtocol.parseOutput(example_output.splitlines())
-        self.assertThat(list(parsed), Equals([]))
-
-    def test_collateNeighbours_collates_results(self):
-        example_results = [
-            (IPAddress("192.168.1.1"), EUI("12:34:56:78:90:01")),
-            (IPAddress("192.168.1.2"), EUI("12:34:56:78:90:01")),
-            (IPAddress("192.168.1.1"), EUI("12:34:56:78:90:02")),
-            (IPAddress("192.168.1.2"), EUI("12:34:56:78:90:02")),
-        ]
-        collates = NeighboursProtocol.collateNeighbours(example_results)
-        self.assertThat(collates, Equals((
-            # IP address to MAC address mapping.
-            {
-                IPAddress('192.168.1.2'): {
-                    EUI('12-34-56-78-90-01'),
-                    EUI('12-34-56-78-90-02'),
-                },
-                IPAddress('192.168.1.1'): {
-                    EUI('12-34-56-78-90-01'),
-                    EUI('12-34-56-78-90-02'),
-                },
-            },
-            # MAC address to IP address mapping.
-            {
-                EUI('12-34-56-78-90-01'): {
-                    IPAddress('192.168.1.2'),
-                    IPAddress('192.168.1.1'),
-                },
-                EUI('12-34-56-78-90-02'): {
-                    IPAddress('192.168.1.2'),
-                    IPAddress('192.168.1.1'),
-                },
-            },
-        )))
