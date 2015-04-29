@@ -64,11 +64,18 @@ class PostgresListener:
 
     implements(interfaces.IReadDescriptor)
 
+    # Seconds to wait to handle new notifications. When the notifications set
+    # is empty it will wait this amount of time to check again for new
+    # notifications.
+    HANDLE_NOTIFY_DELAY = 0.5
+
     def __init__(self, alias="default"):
         self.alias = alias
         self.listeners = defaultdict(list)
         self.autoReconnect = False
         self.connection = None
+        self.notifications = set()
+        self.notifier = task.LoopingCall(self.handleNotifies)
 
     def start(self):
         """Start the listener."""
@@ -80,6 +87,7 @@ class PostgresListener:
         self.autoReconnect = False
         if self.connected():
             reactor.removeReader(self)
+            self.cancelHandleNotify()
             return deferToThread(self.stopConnection)
         else:
             return defer.succeed(None)
@@ -119,14 +127,18 @@ class PostgresListener:
             # contains no pgcode or pgerror to identify the reason, so best
             # assumtion is that the connection has been lost.
             reactor.removeReader(self)
+            self.cancelHandleNotify()
             self.connectionLost(failure.Failure(error.ConnectionClosed()))
         else:
-            # Process all of the notify messages inside of a Cooperator so
-            # each notification will be handled in order.
+            # Add each notify to to the notifications set. This helps
+            # removes duplicate notifications as one entity in the database
+            # can send multiple notifies as it can be updated quickly.
+            # Accumulate the notifications and the listener passes them on to
+            # be handled in batches.
             notifies = self.connection.connection.notifies
             if len(notifies) != 0:
-                # Pass a *copy* of the received notifies list.
-                task.cooperate(self.handleNotifies(notifies[:]))
+                for notify in notifies:
+                    self.notifications.add((notify.channel, notify.payload))
                 # Delete the contents of the connection's notifies list so
                 # that we don't process them a second time.
                 del notifies[:]
@@ -184,6 +196,8 @@ class PostgresListener:
         d.addCallback(lambda _: deferToThread(self.registerChannels))
         d.addCallback(lambda _: reactor.addReader(self))
         d.addCallback(
+            lambda _: self.runHandleNotify(delay=self.HANDLE_NOTIFY_DELAY))
+        d.addCallback(
             lambda _: self.logMsg("Listening for notificaton from database."))
         d.addErrback(failureToConnect)
         return d
@@ -213,22 +227,39 @@ class PostgresListener:
                 "%s action is not supported." % action)
         return channel, action
 
-    def handleNotifies(self, notifies):
-        """Process each notify message yeilding to the returned defer.
+    def runHandleNotify(self, delay=0, clock=reactor):
+        """Defer later the `handleNotify`."""
+        if not self.notifier.running:
+            self.notifier.start(delay, now=False)
 
-        This method should be called from the global Cooperator so each notify
-        message is handled in order.
-        """
-        for notify in notifies:
-            try:
-                channel, action = self.convertChannel(notify.channel)
-            except PostgresListenerNotifyError as e:
-                # Log the error and continue processing the remaining
-                # notifications.
-                self.logErr(e)
-            else:
-                handlers = self.listeners[channel]
-                for handler in handlers:
-                    yield defer.maybeDeferred(
-                        handler, action, notify.payload).addErrback(
-                        self.logErr)
+    def cancelHandleNotify(self):
+        """Cancel the deferred `handleNotify` call."""
+        if self.notifier.running:
+            self.notifier.stop()
+
+    def handleNotifies(self, clock=reactor):
+        """Process all notify message in the notifications set."""
+        def gen_notifications(notifications):
+            while len(notifications) != 0:
+                yield notifications.pop()
+        return task.coiterate(
+            self.handleNotify(notification, clock=clock)
+            for notification in gen_notifications(self.notifications))
+
+    def handleNotify(self, notification, clock=reactor):
+        """Process a notify message in the notifications set."""
+        channel, payload = notification
+        try:
+            channel, action = self.convertChannel(channel)
+        except PostgresListenerNotifyError as e:
+            # Log the error and continue processing the remaining
+            # notifications.
+            self.logErr(e)
+        else:
+            defers = []
+            handlers = self.listeners[channel]
+            for handler in handlers:
+                d = defer.maybeDeferred(handler, action, payload)
+                d.addErrback(self.logErr)
+                defers.append(d)
+            return defer.DeferredList(defers)

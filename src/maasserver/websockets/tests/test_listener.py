@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from collections import namedtuple
+
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
@@ -41,10 +43,12 @@ from mock import (
 )
 from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError
-from testtools.matchers import HasLength
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
+
+
+FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 
 
 class TestPostgresListener(MAASServerTestCase):
@@ -185,30 +189,34 @@ class TestPostgresListener(MAASServerTestCase):
             listener.connectionLost,
             MockCalledOnceWith(ANY))
 
-    def test__doRead_copies_and_clears_notifies_list(self):
+    def test__doRead_adds_notifies_to_notifications(self):
         listener = PostgresListener()
+        notifications = [
+            FakeNotify(
+                channel=factory.make_name("channel_action"),
+                payload=factory.make_name("payload"))
+            for _ in range(3)
+            ]
 
         connection = self.patch(listener, "connection")
         connection.connection.poll.return_value = None
-        # The new notifies received from the database.
-        connection.connection.notifies = [sentinel.notify]
-
-        handleNotifies = self.patch(listener, "handleNotifies")
-        # The returned value from handleNotifies() is used as input into the
-        # Twisted cooperator. Here we ensure that it has nothing to do.
-        handleNotifies.return_value = iter(())
+        # Add the notifications twice, so it can test that duplicates are
+        # accumulated together.
+        connection.connection.notifies = notifications + notifications
+        self.patch(listener, "handleNotify")
 
         listener.doRead()
-        self.assertThat(
-            handleNotifies,
-            MockCalledOnceWith([sentinel.notify]))
-        self.assertThat(
-            connection.connection.notifies,
-            HasLength(0))
+        self.assertItemsEqual(
+            listener.notifications, set(notifications))
 
 
 class TransactionalHelpersMixin:
     """Helpers performing actions in transactions."""
+
+    def make_listener_without_delay(self):
+        listener = PostgresListener()
+        self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
+        return listener
 
     @transactional
     def create_node(self, params=None):
@@ -360,7 +368,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
@@ -375,7 +383,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToThread(self.create_node, self.params)
@@ -395,7 +403,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToThread(self.create_node, self.params)
@@ -417,7 +425,7 @@ class TestClusterListener(
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
@@ -432,7 +440,7 @@ class TestClusterListener(
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         nodegroup = yield deferToThread(self.create_nodegroup)
@@ -452,7 +460,7 @@ class TestClusterListener(
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         nodegroup = yield deferToThread(self.create_nodegroup)
@@ -476,7 +484,7 @@ class TestClusterInterfaceListener(
         yield deferToThread(register_all_triggers)
         nodegroup = yield deferToThread(self.create_nodegroup)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
@@ -496,7 +504,7 @@ class TestClusterInterfaceListener(
         interface = yield deferToThread(
             self.create_nodegroupinterface, nodegroup)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
@@ -518,7 +526,7 @@ class TestClusterInterfaceListener(
         interface = yield deferToThread(
             self.create_nodegroupinterface, nodegroup)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
@@ -538,7 +546,7 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
         yield listener.start()
@@ -553,7 +561,7 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
         zone = yield deferToThread(self.create_zone)
@@ -573,7 +581,7 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
         zone = yield deferToThread(self.create_zone)
@@ -609,7 +617,7 @@ class TestNodeTagListener(
         node = yield deferToThread(self.create_node, self.params)
         tag = yield deferToThread(self.create_tag)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
@@ -627,7 +635,7 @@ class TestNodeTagListener(
         node = yield deferToThread(self.create_node, self.params)
         tag = yield deferToThread(self.create_tag)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
@@ -646,7 +654,7 @@ class TestNodeTagListener(
         tag = yield deferToThread(self.create_tag)
         yield deferToThread(self.add_node_to_tag, node, tag)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
@@ -667,7 +675,7 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
@@ -682,7 +690,7 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         user = yield deferToThread(self.create_user)
@@ -702,7 +710,7 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         user = yield deferToThread(self.create_user)
@@ -723,7 +731,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
         yield listener.start()
@@ -738,7 +746,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
         event = yield deferToThread(self.create_event)
@@ -758,7 +766,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToThread(register_all_triggers)
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
         event = yield deferToThread(self.create_event)
@@ -793,7 +801,7 @@ class TestNodeEventListener(
         yield deferToThread(register_all_triggers)
         node = yield deferToThread(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
