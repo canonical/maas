@@ -14,8 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import random
-
 from django.db import transaction
 from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
@@ -44,7 +42,10 @@ from maasserver.node_action import (
     RPC_EXCEPTIONS,
     SetZone,
 )
-from maasserver.node_status import FAILED_STATUSES
+from maasserver.node_status import (
+    MONITORED_STATUSES,
+    NON_MONITORED_STATUSES,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_osystem_with_releases
@@ -576,12 +577,47 @@ class TestPowerOffAction(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
-    def test__actionable_for_failed_states(self):
-        status = random.choice(FAILED_STATUSES)
-        node = factory.make_Node(status=status, power_type='ipmi')
-        actions = compile_node_actions(
-            node, factory.make_admin(), classes=[PowerOff])
-        self.assertItemsEqual([PowerOff.name], actions)
+    def test__actionable_for_non_monitored_states(self):
+        all_statuses = NON_MONITORED_STATUSES
+        results = {}
+        for status in all_statuses:
+            node = factory.make_Node(
+                status=status, power_type='ipmi', power_state=POWER_STATE.ON)
+            actions = compile_node_actions(
+                node, factory.make_admin(), classes=[PowerOff])
+            results[status] = actions.keys()
+        expected_results = {status: [PowerOff.name] for status in all_statuses}
+        self.assertEqual(
+            expected_results, results,
+            "Nodes with certain statuses could not be powered off.")
+
+    def test__non_actionable_for_monitored_states(self):
+        all_statuses = MONITORED_STATUSES
+        results = {}
+        for status in all_statuses:
+            node = factory.make_Node(
+                status=status, power_type='ipmi', power_state=POWER_STATE.ON)
+            actions = compile_node_actions(
+                node, factory.make_admin(), classes=[PowerOff])
+            results[status] = actions.keys()
+        expected_results = {status: [] for status in all_statuses}
+        self.assertEqual(
+            expected_results, results,
+            "Nodes with certain statuses could be powered off.")
+
+    def test__non_actionable_if_node_already_off(self):
+        all_statuses = NON_MONITORED_STATUSES
+        results = {}
+        for status in all_statuses:
+            node = factory.make_Node(
+                status=status, power_type='ipmi', power_state=POWER_STATE.OFF)
+            actions = compile_node_actions(
+                node, factory.make_admin(), classes=[PowerOff])
+            results[status] = actions.keys()
+        expected_results = {status: [] for status in all_statuses}
+        self.assertEqual(
+            expected_results, results,
+            "Nodes already powered off can be powered off.")
 
 
 ACTIONABLE_STATUSES = [

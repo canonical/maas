@@ -20,6 +20,7 @@ __all__ = [
 
 
 from maasserver.enum import NODE_STATUS
+from provisioningserver.utils.enum import map_enum
 
 # Define valid node status transitions. This is enforced in the code, so
 # get it right.
@@ -173,6 +174,11 @@ NODE_FAILURE_STATUS_TRANSITIONS = {
 # Statuses that correspond to managed steps for which MAAS actively
 # monitors that the status changes after a fixed period of time.
 MONITORED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.keys()
+
+# Non-active statuses.
+NON_MONITORED_STATUSES = set(
+    map_enum(NODE_STATUS).values()).difference(set(MONITORED_STATUSES))
+
 
 FAILED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.values()
 

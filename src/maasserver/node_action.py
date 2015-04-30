@@ -39,13 +39,17 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     NodeActionError,
     StaticIPAddressExhaustion,
 )
 from maasserver.models import Zone
-from maasserver.node_status import is_failed_status
+from maasserver.node_status import (
+    is_failed_status,
+    NON_MONITORED_STATUSES,
+)
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
@@ -352,12 +356,8 @@ class PowerOff(NodeAction):
     name = "off"
     display = "Power off"
     display_sentence = "powered off"
-    actionable_statuses = (
-        [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
-        # Also let a user ask a failed node to shutdown: this
-        # is useful to try to recover from power failures.
-        FAILED_STATUSES
-    )
+    # Let a user power off a node in any non-active status.
+    actionable_statuses = NON_MONITORED_STATUSES
     permission = NODE_PERMISSION.EDIT
     installable_only = True
 
@@ -367,6 +367,11 @@ class PowerOff(NodeAction):
             self.node.stop(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
+
+    def is_actionable(self):
+        is_actionable = super(PowerOff, self).is_actionable()
+        return is_actionable and (
+            self.node.power_state != POWER_STATE.OFF)
 
 
 class Release(NodeAction):

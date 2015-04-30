@@ -18,6 +18,7 @@ from django.contrib import messages
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
+    POWER_STATE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -29,6 +30,7 @@ from maasserver.node_action import (
     Delete,
     Deploy,
     MarkBroken,
+    PowerOff,
     SetZone,
 )
 from maasserver.testing.factory import factory
@@ -56,11 +58,18 @@ class TestNodeActionForm(MAASServerTestCase):
         """Check the actions available to admins"""
         admin = factory.make_admin()
         node = factory.make_Node(
-            status=NODE_STATUS.NEW, boot_type=NODE_BOOT.DEBIAN)
+            status=NODE_STATUS.NEW, boot_type=NODE_BOOT.DEBIAN,
+            power_state=POWER_STATE.ON)
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.name, Delete.name, MarkBroken.name, SetZone.name],
+            [
+                Commission.name,
+                Delete.name,
+                MarkBroken.name,
+                SetZone.name,
+                PowerOff.name,
+            ],
             form.actions)
 
     def test_get_action_form_for_user(self):
