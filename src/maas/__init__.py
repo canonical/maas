@@ -22,6 +22,8 @@ __all__ = [
 import sys
 import warnings
 
+import django.conf
+
 
 def find_settings(whence):
     """Return settings from `whence`, which is assumed to be a module."""
@@ -91,6 +93,39 @@ def fix_up_databases(databases):
                         "ATOMIC_REQUESTS is set to %r; overriding to False."
                         % (atomic_requests,), RuntimeWarning, 2)
             database["ATOMIC_REQUESTS"] = False
+
+
+class LazySettings(django.conf.LazySettings):
+    """Prevent Django from mangling warnings settings.
+
+    At present, Django adds a single filter that surfaces all deprecation
+    warnings, but MAAS handles them differently. Django doesn't appear to give
+    a way to prevent it from doing its thing, so we must undo its changes.
+
+    Deprecation warnings in production environments are not desirable as they
+    are a developer tool, and not something an end user can reasonably do
+    something about. This brings control of warnings back into MAAS's control.
+    """
+
+    def _configure_logging(self):
+        # This is a copy of *half* of Django's `_configure_logging`, omitting
+        # the problematic bits.
+        if self.LOGGING_CONFIG:
+            from django.utils.log import DEFAULT_LOGGING
+            from django.utils.module_loading import import_by_path
+            # First find the logging configuration function ...
+            logging_config_func = import_by_path(self.LOGGING_CONFIG)
+            logging_config_func(DEFAULT_LOGGING)
+            # ... then invoke it with the logging settings
+            if self.LOGGING:
+                logging_config_func(self.LOGGING)
+
+
+# Install our `LazySettings` as the Django-global settings class. First,
+# ensure that Django hasn't yet loaded its settings.
+assert not django.conf.settings.configured
+# This is needed because Django's `LazySettings` overrides `__setattr__`.
+object.__setattr__(django.conf.settings, "__class__", LazySettings)
 
 
 try:
