@@ -7,14 +7,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     "UserHandler",
-    ]
+]
 
 from django.contrib.auth.models import User
 from maasserver.models.user import SYSTEM_USERS
@@ -37,10 +37,11 @@ class UserHandler(Handler):
             "last_name",
             "email",
             "is_superuser",
-            ]
+            "sshkeys_count",
+        ]
         listen_channels = [
             "user",
-            ]
+        ]
 
     def get_queryset(self):
         """Return `QuerySet` for users only viewable by `user`."""
@@ -65,6 +66,10 @@ class UserHandler(Handler):
             return obj
         else:
             raise HandlerDoesNotExistError(params[self._meta.pk])
+
+    def dehydrate(self, obj, data, for_list=False):
+        data["sshkeys_count"] = obj.sshkey_set.count()
+        return data
 
     def auth_user(self, params):
         """Return the authenticated user."""

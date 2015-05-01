@@ -545,6 +545,20 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return false;
         };
 
+        // Return True if unable to deploy because of missing ssh keys.
+        $scope.isSSHKeyError = function() {
+            // Never a deploy error when there is an action error.
+            if($scope.isActionError()) {
+                return false;
+            }
+            if(angular.isObject($scope.actionOption) &&
+                $scope.actionOption.name === "deploy" &&
+                UsersManager.getSSHKeyCount() === 0) {
+                return true;
+            }
+            return false;
+        };
+
         // Called when the actionOption has changed.
         $scope.actionOptionChanged = function() {
             // Clear the action error.

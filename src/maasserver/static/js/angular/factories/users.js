@@ -37,6 +37,16 @@ angular.module('MAAS').factory(
             return this._authUser;
         };
 
+        // Return true if the authenticated user has uploaded at
+        // least one SSH key.
+        UsersManager.prototype.getSSHKeyCount = function() {
+            authuser = this._authUser;
+            if(!angular.isObject(authuser)) {
+                return 0;
+            }
+            return authuser.sshkeys_count;
+        };
+
         // Load the authencticated user.
         UsersManager.prototype._loadAuthUser = function() {
             var self = this;

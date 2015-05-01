@@ -16,14 +16,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'compile_node_actions',
-    ]
+]
 
 from abc import (
     ABCMeta,
@@ -31,7 +31,6 @@ from abc import (
     abstractproperty,
 )
 from collections import OrderedDict
-from textwrap import dedent
 
 from crochet import TimeoutError
 from maasserver import locks
@@ -283,17 +282,6 @@ class Deploy(NodeAction):
     permission = NODE_PERMISSION.VIEW
     installable_only = True
 
-    def inhibit(self):
-        """The user must have an SSH key, so that they access the node."""
-        if not len(self.user.sshkey_set.all()) > 0:
-            return dedent("""\
-                You have no means of accessing the node after starting it.
-                Register an SSH key first.  Do this on your Preferences
-                screen: click on the menu with your name at the top of the
-                page, select Preferences, and look for the "SSH keys" section.
-                """)
-        return None
-
     def execute(self, osystem=None, distro_series=None):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
@@ -314,10 +302,6 @@ class Deploy(NodeAction):
                 % self.node.hostname)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
-
-    def is_actionable(self):
-        is_actionable = super(Deploy, self).is_actionable()
-        return is_actionable and len(self.user.sshkey_set.all()) > 0
 
 
 class PowerOn(NodeAction):
@@ -439,7 +423,7 @@ ACTION_CLASSES = (
     MarkFixed,
     SetZone,
     Delete,
-    )
+)
 
 
 ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)

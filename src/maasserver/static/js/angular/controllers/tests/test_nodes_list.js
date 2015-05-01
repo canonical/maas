@@ -4,6 +4,21 @@
  * Unit tests for NodesListController.
  */
 
+// Make a fake user.
+var userId = 0;
+function makeUser() {
+    return {
+        id: userId++,
+        username: makeName("username"),
+        first_name: makeName("first_name"),
+        last_name: makeName("last_name"),
+        email: makeName("email"),
+        is_superuser: false,
+        sshkeys_count: 0
+    };
+}
+
+
 describe("NodesListController", function() {
 
     // Load the MAAS module.
@@ -29,6 +44,7 @@ describe("NodesListController", function() {
         DevicesManager = $injector.get("DevicesManager");
         GeneralManager = $injector.get("GeneralManager");
         ZonesManager = $injector.get("ZonesManager");
+        UsersManager = $injector.get("UsersManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
@@ -125,11 +141,13 @@ describe("NodesListController", function() {
             "osinfo");
     });
 
-    it("calls loadManagers with NodesManager, DevicesManager, GeneralManager",
+    it("calls loadManagers with NodesManager, DevicesManager," +
+        "GeneralManager, UsersManager",
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [NodesManager, DevicesManager, GeneralManager, ZonesManager]);
+                [NodesManager, DevicesManager, GeneralManager,
+                 ZonesManager, UsersManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -666,7 +684,7 @@ describe("NodesListController", function() {
                     expect($scope.isActionError(tab)).toBe(true);
                 });
 
-                it("returns false if deploy action not missing osinfo",
+                it("returns true if action missing ssh keys",
                     function() {
                         var controller = makeController();
                         $scope.tabs[tab].actionOption = {
@@ -676,7 +694,58 @@ describe("NodesListController", function() {
                         $scope.osinfo = {
                             osystems: [makeName("os")]
                         };
+                        var firstUser = makeUser();
+                        UsersManager._authUser = firstUser;
+                        firstUser.sshkeys_count = 0;
+                        expect($scope.isActionError(tab)).toBe(true);
+                    });
+
+                it("returns false if deploy action not missing osinfo or keys",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            name: "deploy"
+                        };
+                        $scope.tabs[tab].actionErrorCount = 0;
+                        $scope.osinfo = {
+                            osystems: [makeName("os")]
+                        };
+                        var firstUser = makeUser();
+                        firstUser.sshkeys_count = 1;
+                        UsersManager._authUser = firstUser;
                         expect($scope.isActionError(tab)).toBe(false);
+                    });
+            });
+
+            describe("isSSHKeyError", function() {
+
+                it("returns false if actionErrorCount > 0", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionErrorCount = 2;
+                    expect($scope.isSSHKeyError(tab)).toBe(false);
+                });
+
+                it("returns true if deploy action missing ssh keys",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            name: "deploy"
+                        };
+                        $scope.tabs[tab].actionErrorCount = 0;
+                        expect($scope.isSSHKeyError(tab)).toBe(true);
+                    });
+
+                it("returns false if deploy action not missing ssh keys",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            name: "deploy"
+                        };
+                        $scope.tabs[tab].actionErrorCount = 0;
+                        var firstUser = makeUser();
+                        firstUser.sshkeys_count = 1;
+                        UsersManager._authUser = firstUser;
+                        expect($scope.isSSHKeyError(tab)).toBe(false);
                     });
             });
 

@@ -4,6 +4,21 @@
  * Unit tests for NodeDetailsController.
  */
 
+// Make a fake user.
+var userId = 0;
+function makeUser() {
+    return {
+        id: userId++,
+        username: makeName("username"),
+        first_name: makeName("first_name"),
+        last_name: makeName("last_name"),
+        email: makeName("email"),
+        is_superuser: false,
+        sshkeys_count: 0
+    };
+}
+
+
 describe("NodeDetailsController", function() {
 
     // Load the MAAS module.
@@ -794,6 +809,51 @@ describe("NodeDetailsController", function() {
                 osystems: [makeName("os")]
             };
             expect($scope.isDeployError()).toBe(false);
+        });
+    });
+
+
+    describe("isSSHKeyError", function() {
+
+        it("returns true if deploy action and missing ssh keys", function() {
+            var controller = makeController();
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            var firstUser = makeUser();
+            firstUser.sshkeys_count = 0;
+            UsersManager._authUser = firstUser;
+            expect($scope.isSSHKeyError()).toBe(true);
+        });
+
+        it("returns false if actionOption null", function() {
+            var controller = makeController();
+            var firstUser = makeUser();
+            firstUser.sshkeys_count = 1;
+            UsersManager._authUser = firstUser;
+            expect($scope.isSSHKeyError()).toBe(false);
+        });
+
+        it("returns false if not deploy action", function() {
+            var controller = makeController();
+            $scope.actionOption = {
+                name: "release"
+            };
+            var firstUser = makeUser();
+            firstUser.sshkeys_count = 1;
+            UsersManager._authUser = firstUser;
+            expect($scope.isSSHKeyError()).toBe(false);
+        });
+
+        it("returns false if ssh keys present", function() {
+            var controller = makeController();
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            var firstUser = makeUser();
+            firstUser.sshkeys_count = 1;
+            UsersManager._authUser = firstUser;
+            expect($scope.isSSHKeyError()).toBe(false);
         });
     });
 

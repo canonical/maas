@@ -381,21 +381,20 @@ class TestDeployAction(MAASServerTestCase):
         self.assertIsNone(
             Deploy(factory.make_Node(), user_with_key).inhibit())
 
-    def test_Deploy_inhibit_disallows_user_without_SSH_key(self):
+    def test_Deploy_inhibit_allows_user_without_SSH_key(self):
         user_without_key = factory.make_User()
         action = Deploy(factory.make_Node(), user_without_key)
         inhibition = action.inhibit()
-        self.assertIsNotNone(inhibition)
-        self.assertIn("SSH key", inhibition)
+        self.assertIsNone(inhibition)
 
-    def test_Deploy_is_not_actionable_if_user_doesnt_have_ssh_keys(self):
+    def test_Deploy_is_actionable_if_user_doesnt_have_ssh_keys(self):
         owner = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=owner)
-        self.assertFalse(Deploy(node, owner).is_actionable())
+        self.assertTrue(Deploy(node, owner).is_actionable())
 
-    def test_Deploy_is_actionable_if_user_doesnt_have_ssh_keys(self):
+    def test_Deploy_is_actionable_if_user_has_ssh_keys(self):
         owner = factory.make_User()
         factory.make_SSHKey(owner)
         node = factory.make_Node(

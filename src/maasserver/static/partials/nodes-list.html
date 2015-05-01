@@ -69,7 +69,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__feedback ng-hide" data-ng-show="isActionError('nodes')">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <p class="page-header__feedback-message info" data-ng-hide="isDeployError('nodes')">
+                    <p class="page-header__feedback-message info" data-ng-hide="isDeployError('nodes') || isSSHKeyError('nodes')">
                         {$ tabs.nodes.actionErrorCount $}
                         <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         cannot be {$ tabs.nodes.actionOption.sentence $}. To proceed, update your selection.
@@ -79,6 +79,11 @@
                         {$ tabs.nodes.selectedItems.length $}
                         <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         cannot be {$ tabs.nodes.actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                    </p>
+                    <p class="page-header__feedback-message info ng-hide" data-ng-show="isSSHKeyError('nodes')">
+                        {$ tabs.nodes.selectedItems.length $}
+                        <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                        cannot be {$ tabs.nodes.actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                     </p>
                 </div>
             </div>

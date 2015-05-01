@@ -7,8 +7,10 @@
 angular.module('MAAS').controller('NodesListController', [
     '$scope', '$rootScope', '$routeParams', 'NodesManager', 'DevicesManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
+    'UsersManager',
     function($scope, $rootScope, $routeParams, NodesManager, DevicesManager,
-        GeneralManager, ManagerHelperService, SearchService, ZonesManager) {
+        GeneralManager, ManagerHelperService, SearchService, ZonesManager,
+        UsersManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -311,8 +313,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.isActionError = function(tab) {
             if(angular.isObject($scope.tabs[tab].actionOption) &&
                 $scope.tabs[tab].actionOption.name === "deploy" &&
-                $scope.osinfo.osystems.length === 0 &&
-                $scope.tabs[tab].actionErrorCount === 0) {
+                $scope.tabs[tab].actionErrorCount === 0 &&
+                ($scope.osinfo.osystems.length === 0 ||
+                UsersManager.getSSHKeyCount() === 0)) {
                 return true;
             }
             return $scope.tabs[tab].actionErrorCount !== 0;
@@ -326,6 +329,19 @@ angular.module('MAAS').controller('NodesListController', [
             if(angular.isObject($scope.tabs[tab].actionOption) &&
                 $scope.tabs[tab].actionOption.name === "deploy" &&
                 $scope.osinfo.osystems.length === 0) {
+                return true;
+            }
+            return false;
+        };
+
+        // Return True if unable to deploy because of missing ssh keys.
+        $scope.isSSHKeyError = function(tab) {
+            if($scope.tabs[tab].actionErrorCount !== 0) {
+                return false;
+            }
+            if(angular.isObject($scope.tabs[tab].actionOption) &&
+                $scope.tabs[tab].actionOption.name === "deploy" &&
+                UsersManager.getSSHKeyCount() === 0) {
                 return true;
             }
             return false;
@@ -401,7 +417,8 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Load NodesManager, DevicesManager, GeneralManager and ZonesManager.
         ManagerHelperService.loadManagers(
-            [NodesManager, DevicesManager, GeneralManager, ZonesManager]).then(
+            [NodesManager, DevicesManager, GeneralManager, ZonesManager,
+            UsersManager]).then(
             function() {
                 $scope.loading = false;
             });

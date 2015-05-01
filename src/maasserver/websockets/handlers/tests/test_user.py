@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -24,7 +24,7 @@ from maasserver.websockets.handlers.user import UserHandler
 
 class TestUserHandler(MAASServerTestCase):
 
-    def dehydrate_user(self, user):
+    def dehydrate_user(self, user, sshkeys_count=0):
         data = {
             "id": user.id,
             "username": user.username,
@@ -32,7 +32,8 @@ class TestUserHandler(MAASServerTestCase):
             "last_name": user.last_name,
             "email": user.email,
             "is_superuser": user.is_superuser,
-            }
+            "sshkeys_count": sshkeys_count,
+        }
         return data
 
     def test_get_for_admin(self):
@@ -64,7 +65,7 @@ class TestUserHandler(MAASServerTestCase):
         expected_users = [
             self.dehydrate_user(user)
             for user in User.objects.exclude(username__in=SYSTEM_USERS)
-            ]
+        ]
         self.assertItemsEqual(
             expected_users,
             handler.list({}))
