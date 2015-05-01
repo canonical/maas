@@ -465,6 +465,11 @@ class NodeHandler(TimestampedModelHandler):
     def check_power(self, params):
         """Check the power state of the node."""
         obj = self.get_object(params)
+        if not obj.installable:
+            raise HandlerError(
+                "%s: Unable to query power state; not an installable node" %
+                obj.hostname)
+
         ng = obj.nodegroup
 
         try:

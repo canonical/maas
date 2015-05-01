@@ -332,3 +332,14 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         self.assertThat(
             returned_system_ids, Not(Contains(broken_node.system_id)))
+
+    def test_does_not_return_power_info_for_devices(self):
+        cluster = factory.make_NodeGroup()
+        device = factory.make_Device()
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        returned_system_ids = [
+            power_params['system_id'] for power_params in power_parameters]
+
+        self.assertThat(
+            returned_system_ids, Not(Contains(device.system_id)))

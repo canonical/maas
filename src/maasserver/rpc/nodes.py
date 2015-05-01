@@ -74,7 +74,8 @@ def list_cluster_nodes_power_parameters(uuid):
     else:
         power_info_by_node = (
             (node, node.get_effective_power_info())
-            for node in nodegroup.node_set.exclude(status=NODE_STATUS.BROKEN)
+            for node in nodegroup.node_set.exclude(
+                status=NODE_STATUS.BROKEN).exclude(installable=False)
         )
         return [
             {

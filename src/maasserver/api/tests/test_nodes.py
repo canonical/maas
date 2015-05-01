@@ -1871,6 +1871,12 @@ class TestPowerState(APITestCase):
         self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
         self.assertIn(error_message, response.content)
 
+    def test__returns_400_if_device(self):
+        device = factory.make_Device()
+        response = self.client.get(
+            self.get_node_uri(device), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.BAD_REQUEST, response)
+
     def test__returns_actual_state(self):
         node = factory.make_Node(power_type="ipmi")
         random_state = random.choice(["on", "off", "error"])

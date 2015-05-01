@@ -111,6 +111,11 @@ def update_power_state_of_node(system_id):
         # abandon this task; there's no point even logging.
         return
 
+    if not node.installable:
+        # This is actually a device, not a node. We don't support power queries
+        # for devices.
+        return
+
     if power_info is None:
         # The node does not have a valid power type, so we can't query it.
         # Logging this is just spam; this problem is reported elsewhere, so
