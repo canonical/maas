@@ -144,7 +144,6 @@ setup(
             'coverage',
             'django-nose',
             'lxml',
-            'sst',
             'fixtures',
             'mock',
             'nose',

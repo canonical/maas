@@ -1,7 +1,7 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Run YUI3 unit tests with SST (http://testutils.org/sst/)."""
+"""Run YUI3 unit tests with Selenium."""
 
 from __future__ import (
     absolute_import,
@@ -27,7 +27,7 @@ from os.path import (
     relpath,
 )
 import sys
-from unittest import SkipTest
+from time import sleep
 
 from maastesting import (
     root,
@@ -36,17 +36,12 @@ from maastesting import (
 from maastesting.fixtures import (
     DisplayFixture,
     ProxiesDisabledFixture,
-    SSTFixture,
+    SeleniumFixture,
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list
 from nose.tools import nottest
-from sst.actions import (
-    assert_text,
-    get_element,
-    go_to,
-    wait_for,
-)
+from provisioningserver.utils.twisted import retries
 from testtools import clone_test_with_new_id
 
 # Nose is over-zealous.
@@ -57,9 +52,9 @@ def get_browser_names_from_env():
     """Parse the environment variable ``MAAS_TEST_BROWSERS`` to get a list of
     the browsers to use for the JavaScript tests.
 
-    Returns ['Firefox'] if the environment variable is not present.
+    Returns ['Chrome', 'PhantomJS'] if the environment variable is not set.
     """
-    names = os.environ.get('MAAS_TEST_BROWSERS', 'Firefox')
+    names = os.environ.get('MAAS_TEST_BROWSERS', 'Chrome, PhantomJS')
     return extract_word_list(names)
 
 
@@ -119,9 +114,20 @@ class YUIUnitTestsBase:
     def test_YUI3_unit_tests(self):
         # Load the page and then wait for #suite to contain
         # 'done'.  Read the results in '#test_results'.
-        go_to(self.test_url)
-        wait_for(assert_text, 'suite', 'done')
-        results = json.loads(get_element(id='test_results').text)
+
+        self.browser.get(self.test_url)
+
+        for elapsed, remaining, wait in retries(intervals=0.2):
+            suite = self.browser.find_element_by_id("suite")
+            if suite.text == "done":
+                results = self.browser.find_element_by_id("test_results")
+                results = json.loads(results.text)
+                break
+            else:
+                sleep(wait)
+        else:
+            self.fail("Timed-out after %ds" % elapsed)
+
         if results['failed'] != 0:
             message = '%d test(s) failed.\n\n%s' % (
                 results['failed'], yui3.get_failed_tests_message(results))
@@ -129,12 +135,6 @@ class YUIUnitTestsBase:
 
 
 class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        raise SkipTest(
-            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
-            "All tests using Selenium are breaking.")
 
     scenarios = tuple(
         (relpath(path, root), {"test_url": "file://%s" % abspath(path)})
@@ -148,5 +148,6 @@ class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
         with DisplayFixture():
             for browser_name in get_browser_names_from_env():
                 browser_test = self.clone("local:%s" % browser_name)
-                with SSTFixture(browser_name):
+                with SeleniumFixture(browser_name) as selenium:
+                    browser_test.browser = selenium.browser
                     browser_test(result)

@@ -17,7 +17,7 @@ __all__ = [
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
-    "SSTFixture",
+    "SeleniumFixture",
     "TempDirectory",
 ]
 
@@ -39,6 +39,7 @@ from fixtures import (
     Fixture,
 )
 from testtools.monkey import MonkeyPatcher
+from twisted.python.reflect import namedObject
 
 
 class ImportErrorFixture(Fixture):
@@ -154,21 +155,41 @@ class DisplayFixture(Fixture):
             raise CalledProcessError(self.process.returncode, self.command)
 
 
-class SSTFixture(Fixture):
-    """Setup a javascript-enabled testing browser instance with SST."""
+class SeleniumFixture(Fixture):
+    """Set-up a JavaScript-enabled testing browser instance."""
+
+    # browser-name -> (driver-name, driver-args)
+    browsers = {
+        "Chrome": (
+            b"selenium.webdriver.Chrome",
+            ("/usr/lib/chromium-browser/chromedriver",),
+        ),
+        "Firefox": (
+            b"selenium.webdriver.Firefox",
+            (),
+        ),
+        "PhantomJS": (
+            b"selenium.webdriver.PhantomJS",
+            (),
+        ),
+    }
 
     logger_names = ['selenium.webdriver.remote.remote_connection']
 
     def __init__(self, browser_name):
-        self.browser_name = browser_name
+        super(SeleniumFixture, self).__init__()
+        if browser_name in self.browsers:
+            driver, driver_args = self.browsers[browser_name]
+            self.driver = namedObject(driver)
+            self.driver_args = driver_args
+        else:
+            raise ValueError("Unrecognised browser: %s" % (browser_name,))
 
     def setUp(self):
-        super(SSTFixture, self).setUp()
-        # Import late to avoid hard dependency.
-        from sst.actions import start, stop
-        start(self.browser_name)
+        super(SeleniumFixture, self).setUp()
+        self.browser = self.driver(*self.driver_args)
         self.useFixture(LoggerSilencerFixture(self.logger_names))
-        self.addCleanup(stop)
+        self.addCleanup(self.browser.quit)
 
 
 class ProxiesDisabledFixture(Fixture):

@@ -12,6 +12,7 @@ make
 nodejs-legacy
 npm
 pep8
+phantomjs
 pyflakes
 python-coverage
 python-extras
