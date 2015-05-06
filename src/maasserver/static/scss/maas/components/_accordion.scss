@@ -46,7 +46,7 @@
                 background-image: url('../img/icons/accordion-close.svg');
 
                 & + .accordion__tab-content {
-                    max-height: 1000px;
+                    max-height: 3000px;
                     transition: max-height .5s ease-in;
                 }
             }
