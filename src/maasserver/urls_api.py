@@ -81,6 +81,7 @@ from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
 )
+from maasserver.api.not_found import not_found_handler
 from maasserver.api.physicalblockdevices import PhysicalBlockDeviceHandler
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.results import NodeResultsHandler
@@ -201,21 +202,21 @@ urlpatterns = patterns(
 urlpatterns += patterns(
     '',
     url(
-        r'^nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
+        r'^nodes/(?P<system_id>[^/]+)/macs/(?P<mac_address>.+)/$',
         node_mac_handler, name='node_mac_handler'),
     url(
-        r'^nodes/(?P<system_id>[\w\-]+)/macs/$', node_macs_handler,
+        r'^nodes/(?P<system_id>[^/]+)/macs/$', node_macs_handler,
         name='node_macs_handler'),
 
     url(
-        r'^nodes/(?P<system_id>[\w\-]+)/$', node_handler,
+        r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),
     url(r'^nodes/$', nodes_handler, name='nodes_handler'),
     # For backward compatibility, handle obviously repeated paths as if they
     # were not repeated. See https://bugs.launchpad.net/maas/+bug/1131323.
     url(r'^nodes/.*/nodes/$', nodes_handler),
     url(
-        r'^devices/(?P<system_id>[\w\-]+)/$', device_handler,
+        r'^devices/(?P<system_id>[^/]+)/$', device_handler,
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
     url(r'^events/$', events_handler, name='events_handler'),
@@ -230,7 +231,7 @@ urlpatterns += patterns(
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/$',
         boot_images_handler, name='boot_images_handler'),
     url(
-        r'^networks/(?P<name>[\w\-]+)/$',
+        r'^networks/(?P<name>[^/]+)/$',
         network_handler, name='network_handler'),
     url(r'^networks/$', networks_handler, name='networks_handler'),
     url(r'^files/$', files_handler, name='files_handler'),
@@ -244,7 +245,7 @@ urlpatterns += patterns(
         r'^account/prefs/sshkeys/(?P<keyid>[^/]+)/$', sshkey_handler,
         name='sshkey_handler'),
     url(r'^account/prefs/sshkeys/$', sshkeys_handler, name='sshkeys_handler'),
-    url(r'^tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
+    url(r'^tags/(?P<name>[^/]+)/$', tag_handler, name='tag_handler'),
     url(r'^tags/$', tags_handler, name='tags_handler'),
     url(
         r'^commissioning-results/$',
@@ -309,4 +310,11 @@ urlpatterns += patterns(
         name='boot_source_selection_backward_handler'),
     url(r'^physicalblockdevice/(?P<device_id>[^/]+)/$',
         physicalblockdevice_handler, name='physicalblockdevice_handler'),
+)
+
+
+# Last resort: return an API 404 response.
+urlpatterns += patterns(
+    '',
+    url(r'^.*', not_found_handler, name='handler_404')
 )

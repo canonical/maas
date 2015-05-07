@@ -205,6 +205,17 @@ class TestNodeAPI(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual("Not Found", response.content)
+
+    def test_GET_returns_404_if_node_name_contains_invalid_characters(self):
+        # When the requested name contains characters that are invalid for
+        # a hostname, the result of the request is a 404 response.
+        url = reverse('node_handler', args=['invalid-uuid-#...'])
+
+        response = self.client.get(url)
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual("Not Found", response.content)
 
     def test_GET_returns_owner_name_when_allocated_to_self(self):
         node = factory.make_Node(

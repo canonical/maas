@@ -8,10 +8,6 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
-from maasserver.forms import (
-    ClaimIPForm,
-    ReleaseIPForm,
-)
 
 
 str = None
@@ -37,8 +33,12 @@ from maasserver.clusterrpc.dhcp import (
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
+    MAASAPIValidationError,
     StaticIPAlreadyExistsForMACAddress,
-    MAASAPIValidationError
+)
+from maasserver.forms import (
+    ClaimIPForm,
+    ReleaseIPForm,
 )
 from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
