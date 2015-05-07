@@ -527,12 +527,12 @@ class TestPowerOnAction(MAASServerTestCase):
             user.has_perm(NODE_PERMISSION.EDIT, node))
         self.assertFalse(PowerOn(node, user).is_permitted())
 
-    def test_PowerOn_is_not_actionable_if_node_doesnt_have_an_owner(self):
+    def test_PowerOn_is_actionable_if_node_doesnt_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ether_wake')
-        self.assertFalse(PowerOn(node, owner).is_actionable())
+        self.assertTrue(PowerOn(node, owner).is_actionable())
 
     def test_PowerOn_is_actionable_if_node_does_have_an_owner(self):
         owner = factory.make_User()

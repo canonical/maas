@@ -224,8 +224,11 @@ class Commission(NodeAction):
     display = "Commission"
     display_sentence = "commissioned"
     actionable_statuses = (
-        NODE_STATUS.NEW, NODE_STATUS.FAILED_COMMISSIONING, NODE_STATUS.READY,
-        NODE_STATUS.BROKEN)
+        NODE_STATUS.NEW,
+        NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.READY,
+        NODE_STATUS.BROKEN,
+    )
     permission = NODE_PERMISSION.ADMIN
     installable_only = True
 
@@ -309,7 +312,11 @@ class PowerOn(NodeAction):
     name = "on"
     display = "Power on"
     display_sentence = "powered on"
-    actionable_statuses = (NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED)
+    actionable_statuses = (
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.BROKEN,
+    )
     permission = NODE_PERMISSION.EDIT
     installable_only = True
 
@@ -326,7 +333,7 @@ class PowerOn(NodeAction):
 
     def is_actionable(self):
         is_actionable = super(PowerOn, self).is_actionable()
-        return is_actionable and self.node.owner is not None
+        return is_actionable
 
 
 FAILED_STATUSES = [
@@ -364,10 +371,13 @@ class Release(NodeAction):
     display = "Release"
     display_sentence = "released"
     actionable_statuses = (
-        NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
-        NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.FAILED_RELEASING,
-        NODE_STATUS.FAILED_DISK_ERASING)
+        NODE_STATUS.FAILED_DISK_ERASING,
+    )
     permission = NODE_PERMISSION.EDIT
     installable_only = True
 
@@ -385,9 +395,13 @@ class MarkBroken(NodeAction):
     display = "Mark broken"
     display_sentence = "marked broken"
     actionable_statuses = [
-        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.ALLOCATED, NODE_STATUS.RELEASING,
-        NODE_STATUS.DEPLOYING, NODE_STATUS.DISK_ERASING] + FAILED_STATUSES
+        NODE_STATUS.NEW,
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.RELEASING,
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.DISK_ERASING,
+    ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
     installable_only = True
 
