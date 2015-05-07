@@ -7,14 +7,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     "NodeHandler",
-    ]
+]
 
 import logging
 from operator import itemgetter
@@ -83,7 +83,7 @@ class NodeHandler(TimestampedModelHandler):
             'action',
             'set_active',
             'check_power',
-            ]
+        ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
             "installable",
@@ -92,7 +92,7 @@ class NodeHandler(TimestampedModelHandler):
             "token",
             "netboot",
             "agent_name",
-            ]
+        ]
         list_fields = [
             "system_id",
             "hostname",
@@ -102,10 +102,10 @@ class NodeHandler(TimestampedModelHandler):
             "power_state",
             "pxe_mac",
             "zone",
-            ]
+        ]
         listen_channels = [
             "node",
-            ]
+        ]
 
     def get_queryset(self):
         """Return `QuerySet` for nodes only vewable by `user`."""
@@ -125,7 +125,7 @@ class NodeHandler(TimestampedModelHandler):
         return {
             "id": zone.id,
             "name": zone.name,
-            }
+        }
 
     def dehydrate_nodegroup(self, nodegroup):
         """Return the nodegroup name."""
@@ -137,7 +137,7 @@ class NodeHandler(TimestampedModelHandler):
                 "uuid": nodegroup.uuid,
                 "name": nodegroup.name,
                 "cluster_name": nodegroup.cluster_name,
-                }
+            }
 
     def dehydrate_routers(self, routers):
         """Return list of routers."""
@@ -146,7 +146,7 @@ class NodeHandler(TimestampedModelHandler):
         return [
             "%s" % router
             for router in routers
-            ]
+        ]
 
     def dehydrate_power_parameters(self, power_parameters):
         """Return power_parameters None if empty."""
@@ -165,7 +165,7 @@ class NodeHandler(TimestampedModelHandler):
         data["extra_macs"] = [
             "%s" % mac_address.mac_address
             for mac_address in obj.get_extra_macs()
-            ]
+        ]
         pxe_mac = obj.get_pxe_mac()
         if pxe_mac is not None:
             data["pxe_mac"] = "%s" % pxe_mac
@@ -185,7 +185,7 @@ class NodeHandler(TimestampedModelHandler):
         data["tags"] = [
             tag.name
             for tag in obj.tags.all()
-            ]
+        ]
         data["networks"] = self.dehydrate_networks(obj)
         if not for_list:
             data["osystem"] = obj.get_osystem()
@@ -197,7 +197,7 @@ class NodeHandler(TimestampedModelHandler):
             interfaces = [
                 self.dehydrate_interface(mac_address, obj)
                 for mac_address in mac_addresses
-                ]
+            ]
             data["interfaces"] = sorted(
                 interfaces, key=itemgetter("is_pxe"), reverse=True)
 
@@ -205,7 +205,7 @@ class NodeHandler(TimestampedModelHandler):
             data["physical_disks"] = [
                 self.dehydrate_physicalblockdevice(blockdevice)
                 for blockdevice in physicalblockdevices
-                ]
+            ]
 
             # Events
             data["events"] = self.dehydrate_events(obj)
@@ -231,7 +231,7 @@ class NodeHandler(TimestampedModelHandler):
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
-            }
+        }
 
     def dehydrate_interface(self, mac_address, obj):
         """Dehydrate a `mac_address` into a interface definition."""
@@ -243,7 +243,7 @@ class NodeHandler(TimestampedModelHandler):
                 "ip_address": "%s" % ip_address.ip,
             }
             for ip_address in mac_address.ip_addresses.all()
-            ]
+        ]
 
         # Dynamically assigned ip addresses come from parsing the leases file.
         # This will also contain the statically assigned ip addresses as they
@@ -252,7 +252,7 @@ class NodeHandler(TimestampedModelHandler):
         static_addresses = [
             ip_address["ip_address"]
             for ip_address in ip_addresses
-            ]
+        ]
         ip_addresses += [
             {
                 "type": "dynamic",
@@ -261,7 +261,7 @@ class NodeHandler(TimestampedModelHandler):
             for lease in obj.nodegroup.dhcplease_set.all()
             if (lease.mac == mac_address.mac_address and
                 lease.ip not in static_addresses)
-            ]
+        ]
 
         # Connected networks.
         networks = [
@@ -273,14 +273,14 @@ class NodeHandler(TimestampedModelHandler):
                 "vlan": network.vlan_tag,
             }
             for network in mac_address.networks.all()
-            ]
+        ]
         return {
             "id": mac_address.id,
             "is_pxe": mac_address == obj.pxe_mac,
             "mac_address": "%s" % mac_address.mac_address,
             "ip_addresses": ip_addresses,
             "networks": networks,
-            }
+        }
 
     def dehydrate_summary_output(self, obj, data):
         """Dehydrate the machine summary output."""
@@ -316,7 +316,7 @@ class NodeHandler(TimestampedModelHandler):
             }
             for result in NodeResult.objects.filter(
                 node=obj, result_type=result_type)
-            ]
+        ]
 
     def dehydrate_events(self, obj):
         """Dehydrate the node events.
@@ -337,12 +337,12 @@ class NodeHandler(TimestampedModelHandler):
                     "name": event.type.name,
                     "description": event.type.description,
                     "level": dehydrate_event_type_level(event.type.level),
-                    },
+                },
                 "description": event.description,
                 "created": dehydrate_datetime(event.created),
             }
             for event in events
-            ]
+        ]
 
     def dehydrate_networks(self, obj):
         """Dehydrate all the networks this node belongs to."""
@@ -365,7 +365,7 @@ class NodeHandler(TimestampedModelHandler):
             blockdevice.physicalblockdevice
             for blockdevice in obj.blockdevice_set.all()
             if hasattr(blockdevice, "physicalblockdevice")
-            ]
+        ]
 
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
@@ -432,6 +432,11 @@ class NodeHandler(TimestampedModelHandler):
         node_obj = Node.objects.get(system_id=data['system_id'])
         node_obj.power_parameters = params.get("power_parameters", {})
         node_obj.save()
+
+        # Start the commissioning process right away, which has the
+        # desired side effect of initializing the node's power state.
+        node_obj.start_commissioning(self.user)
+
         return self.full_dehydrate(node_obj)
 
     def update(self, params):

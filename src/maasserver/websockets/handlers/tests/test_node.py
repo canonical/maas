@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -54,9 +54,13 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers import node as node_module
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
-from maasserver.websockets.handlers.node import NodeHandler
+from maasserver.websockets.handlers.node import (
+    Node as node_model,
+    NodeHandler,
+)
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
@@ -89,7 +93,7 @@ class TestNodeHandler(MAASServerTestCase):
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
-            }
+        }
 
     def dehydrate_event(self, event):
         return {
@@ -99,10 +103,10 @@ class TestNodeHandler(MAASServerTestCase):
                 "name": event.type.name,
                 "description": event.type.description,
                 "level": dehydrate_event_type_level(event.type.level),
-                },
+            },
             "description": event.description,
             "created": dehydrate_datetime(event.created),
-            }
+        }
 
     def dehydrate_node_result(self, result):
         return {
@@ -112,7 +116,7 @@ class TestNodeHandler(MAASServerTestCase):
             "data": result.data,
             "line_count": len(result.data.splitlines()),
             "created": dehydrate_datetime(result.created),
-            }
+        }
 
     def dehydrate_interface(self, mac_address, node):
         ip_addresses = [
@@ -122,11 +126,11 @@ class TestNodeHandler(MAASServerTestCase):
                 "ip_address": "%s" % ip_address.ip,
             }
             for ip_address in mac_address.ip_addresses.all()
-            ]
+        ]
         static_addresses = [
             ip_address["ip_address"]
             for ip_address in ip_addresses
-            ]
+        ]
         ip_addresses += [
             {
                 "type": "dynamic",
@@ -135,7 +139,7 @@ class TestNodeHandler(MAASServerTestCase):
             for lease in node.nodegroup.dhcplease_set.all()
             if (lease.mac == mac_address.mac_address and
                 lease.ip not in static_addresses)
-            ]
+        ]
         networks = [
             {
                 "id": network.id,
@@ -145,7 +149,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "vlan": network.vlan_tag,
             }
             for network in mac_address.networks.all()
-            ]
+        ]
         return {
             "id": mac_address.id,
             "is_pxe": mac_address == node.pxe_mac,
@@ -158,7 +162,7 @@ class TestNodeHandler(MAASServerTestCase):
         return sorted([
             self.dehydrate_interface(mac_address, node)
             for mac_address in node.macaddress_set.all().order_by('id')
-            ], key=itemgetter('is_pxe'), reverse=True)
+        ], key=itemgetter('is_pxe'), reverse=True)
 
     def get_all_storage_tags(self, physicalblockdevices):
         tags = set()
@@ -187,7 +191,7 @@ class TestNodeHandler(MAASServerTestCase):
                 self.dehydrate_node_result(result)
                 for result in NodeResult.objects.filter(
                     node=node, result_type=RESULT_TYPE.COMMISSIONING)
-                ],
+            ],
             "cpu_count": node.cpu_count,
             "created": dehydrate_datetime(node.created),
             "disable_ipv4": node.disable_ipv4,
@@ -198,12 +202,12 @@ class TestNodeHandler(MAASServerTestCase):
             "events": [
                 self.dehydrate_event(event)
                 for event in events
-                ],
+            ],
             "events_total": Event.objects.filter(node=node).count(),
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
-                ],
+            ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
             "id": node.id,
@@ -211,7 +215,7 @@ class TestNodeHandler(MAASServerTestCase):
                 self.dehydrate_node_result(result)
                 for result in NodeResult.objects.filter(
                     node=node, result_type=RESULT_TYPE.INSTALLATION)
-                ],
+            ],
             "interfaces": self.dehydrate_interfaces(node),
             "license_key": node.license_key,
             "memory": node.display_memory(),
@@ -219,19 +223,19 @@ class TestNodeHandler(MAASServerTestCase):
                 network.name
                 for mac_address in node.macaddress_set.all()
                 for network in mac_address.get_networks()
-                }),
+            }),
             "nodegroup": {
                 "id": node.nodegroup.id,
                 "uuid": node.nodegroup.uuid,
                 "name": node.nodegroup.name,
                 "cluster_name": node.nodegroup.cluster_name,
-                },
+            },
             "osystem": node.get_osystem(),
             "owner": "" if node.owner is None else node.owner.username,
             "physical_disks": [
                 self.dehydrate_physicalblockdevice(blockdevice)
                 for blockdevice in physicalblockdevices
-                ],
+            ],
             "power_parameters": power_parameters,
             "power_state": node.power_state,
             "power_type": node.power_type,
@@ -240,25 +244,25 @@ class TestNodeHandler(MAASServerTestCase):
             "routers": [
                 "%s" % router
                 for router in node.routers
-                ],
+            ],
             "status": node.display_status(),
             "storage": "%3.1f" % (sum([
                 blockdevice.size
                 for blockdevice in physicalblockdevices
-                ]) / (1000 ** 3)),
+            ]) / (1000 ** 3)),
             "storage_tags": self.get_all_storage_tags(physicalblockdevices),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
                 tag.name
                 for tag in node.tags.all()
-                ],
+            ],
             "updated": dehydrate_datetime(node.updated),
             "zone": {
                 "id": node.zone.id,
                 "name": node.zone.name,
-                },
-            }
+            },
+        }
         if for_list:
             allowed_fields = NodeHandler.Meta.list_fields + [
                 "actions",
@@ -272,7 +276,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "disks",
                 "storage",
                 "storage_tags",
-                ]
+            ]
             for key in data.keys():
                 if key not in allowed_fields:
                     del data[key]
@@ -378,7 +382,7 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertItemsEqual([
             self.dehydrate_node(node, user, for_list=True),
             self.dehydrate_node(ownered_node, user, for_list=True),
-            ], handler.list({}))
+        ], handler.list({}))
 
     def test_get_object_returns_node_if_super_user(self):
         user = factory.make_admin()
@@ -446,11 +450,11 @@ class TestNodeHandler(MAASServerTestCase):
             "architecture": make_usable_architecture(self),
             "zone": {
                 "name": zone.name,
-                },
+            },
             "nodegroup": {
                 "uuid": nodegroup.uuid,
-                },
-            }
+            },
+        }
         with ExpectedException(
                 HandlerValidationError,
                 re.escape("{u'mac_addresses': [u'This field is required.']}")):
@@ -465,11 +469,11 @@ class TestNodeHandler(MAASServerTestCase):
             "pxe_mac": factory.make_mac_address(),
             "zone": {
                 "name": zone.name,
-                },
+            },
             "nodegroup": {
                 "uuid": nodegroup.uuid,
-                },
-            }
+            },
+        }
         with ExpectedException(
                 HandlerValidationError,
                 re.escape(
@@ -485,21 +489,24 @@ class TestNodeHandler(MAASServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         architecture = make_usable_architecture(self)
+
+        self.patch(node_model, "start_commissioning")
+
         created_node = handler.create({
             "hostname": hostname,
             "pxe_mac": mac,
             "architecture": architecture,
             "zone": {
                 "name": zone.name,
-                },
+            },
             "nodegroup": {
                 "uuid": nodegroup.uuid,
-                },
+            },
             "power_type": "ether_wake",
             "power_parameters": {
                 "mac_address": mac,
-                },
-            })
+            },
+        })
         self.expectThat(created_node["hostname"], Equals(hostname))
         self.expectThat(created_node["pxe_mac"], Equals(mac))
         self.expectThat(created_node["extra_macs"], Equals([]))
@@ -509,7 +516,36 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(created_node["power_type"], Equals("ether_wake"))
         self.expectThat(created_node["power_parameters"], Equals({
             "mac_address": mac,
-            }))
+        }))
+
+    def test_create_starts_auto_commissioning(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        nodegroup = factory.make_NodeGroup()
+        zone = factory.make_Zone()
+        mac = factory.make_mac_address()
+        hostname = factory.make_name("hostname")
+        architecture = make_usable_architecture(self)
+
+        mock_start_commissioning = self.patch(node_model,
+                                              "start_commissioning")
+
+        handler.create({
+            "hostname": hostname,
+            "pxe_mac": mac,
+            "architecture": architecture,
+            "zone": {
+                "name": zone.name,
+            },
+            "nodegroup": {
+                "uuid": nodegroup.uuid,
+            },
+            "power_type": "ether_wake",
+            "power_parameters": {
+                "mac_address": mac,
+            },
+        })
+        self.assertThat(mock_start_commissioning, MockCalledOnceWith(user))
 
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
@@ -545,15 +581,15 @@ class TestNodeHandler(MAASServerTestCase):
         node_data["architecture"] = new_architecture
         node_data["zone"] = {
             "name": new_zone.name,
-            }
+        }
         node_data["nodegroup"] = {
             "uuid": new_nodegroup.uuid,
-            }
+        }
         node_data["power_type"] = "ether_wake"
         power_mac = factory.make_mac_address()
         node_data["power_parameters"] = {
             "mac_address": power_mac,
-            }
+        }
         updated_node = handler.update(node_data)
         self.expectThat(updated_node["hostname"], Equals(new_hostname))
         self.expectThat(updated_node["architecture"], Equals(new_architecture))
@@ -563,7 +599,7 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(updated_node["power_type"], Equals("ether_wake"))
         self.expectThat(updated_node["power_parameters"], Equals({
             "mac_address": power_mac,
-            }))
+        }))
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()
