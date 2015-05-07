@@ -13,6 +13,7 @@
                 <th>Name</th>
                 <th>Description</th>
                 <th>Nodes</th>
+                <th>Devices</th>
                 {% if user.is_superuser %}
                 <th></th>
                 {% endif %}
@@ -26,8 +27,9 @@
                 </td>
                 <td>{{ zone_item.description|truncatechars:40 }}</td>
                 <td>
-                    <a title="View nodes in zone {{ zone_item.name }}" href="{% url 'index' %}#/nodes?query=zone%3A%28{{ zone_item.name }}%29">{{ zone_item.node_set.count }}</a>
+                    <a title="View nodes in zone {{ zone_item.name }}" href="{% url 'index' %}#/nodes?query=zone%3A%28{{ zone_item.name }}%29">{{ zone_item.node_only_set.count }}</a>
                 </td>
+                <td><a title="View devices in zone {{ zone_item.name }}" href="{% url 'index' %}#/nodes?query=zone%3A%28{{ zone_item.name }}%29&tab=devices">{{ zone_item.device_only_set.count }}</a></td>
                 {% if user.is_superuser %}
                 <td class="icon-controls">
                     {% if not zone_item.is_default %}

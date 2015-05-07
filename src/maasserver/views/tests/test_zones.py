@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver zones views."""
@@ -81,7 +81,8 @@ class ZoneListingViewTest(MAASServerTestCase):
             [link for link in get_content_links(response)
                 if link.startswith('/zones/')])
 
-    def test_zone_list_displays_links_to_zone_node(self):
+    def test_zone_list_displays_links_to_zone_query(self):
+        """Ensures zone list displays links to the right node/device lists"""
         self.client_log_in()
         [factory.make_Zone(sortable_name=True) for _ in range(3)]
         zones = Zone.objects.all()
@@ -91,10 +92,18 @@ class ZoneListingViewTest(MAASServerTestCase):
             reverse('index') + "#/nodes" + "?" +
             urlencode({'query': 'zone:(%s)' % zone.name})
             for zone in sorted_zones]
-        self.assertEqual(
-            zone_node_links,
-            [link for link in get_content_links(response)
-                if link.startswith('/#/nodes')])
+        zone_device_links = [reverse('index') + "#/nodes" + "?" +
+                             urlencode({'query': 'zone:(%s)' % zone.name,
+                                        'tab': 'devices'})
+                             for zone in sorted_zones]
+        node_links_on_page = [link for link in get_content_links(response)
+                              if link.startswith('/#/nodes')
+                              and '&tab=devices' not in link]
+        device_links_on_page = [link for link in get_content_links(response)
+                                if link.startswith('/#/nodes')
+                                and '&tab=devices' in link]
+        self.assertEqual(zone_device_links, device_links_on_page)
+        self.assertEqual(zone_node_links, node_links_on_page)
 
 
 class ZoneListingViewTestNonAdmin(MAASServerTestCase):

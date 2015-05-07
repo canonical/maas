@@ -428,10 +428,18 @@ angular.module('MAAS').controller('NodesListController', [
             GeneralManager.stopPolling("osinfo");
         });
 
+        // Switch to the specified tab, if specified.
+        var tab = $routeParams.tab;
+        if(angular.isString(tab)) {
+            $scope.toggleTab(tab);
+        } else {
+            tab = 'nodes';
+        }
+
         // Set the query if the present in $routeParams.
         var query = $routeParams.query;
         if(angular.isString(query)) {
-            $scope.tabs.nodes.search = query;
-            $scope.updateFilters('nodes');
+            $scope.tabs[tab].search = query;
+            $scope.updateFilters(tab);
         }
     }]);

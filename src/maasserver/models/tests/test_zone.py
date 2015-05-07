@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test Zone objects."""
@@ -79,3 +79,33 @@ class TestZone(MAASServerTestCase):
 
     def test_is_default_returns_False_for_normal_zone(self):
         self.assertFalse(factory.make_Zone().is_default())
+
+    def test_nodes_only_set(self):
+        """zone.nodes_olny_set has all installable nodes."""
+        zone = factory.make_Zone()
+        node1 = factory.make_Node(zone=zone, installable=True)
+        node2 = factory.make_Node(zone=zone, installable=True)
+        node3 = factory.make_Node(zone=zone, installable=True)
+        device1 = factory.make_Node(zone=zone, installable=False)
+        device2 = factory.make_Node(zone=zone, installable=False)
+        self.assertEqual(zone.node_only_set.count(), 3)
+        self.assertIn(node1, zone.node_only_set)
+        self.assertIn(node2, zone.node_only_set)
+        self.assertIn(node3, zone.node_only_set)
+        self.assertNotIn(device1, zone.node_only_set)
+        self.assertNotIn(device2, zone.node_only_set)
+
+    def test_devices_only_set(self):
+        """zone.devices_only_set has all non-installable nodes."""
+        zone = factory.make_Zone()
+        node1 = factory.make_Node(zone=zone, installable=True)
+        node2 = factory.make_Node(zone=zone, installable=True)
+        node3 = factory.make_Node(zone=zone, installable=True)
+        device1 = factory.make_Node(zone=zone, installable=False)
+        device2 = factory.make_Node(zone=zone, installable=False)
+        self.assertEqual(zone.device_only_set.count(), 2)
+        self.assertNotIn(node1, zone.device_only_set)
+        self.assertNotIn(node2, zone.device_only_set)
+        self.assertNotIn(node3, zone.device_only_set)
+        self.assertIn(device1, zone.device_only_set)
+        self.assertIn(device2, zone.device_only_set)

@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Physical zone objects."""
@@ -94,3 +94,13 @@ class Zone(CleanSave, TimestampedModel):
             raise ValidationError(
                 "This zone is the default zone, it cannot be deleted.")
         super(Zone, self).delete()
+
+    @property
+    def node_only_set(self):
+        """Returns just the installable nodes in this zone"""
+        return self.node_set.filter(installable=True)
+
+    @property
+    def device_only_set(self):
+        """Returns the non-installable nodes in this zone"""
+        return self.node_set.filter(installable=False)
