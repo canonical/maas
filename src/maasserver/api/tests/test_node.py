@@ -317,9 +317,17 @@ class TestNodeAPI(APITestCase):
         self.assertIn(exc_text, response.content)
 
     def test_POST_start_checks_permission(self):
-        node = factory.make_Node()
+        node = factory.make_Node(owner=factory.make_User())
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_start_checks_ownership(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(
+            "Can't start node: it hasn't been allocated.", response.content)
 
     def test_POST_start_returns_node(self):
         node = factory.make_Node(

@@ -394,6 +394,9 @@ class NodeHandler(OperationsHandler):
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
 
+        if node.owner is None:
+            raise NodeStateViolation(
+                "Can't start node: it hasn't been allocated.")
         if user_data is not None:
             user_data = b64decode(user_data)
         if series is not None or license_key is not None:
