@@ -256,16 +256,14 @@
     }
 }
 
-.loader {
+.loading {
     background: url('../img/in_progress.png') no-repeat;
     background-size: 16px 16px;
     width: 16px;
     height: 16px;
-    position: absolute;
-    top: 4px;
-    left: 0;
     -webkit-animation: spin 1s infinite linear;
     -moz-animation: spin 1s infinite linear;
     animation: spin 1s infinite linear;
     padding: 0;
+    display: inline-block;
 }

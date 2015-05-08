@@ -1,0 +1,23 @@
+////
+/// MAAS icons and symbols
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
+
+.icon {
+    background-size: 16px 16px;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    display: inline-block;
+
+    &.icon__loading {
+        background: url('../img/in_progress.png') no-repeat;
+        -webkit-animation: spin 1s infinite linear;
+        -moz-animation: spin 1s infinite linear;
+        animation: spin 1s infinite linear;
+    }
+}
