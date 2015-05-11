@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Miscellaneous fixtures, here until they find a better home."""
@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CaptureStandardIO",
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
@@ -20,6 +21,7 @@ __all__ = [
     "TempDirectory",
     ]
 
+import io
 import logging
 import os
 from subprocess import (
@@ -33,6 +35,7 @@ import fixtures
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
+    MonkeyPatch,
     )
 from sst.actions import (
     start,
@@ -160,3 +163,24 @@ class TempWDFixture(TempDirectory):
         super(TempWDFixture, self).setUp()
         self.addCleanup(os.chdir, cwd)
         os.chdir(self.path)
+
+
+class CaptureStandardIO(Fixture):
+    """Capture standard out/err.
+
+    This is here to allow back-porting to 1.7; it exists in a more complete
+    form in MAAS >=1.8.
+    """
+
+    def setUp(self):
+        super(CaptureStandardIO, self).setUp()
+        self.stdout = io.StringIO()
+        self.useFixture(MonkeyPatch("sys.stdout", self.stdout))
+        self.stderr = io.StringIO()
+        self.useFixture(MonkeyPatch("sys.stderr", self.stderr))
+
+    def getOutput(self):
+        return self.stdout.getvalue()
+
+    def getError(self):
+        return self.stderr.getvalue()

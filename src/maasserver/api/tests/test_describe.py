@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `describe` view."""
@@ -25,6 +25,7 @@ from django.core.urlresolvers import (
     get_script_prefix,
     )
 from django.test.client import RequestFactory
+from maasserver.api.doc import get_api_description_hash
 from maasserver.api.doc_handler import describe
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -64,8 +65,15 @@ class TestDescribe(MAASServerTestCase):
         response = self.client.get(reverse('describe'))
         description = json.loads(response.content)
         self.assertSetEqual(
-            {"doc", "handlers", "resources"}, set(description))
+            {"doc", "handlers", "resources", "hash"}, set(description))
         self.assertIsInstance(description["handlers"], list)
+
+    def test_describe_hash_is_the_api_hash(self):
+        response = self.client.get(reverse('describe'))
+        description = json.loads(response.content)
+        self.assertThat(
+            description["hash"], Equals(
+                get_api_description_hash()))
 
 
 class TestDescribeAbsoluteURIs(MAASServerTestCase):

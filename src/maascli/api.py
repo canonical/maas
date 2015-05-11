@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Interact with a remote MAAS server."""
@@ -28,6 +28,7 @@ import sys
 from textwrap import (
     dedent,
     fill,
+    wrap,
     )
 from urlparse import (
     urljoin,
@@ -188,6 +189,9 @@ class Action(Command):
             uri, self.method, body=body, headers=headers,
             insecure=insecure)
 
+        # Compare API hashes to see if our version of the API is old.
+        self.compare_api_hashes(self.profile, response)
+
         # Output.
         if options.debug:
             self.print_debug(response)
@@ -196,6 +200,30 @@ class Action(Command):
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
             raise CommandError(2)
+
+    @staticmethod
+    def compare_api_hashes(profile, response):
+        """Compare the local and remote API hashes.
+
+        If they differ -- or the remote side reports a hash and there is no
+        hash stored locally -- then show a warning to the user.
+        """
+        hash_from_response = response.get("X-MAAS-API-Hash".lower())
+        if hash_from_response is not None:
+            hash_from_profile = profile["description"].get("hash")
+            if hash_from_profile != hash_from_response:
+                warning = dedent("""\
+                WARNING! The API on the server differs from the description
+                that is cached locally. This may result in failed API calls.
+                Refresh the local API description with `maas refresh`.
+                """)
+                warning_lines = wrap(
+                    warning, width=70, initial_indent="*** ",
+                    subsequent_indent="*** ")
+                print("**********" * 7, file=sys.stderr)
+                for warning_line in warning_lines:
+                    print(warning_line, file=sys.stderr)
+                print("**********" * 7, file=sys.stderr)
 
     @staticmethod
     def name_value_pair(string):

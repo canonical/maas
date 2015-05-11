@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.api`."""
@@ -34,6 +34,7 @@ from maascli.utils import (
     safe_name,
     )
 from maastesting.factory import factory
+from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
@@ -315,6 +316,54 @@ class TestAction(MAASTestCase):
             "Success.\n"
             "Machine-readable output follows:\n" +
             response['content'] + "\n", buf.getvalue())
+
+    def test_compare_api_hashes_prints_nothing_if_hashes_match(self):
+        example_hash = factory.make_name("hash")
+        profile = {"description": {"hash": example_hash}}
+        response = {"x-maas-api-hash": example_hash}
+        with CaptureStandardIO() as stdio:
+            api.Action.compare_api_hashes(profile, response)
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), Equals(""))
+
+    def test_compare_api_hashes_prints_nothing_if_remote_has_no_hash(self):
+        example_hash = factory.make_name("hash")
+        profile = {"description": {"hash": example_hash}}
+        response = {}
+        with CaptureStandardIO() as stdio:
+            api.Action.compare_api_hashes(profile, response)
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), Equals(""))
+
+    def test_compare_api_hashes_prints_warning_if_local_has_no_hash(self):
+        example_hash = factory.make_name("hash")
+        profile = {"description": {}}
+        response = {"x-maas-api-hash": example_hash}
+        with CaptureStandardIO() as stdio:
+            api.Action.compare_api_hashes(profile, response)
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), Equals(dedent("""\
+        **********************************************************************
+        *** WARNING! The API on the server differs from the description that
+        *** is cached locally. This may result in failed API calls. Refresh
+        *** the local API description with `maas refresh`.
+        **********************************************************************
+        """)))
+
+    def test_compare_api_hashes_prints_warning_if_hashes_dont_match(self):
+        example_hash = factory.make_name("hash")
+        profile = {"description": {"hash": example_hash + "foo"}}
+        response = {"x-maas-api-hash": example_hash + "bar"}
+        with CaptureStandardIO() as stdio:
+            api.Action.compare_api_hashes(profile, response)
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), Equals(dedent("""\
+        **********************************************************************
+        *** WARNING! The API on the server differs from the description that
+        *** is cached locally. This may result in failed API calls. Refresh
+        *** the local API description with `maas refresh`.
+        **********************************************************************
+        """)))
 
 
 class TestActionHelp(MAASTestCase):

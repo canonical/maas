@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities to help document/describe the public facing API."""
@@ -13,23 +13,31 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "describe_api",
     "describe_handler",
     "describe_resource",
     "find_api_resources",
     "generate_api_docs",
+    "get_api_description_hash",
     ]
 
+from collections import (
+    Mapping,
+    Sequence,
+    )
 from cStringIO import StringIO
 from functools import partial
+import hashlib
 from inspect import getdoc
 from itertools import izip_longest
+import json
+from threading import RLock
 
 from django.core.urlresolvers import (
     get_resolver,
     RegexURLPattern,
     RegexURLResolver,
     )
-from maasserver.api.support import OperationsResource
 from piston.authentication import NoAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler
@@ -171,7 +179,8 @@ def describe_actions(handler):
       restful: Indicates if this is a CRUD/ReSTful action.
 
     """
-    getname = OperationsResource.crudmap.get
+    from maasserver.api import support  # Circular import.
+    getname = support.OperationsResource.crudmap.get
     for signature, function in handler.exports.items():
         http_method, operation = signature
         name = getname(http_method) if operation is None else operation
@@ -203,7 +212,7 @@ def describe_handler(handler):
         "actions": list(describe_actions(handler)),
         "doc": getdoc(handler),
         "name": handler.__name__,
-        "params": uri_params,
+        "params": tuple(uri_params),
         "path": path,
         }
 
@@ -228,3 +237,113 @@ def describe_resource(resource):
         auth = None
     name = anon["name"] if auth is None else auth["name"]
     return {"anon": anon, "auth": auth, "name": name}
+
+
+def describe_api():
+    """Return a description of the whole MAAS API.
+
+    :return: An object describing the whole MAAS API. Links to the API will
+        not be absolute; they will be relative, and independent of the medium
+        over which this description was obtained.
+    """
+    from maasserver import urls_api as urlconf
+
+    # This is the core of it:
+    description = {
+        "doc": "MAAS API",
+        "resources": [
+            describe_resource(resource)
+            for resource in find_api_resources(urlconf)
+        ],
+    }
+
+    # However, for backward compatibility, add "handlers" as an alias for all
+    # not-None anon and auth handlers in "resources".
+    description["handlers"] = []
+    description["handlers"].extend(
+        resource["anon"] for resource in description["resources"]
+        if resource["anon"] is not None)
+    description["handlers"].extend(
+        resource["auth"] for resource in description["resources"]
+        if resource["auth"] is not None)
+
+    return description
+
+
+def describe_canonical(description):
+    """Returns an ordered data structure composed from limited types.
+
+    Specifically:
+
+    * Elements in lists are described, recursively, by this function, then
+      sorted into a tuple.
+
+    * Keys and values in dicts are described, recursively, by this function,
+      then captured as (key, value) tuples, then sorted into a tuple.
+
+    * Byte strings are decoded from UTF-8.
+
+    * Unicode strings are passed through.
+
+    * True, False, and None are passed through.
+
+    * Anything else causes a `TypeError`.
+
+    """
+    if description in (True, False, None):
+        return description
+    if isinstance(description, (int, long, float)):
+        return description
+    elif isinstance(description, bytes):
+        return description.decode("utf-8")
+    elif isinstance(description, unicode):
+        return description
+    elif isinstance(description, Sequence):
+        return tuple(sorted(
+            describe_canonical(element)
+            for element in description))
+    elif isinstance(description, Mapping):
+        return tuple(sorted(
+            (describe_canonical(key), describe_canonical(value))
+            for (key, value) in description.viewitems()))
+    else:
+        raise TypeError(
+            "Cannot produce canonical representation for %r."
+            % (description,))
+
+
+def hash_canonical(description):
+    """Return an SHA-1 HASH object seeded with `description`.
+
+    Specifically, `description` is converted to a canonical representation by
+    `describe_canonical`, dumped as JSON, encoded as a byte string, then fed
+    into a new `hashlib.sha1` object.
+    """
+    description = describe_canonical(description)
+    description_as_json = json.dumps(description)
+    # Python 3's json.dumps returns a `str`, so encode if necessary.
+    if not isinstance(description_as_json, bytes):
+        description_as_json = description_as_json.encode("ascii")
+    # We /could/ instead pass a hashing object in and call .update()...
+    return hashlib.sha1(description_as_json)
+
+
+api_description_hash = None
+api_description_hash_lock = RLock()
+
+
+def get_api_description_hash():
+    """Return a hash for the current API description."""
+
+    global api_description_hash
+    global api_description_hash_lock
+
+    if api_description_hash is None:
+        with api_description_hash_lock:
+            if api_description_hash is None:
+                api_description = describe_api()
+                api_description_hasher = hash_canonical(api_description)
+                api_description_hash = api_description_hasher.hexdigest()
+
+    # The hash is an immutable string, so safe to return directly.
+    return api_description_hash

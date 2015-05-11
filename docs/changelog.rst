@@ -10,6 +10,8 @@ Bug Fix Update
 
 #1387859    When MAAS has too many leases, and lease parsing fails, MAAS fails
             to auto-map NIC with network
+#1329267    Alert a command-line user of `maas` when their local API
+            description is out-of-date.
 
 1.7.3
 =====
