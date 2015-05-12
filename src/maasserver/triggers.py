@@ -129,6 +129,30 @@ NODEGROUP_INTERFACE_NODEGROUP_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a static ip address is linked or unlinked to
+# a MAC address. Sends a notify message for node_update or device_update
+# depending on if the node is installable.
+MACSTATICIPADDRESSLINK_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node, maasserver_macaddress
+      WHERE maasserver_node.id = maasserver_macaddress.node_id
+      AND maasserver_macaddress.id = %s;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -341,3 +365,21 @@ def register_all_triggers():
     register_procedure(EVENT_NODE_NOTIFY)
     register_trigger(
         "maasserver_event", "event_create_node_device_notify", "insert")
+
+    # MAC static ip address table, update to linked node.
+    register_procedure(
+        MACSTATICIPADDRESSLINK_NODE_NOTIFY % (
+            'nd_sipaddress_link_notify',
+            'NEW.mac_address_id',
+            ))
+    register_procedure(
+        MACSTATICIPADDRESSLINK_NODE_NOTIFY % (
+            'nd_sipaddress_unlink_notify',
+            'OLD.mac_address_id',
+            ))
+    register_trigger(
+        "maasserver_macstaticipaddresslink",
+        "nd_sipaddress_link_notify", "insert")
+    register_trigger(
+        "maasserver_macstaticipaddresslink",
+        "nd_sipaddress_unlink_notify", "delete")

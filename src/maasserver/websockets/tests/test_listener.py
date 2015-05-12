@@ -23,6 +23,7 @@ from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -237,6 +238,11 @@ class TransactionalHelpersMixin:
         node.delete()
 
     @transactional
+    def get_node_pxe_mac(self, system_id):
+        node = Node.objects.get(system_id=system_id)
+        return node.get_pxe_mac()
+
+    @transactional
     def create_nodegroup(self, params=None):
         if params is None:
             params = {}
@@ -348,6 +354,17 @@ class TransactionalHelpersMixin:
     def delete_event(self, id):
         event = Event.objects.get(id=id)
         event.delete()
+
+    @transactional
+    def create_staticipaddress(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_StaticIPAddress(**params)
+
+    @transactional
+    def delete_staticipaddress(self, id):
+        sip = StaticIPAddress.objects.get(id=id)
+        sip.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -807,6 +824,61 @@ class TestNodeEventListener(
         yield listener.start()
         try:
             yield deferToThread(self.create_event, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeStaticIPAddressListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_macstaticipaddresslink table that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True, 'mac': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False, 'mac': True},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_staticipaddress, {"mac": pxe_mac})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
+        sip = yield deferToThread(
+            self.create_staticipaddress, {"mac": pxe_mac})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:

@@ -86,6 +86,8 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_nodegroupinterface_nodegroupinterface_create_notify",
             "maasserver_nodegroupinterface_nodegroupinterface_update_notify",
             "maasserver_nodegroupinterface_nodegroupinterface_delete_notify",
+            "maasserver_macstaticipaddresslink_nd_sipaddress_link_notify",
+            "maasserver_macstaticipaddresslink_nd_sipaddress_unlink_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
