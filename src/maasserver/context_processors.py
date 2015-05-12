@@ -81,6 +81,7 @@ def static_resources(context):
             'js/shortpoll.js',
             'js/enums.js',
             'js/reveal.js',
+            'js/os_distro_select.js',
         ],
     }
 

@@ -297,3 +297,14 @@ table {
 .t95 {
     width: 95%;
 }
+
+#commissioning_scripts {
+
+    .script-content.slider {
+        overflow: hidden;
+
+        pre {
+            margin-top: 20px;
+        }
+    }
+}
