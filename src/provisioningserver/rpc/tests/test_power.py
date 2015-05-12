@@ -21,6 +21,7 @@ from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
 )
@@ -57,6 +58,7 @@ from testtools.deferredruntest import (
 from testtools.matchers import (
     Equals,
     IsInstance,
+    Not,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -692,6 +694,46 @@ class TestPowerQueryAsync(MAASTestCase):
                 clock=reactor)
             for node in nodes
         )))
+
+    @inlineCallbacks
+    def test_query_all_nodes_logs_skip_if_node_in_action_registry(self):
+        node = self.make_node()
+        power.power_action_registry[node['system_id']] = sentinel.action
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query_all_nodes([node])
+        self.assertDocTestMatches(
+            "hostname-...: Skipping query power status, "
+            "power action already in progress.",
+            maaslog.output)
+
+    @inlineCallbacks
+    def test_query_all_nodes_skips_nodes_in_action_registry(self):
+        nodes = self.make_nodes()
+
+        # First node is in the registry.
+        power.power_action_registry[nodes[0]['system_id']] = sentinel.action
+
+        # Report back power state of nodes' not in registry.
+        power_states = [node['power_state'] for node in nodes[1:]]
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = [
+            succeed(power_state)
+            for power_state in power_states
+            ]
+
+        yield power.query_all_nodes(nodes)
+        self.assertThat(get_power_state, MockCallsMatch(*(
+            call(
+                node['system_id'], node['hostname'],
+                node['power_type'], node['context'],
+                clock=reactor)
+            for node in nodes[1:]
+        )))
+        self.assertThat(
+            get_power_state, Not(MockCalledWith(
+                nodes[0]['system_id'], nodes[0]['hostname'],
+                nodes[0]['power_type'], nodes[0]['context'],
+                clock=reactor)))
 
     @inlineCallbacks
     def test_query_all_nodes_only_queries_queryable_power_types(self):

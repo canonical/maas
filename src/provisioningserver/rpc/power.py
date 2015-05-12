@@ -53,6 +53,7 @@ from twisted.internet.defer import (
     DeferredSemaphore,
     inlineCallbacks,
     returnValue,
+    succeed,
 )
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
@@ -391,14 +392,21 @@ def query_node(node, clock):
 
     Logs to maaslog as errors and power states change.
     """
-    d = get_power_state(
-        node['system_id'], node['hostname'],
-        node['power_type'], node['context'],
-        clock=clock)
-    d.addCallbacks(
-        partial(maaslog_report_success, node),
-        partial(maaslog_report_failure, node))
-    return d
+    if node['system_id'] in power_action_registry:
+        maaslog.debug(
+            "%s: Skipping query power status, "
+            "power action already in progress.",
+            node['hostname'])
+        return succeed(None)
+    else:
+        d = get_power_state(
+            node['system_id'], node['hostname'],
+            node['power_type'], node['context'],
+            clock=clock)
+        d.addCallbacks(
+            partial(maaslog_report_success, node),
+            partial(maaslog_report_failure, node))
+        return d
 
 
 def query_all_nodes(nodes, max_concurrency=5, clock=reactor):
