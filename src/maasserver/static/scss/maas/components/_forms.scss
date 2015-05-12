@@ -223,6 +223,11 @@ form {
         background: url('../img/checkbox-checked.svg') no-repeat;
         background-position: 0px 3px;
     }
+
+    &[disabled="disabled"] + .checkbox-label:before {
+        cursor: default;
+        opacity: 0.5;
+    }
 }
 
 /* 3. FEEDBACK STYLES ------------------------------------------------

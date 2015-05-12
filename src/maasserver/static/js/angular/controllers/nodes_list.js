@@ -50,6 +50,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
             "node_actions");
         $scope.tabs.nodes.actionErrorCount = 0;
+        $scope.tabs.nodes.actionProgress = {
+            total: 0,
+            completed: 0,
+            errors: {}
+        };
         $scope.tabs.nodes.osSelection = {
             osystem: "",
             release: ""
@@ -74,6 +79,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
             "device_actions");
         $scope.tabs.devices.actionErrorCount = 0;
+        $scope.tabs.devices.actionProgress = {
+            total: 0,
+            completed: 0,
+            errors: {}
+        };
         $scope.tabs.devices.zoneSelection = null;
 
         // Options for add hardware dropdown.
@@ -146,6 +156,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Clear the action if required.
         function shouldClearAction(tab) {
             if($scope.tabs[tab].selectedItems.length === 0) {
+                resetActionProgress(tab);
                 leaveViewSelected(tab);
                 $scope.tabs[tab].actionOption = null;
                 $scope.tabs[tab].zoneSelection = null;
@@ -170,6 +181,25 @@ angular.module('MAAS').controller('NodesListController', [
                 if(!supported) {
                     $scope.tabs[tab].actionErrorCount += 1;
                 }
+            }
+        }
+
+        // Reset actionProgress on tab to zero.
+        function resetActionProgress(tab) {
+            var progress = $scope.tabs[tab].actionProgress;
+            progress.completed = progress.total = 0;
+            progress.errors = {};
+        }
+
+        // Add error to action progress and group error messages by nodes.
+        function addErrorToActionProgress(tab, error, node) {
+            var progress = $scope.tabs[tab].actionProgress;
+            progress.completed += 1;
+            var nodes = progress.errors[error];
+            if(angular.isUndefined(nodes)) {
+                progress.errors[error] = [node];
+            } else {
+                nodes.push(node);
             }
         }
 
@@ -349,6 +379,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Called when the current action is cancelled.
         $scope.actionCancel = function(tab) {
+            resetActionProgress(tab);
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
             GeneralManager.stopPolling("osinfo");
@@ -376,20 +407,35 @@ angular.module('MAAS').controller('NodesListController', [
                 extra.zone_id = $scope.tabs[tab].zoneSelection.id;
             }
 
+            // Setup actionProgress.
+            resetActionProgress(tab);
+            $scope.tabs[tab].actionProgress.total =
+                $scope.tabs[tab].selectedItems.length;
+
             // Perform the action on all selected items.
             angular.forEach($scope.tabs[tab].selectedItems, function(node) {
                 $scope.tabs[tab].manager.performAction(
                     node, $scope.tabs[tab].actionOption.name,
                     extra).then(function() {
+                        $scope.tabs[tab].actionProgress.completed += 1;
                         $scope.tabs[tab].manager.unselectItem(node.system_id);
                         shouldClearAction(tab);
                     }, function(error) {
-                        // Report error loading. This is simple handlng for
-                        // now but this should show a nice error dialog or
-                        // something.
-                        console.log(error);
+                        addErrorToActionProgress(tab, error, node);
                     });
             });
+        };
+
+        // Returns true when actions are being performed.
+        $scope.hasActionsInProgress = function(tab) {
+            var progress = $scope.tabs[tab].actionProgress;
+            return progress.total > 0 && progress.completed !== progress.total;
+        };
+
+        // Returns true if any of the actions have failed.
+        $scope.hasActionsFailed = function(tab) {
+            return Object.keys(
+                $scope.tabs[tab].actionProgress.errors).length > 0;
         };
 
         // Called to when the addHardwareOption has changed.

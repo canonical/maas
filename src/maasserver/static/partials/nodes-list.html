@@ -44,7 +44,7 @@
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
             <div class="page-header__dropdown ng-hide" data-ng-show="tabs.nodes.actionOption">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('nodes')">
+                <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')">
                     <form class="form-inline">
                         <span class="ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'deploy'">
                             <label for="image">Choose your image</label>
@@ -61,7 +61,8 @@
                         </span>
                         <div class="right">
                             <a href="" class="margin-right" data-ng-click="actionCancel('nodes')">Cancel</a>
-                            <button class="cta-ubuntu" data-ng-click="actionGo('nodes')">Go</button>
+                            <button class="cta-ubuntu" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">Go</button>
+                            <button class="cta-ubuntu" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
                         </div>
                     </form>
                 </div>
@@ -84,6 +85,23 @@
                         {$ tabs.nodes.selectedItems.length $}
                         <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         cannot be {$ tabs.nodes.actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                    </p>
+                </div>
+
+                <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-show="hasActionsInProgress('nodes') || hasActionsFailed('nodes')">
+                    <p class="page-header__feedback-message" data-ng-show="hasActionsInProgress('nodes')">
+                        <span class="power-status--power checking">
+                            <span class="loader"></span>
+                            {$ tabs.nodes.actionProgress.completed $} of {$ tabs.nodes.actionProgress.total $}
+                            nodes have been {$ tabs.nodes.actionOption.sentence $}.
+                        </span>
+                    </p>
+                    <p class="page-header__feedback-message info"
+                        data-ng-repeat="(error, nodes) in tabs.nodes.actionProgress.errors">
+                        The {$ tabs.nodes.actionOption.title.toLowerCase() $} action for {$ nodes.length $}
+                        <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                        failed with error: {$ error $}
                     </p>
                 </div>
             </div>
@@ -228,7 +246,7 @@
             <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
             <div class="page-header__dropdown ng-hide" data-ng-show="tabs.devices.actionOption">
                 <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-                <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('devices')">
+                <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('devices') || hasActionsInProgress('devices')">
                      <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
                     <form class="form-inline">
                         <span class="ng-hide" data-ng-show="tabs.devices.actionOption.name === 'set-zone'">
@@ -252,6 +270,23 @@
                         {$ tabs.devices.actionErrorCount $}
                         <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
                         cannot be {$ tabs.devices.actionOption.sentence $}. To proceed, update your selection.
+                    </p>
+                </div>
+
+                <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-show="hasActionsInProgress('devices') || hasActionsFailed('devices')">
+                    <p class="page-header__feedback-message" data-ng-show="hasActionsInProgress('devices')">
+                        <span class="power-status--power checking">
+                            <span class="loader"></span>
+                            {$ tabs.devices.actionProgress.completed $} of {$ tabs.devices.actionProgress.total $}
+                            devices have been {$ tabs.devices.actionOption.sentence $}.
+                        </span>
+                    </p>
+                    <p class="page-header__feedback-message info"
+                        data-ng-repeat="(error, devices) in tabs.devices.actionProgress.errors">
+                        The {$ tabs.devices.actionOption.title.toLowerCase() $} action for {$ devices.length $}
+                        <span data-ng-pluralize count="devices.length" when="{'one': 'device', 'other': 'devices'}"></span>
+                        failed with error: {$ error $}
                     </p>
                 </div>
             </div>
@@ -453,7 +488,7 @@
                     <tr class="table-listing__row">
                         <th>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="check-all"></label>
                         </th>
                         <th colspan="2" class="table-listing__header fixed">
@@ -503,7 +538,7 @@
                         data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }">
                         <td class="table-listing__cell">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="{$ node.fqdn $}"></label>
                         </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
@@ -546,7 +581,7 @@
                     <tr class="table-listing__row">
                         <th class="table-listing__header t1">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
+                            <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
                             <label for="check-all-devices" class="checkbox-label"></label>
                         </th>
                         <th class="table-listing__header t24">
@@ -578,7 +613,7 @@
                         data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                         data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
                         <td class="t1 table-listing__cell">
-                            <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
+                            <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                             <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                         </td>
                         <td class="t24 table-listing__cell">{$ device.fqdn $}</td>

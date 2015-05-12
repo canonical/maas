@@ -812,9 +812,37 @@ describe("NodesListController", function() {
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].actionOption).toBeNull();
                 });
+
+                it("resets actionProgress", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionProgress.total = makeInteger(0, 10);
+                    $scope.tabs[tab].actionProgress.completed =
+                        makeInteger(0, 10);
+                    $scope.tabs[tab].actionProgress.errors[makeName("error")] =
+                        [{}];
+                    $scope.actionCancel(tab);
+                    expect($scope.tabs[tab].actionProgress.total).toBe(0);
+                    expect($scope.tabs[tab].actionProgress.completed).toBe(0);
+                    expect($scope.tabs[tab].actionProgress.errors).toEqual({});
+                });
             });
 
             describe("actionGo", function() {
+
+                it("sets actionProgress.total to the number of selectedItems",
+                    function() {
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        $scope.tabs[tab].actionOption = { name: "start" };
+                        $scope.tabs[tab].selectedItems = [
+                            makeObject(tab),
+                            makeObject(tab),
+                            makeObject(tab)
+                            ];
+                        $scope.actionGo(tab);
+                        expect($scope.tabs[tab].actionProgress.total).toBe(
+                            $scope.tabs[tab].selectedItems.length);
+                    });
 
                 it("calls performAction for selected object", function() {
                     var controller = makeController();
@@ -867,6 +895,23 @@ describe("NodesListController", function() {
                     expect(spy).toHaveBeenCalled();
                 });
 
+                it("increments actionProgress.completed after action complete",
+                    function() {
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        var defer = $q.defer();
+                        spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(defer.promise);
+                        $scope.tabs[tab].actionOption = { name: "start" };
+                        $scope.tabs[tab].selectedItems = [object];
+                        $scope.actionGo(tab);
+                        defer.resolve();
+                        $scope.$digest();
+                        expect(
+                            $scope.tabs[tab].actionProgress.completed).toBe(1);
+                    });
+
                 it("resets search when in:selected after complete",
                     function() {
                     var controller = makeController();
@@ -917,6 +962,86 @@ describe("NodesListController", function() {
                     defer.resolve();
                     $scope.$digest();
                     expect($scope.tabs[tab].actionOption).toBeNull();
+                });
+
+                it("increments actionProgress.completed after action error",
+                    function() {
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        var defer = $q.defer();
+                        spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(defer.promise);
+                        $scope.tabs[tab].actionOption = { name: "start" };
+                        $scope.tabs[tab].selectedItems = [object];
+                        $scope.actionGo(tab);
+                        defer.reject(makeName("error"));
+                        $scope.$digest();
+                        expect(
+                            $scope.tabs[tab].actionProgress.completed).toBe(1);
+                    });
+
+                it("adds error to actionProgress.errors on action error",
+                    function() {
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        var defer = $q.defer();
+                        spyOn(
+                            $scope.tabs[tab].manager,
+                            "performAction").and.returnValue(defer.promise);
+                        $scope.tabs[tab].actionOption = { name: "start" };
+                        $scope.tabs[tab].selectedItems = [object];
+                        $scope.actionGo(tab);
+                        var error = makeName("error");
+                        defer.reject(error);
+                        $scope.$digest();
+                        var errorObjects =
+                            $scope.tabs[tab].actionProgress.errors[error];
+                        expect(errorObjects[0].system_id).toBe(
+                            object.system_id);
+                    });
+            });
+
+            describe("hasActionsInProgress", function() {
+
+                it("returns false if actionProgress.total not > 0", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionProgress.total = 0;
+                    expect($scope.hasActionsInProgress(tab)).toBe(false);
+                });
+
+                it("returns true if actionProgress total != completed",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionProgress.total = 1;
+                        $scope.tabs[tab].actionProgress.completed = 0;
+                        expect($scope.hasActionsInProgress(tab)).toBe(true);
+                    });
+
+                it("returns false if actionProgress total == completed",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionProgress.total = 1;
+                        $scope.tabs[tab].actionProgress.completed = 1;
+                        expect($scope.hasActionsInProgress(tab)).toBe(false);
+                    });
+            });
+
+            describe("hasActionsFailed", function() {
+
+                it("returns false if no errors", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionProgress.errors = {};
+                    expect($scope.hasActionsFailed(tab)).toBe(false);
+                });
+
+                it("returns true if errors", function() {
+                    var controller = makeController();
+                    var error = makeName("error");
+                    var object = makeObject(tab);
+                    var errors = $scope.tabs[tab].actionProgress.errors;
+                    errors[error] = [object];
+                    expect($scope.hasActionsFailed(tab)).toBe(true);
                 });
             });
 
