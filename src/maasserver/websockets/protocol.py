@@ -390,8 +390,8 @@ class WebSocketFactory(Factory):
                 reactor, self.threadpool,
                 self.processNotify, handler, channel, action, obj_id)
             if data is not None:
-                (name, data) = data
-                client.sendNotify(name, action, data)
+                (name, client_action, data) = data
+                client.sendNotify(name, client_action, data)
 
     @transactional
     def processNotify(self, handler, channel, action, obj_id):

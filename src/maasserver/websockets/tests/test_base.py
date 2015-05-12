@@ -44,7 +44,6 @@ from mock import (
     MagicMock,
     sentinel,
 )
-from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
@@ -194,7 +193,7 @@ class TestHandler(MAASServerTestCase):
         kwargs["object_class"] = Node
         kwargs["pk"] = "system_id"
         handler = make_handler("TestNodesHandler", **kwargs)
-        handler.user = factory.make_User()
+        handler.__init__(factory.make_User(), {})
         return handler
 
     def make_mock_node_with_fields(self, **kwargs):
@@ -458,6 +457,27 @@ class TestHandler(MAASServerTestCase):
         self.assertItemsEqual(
             output, handler.list({"start": nodes[2].system_id, "limit": 3}))
 
+    def test_list_adds_to_loaded_pks(self):
+        pks = [
+            factory.make_Node().system_id
+            for _ in range(3)
+            ]
+        handler = self.make_nodes_handler(fields=['hostname'])
+        handler.list({})
+        self.assertItemsEqual(pks, handler.cache['loaded_pks'])
+
+    def test_list_unions_the_loaded_pks(self):
+        pks = [
+            factory.make_Node().system_id
+            for _ in range(3)
+            ]
+        handler = self.make_nodes_handler(fields=['hostname'])
+        # Make two calls to list making sure the loaded_pks contains all of
+        # the primary keys listed.
+        handler.list({"limit": 1})
+        handler.list({"start": pks[0]})
+        self.assertItemsEqual(pks, handler.cache['loaded_pks'])
+
     def test_get(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler(fields=['hostname'])
@@ -600,14 +620,12 @@ class TestHandler(MAASServerTestCase):
 
     def test_set_active_does_nothing_if_no_active_obj_and_missing_pk(self):
         handler = self.make_nodes_handler()
-        handler.cache = HandlerCache(handler._meta.handler_name, {})
         mock_get = self.patch(handler, "get")
         handler.set_active({})
         self.assertThat(mock_get, MockNotCalled())
 
     def test_set_active_clears_active_if_missing_pk(self):
         handler = self.make_nodes_handler()
-        handler.cache = HandlerCache(handler._meta.handler_name, {})
         handler.cache["active_pk"] = factory.make_name("system_id")
         handler.set_active({})
         self.assertFalse("active_pk" in handler.cache)
@@ -615,7 +633,6 @@ class TestHandler(MAASServerTestCase):
     def test_set_active_returns_data_and_sets_active(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler(fields=['system_id'])
-        handler.cache = HandlerCache(handler._meta.handler_name, {})
         node_data = handler.set_active({"system_id": node.system_id})
         self.expectThat(node_data["system_id"], Equals(node.system_id))
         self.expectThat(handler.cache["active_pk"], Equals(node.system_id))
@@ -630,63 +647,121 @@ class TestHandler(MAASServerTestCase):
             MockCalledOnceWith(
                 sentinel.channel, sentinel.action, sentinel.pk))
 
-    def test_on_listen_raises_AssertionError_if_listen_returns_None(self):
-        handler = self.make_nodes_handler()
-        mock_listen = self.patch(handler, "listen")
-        mock_listen.return_value = None
-        with ExpectedException(AssertionError):
-            handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
-
-    def test_on_listen_returns_None_if_listen_raises_HandlerDoesNotExistError(
+    def test_on_listen_returns_None_if_unknown_action(
             self):
         handler = self.make_nodes_handler()
         mock_listen = self.patch(handler, "listen")
         mock_listen.side_effect = HandlerDoesNotExistError()
         self.assertIsNone(
             handler.on_listen(
-                sentinel.channel, sentinel.action, sentinel.pk))
+                sentinel.channel, factory.make_name("action"), sentinel.pk))
 
-    def test_on_listen_delete_returns_handler_name_and_pk(self):
+    def test_on_listen_delete_removes_pk_from_loaded(self):
         handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        handler.cache["loaded_pks"].add(node.system_id)
         self.assertEquals(
-            (handler._meta.handler_name, sentinel.pk),
+            (handler._meta.handler_name, "delete", node.system_id),
             handler.on_listen(
-                sentinel.channel, "delete", sentinel.pk))
+                sentinel.channel, "delete", node.system_id))
+        self.assertTrue(
+            node.system_id not in handler.cache["loaded_pks"],
+            "on_listen delete did not remove system_id from loaded_pks")
 
-    def test_on_listen_other_calls_full_dehydrate_for_list_if_not_active(self):
+    def test_on_listen_delete_returns_None_if_pk_not_in_loaded(self):
+        handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        self.assertEquals(
+            None,
+            handler.on_listen(
+                sentinel.channel, "delete", node.system_id))
+
+    def test_on_listen_create_adds_pk_to_loaded(self):
+        handler = self.make_nodes_handler(fields=['hostname'])
+        node = factory.make_Node(owner=handler.user)
+        self.assertEquals(
+            (
+                handler._meta.handler_name,
+                "create",
+                {"hostname": node.hostname}
+            ),
+            handler.on_listen(sentinel.channel, "create", node.system_id))
+        self.assertTrue(
+            node.system_id in handler.cache["loaded_pks"],
+            "on_listen create did not add system_id to loaded_pks")
+
+    def test_on_listen_update_returns_delete_action_if_obj_is_None(self):
+        handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        handler.cache["loaded_pks"].add(node.system_id)
+        self.patch(handler, "listen").return_value = None
+        self.assertEquals(
+            (handler._meta.handler_name, "delete", node.system_id),
+            handler.on_listen(
+                sentinel.channel, "update", node.system_id))
+        self.assertTrue(
+            node.system_id not in handler.cache["loaded_pks"],
+            "on_listen update did not remove system_id from loaded_pks")
+
+    def test_on_listen_update_returns_update_action_if_obj_not_None(self):
+        handler = self.make_nodes_handler(fields=['hostname'])
+        node = factory.make_Node()
+        handler.cache["loaded_pks"].add(node.system_id)
+        self.assertEquals(
+            (
+                handler._meta.handler_name,
+                "update",
+                {"hostname": node.hostname},
+            ),
+            handler.on_listen(
+                sentinel.channel, "update", node.system_id))
+        self.assertTrue(
+            node.system_id in handler.cache["loaded_pks"],
+            "on_listen update removed system_id from loaded_pks")
+
+    def test_on_listen_update_returns_create_action_if_not_in_loaded(self):
+        handler = self.make_nodes_handler(fields=['hostname'])
+        node = factory.make_Node()
+        self.assertEquals(
+            (
+                handler._meta.handler_name,
+                "create",
+                {"hostname": node.hostname},
+            ),
+            handler.on_listen(
+                sentinel.channel, "update", node.system_id))
+        self.assertTrue(
+            node.system_id in handler.cache["loaded_pks"],
+            "on_listen update didnt add system_id to loaded_pks")
+
+    def test_on_listen_update_call_full_dehydrate_for_list_if_not_active(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler()
-        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        handler.cache["loaded_pks"].add(node.system_id)
         mock_dehydrate = self.patch(handler, "full_dehydrate")
         mock_dehydrate.return_value = sentinel.data
         self.expectThat(
             handler.on_listen(
                 sentinel.channel, "update", node.system_id),
-            Equals((handler._meta.handler_name, sentinel.data)))
+            Equals((handler._meta.handler_name, "update", sentinel.data)))
         self.expectThat(
             mock_dehydrate,
             MockCalledOnceWith(node, for_list=True))
 
-    def test_on_listen_other_calls_full_dehydrate_not_for_list_if_active(self):
+    def test_on_listen_update_call_full_dehydrate_not_for_list_if_active(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler()
-        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        handler.cache["loaded_pks"].add(node.system_id)
         handler.cache["active_pk"] = node.system_id
         mock_dehydrate = self.patch(handler, "full_dehydrate")
         mock_dehydrate.return_value = sentinel.data
         self.expectThat(
             handler.on_listen(
                 sentinel.channel, "update", node.system_id),
-            Equals((handler._meta.handler_name, sentinel.data)))
+            Equals((handler._meta.handler_name, "update", sentinel.data)))
         self.expectThat(
             mock_dehydrate,
             MockCalledOnceWith(node, for_list=False))
-
-    def test_listen_returns_pk_on_delete_action(self):
-        handler = self.make_nodes_handler()
-        self.assertEquals(
-            sentinel.pk,
-            handler.listen(sentinel.channel, "delete", sentinel.pk))
 
     def test_listen_calls_get_object_with_pk_on_other_actions(self):
         handler = self.make_nodes_handler()

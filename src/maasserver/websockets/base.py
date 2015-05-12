@@ -19,6 +19,7 @@ __all__ = [
     "Handler",
     ]
 
+from operator import attrgetter
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
@@ -183,6 +184,12 @@ class Handler:
         self.user = user
         self.cache = HandlerCache(self._meta.handler_name, backend_cache)
 
+        # Holds a set of all pks that the client has loaded and has on their
+        # end of the connection. This is used to inform the client of the
+        # correct notifications based on what items the client has.
+        if "loaded_pks" not in self.cache:
+            self.cache["loaded_pks"] = set()
+
     def full_dehydrate(self, obj, for_list=False):
         """Convert the given object into a dictionary.
 
@@ -337,9 +344,13 @@ class Handler:
                 })
         if "limit" in params:
             queryset = queryset[:params["limit"]]
+        objs = list(queryset)
+
+        getpk = attrgetter(self._meta.pk)
+        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
         return [
             self.full_dehydrate(obj, for_list=True)
-            for obj in queryset
+            for obj in objs
             ]
 
     def get(self, params):
@@ -347,7 +358,10 @@ class Handler:
 
         :param pk: Object with primary key to return.
         """
-        return self.full_dehydrate(self.get_object(params))
+        obj = self.get_object(params)
+        getpk = attrgetter(self._meta.pk)
+        self.cache["loaded_pks"].add(getpk(obj))
+        return self.full_dehydrate(obj)
 
     def create(self, params):
         """Create the object from data."""
@@ -423,27 +437,55 @@ class Handler:
 
         Do not override this method instead override `listen`.
         """
+        if action == "delete":
+            if pk in self.cache['loaded_pks']:
+                self.cache['loaded_pks'].remove(pk)
+                return (self._meta.handler_name, action, pk)
+            else:
+                return None
+
         try:
             obj = self.listen(channel, action, pk)
         except HandlerDoesNotExistError:
-            return None
-        assert obj is not None
-        if action == "delete":
-            return (self._meta.handler_name, obj)
+            obj = None
+        if action == "create" and obj is not None:
+            self.cache['loaded_pks'].add(pk)
+            return self.on_listen_for_active_pk(action, pk, obj)
+        elif action == "update":
+            if pk in self.cache['loaded_pks']:
+                if obj is None:
+                    # The user no longer has access to this object. To the
+                    # client this is a delete action.
+                    self.cache['loaded_pks'].remove(pk)
+                    return (self._meta.handler_name, "delete", pk)
+                else:
+                    # Just a normal update to the client.
+                    return self.on_listen_for_active_pk(action, pk, obj)
+            elif obj is not None:
+                # User just got access to this new object. Send the message to
+                # the client as a create action instead of an update.
+                self.cache['loaded_pks'].add(pk)
+                return self.on_listen_for_active_pk("create", pk, obj)
+        return None
+
+    def on_listen_for_active_pk(self, action, pk, obj):
+        """Return the correct data for `obj` depending on if its the
+        active primary key."""
+        if 'active_pk' in self.cache and pk == self.cache['active_pk']:
+            # Active so send all the data for the object.
+            return (
+                self._meta.handler_name,
+                action,
+                self.full_dehydrate(obj, for_list=False),
+                )
         else:
-            if 'active_pk' in self.cache and pk == self.cache['active_pk']:
-                # Active so send all the data for the object.
-                return (
-                    self._meta.handler_name,
-                    self.full_dehydrate(obj, for_list=False),
-                    )
-            else:
-                # Not active so only send the data like it was comming from
-                # the list call.
-                return (
-                    self._meta.handler_name,
-                    self.full_dehydrate(obj, for_list=True),
-                    )
+            # Not active so only send the data like it was comming from
+            # the list call.
+            return (
+                self._meta.handler_name,
+                action,
+                self.full_dehydrate(obj, for_list=True),
+                )
 
     def listen(self, channel, action, pk):
         """Called when the handler listens for events on channels with
@@ -453,8 +495,6 @@ class Handler:
         :param action: Action that caused this event.
         :param pk: Id of the object.
         """
-        if action == "delete":
-            return pk
         return self.get_object({
             self._meta.pk: pk
             })

@@ -84,7 +84,7 @@ class TestEventHandler(MAASServerTestCase):
         handler = EventHandler(user, cache)
         node = factory.make_Node()
         handler.list({"node_id": node.id})
-        self.assertEquals({"event_node_ids": [node.id]}, cache)
+        self.assertEquals([node.id], cache["event_node_ids"])
 
     def test_list_only_returns_events_for_node(self):
         user = factory.make_User()
@@ -200,12 +200,11 @@ class TestEventHandler(MAASServerTestCase):
 
     def test_clear_removes_node_id_from_cache(self):
         user = factory.make_User()
-        cache = {}
-        handler = EventHandler(user, cache)
+        handler = EventHandler(user, {})
         node = factory.make_Node()
         handler.cache["node_ids"].append(node.id)
         self.expectThat(handler.clear({"node_id": node.id}), Is(None))
-        self.expectThat(cache, Equals({"event_node_ids": []}))
+        self.expectThat(handler.cache["node_ids"], Equals([]))
 
     def test_on_listen_calls_listen(self):
         user = factory.make_User()
@@ -231,7 +230,7 @@ class TestEventHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = EventHandler(user, {})
         self.assertEquals(
-            (handler._meta.handler_name, sentinel.pk),
+            (handler._meta.handler_name, "delete", sentinel.pk),
             handler.on_listen(
                 sentinel.channel, "delete", sentinel.pk))
 
@@ -244,12 +243,16 @@ class TestEventHandler(MAASServerTestCase):
             handler.on_listen(
                 sentinel.channel, "create", event.id))
 
-    def test_on_listen_returns_handler_name_and_event(self):
+    def test_on_listen_returns_handler_name_action_and_event(self):
         user = factory.make_User()
         handler = EventHandler(user, {})
         node = factory.make_Node()
         event = factory.make_Event(node=node)
         handler.cache["node_ids"].append(node.id)
         self.assertEquals(
-            (handler._meta.handler_name, self.dehydrate_event(event)),
+            (
+                handler._meta.handler_name,
+                "create",
+                self.dehydrate_event(event)
+            ),
             handler.on_listen(sentinel.channel, "create", event.id))
