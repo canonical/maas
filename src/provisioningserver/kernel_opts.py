@@ -22,6 +22,10 @@ from collections import namedtuple
 import os
 
 from provisioningserver.drivers import ArchitectureRegistry
+from provisioningserver.logger import get_maas_logger
+
+
+maaslog = get_maas_logger("kernel_opts")
 
 
 class EphemeralImagesDirectoryNotFound(Exception):
@@ -187,4 +191,7 @@ def compose_kernel_command_line(params):
         # the options to "stick" when local booting later.
         options.append('--')
         options.append(params.extra_opts)
-    return ' '.join(options)
+    kernel_opts = ' '.join(options)
+    maaslog.debug(
+        '%s: kernel parameters -- "%s"' % (params.hostname, kernel_opts))
+    return kernel_opts
