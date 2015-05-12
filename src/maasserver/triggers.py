@@ -177,6 +177,29 @@ DHCPLEASE_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a node result is added or removed from a node.
+# Sends a notify message for node_update or device_update depending on if the
+# node is installable.
+NODERESULT_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node
+      WHERE id = %s;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -425,3 +448,21 @@ def register_all_triggers():
     register_trigger(
         "maasserver_dhcplease",
         "nd_dhcplease_unmatch_notify", "delete")
+
+    # Node result table, update to linked node.
+    register_procedure(
+        NODERESULT_NODE_NOTIFY % (
+            'nd_noderesult_link_notify',
+            'NEW.node_id',
+            ))
+    register_procedure(
+        NODERESULT_NODE_NOTIFY % (
+            'nd_noderesult_unlink_notify',
+            'OLD.node_id',
+            ))
+    register_trigger(
+        "metadataserver_noderesult",
+        "nd_noderesult_link_notify", "insert")
+    register_trigger(
+        "metadataserver_noderesult",
+        "nd_noderesult_unlink_notify", "delete")

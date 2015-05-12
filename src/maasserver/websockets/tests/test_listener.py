@@ -39,6 +39,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
 )
+from metadataserver.models import NodeResult
 from mock import (
     ANY,
     sentinel,
@@ -377,6 +378,17 @@ class TransactionalHelpersMixin:
     def delete_dhcplease(self, id):
         lease = DHCPLease.objects.get(id=id)
         lease.delete()
+
+    @transactional
+    def create_noderesult(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_NodeResult_for_commissioning(**params)
+
+    @transactional
+    def delete_noderesult(self, id):
+        result = NodeResult.objects.get(id=id)
+        result.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -947,6 +959,58 @@ class TestNodeDHCPLeaseListener(
         yield listener.start()
         try:
             yield deferToThread(self.delete_dhcplease, lease.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeNodeResultListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    metadataserver_noderesult table that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_noderesult, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        result = yield deferToThread(self.create_noderesult, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
