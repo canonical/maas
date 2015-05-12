@@ -45,9 +45,12 @@ class TestCompiledSCSS(MAASTestCase):
             return stream.read()
 
     def test_css_up_to_date(self):
-        # In-tree compiles css must exist.
+        """
+        In-tree compiled CSS must match SCSS compilation.
+        """
         in_tree_css_path = os.path.join(
             root, "src", "maasserver", "static", "css", "maas-styles.css")
+
         self.assertIs(
             os.path.exists(in_tree_css_path), True,
             "maas-styles.css is missing.")

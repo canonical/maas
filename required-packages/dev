@@ -3,6 +3,7 @@ chromium-browser
 chromium-chromedriver
 curl
 firefox
+git
 gjs
 ipython
 libjs-jquery
