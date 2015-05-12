@@ -153,6 +153,30 @@ MACSTATICIPADDRESSLINK_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a dhcplease is added or removed and it matches
+# a MAC address. Sends a notify message for node_update or device_update
+# depending on if the node is installable.
+DHCPLEASE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node, maasserver_macaddress
+      WHERE maasserver_node.id = maasserver_macaddress.node_id
+      AND maasserver_macaddress.mac_address = %s;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -383,3 +407,21 @@ def register_all_triggers():
     register_trigger(
         "maasserver_macstaticipaddresslink",
         "nd_sipaddress_unlink_notify", "delete")
+
+    # DHCP lease table, update to linked node.
+    register_procedure(
+        DHCPLEASE_NODE_NOTIFY % (
+            'nd_dhcplease_match_notify',
+            'NEW.mac',
+            ))
+    register_procedure(
+        DHCPLEASE_NODE_NOTIFY % (
+            'nd_dhcplease_unmatch_notify',
+            'OLD.mac',
+            ))
+    register_trigger(
+        "maasserver_dhcplease",
+        "nd_dhcplease_match_notify", "insert")
+    register_trigger(
+        "maasserver_dhcplease",
+        "nd_dhcplease_unmatch_notify", "delete")

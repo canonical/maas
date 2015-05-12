@@ -19,6 +19,7 @@ from collections import namedtuple
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
+from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
@@ -365,6 +366,17 @@ class TransactionalHelpersMixin:
     def delete_staticipaddress(self, id):
         sip = StaticIPAddress.objects.get(id=id)
         sip.delete()
+
+    @transactional
+    def create_dhcplease(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_DHCPLease(**params)
+
+    @transactional
+    def delete_dhcplease(self, id):
+        lease = DHCPLease.objects.get(id=id)
+        lease.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -879,6 +891,62 @@ class TestNodeStaticIPAddressListener(
         yield listener.start()
         try:
             yield deferToThread(self.delete_staticipaddress, sip.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeDHCPLeaseListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_dhcplease table that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True, 'mac': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False, 'mac': True},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_dhcplease, {"mac": pxe_mac.mac_address})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
+        lease = yield deferToThread(
+            self.create_dhcplease, {"mac": pxe_mac.mac_address})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_dhcplease, lease.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
