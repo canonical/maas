@@ -541,3 +541,17 @@ documentation`_.
 
 .. _convention for headings as used in the Python documentation:
   http://sphinx.pocoo.org/rest.html#sections
+
+
+Updating copyright notices
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Use the `Bazaar Copyright Updater`_::
+
+  bzr branch lp:bzr-update-copyright ~/.bazaar/plugins/update_copyright
+  bzr update-copyright --force-range
+
+Then commit any changes.
+
+.. _Bazaar Copyright Updater:
+  https://launchpad.net/bzr-update-copyright

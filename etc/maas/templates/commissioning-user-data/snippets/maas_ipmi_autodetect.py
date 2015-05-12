@@ -2,7 +2,7 @@
 #
 # maas-ipmi-autodetect - autodetect and autoconfigure IPMI.
 #
-# Copyright (C) 2011-2014 Canonical
+# Copyright (C) 2013-2015 Canonical
 #
 # Authors:
 #    Andres Rodriguez <andres.rodriguez@canonical.com>

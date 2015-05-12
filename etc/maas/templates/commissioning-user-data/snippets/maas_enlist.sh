@@ -2,7 +2,7 @@
 #
 #    maas-enlist: MAAS Enlistment Tool
 #
-#    Copyright (C) 2012-2014 Canonical Ltd.
+#    Copyright (C) 2014-2015 Canonical Ltd.
 #
 #    Authors: Andres Rodriguez <andres.rodriguez@canonical.com>
 #
