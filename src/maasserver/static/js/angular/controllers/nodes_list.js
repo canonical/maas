@@ -14,9 +14,9 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
-            external: "External IP",
-            dynamic: "Dynamic IP",
-            "static": "Static IP"
+            external: "External",
+            dynamic: "Dynamic",
+            "static": "Static"
         };
 
         // Set title and page.

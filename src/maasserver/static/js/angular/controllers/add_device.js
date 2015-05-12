@@ -23,15 +23,15 @@ angular.module('MAAS').controller('AddDeviceController', [
         $scope.ipAssignments = [
             {
                 name: "external",
-                title: "External IP"
+                title: "External"
             },
             {
                 name: "dynamic",
-                title: "Dynamic IP"
+                title: "Dynamic"
             },
             {
                 name: "static",
-                title: "Static IP"
+                title: "Static"
             }
         ];
 

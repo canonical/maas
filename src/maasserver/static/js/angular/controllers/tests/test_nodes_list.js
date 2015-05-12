@@ -1151,22 +1151,22 @@ describe("NodesListController", function() {
 
     describe("getDeviceIPAssignment", function() {
 
-        it("returns 'External IP' for external assignment", function() {
+        it("returns 'External' for external assignment", function() {
             var controller = makeController();
             expect($scope.getDeviceIPAssignment("external")).toBe(
-                "External IP");
+                "External");
         });
 
-        it("returns 'Dynamic IP' for dynamic assignment", function() {
+        it("returns 'Dynamic' for dynamic assignment", function() {
             var controller = makeController();
             expect($scope.getDeviceIPAssignment("dynamic")).toBe(
-                "Dynamic IP");
+                "Dynamic");
         });
 
-        it("returns 'Static IP' for static assignment", function() {
+        it("returns 'Static' for static assignment", function() {
             var controller = makeController();
             expect($scope.getDeviceIPAssignment("static")).toBe(
-                "Static IP");
+                "Static");
         });
     });
 });

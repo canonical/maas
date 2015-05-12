@@ -171,15 +171,15 @@ describe("AddDeviceController", function() {
         expect($scope.ipAssignments).toEqual([
             {
                 name: "external",
-                title: "External IP"
+                title: "External"
             },
             {
                 name: "dynamic",
-                title: "Dynamic IP"
+                title: "Dynamic"
             },
             {
                 name: "static",
-                title: "Static IP"
+                title: "Static"
             }
         ]);
         expect($scope.device).toEqual({
