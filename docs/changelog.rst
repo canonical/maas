@@ -2,6 +2,17 @@
 Changelog
 =========
 
+1.7.4
+=====
+
+Bug Fix Update
+--------------
+
+#1387859    When MAAS has too many leases, and lease parsing fails, MAAS fails
+            to auto-map NIC with network
+#1329267    Alert a command-line user of `maas` when their local API
+            description is out-of-date.
+
 1.7.3
 =====
 
@@ -21,6 +32,8 @@ Bug Fix Update
 
 Bug Fix Update
 --------------
+
+For full details see https://launchpad.net/maas/+milestone/1.7.2
 
 #1331214    Support AMT Version > 8
 #1397567    Fix call to amttool when restarting a node to not fail disk erasing.
@@ -530,6 +543,8 @@ See https://launchpad.net/maas/+milestone/1.7.0 for full details.
 #1321885    IPMI detection and automatic setting fail in ubuntu 14.04 maas
 
 #1325610    node marked "Ready" before poweroff complete
+
+#1325638    Add hardware enablement for Universal Management Gateway
 
 #1340188    unallocated node started manually, causes AssertionError for purpose poweroff
 
