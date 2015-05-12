@@ -7,14 +7,14 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'LargeFile',
-    ]
+]
 
 import hashlib
 import os
@@ -33,7 +33,13 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    transactional,
+)
+from twisted.internet import reactor
+from twisted.internet.task import deferLater
+from twisted.internet.threads import deferToThread
 
 
 class FileStorageManager(Manager):
@@ -152,11 +158,27 @@ class LargeFile(CleanSave, TimestampedModel):
         links = [
             rel.get_accessor_name()
             for rel in self._meta.get_all_related_objects()
-            ]
+        ]
         for link in links:
             if getattr(self, link).exists():
                 return
         super(LargeFile, self).delete(*args, **kwargs)
+
+
+def _async_delete_large_object(content):
+    """Schedule for the `unlink_content` to be called
+    later from within the reactor.
+
+    This prevents the running task from blocking waiting for
+    this task to finish. This can cause blocking and thread starvation
+    inside the reactor threadpool.
+    """
+
+    def unlink_content(content):
+        content.unlink()
+
+    return deferLater(reactor, 0, deferToThread,
+                      transactional(unlink_content), content)
 
 
 @receiver(post_delete)
@@ -169,4 +191,4 @@ def delete_large_object(sender, instance, **kwargs):
     """
     if sender == LargeFile:
         if instance.content is not None:
-            instance.content.unlink()
+            _async_delete_large_object(instance.content)

@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -17,6 +17,7 @@ __all__ = []
 from cStringIO import StringIO
 from random import randint
 
+from crochet import wait_for_reactor
 from maasserver.models.largefile import LargeFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -117,13 +118,17 @@ class TestLargeFile(MAASServerTestCase):
         largefile = factory.make_LargeFile()
         self.assertTrue(largefile.valid)
 
-    def test_delete_calls_unlink_on_content(self):
+    @wait_for_reactor
+    def test_delete_calls__async_delete_large_object_on_content(self):
         largefile = factory.make_LargeFile()
         content = largefile.content
         self.addCleanup(content.unlink)
-        unlink_mock = self.patch(content, 'unlink')
-        largefile.delete()
-        self.assertThat(unlink_mock, MockCalledOnceWith())
+        _async_delete_large_object = self.patch(
+            LargeFile, '_async_delete_large_object')
+        _async_delete_large_object.__name__ = (b"_async_delete_large_object")
+        yield largefile.delete()
+        self.assertThat(
+            _async_delete_large_object, MockCalledOnceWith(content))
 
     def test_delete_does_nothing_if_linked(self):
         largefile = factory.make_LargeFile()
@@ -137,3 +142,12 @@ class TestLargeFile(MAASServerTestCase):
         largefile = factory.make_LargeFile()
         largefile.delete()
         self.assertFalse(LargeFile.objects.filter(id=largefile.id).exists())
+
+    @wait_for_reactor
+    def test__async_delete_large_object(self):
+        largefile = factory.make_LargeFile()
+        content = largefile.content
+        self.addCleanup(content.unlink)
+        unlink_mock = self.patch(content, 'unlink')
+        yield LargeFile._async_delete_large_object(content)
+        self.assertThat(unlink_mock, MockCalledOnceWith(content))
