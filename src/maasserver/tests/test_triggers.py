@@ -92,6 +92,9 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_dhcplease_nd_dhcplease_unmatch_notify",
             "metadataserver_noderesult_nd_noderesult_link_notify",
             "metadataserver_noderesult_nd_noderesult_unlink_notify",
+            "maasserver_macaddress_nd_macaddress_link_notify",
+            "maasserver_macaddress_nd_macaddress_unlink_notify",
+            "maasserver_macaddress_nd_macaddress_update_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:

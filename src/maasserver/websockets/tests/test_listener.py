@@ -21,6 +21,7 @@ from django.contrib.auth.models import User
 from django.db import connection
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
+from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
@@ -389,6 +390,24 @@ class TransactionalHelpersMixin:
     def delete_noderesult(self, id):
         result = NodeResult.objects.get(id=id)
         result.delete()
+
+    @transactional
+    def create_macaddress(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_MACAddress(**params)
+
+    @transactional
+    def delete_macaddress(self, id):
+        mac = MACAddress.objects.get(id=id)
+        mac.delete()
+
+    @transactional
+    def update_macaddress(self, id, params):
+        mac = MACAddress.objects.get(id=id)
+        for key, value in params.items():
+            setattr(mac, key, value)
+        return mac.save()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1013,5 +1032,108 @@ class TestNodeNodeResultListener(
             yield deferToThread(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeMACAddressListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_macaddress table that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_macaddress, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        mac = yield deferToThread(self.create_macaddress, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_macaddress, mac.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        mac = yield deferToThread(self.create_macaddress, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_macaddress, mac.id, {
+                "mac_address": factory.make_MAC()
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_old_node_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node1 = yield deferToThread(self.create_node, self.params)
+        node2 = yield deferToThread(self.create_node, self.params)
+        mac = yield deferToThread(self.create_macaddress, {"node": node1})
+        dvs = [DeferredValue(), DeferredValue()]
+
+        def set_defer_value(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    break
+
+        listener = PostgresListener()
+        listener.register(self.listener, set_defer_value)
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_macaddress, mac.id, {
+                "node": node2
+                })
+            yield dvs[0].get(timeout=2)
+            yield dvs[1].get(timeout=2)
+            self.assertItemsEqual([
+                ('update', '%s' % node1.system_id),
+                ('update', '%s' % node2.system_id),
+                ], [dvs[0].value, dvs[1].value])
         finally:
             yield listener.stop()

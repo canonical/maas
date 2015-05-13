@@ -200,6 +200,66 @@ NODERESULT_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a MAC address is added or removed from a node.
+# Sends a notify message for node_update or device_update depending on if the
+# node is installable.
+MACADDRESS_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node
+      WHERE id = %s;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a MAC address updated. Will send node_update
+# or device_update when the MAC address is moved from another node to a new
+# node. Sends a notify message for node_update or device_update depending on
+# if the node is installable, both for the old node and the new node.
+MACADDRESS_UPDATE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION nd_macaddress_update_notify()
+    RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      IF OLD.node_id != NEW.node_id THEN
+        SELECT system_id, installable INTO node
+        FROM maasserver_node
+        WHERE id = OLD.node_id;
+
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END IF;
+
+      SELECT system_id, installable INTO node
+      FROM maasserver_node
+      WHERE id = NEW.node_id;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def get_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -466,3 +526,25 @@ def register_all_triggers():
     register_trigger(
         "metadataserver_noderesult",
         "nd_noderesult_unlink_notify", "delete")
+
+    # MAC address table, update to linked node.
+    register_procedure(
+        MACADDRESS_NODE_NOTIFY % (
+            'nd_macaddress_link_notify',
+            'NEW.node_id',
+            ))
+    register_procedure(
+        MACADDRESS_NODE_NOTIFY % (
+            'nd_macaddress_unlink_notify',
+            'OLD.node_id',
+            ))
+    register_procedure(MACADDRESS_UPDATE_NODE_NOTIFY)
+    register_trigger(
+        "maasserver_macaddress",
+        "nd_macaddress_link_notify", "insert")
+    register_trigger(
+        "maasserver_macaddress",
+        "nd_macaddress_unlink_notify", "delete")
+    register_trigger(
+        "maasserver_macaddress",
+        "nd_macaddress_update_notify", "update")
