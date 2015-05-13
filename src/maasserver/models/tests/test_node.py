@@ -403,8 +403,6 @@ class TestNode(MAASServerTestCase):
             ))
 
     def test_set_random_hostname_set_hostname(self):
-        # Blank out enlistment_domain.
-        Config.objects.set_config("enlistment_domain", '')
         node = factory.make_Node()
         original_hostname = node.hostname
         node.set_random_hostname()
@@ -412,7 +410,6 @@ class TestNode(MAASServerTestCase):
         self.assertNotEqual("", node.hostname)
 
     def test_set_random_hostname_checks_hostname_existence(self):
-        Config.objects.set_config("enlistment_domain", '')
         existing_node = factory.make_Node(hostname='hostname')
 
         hostnames = [existing_node.hostname, "new-hostname"]

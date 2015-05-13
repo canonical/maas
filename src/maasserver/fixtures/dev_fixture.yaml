@@ -2792,7 +2792,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: lopsided-notebook.local
+    hostname: lopsided-notebook
     installable: true
     license_key: ''
     memory: 1024
@@ -2824,7 +2824,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: exhausted-steel.local
+    hostname: exhausted-steel
     installable: true
     license_key: ''
     memory: 0
@@ -2856,7 +2856,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: quiet-crook.local
+    hostname: quiet-crook
     installable: true
     license_key: ''
     memory: 0
@@ -2888,7 +2888,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: united-room.local
+    hostname: united-room
     installable: true
     license_key: ''
     memory: 1024
@@ -2920,7 +2920,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: Manually marked as broken by user 'ubuntu'
-    hostname: eager-needle.local
+    hostname: eager-needle
     installable: true
     license_key: ''
     memory: 0
@@ -2952,7 +2952,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: constant-drain.local
+    hostname: constant-drain
     installable: true
     license_key: ''
     memory: 1024
@@ -2984,7 +2984,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: relieved-front.local
+    hostname: relieved-front
     installable: true
     license_key: ''
     memory: 1024
@@ -3016,7 +3016,7 @@
     distro_series: ''
     error: finished [8/8]
     error_description: ''
-    hostname: united-can.local
+    hostname: united-can
     installable: true
     license_key: ''
     memory: 1024

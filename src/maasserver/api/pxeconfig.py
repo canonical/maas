@@ -201,7 +201,10 @@ def pxeconfig(request):
         nodegroup = find_nodegroup_for_pxeconfig_request(request)
         preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
         hostname = 'maas-enlist'
-        domain = Config.objects.get_config('enlistment_domain')
+        if nodegroup is not None:
+            domain = nodegroup.name
+        else:
+            domain = b'local'
 
         arch = get_optional_param(request.GET, 'arch')
         if arch is None:

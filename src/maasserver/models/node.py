@@ -26,7 +26,6 @@ from collections import (
 from datetime import timedelta
 from itertools import chain
 from operator import attrgetter
-from string import whitespace
 from uuid import uuid1
 
 from django.contrib.auth.models import User
@@ -1206,13 +1205,8 @@ class Node(CleanSave, TimestampedModel):
 
         http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
         """
-        domain = Config.objects.get_config("enlistment_domain")
-        domain = domain.strip("." + whitespace)
         for new_hostname in gen_candidate_names():
-            if len(domain) > 0:
-                self.hostname = "%s.%s" % (new_hostname, domain)
-            else:
-                self.hostname = "%s" % new_hostname
+            self.hostname = "%s" % new_hostname
             try:
                 self.save()
             except ValidationError:

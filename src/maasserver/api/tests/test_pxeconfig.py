@@ -262,10 +262,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(
             'maas-enlist', self.get_pxeconfig(params).get('hostname'))
 
-    def test_pxeconfig_uses_enlistment_domain_for_enlisting_node(self):
-        params = self.get_default_params()
+    def test_pxeconfig_uses_nodegroup_domain_for_enlisting_node(self):
+        nodegroup = factory.make_NodeGroup()
+        params = self.get_default_params(nodegroup=nodegroup)
         self.assertEqual(
-            Config.objects.get_config('enlistment_domain'),
+            nodegroup.name,
             self.get_pxeconfig(params).get('domain'))
 
     def test_pxeconfig_splits_domain_from_node_hostname(self):

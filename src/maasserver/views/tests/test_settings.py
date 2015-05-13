@@ -95,7 +95,6 @@ class SettingsTest(MAASServerTestCase):
         # setup.
         self.patch(settings, "DNS_CONNECT", False)
         new_name = factory.make_string()
-        new_domain = factory.make_string()
         new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(
             reverse('settings'),
@@ -103,16 +102,13 @@ class SettingsTest(MAASServerTestCase):
                 prefix='maas_and_network',
                 data={
                     'maas_name': new_name,
-                    'enlistment_domain': new_domain,
                     'http_proxy': new_proxy,
                 }))
         self.assertEqual(httplib.FOUND, response.status_code, response.content)
         self.assertEqual(
             (new_name,
-             new_domain,
              new_proxy),
             (Config.objects.get_config('maas_name'),
-             Config.objects.get_config('enlistment_domain'),
              Config.objects.get_config('http_proxy')))
 
     def test_settings_commissioning_POST(self):

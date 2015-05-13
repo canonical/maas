@@ -172,18 +172,6 @@ CONFIG_ITEMS = {
             'required': False,
         }
     },
-    'enlistment_domain': {
-        'default': b'local',
-        'form': forms.CharField,
-        'form_kwargs': {
-            'label': "Default domain for new nodes",
-            'required': False,
-            'help_text': (
-                "If 'local' is chosen, nodes must be using mDNS. Leave "
-                "empty to use hostnames without a domain for newly enlisted "
-                "nodes.")
-        }
-    },
     'http_proxy': {
         'detault': None,
         'form': forms.URLField,

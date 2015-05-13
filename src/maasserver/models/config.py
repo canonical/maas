@@ -53,7 +53,6 @@ def get_default_config():
         DEFAULT_OS.get_default_commissioning_release(),
         # Network section configuration.
         'maas_name': gethostname(),
-        'enlistment_domain': b'local',
         'default_osystem': DEFAULT_OS.name,
         'default_distro_series': DEFAULT_OS.get_default_release(),
         'http_proxy': None,
