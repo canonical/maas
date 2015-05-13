@@ -288,9 +288,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual(
-            ["MAC address %s already in use." % mac],
-            parsed_result['mac_addresses'])
+        self.assertIn(
+            "MAC address %s already in use on" % mac,
+            parsed_result['mac_addresses'][0])
 
     def test_POST_fails_with_bad_operation(self):
         # If the operation ('op=operation_name') specified in the

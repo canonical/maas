@@ -112,6 +112,7 @@ class MACAddressAPITest(APITestCase):
         # A 'Bad Request' response is returned if one tries to add an invalid
         # MAC address to a node.
         node = self.createNodeWithMacs(self.logged_in_user)[0]
+        # An error is raised at this point
         response = self.client.post(
             reverse('node_macs_handler', args=[node.system_id]),
             {'mac_address': 'invalid-mac'})

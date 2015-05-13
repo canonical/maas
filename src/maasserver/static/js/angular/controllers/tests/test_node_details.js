@@ -94,7 +94,9 @@ describe("NodeDetailsController", function() {
             summary_yaml: null,
             commissioning_results: [],
             installation_results: [],
-            events: []
+            events: [],
+            interfaces: [],
+            extra_macs: []
         };
         NodesManager._items.push(node);
         return node;
@@ -1979,6 +1981,64 @@ describe("NodeDetailsController", function() {
                 data: {}
             });
             expect($scope.getInstallationData()).toBe("\n" + install_result);
+        });
+    });
+
+    describe("saveAddInterface", function() {
+
+        it("hides add MAC form, clears error message on success", function() {
+            var defer = $q.defer();
+            var controller = makeController();
+
+            spyOn(NodesManager, "updateItem").and.returnValue(defer.promise);
+
+            $scope.node = node;
+            $scope.nic = {
+                adding: true,
+                mac: "01:23:45:67:89:ab",
+                errormsg: null
+            };
+            $scope.saveAddInterface();
+
+            defer.resolve(node);
+            $rootScope.$digest();
+
+            // Add MAC form is hidden.
+            expect($scope.nic.adding).toBe(false);
+
+            // No error message is set.
+            expect($scope.nic.errormsg).toBe(null);
+        });
+
+        it("sets and shows error message, shows form on failure", function() {
+            var defer = $q.defer();
+            var controller = makeController();
+
+            spyOn(NodesManager, "updateItem").and.returnValue(defer.promise);
+
+            $scope.node = node;
+            $scope.nic = {
+                adding: true,
+                mac: "01:23:45:67:89:ab",
+                errormsg: null
+            };
+            $scope.saveAddInterface();
+
+            var message = "{u'mac_addresses': [u'One or more MAC addresses " +
+                "is invalid. (MAC address 01:23:45:67:89:ab already in use " +
+                "on eager-needle.local.)']}";
+            defer.reject(message);
+            $rootScope.$digest();
+
+            // Error message is visible.
+            expect($scope.nic.error).toBe(true);
+
+            // Error message is correct.
+            expect($scope.nic.errormsg).toBe("MAC address 01:23:45:67:89:ab " +
+                "already in use on eager-needle.local.");
+
+            // Add MAC form is visible
+            expect($scope.nic.adding).toBe(true);
         });
     });
 });

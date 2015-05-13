@@ -231,6 +231,24 @@ class TestNode(MAASServerTestCase):
         macs = MACAddress.objects.filter(node=node, mac_address=mac).count()
         self.assertEqual(1, macs)
 
+    def test_add_already_attached_mac_address_doesnt_raise_error(self):
+        """Re-adding a MACAddress should not fail"""
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        mac_as_string = unicode(mac.mac_address)
+        added_mac = node.add_mac_address(mac_as_string)
+        self.assertEqual(added_mac, mac)
+
+    def test_add_mac_address_attached_to_another_node_raises_error(self):
+        """Adding a MACAddress that's already in use in another node should
+        fail"""
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        mac2 = factory.make_MACAddress(node=node2)
+        mac2_as_string = unicode(mac2.mac_address)
+        self.assertRaises(ValidationError, node1.add_mac_address,
+                          mac2_as_string)
+
     def test_add_mac_address_sets_cluster_interface(self):
         # If a DHCPLease exists for this mac, ensure the
         # cluster_interface is set on the basis of that lease.

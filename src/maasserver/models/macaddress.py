@@ -180,7 +180,7 @@ class MACAddress(CleanSave, TimestampedModel):
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):
-                return "This MAC address is already registered."
+            return "This MAC address is already registered."
         return super(
             MACAddress, self).unique_error_message(model_class, unique_check)
 

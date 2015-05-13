@@ -30,6 +30,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             release: ""
         };
         $scope.checkingPower = false;
+        $scope.nic = {
+            adding: false,
+            error: false,
+            errormsg: ""
+        };
 
         // Holds errors that are displayed on the details page.
         $scope.errors = {
@@ -391,20 +396,27 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // the cluster information, because this is not pushed over
             // the websocket. If it didn't error for that reason then
             // the cluster is connected.
+            var MAC_ERROR_MARKER = "One or more MAC addresses is invalid.";
             var cluster = ClustersManager.getItemFromList(
                 $scope.node.nodegroup.id);
             if(isDisconnectedClusterError(error)) {
-                if(angular.isObject(cluster)) {
-                    cluster.connected = false;
-                }
+                cluster.connected = false;
             } else {
-                if(angular.isObject(cluster)) {
-                    cluster.connected = true;
+                // Not a disconnection, so, cluster.connected needs to be true.
+                cluster.connected = true;
+                var mac_error_offset = error.indexOf(MAC_ERROR_MARKER);
+                if (mac_error_offset !== -1) {
+                    // A MAC Address is invalid.
+                    var message = error.substring(mac_error_offset +
+                                                  MAC_ERROR_MARKER.length + 2);
+                    message = message.substring(0, message.length - 4);
+                    $scope.nic.error = true;
+                    $scope.nic.errormsg = message;
+                } else {
+                    // Unknown error that we currently don't track so log
+                    // it to the console.
+                    console.log(error);
                 }
-
-                // Unknown error that we currently don't track so log
-                // it to the console.
-                console.log(error);
             }
         }
 
@@ -420,6 +432,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
                 updateName();
                 updateSummary();
+                $scope.nic.adding = false; // Hide the add nic form.
+                $scope.nic.errormsg = null;
             }, function(error) {
                 handleSaveError(error);
                 updateName();
@@ -754,6 +768,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             var node = angular.copy($scope.node);
             node.power_type = $scope.power.type.name;
             node.power_parameters = angular.copy($scope.power.parameters);
+
+            // Update the node.
+            updateNode(node);
+        };
+
+        // Called to add a new network interface.
+        $scope.saveAddInterface = function() {
+            // Copy the node and make the changes.
+            var node = angular.copy($scope.node);
+            node.extra_macs.push($scope.nic.mac);
 
             // Update the node.
             updateNode(node);

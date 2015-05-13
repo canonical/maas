@@ -274,6 +274,33 @@
                         </tbody>
                     </table>
                 </div>
+                <a class="link-cta-ubuntu secondary left" data-ng-click="nic.adding = true"
+                   data-ng-show="!nic.adding && isSuperUser()">Add Interface</a>
+                <div class="ng-hide" data-ng-show="nic.adding">
+                    <h4>Add Interface</h4>
+                    <label for="new_mac_address"
+                           class="two-col ng-binding">MAC Address</label>
+                    <div class="three-col maas-dbl-overlay">
+                        <input
+                          type="text" name="new_mac_address"
+                          data-ng-class="{ invalid: nic.error }"
+                          data-ng-model="nic.mac"
+                          data-ng-pattern="/^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/"
+                          required>
+                        <span class="three-col maas-dbl-overlay"
+                              data-ng-show="nic.errormsg">{$ nic.errormsg $}</span>
+                    </div>
+                    <div class="four-col last-col right">
+                    <div class="two-col no-margin-bottom">
+                        <a href="" class="link-cta-ubuntu clear right"
+                           data-ng-click="nic.adding = false">Cancel</a>
+                    </div>
+                    <div class="two-col last-col no-margin-bottom">
+                        <button class="cta-ubuntu full"
+                                data-ng-click="saveAddInterface()">Add</button>
+                    </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -350,7 +377,8 @@
                    <a href="" class="link-cta-ubuntu clear right"></a>
                 </div>
                 <div class="two-col last-col no-margin-bottom">
-                    <a href="#/node/{$ node.system_id $}/events" class="link-cta-ubuntu secondary full">View more</a>
+                    <a href="#/node/{$ node.system_id $}/events"
+                       class="link-cta-ubuntu secondary full">View more</a>
                 </div>
             </div>
             <p class="twelve-col text-center" data-ng-show="allowShowMoreEvents()">

@@ -23,10 +23,7 @@ import crochet
 from lxml import etree
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import (
-    AdminNodeForm,
-    AdminNodeWithMACAddressesForm,
-)
+from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
@@ -389,10 +386,8 @@ class NodeHandler(TimestampedModelHandler):
 
     def get_form_class(self, action):
         """Return the form class used for `action`."""
-        if action == "create":
+        if action in ("create", "update"):
             return AdminNodeWithMACAddressesForm
-        elif action == "update":
-            return AdminNodeForm
         else:
             raise HandlerError("Unknown action: %s" % action)
 

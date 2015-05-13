@@ -789,6 +789,15 @@ class Node(CleanSave, TimestampedModel):
     def add_mac_address(self, mac_address):
         """Add a new MAC address to this `Node`.
 
+        Returns the corresponding MACAddress object if mac_address represents a
+        MACAddress already assigned to this node.
+
+        Returns a new MACAddress object assigned to this node if this address
+        is not assigned to any node in the system.
+
+        Raises a ValidationError if mac_address corresponds to a MACAddress
+        already assigned to a different node.
+
         :param mac_address: The MAC address to be added.
         :type mac_address: unicode
         :raises: django.core.exceptions.ValidationError_
@@ -796,12 +805,26 @@ class Node(CleanSave, TimestampedModel):
         .. _django.core.exceptions.ValidationError: https://
            docs.djangoproject.com/en/dev/ref/exceptions/
            #django.core.exceptions.ValidationError
+
         """
+
         # Avoid circular imports
         from maasserver.models import MACAddress
 
-        mac = MACAddress(mac_address=mac_address, node=self)
-        mac.save()
+        # Create the MACAddress, but only if it does not exist.
+        try:
+            mac = MACAddress(mac_address=mac_address, node=self)
+            mac.save()
+        except ValidationError as e:
+            if any(("is not a valid MAC address." in m
+                    for m in e.message_dict['mac_address'])):
+                raise e  # will cause the stack to return an HTTP error status
+            elif any((u'This MAC address is already registered.' == m
+                      for m in e.message_dict['mac_address'])):
+                mac = MACAddress.objects.get(mac_address=mac_address)
+                if mac.node_id != self.id:
+                    # This MACAddress is assigned to another node
+                    raise e
 
         # See if there's a lease for this MAC and set its
         # cluster_interface if so.

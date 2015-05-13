@@ -1029,9 +1029,26 @@ class WithMACAddressesMixin:
     def clean_mac_addresses(self):
         data = self.cleaned_data['mac_addresses']
         errors = []
-        for mac in data:
-            if MACAddress.objects.filter(mac_address=mac.lower()).exists():
-                errors.append('MAC address %s already in use.' % mac)
+        if self.instance.id is not None:
+            # This node is already in the system. We should consider adding
+            # MACAddresses that are already attached to this node a valid
+            # operation.
+            for mac in data:
+                mac_on_other_nodes = MACAddress.objects.filter(
+                    mac_address=mac.lower()).exclude(node=self.instance)
+                if mac_on_other_nodes:
+                    errors.append(
+                        'MAC address %s already in use on %s.' %
+                        (mac, mac_on_other_nodes[0].node.hostname))
+        else:
+            # This node does not exist yet, we should only check if this
+            # MACAddress is already attached to another node.
+            for mac in data:
+                if MACAddress.objects.filter(mac_address=mac.lower()).exists():
+                    errors.append(
+                        'MAC address %s already in use on %s.' %
+                        (mac, MACAddress.objects.filter(
+                            mac_address=mac.lower()).first().node.hostname))
         if errors:
             raise ValidationError({'mac_addresses': errors})
         return data

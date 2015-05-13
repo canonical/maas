@@ -24,10 +24,7 @@ from django.contrib.auth.models import User
 from lxml import etree
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import (
-    AdminNodeForm,
-    AdminNodeWithMACAddressesForm,
-)
+from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
@@ -424,7 +421,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         self.assertEquals(
-            AdminNodeForm,
+            AdminNodeWithMACAddressesForm,
             handler.get_form_class("update"))
 
     def test_get_form_class_raises_error_for_unknown_action(self):
