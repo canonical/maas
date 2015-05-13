@@ -25,6 +25,7 @@ from socket import gethostname
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
@@ -291,6 +292,17 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "Erase nodes' disks prior to releasing.")
+        }
+    },
+    'boot_images_auto_import': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Automatically import/refresh the boot images "
+                "every %d minutes" %
+                (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0))
         }
     },
 }

@@ -13,10 +13,11 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "ImportResourcesProgressService",
     "ensure_boot_source_definition",
     "get_simplestream_endpoint",
+    "ImportResourcesProgressService",
     "ImportResourcesService",
+    "IMPORT_RESOURCES_SERVICE_PERIOD",
     "is_import_resources_running",
     "simplestreams_file_handler",
     "simplestreams_stream_handler",
@@ -59,6 +60,7 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
+    Config,
     LargeFile,
     NodeGroup,
 )
@@ -994,16 +996,33 @@ def is_import_resources_running():
     return locks.import_images.is_locked()
 
 
+def import_resources_periodically():
+    """Import boot resources.
+
+    This is called by the ImportResourcesService to import the boot resources
+    periodically.  It will simply call _import_resources_in_thread unless
+    the periodic image import mechanism has been disabled.
+    """
+    if Config.objects.get_config('boot_images_auto_import'):
+        return _import_resources_in_thread()
+    else:
+        maaslog.debug(
+            "Skipping periodic import of boot resources as it is disabled.")
+
+
+# How often the import service runs.
+IMPORT_RESOURCES_SERVICE_PERIOD = timedelta(hours=1)
+
+
 class ImportResourcesService(TimerService, object):
     """Service to periodically import boot resources.
 
     This will run immediately when it's started, then once again every hour,
     though the interval can be overridden by passing it to the constructor.
     """
-
-    def __init__(self, interval=timedelta(hours=1)):
+    def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super(ImportResourcesService, self).__init__(
-            interval.total_seconds(), _import_resources_in_thread)
+            interval.total_seconds(), import_resources_periodically)
 
 
 class ImportResourcesProgressService(TimerService, object):

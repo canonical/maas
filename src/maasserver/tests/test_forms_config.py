@@ -31,6 +31,13 @@ class TestValidOptionForm(ConfigForm):
     maas_name = forms.CharField(label="Field 1", max_length=10)
 
 
+class TestCompositeForm(ConfigForm):
+    config_fields = ['maas_name']
+
+    maas_name = forms.CharField(label="Field 1", max_length=10)
+    non_config_field = forms.CharField(label="Field 2", max_length=10)
+
+
 class ConfigFormTest(MAASServerTestCase):
 
     def test_form_valid_saves_into_db(self):
@@ -38,7 +45,7 @@ class ConfigFormTest(MAASServerTestCase):
         form = TestValidOptionForm({'maas_name': value})
         result = form.save()
 
-        self.assertTrue(result)
+        self.assertTrue(result, form._errors)
         self.assertEqual(value, Config.objects.get_config('maas_name'))
 
     def test_form_rejects_unknown_settings(self):
@@ -47,7 +54,7 @@ class ConfigFormTest(MAASServerTestCase):
         form = TestOptionForm({'field1': value, 'field2': value2})
         valid = form.is_valid()
 
-        self.assertFalse(valid)
+        self.assertFalse(valid, form._errors)
         self.assertIn('field1', form._errors)
         self.assertIn('field2', form._errors)
 
@@ -56,7 +63,7 @@ class ConfigFormTest(MAASServerTestCase):
         form = TestOptionForm({'field1': value_too_long, 'field2': False})
         result = form.save()
 
-        self.assertFalse(result)
+        self.assertFalse(result, form._errors)
         self.assertIn('field1', form._errors)
         self.assertIsNone(Config.objects.get_config('field1'))
         self.assertIsNone(Config.objects.get_config('field2'))
@@ -76,3 +83,13 @@ class ConfigFormTest(MAASServerTestCase):
 
         self.assertItemsEqual(['field1'], form.initial)
         self.assertEqual(value, form.initial['field1'])
+
+    def test_validates_composite_form(self):
+        value1 = factory.make_string(5)
+        value2 = factory.make_string(5)
+        form = TestCompositeForm(
+            {'maas_name': value1, 'non_config_field': value2})
+        result = form.save()
+
+        self.assertTrue(result, form._errors)
+        self.assertEqual(value1, Config.objects.get_config('maas_name'))

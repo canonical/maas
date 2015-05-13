@@ -1264,6 +1264,9 @@ class ConfigForm(Form):
     """A base class for forms that save the content of their fields into
     Config objects.
     """
+    # List of fields that should be considered configuration fields.
+    # Consider all the fields as configuration fields if this is None.
+    config_fields = None
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
@@ -1280,9 +1283,14 @@ class ConfigForm(Form):
     def clean(self):
         cleaned_data = super(Form, self).clean()
         for config_name in cleaned_data.keys():
-            if config_name not in CONFIG_ITEMS_KEYS:
-                self._errors[config_name] = self.error_class([
-                    INVALID_SETTING_MSG_TEMPLATE % config_name])
+            consider_field = (
+                self.config_fields is None or
+                config_name in self.config_fields
+            )
+            if consider_field:
+                if config_name not in CONFIG_ITEMS_KEYS:
+                    self._errors[config_name] = self.error_class([
+                        INVALID_SETTING_MSG_TEMPLATE % config_name])
         return cleaned_data
 
     def save(self):
@@ -1299,7 +1307,12 @@ class ConfigForm(Form):
             return False
         else:
             for name, value in self.cleaned_data.items():
-                Config.objects.set_config(name, value)
+                consider_field = (
+                    self.config_fields is None or
+                    name in self.config_fields
+                )
+                if consider_field:
+                    Config.objects.set_config(name, value)
             return True
 
 
@@ -1379,8 +1392,11 @@ class GlobalKernelOptsForm(ConfigForm):
     kernel_opts = get_config_field('kernel_opts')
 
 
-class BootSourceSettingsForm(Form):
+class BootSourceSettingsForm(ConfigForm):
     """Settings page, Boot Images section."""
+    config_fields = ['boot_images_auto_import']
+
+    boot_images_auto_import = get_config_field('boot_images_auto_import')
     boot_source_url = forms.CharField(
         label="Sync URL", required=True,
         help_text=(
@@ -1420,7 +1436,7 @@ class BootSourceSettingsForm(Form):
             sucessfully saved into the detabase.
         :rtype: boolean
         """
-        self.full_clean()
+        super(BootSourceSettingsForm, self).save()
         if self._errors:
             return False
         boot_source = BootSource.objects.first()

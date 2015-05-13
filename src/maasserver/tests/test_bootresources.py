@@ -1240,8 +1240,28 @@ class TestImportResourcesService(MAASTestCase):
     def test__calls__import_resources_in_thread(self):
         service = bootresources.ImportResourcesService()
         self.assertEqual(
-            (bootresources._import_resources_in_thread, (), {}),
+            (bootresources.import_resources_periodically, (), {}),
             service.call)
+
+
+class TestImportResourcesPeriodically(MAASTestCase):
+    """Tests for `import_resources_periodically`."""
+
+    def test__calls__import_resources_in_thread_if_auto(self):
+        Config.objects.set_config('boot_images_auto_import', True)
+        mock__import_resources_in_thread = self.patch(
+            bootresources, '_import_resources_in_thread')
+        bootresources.import_resources_periodically()
+        self.assertThat(
+            mock__import_resources_in_thread, MockCalledOnceWith())
+
+    def test__doesnt_call__import_resources_in_thread_if_no_auto(self):
+        Config.objects.set_config('boot_images_auto_import', False)
+        mock__import_resources_in_thread = self.patch(
+            bootresources, '_import_resources_in_thread')
+        bootresources.import_resources_periodically()
+        self.assertThat(
+            mock__import_resources_in_thread, MockNotCalled())
 
 
 class TestImportResourcesProgressService(MAASServerTestCase):
