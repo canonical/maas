@@ -372,11 +372,26 @@ header.banner {
                 padding: 6px 0 5px 25px;
                 width: auto;
                 display: inline-block;
+                position: relative;
 
-                &.info {
+                &.info,
+                &.error {
                     background-image: url('../img/icons/error.png');
                     background-image: url('../img/icons/error.svg'), none;
                     background-position: 0px 9px;
+
+                    &.progress {
+                        width: 100%;
+                    }
+                }
+
+                &.progress {
+                    padding-left: 0;
+
+                    .loader {
+                        position: relative;
+                        top: 1px;
+                    }
                 }
             }
         }

@@ -90,14 +90,12 @@
 
                 <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
                 <div class="page-header__feedback ng-hide" data-ng-show="hasActionsInProgress('nodes') || hasActionsFailed('nodes')">
-                    <p class="page-header__feedback-message" data-ng-show="hasActionsInProgress('nodes')">
-                        <span class="power-status--power checking">
-                            <span class="loader"></span>
-                            {$ tabs.nodes.actionProgress.completed $} of {$ tabs.nodes.actionProgress.total $}
-                            nodes have been {$ tabs.nodes.actionOption.sentence $}.
-                        </span>
+                    <p class="page-header__feedback-message progress" data-ng-show="hasActionsInProgress('nodes')">
+                        <span class="loader"></span>
+                        {$ tabs.nodes.actionProgress.completed $} of {$ tabs.nodes.actionProgress.total $}
+                        nodes have been {$ tabs.nodes.actionOption.sentence $}.
                     </p>
-                    <p class="page-header__feedback-message info"
+                    <p class="page-header__feedback-message error progress"
                         data-ng-repeat="(error, nodes) in tabs.nodes.actionProgress.errors">
                         The {$ tabs.nodes.actionOption.title.toLowerCase() $} action for {$ nodes.length $}
                         <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>

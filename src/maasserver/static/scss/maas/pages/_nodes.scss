@@ -256,7 +256,8 @@
     }
 }
 
-.loading {
+.loading,
+.loader {
     background: url('../img/in_progress.png') no-repeat;
     background-size: 16px 16px;
     width: 16px;
