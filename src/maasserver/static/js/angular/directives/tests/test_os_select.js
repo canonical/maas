@@ -110,13 +110,26 @@ describe("maasOsSelect", function() {
         expect(select.attr("data-ng-model")).toBe("ngModel.release");
     });
 
+    it("adds the $reset function to the model", function() {
+        var directive = compileDirective("osinfo", "selected");
+        expect(angular.isFunction($scope.selected.$reset)).toBe(true);
+    });
+
+    it("model $reset resets the default selection", function() {
+        var directive = compileDirective("osinfo", "selected");
+        $scope.selected.osystem = makeName("os");
+        $scope.selected.release = makeName("release");
+        $scope.selected.$reset();
+        expect($scope.selected.osystem).toBe($scope.osinfo.default_osystem);
+        expect($scope.selected.release).toBe($scope.osinfo.default_osystem +
+            "/" + $scope.osinfo.default_release);
+    });
+
     it("default $scope.selected to be initialized with defaults", function() {
         var directive = compileDirective("osinfo", "selected");
-        expect($scope.selected).toEqual({
-            osystem: $scope.osinfo.default_osystem,
-            release: $scope.osinfo.default_osystem + "/" +
-                $scope.osinfo.default_release
-        });
+        expect($scope.selected.osystem).toBe($scope.osinfo.default_osystem);
+        expect($scope.selected.release).toBe($scope.osinfo.default_osystem +
+            "/" + $scope.osinfo.default_release);
     });
 
     it("default $scope.selected to be initialized with weighted ubuntu os",
@@ -128,10 +141,8 @@ describe("maasOsSelect", function() {
             $scope.osinfo.default_osystem = makeName("default_os");
             $scope.osinfo.default_release = makeName("default_release");
             var directive = compileDirective("osinfo", "selected");
-            expect($scope.selected).toEqual({
-                osystem: "ubuntu",
-                release: "ubuntu/trusty"
-            });
+            expect($scope.selected.osystem).toBe("ubuntu");
+            expect($scope.selected.release).toBe("ubuntu/trusty");
         });
 
     it("default $scope.selected to be initialized with first available",
@@ -139,10 +150,8 @@ describe("maasOsSelect", function() {
             $scope.osinfo.default_osystem = makeName("default_os");
             $scope.osinfo.default_release = makeName("default_release");
             var directive = compileDirective("osinfo", "selected");
-            expect($scope.selected).toEqual({
-                osystem: $scope.osinfo.osystems[0][0],
-                release: $scope.osinfo.releases[0][0]
-            });
+            expect($scope.selected.osystem).toBe($scope.osinfo.osystems[0][0]);
+            expect($scope.selected.release).toBe($scope.osinfo.releases[0][0]);
         });
 
     it("default $scope.selected to be initialized to null when empty osinfo",
@@ -152,10 +161,8 @@ describe("maasOsSelect", function() {
             $scope.osinfo.default_osystem = makeName("default_os");
             $scope.osinfo.default_release = makeName("default_release");
             var directive = compileDirective("osinfo", "selected");
-            expect($scope.selected).toEqual({
-                osystem: null,
-                release: null
-            });
+            expect($scope.selected.osystem).toBeNull();
+            expect($scope.selected.release).toBeNull();
         });
 
     it("default $scope.selected to be untouched", function() {
@@ -165,7 +172,8 @@ describe("maasOsSelect", function() {
         };
         $scope.selected = current;
         var directive = compileDirective("osinfo", "selected");
-        expect($scope.selected).toBe(current);
+        expect($scope.selected.osystem).toBe(current.osystem);
+        expect($scope.selected.release).toBe(current.release);
     });
 
     it("initializes only selectable releases", function() {

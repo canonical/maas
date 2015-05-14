@@ -611,8 +611,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     }
                     $scope.actionOption = null;
                     $scope.actionError = null;
-                    $scope.osSelection.osystem = "";
-                    $scope.osSelection.release = "";
+                    $scope.osSelection.$reset();
                 }, function(error) {
                     $scope.actionError = error;
                 });

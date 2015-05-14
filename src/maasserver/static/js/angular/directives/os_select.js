@@ -111,6 +111,14 @@ angular.module('MAAS').directive('maasOsSelect', function() {
             }
             $scope.releases = getSelectableReleases();
 
+            // Add the reset function to ngModel, allowing users to call
+            // this function to reset the defauls.
+            $scope.ngModel.$reset = function() {
+                $scope.ngModel.osystem = null;
+                $scope.ngModel.release = null;
+                setDefault();
+            };
+
             // If the available os change update the available releases and
             // set the default.
             $scope.$watch("maasOsSelect.releases", function() {

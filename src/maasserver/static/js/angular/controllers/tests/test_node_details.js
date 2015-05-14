@@ -139,7 +139,8 @@ describe("NodeDetailsController", function() {
             is_superuser: true
         };
 
-        return $controller("NodeDetailsController", {
+        // Create the controller.
+        var controller = $controller("NodeDetailsController", {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
@@ -152,6 +153,13 @@ describe("NodeDetailsController", function() {
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
+
+        // Since the osSelection directive is not used in this test the
+        // osSelection item on the model needs to have $reset function added
+        // because it will be called throughout many of the tests.
+        $scope.osSelection.$reset = jasmine.createSpy("$reset");
+
+        return controller;
     }
 
     // Make the controller and resolve the setActiveItem call.
@@ -186,10 +194,8 @@ describe("NodeDetailsController", function() {
         expect($scope.availableActionOptions).toEqual([]);
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
-        expect($scope.osSelection).toEqual({
-            osystem: null,
-            release: null
-        });
+        expect($scope.osSelection.osystem).toBeNull();
+        expect($scope.osSelection.release).toBeNull();
     });
 
     it("sets initial values for summary section", function() {
@@ -909,10 +915,8 @@ describe("NodeDetailsController", function() {
             $scope.actionOption = {
                 name: "deploy"
             };
-            $scope.osSelection = {
-                osystem: "ubuntu",
-                release: "ubuntu/trusty"
-            };
+            $scope.osSelection.osystem = "ubuntu";
+            $scope.osSelection.release = "ubuntu/trusty";
             $scope.actionGo();
             expect(NodesManager.performAction).toHaveBeenCalledWith(
                 node, "deploy", {
@@ -945,17 +949,12 @@ describe("NodeDetailsController", function() {
             $scope.actionOption = {
                 name: "deploy"
             };
-            $scope.osSelection = {
-                osystem: "ubuntu",
-                release: "ubuntu/trusty"
-            };
+            $scope.osSelection.osystem = "ubuntu";
+            $scope.osSelection.release = "ubuntu/trusty";
             $scope.actionGo();
             defer.resolve();
             $rootScope.$digest();
-            expect($scope.osSelection).toEqual({
-                osystem: "",
-                release: ""
-            });
+            expect($scope.osSelection.$reset).toHaveBeenCalled();
         });
 
         it("clears actionError on resolve", function() {

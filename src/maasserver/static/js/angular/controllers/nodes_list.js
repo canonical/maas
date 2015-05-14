@@ -161,8 +161,13 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].actionOption = null;
                 $scope.tabs[tab].zoneSelection = null;
                 if(tab === "nodes") {
-                    $scope.tabs[tab].osSelection.osystem = "";
-                    $scope.tabs[tab].osSelection.release = "";
+                    // Possible for this to be called before the osSelect
+                    // direction is initialized. In that case it has not
+                    // created the $reset function on the model object.
+                    if(angular.isFunction(
+                        $scope.tabs[tab].osSelection.$reset)) {
+                        $scope.tabs[tab].osSelection.$reset();
+                    }
                 }
             }
             if($scope.tabs[tab].actionOption && !isViewingSelected(tab)) {
@@ -475,17 +480,14 @@ angular.module('MAAS').controller('NodesListController', [
         });
 
         // Switch to the specified tab, if specified.
-        var tab = $routeParams.tab;
-        if(angular.isString(tab)) {
-            $scope.toggleTab(tab);
-        } else {
-            tab = 'nodes';
+        if($routeParams.tab === "nodes" || $routeParams.tab === "devices") {
+            $scope.toggleTab($routeParams.tab);
         }
 
         // Set the query if the present in $routeParams.
         var query = $routeParams.query;
         if(angular.isString(query)) {
-            $scope.tabs[tab].search = query;
-            $scope.updateFilters(tab);
+            $scope.tabs[$scope.currentpage].search = query;
+            $scope.updateFilters($scope.currentpage);
         }
     }]);

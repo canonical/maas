@@ -74,7 +74,8 @@ describe("NodesListController", function() {
         // RegionConnection.
         RegionConnection.connect("");
 
-        return $controller("NodesListController", {
+        // Create the controller.
+        var controller = $controller("NodesListController", {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
@@ -83,6 +84,13 @@ describe("NodesListController", function() {
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
         });
+
+        // Since the osSelection directive is not used in this test the
+        // osSelection item on the model needs to have $reset function added
+        // because it will be called throughout many of the tests.
+        $scope.tabs.nodes.osSelection.$reset = jasmine.createSpy("$reset");
+
+        return controller;
     }
 
     // Makes a fake node/device.
@@ -228,10 +236,8 @@ describe("NodesListController", function() {
 
                 // Only the nodes tab uses the osSelection field.
                 if(tab === "nodes") {
-                    expect(tabScope.osSelection).toEqual({
-                        osystem: null,
-                        release: null
-                    });
+                    expect(tabScope.osSelection.osystem).toBeNull();
+                    expect(tabScope.osSelection.release).toBeNull();
                 }
             });
         });
@@ -857,28 +863,6 @@ describe("NodesListController", function() {
                         object, "start", {});
                 });
 
-                it("calls performAction with osystem and distro_series",
-                    function() {
-                        var controller = makeController();
-                        var object = makeObject(tab);
-                        var spy = spyOn(
-                            $scope.tabs[tab].manager,
-                            "performAction").and.returnValue(
-                            $q.defer().promise);
-                        $scope.tabs[tab].actionOption = { name: "deploy" };
-                        $scope.tabs[tab].selectedItems = [object];
-                        $scope.tabs[tab].osSelection = {
-                            osystem: "ubuntu",
-                            release: "ubuntu/trusty"
-                        };
-                        $scope.actionGo(tab);
-                        expect(spy).toHaveBeenCalledWith(
-                            object, "deploy", {
-                                osystem: "ubuntu",
-                                distro_series: "trusty"
-                            });
-                });
-
                 it("calls unselectItem after complete", function() {
                     var controller = makeController();
                     var object = makeObject(tab);
@@ -1086,6 +1070,26 @@ describe("NodesListController", function() {
 
         describe("actionGo", function() {
 
+            it("calls performAction with osystem and distro_series",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("nodes");
+                    var spy = spyOn(
+                        $scope.tabs.nodes.manager,
+                        "performAction").and.returnValue(
+                        $q.defer().promise);
+                    $scope.tabs.nodes.actionOption = { name: "deploy" };
+                    $scope.tabs.nodes.selectedItems = [object];
+                    $scope.tabs.nodes.osSelection.osystem = "ubuntu";
+                    $scope.tabs.nodes.osSelection.release = "ubuntu/trusty";
+                    $scope.actionGo("nodes");
+                    expect(spy).toHaveBeenCalledWith(
+                        object, "deploy", {
+                            osystem: "ubuntu",
+                            distro_series: "trusty"
+                        });
+            });
+
             it("clears selected os and release when complete", function() {
                 var controller = makeController();
                 var defer = $q.defer();
@@ -1096,15 +1100,12 @@ describe("NodesListController", function() {
                 NodesManager._items.push(object);
                 NodesManager._selectedItems.push(object);
                 $scope.tabs.nodes.actionOption = { name: "deploy" };
-                $scope.tabs.nodes.osSelection = {
-                    osystem: "ubuntu",
-                    release: "ubuntu/trusty"
-                };
+                $scope.tabs.nodes.osSelection.osystem = "ubuntu";
+                $scope.tabs.nodes.osSelection.release = "ubuntu/trusty";
                 $scope.actionGo("nodes");
                 defer.resolve();
                 $scope.$digest();
-                expect($scope.tabs.nodes.osSelection.osystem).toBe("");
-                expect($scope.tabs.nodes.osSelection.release).toBe("");
+                expect($scope.tabs.nodes.osSelection.$reset).toHaveBeenCalled();
             });
         });
     });
