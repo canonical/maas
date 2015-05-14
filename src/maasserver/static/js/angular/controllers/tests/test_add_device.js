@@ -732,10 +732,45 @@ describe("AddDeviceController", function() {
                     name: "dynamic"
                 };
                 $scope.save();
-                var error = makeName("error");
+                var errorMsg = makeName("error");
+                var error = "{'hostname': ['" + errorMsg + "']}";
                 defer.reject(error);
                 $rootScope.$digest();
-                expect($scope.error).toBe(error);
+                expect($scope.error).toBe(errorMsg + "  ");
             });
+    });
+
+    describe("convertPythonDictToErrorMsg", function() {
+        it("converts hostname error for display",
+            function() {
+                var controller = makeController();
+                var errorMsg = makeName("error");
+                var error = "{'hostname': ['Node " + errorMsg + "']}";
+                var expected = "Device " + errorMsg + "  ";
+                expect($scope.convertPythonDictToErrorMsg(
+                        error)).toBe(expected);
+        });
+
+        it("converts mac_addresses error for display",
+                function() {
+                    var controller = makeController();
+                    var errorMsg = makeName("error");
+                    var error = "{'mac_addresses': ['" + errorMsg + "']}";
+                    var expected = errorMsg + "  ";
+                    expect($scope.convertPythonDictToErrorMsg(
+                            error)).toBe(expected);
+        });
+
+        it("converts unknown segments by default",
+                function() {
+                    var controller = makeController();
+                    var errorSegment1 = makeName("error");
+                    var errorSegment2 = makeName("error");
+                    var error = "{'" + errorSegment1 +
+                        "': ['" + errorSegment2 + "']}";
+                    var expected = errorSegment1 + errorSegment2;
+                    expect($scope.convertPythonDictToErrorMsg(
+                            error)).toBe(expected);
+        });
     });
 });

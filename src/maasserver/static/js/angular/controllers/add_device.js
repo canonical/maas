@@ -202,6 +202,29 @@ angular.module('MAAS').controller('AddDeviceController', [
             $scope.hide();
         };
 
+        // Convert the Python dict error message to displayed message.
+        $scope.convertPythonDictToErrorMsg = function(pythonError) {
+            var elements = pythonError.match(/'([A-Za-z0-9 \.:_\-]+)'/g);
+            var result = '', msg = '';
+            for (k=0; k < elements.length; ++k) {
+                if (elements.hasOwnProperty(k)) {
+                    switch(elements[k]) {
+                        case "'hostname'":
+                            msg = elements[++k].replace(/'/g,'');
+                            result += msg.replace(/^Node/,'Device') + '  ';
+                            break;
+                        case "'mac_addresses'":
+                            msg = elements[++k].replace(/'/g,'');
+                            result += msg + '  ';
+                            break;
+                        default:
+                            result += elements[k].replace(/'/g,'');
+                    }
+                }
+            }
+            return result;
+        };
+
         // Called when save is clicked.
         $scope.save = function(addAnother) {
             // Do nothing if device in error.
@@ -222,7 +245,7 @@ angular.module('MAAS').controller('AddDeviceController', [
                     $scope.hide();
                 }
             }, function(error) {
-                $scope.error = error;
+                $scope.error = $scope.convertPythonDictToErrorMsg(error);
             });
         };
 
