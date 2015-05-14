@@ -284,7 +284,7 @@ $(scss_output): $(scss_inputs)
 clean-styles:
 	$(RM) $(scss_output)
 
-clean:
+clean: stop
 	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -297,9 +297,6 @@ clean:
 	$(RM) -r man/.doctrees
 	$(RM) coverage.data coverage.xml
 	$(RM) -r coverage
-	$(RM) bin/protractor bin/karma bin/sass
-
-distclean: clean stop
 	$(RM) -r bin include lib local
 	$(RM) -r eggs develop-eggs
 	$(RM) -r build dist logs/* parts
@@ -307,8 +304,11 @@ distclean: clean stop
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r run/* run-e2e/* services/*/supervise
 
-distclean+db: clean stop distclean
+clean+db: clean
 	$(RM) -r db
+
+distclean: clean
+	$(warning 'distclean' is deprecated; use 'clean')
 
 harness: bin/maas-region-admin bin/database
 	$(dbrun) bin/maas-region-admin shell --settings=maas.demo
@@ -332,6 +332,8 @@ define phony_targets
   build
   check
   clean
+  clean-styles
+  clean+db
   coverage-report
   dbharness
   distclean
