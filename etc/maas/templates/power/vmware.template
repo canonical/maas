@@ -9,12 +9,12 @@ fail() {
     exit $1
 }
 
-issue_vsphere_command() {
+issue_vmware_command() {
 python - << END
 import sys
-from provisioningserver.drivers.hardware.vsphere import power_control_vsphere
+from provisioningserver.drivers.hardware.vmware import power_control_vmware
 try:
-    power_control_vsphere(
+    power_control_vmware(
         {{escape_py_literal(power_address) | safe}},
         {{escape_py_literal(power_user) | safe}},
         {{escape_py_literal(power_pass) | safe}},
@@ -35,9 +35,9 @@ END
 query_state() {
 python - << END
 import sys
-from provisioningserver.drivers.hardware.vsphere import power_query_vsphere
+from provisioningserver.drivers.hardware.vmware import power_query_vmware
 try:
-    print(power_query_vsphere(
+    print(power_query_vmware(
         {{escape_py_literal(power_address) | safe}},
         {{escape_py_literal(power_user) | safe}},
         {{escape_py_literal(power_pass) | safe}},
@@ -57,7 +57,7 @@ END
 main() {
     case $1 in
     'on'|'off')
-        issue_vsphere_command
+        issue_vmware_command
         ;;
     'query')
         query_state

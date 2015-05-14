@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.hardware.vsphere`.
+"""Tests for `provisioningserver.drivers.hardware.vmware`.
 """
 
 from __future__ import (
@@ -23,8 +23,8 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from provisioningserver.drivers.hardware import vsphere
-from provisioningserver.drivers.hardware.vsphere import (
+from provisioningserver.drivers.hardware import vmware
+from provisioningserver.drivers.hardware.vmware import (
     VMwarePyvmomiAPI,
     VMwareVMNotFound,
 )
@@ -207,24 +207,24 @@ class FakeVmomiServiceInstance(object):
         return self.content
 
 
-class TestVspherePyvmomi(MAASTestCase):
-    """Tests for vSphere probe-and-enlist, and power query/control using
+class TestVMwarePyvmomi(MAASTestCase):
+    """Tests for VMware probe-and-enlist, and power query/control using
     the python-pyvmomi API."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def configure_vmomi_api(
             self, servers=10, has_instance_uuid=None, has_uuid=None):
-        mock_vmomi_api = self.patch(vsphere, 'vmomi_api')
+        mock_vmomi_api = self.patch(vmware, 'vmomi_api')
         mock_vmomi_api.SmartConnect.return_value = FakeVmomiServiceInstance(
             servers=servers, has_instance_uuid=has_instance_uuid,
             has_uuid=has_uuid)
         return mock_vmomi_api
 
     def setUp(self):
-        super(TestVspherePyvmomi, self).setUp()
+        super(TestVMwarePyvmomi, self).setUp()
         if vmomi_api is None:
-            self.skipTest('cannot test vSphere without python-pyvmomi')
+            self.skipTest('cannot test VMware without python-pyvmomi')
 
     def test_api_connection(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=0)
@@ -242,13 +242,13 @@ class TestVspherePyvmomi(MAASTestCase):
         self.expectThat(mock_vmomi_api.Disconnect.called, Equals(True))
 
     def test_api_failed_connection(self):
-        mock_vmomi_api = self.patch(vsphere, 'vmomi_api')
+        mock_vmomi_api = self.patch(vmware, 'vmomi_api')
         mock_vmomi_api.SmartConnect.return_value = None
         api = VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username())
-        with ExpectedException(vsphere.VMwareAPIConnectionFailed):
+        with ExpectedException(vmware.VMwareAPIConnectionFailed):
             api.connect()
         self.expectThat(api.service_instance, Is(None))
         self.expectThat(api.is_connected(), Equals(False))
@@ -256,19 +256,19 @@ class TestVspherePyvmomi(MAASTestCase):
         self.expectThat(mock_vmomi_api.SmartConnect.called, Equals(True))
         self.expectThat(mock_vmomi_api.Disconnect.called, Equals(True))
 
-    def test_get_vsphere_servers_empty(self):
+    def test_get_vmware_servers_empty(self):
         self.configure_vmomi_api(servers=0)
-        servers = vsphere.get_vsphere_servers(
+        servers = vmware.get_vmware_servers(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username(),
             port=8443, protocol='https')
         self.expectThat(servers, Equals({}))
 
-    def test_get_vsphere_servers(self):
+    def test_get_vmware_servers(self):
         self.configure_vmomi_api(servers=10)
 
-        servers = vsphere.get_vsphere_servers(
+        servers = vmware.get_vmware_servers(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username())
@@ -281,7 +281,7 @@ class TestVspherePyvmomi(MAASTestCase):
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
         instance_uuids = search_index.vms_by_instance_uuid.keys()
         for uuid in instance_uuids:
-            vm = vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
+            vm = vmware._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
             self.assertIsNotNone(vm)
 
     def test_get_server_by_uuid(self):
@@ -291,7 +291,7 @@ class TestVspherePyvmomi(MAASTestCase):
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
         uuids = search_index.vms_by_uuid.keys()
         for uuid in uuids:
-            vm = vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
+            vm = vmware._find_vm_by_uuid_or_name(mock_vmomi_api, uuid, None)
             self.assertIsNotNone(vm)
 
     def test_get_server_by_name(self):
@@ -300,9 +300,9 @@ class TestVspherePyvmomi(MAASTestCase):
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
-        servers = vsphere.get_vsphere_servers(host, username, password)
+        servers = vmware.get_vmware_servers(host, username, password)
         for vm_name in servers.keys():
-            vm = vsphere._find_vm_by_uuid_or_name(
+            vm = vmware._find_vm_by_uuid_or_name(
                 mock_vmomi_api, None, vm_name)
             self.assertIsNotNone(vm)
 
@@ -310,7 +310,7 @@ class TestVspherePyvmomi(MAASTestCase):
         mock_vmomi_api = self.configure_vmomi_api(
             servers=1, has_instance_uuid=True, has_uuid=True)
         with ExpectedException(VMwareVMNotFound):
-            vsphere._find_vm_by_uuid_or_name(mock_vmomi_api, None, None)
+            vmware._find_vm_by_uuid_or_name(mock_vmomi_api, None, None)
 
     def test_power_control_missing_server_raises_VMwareVMNotFound(self):
         self.configure_vmomi_api(
@@ -319,7 +319,7 @@ class TestVspherePyvmomi(MAASTestCase):
         username = factory.make_username()
         password = factory.make_username()
         with ExpectedException(VMwareVMNotFound):
-            vsphere.power_control_vsphere(
+            vmware.power_control_vmware(
                 host, username, password, None, None, "on")
 
     def test_power_query_missing_server_raises_VMwareVMNotFound(self):
@@ -329,7 +329,7 @@ class TestVspherePyvmomi(MAASTestCase):
         username = factory.make_username()
         password = factory.make_username()
         with ExpectedException(VMwareVMNotFound):
-            vsphere.power_query_vsphere(host, username, password, None, None)
+            vmware.power_query_vmware(host, username, password, None, None)
 
     def test_power_control(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=100)
@@ -338,7 +338,7 @@ class TestVspherePyvmomi(MAASTestCase):
         username = factory.make_username()
         password = factory.make_username()
 
-        servers = vsphere.get_vsphere_servers(host, username, password)
+        servers = vmware.get_vmware_servers(host, username, password)
 
         # here we're grabbing indexes only available in the private mock object
         search_index = \
@@ -352,31 +352,31 @@ class TestVspherePyvmomi(MAASTestCase):
         vm_name = None
 
         for uuid in bios_uuids:
-            vsphere.power_query_vsphere(
+            vmware.power_query_vmware(
                 host, username, password, vm_name, uuid)
         for uuid in instance_uuids:
-            vsphere.power_query_vsphere(
+            vmware.power_query_vmware(
                 host, username, password, vm_name, uuid)
         for vm_name in servers.keys():
-            vsphere.power_query_vsphere(
+            vmware.power_query_vmware(
                 host, username, password, vm_name, None)
 
         # turn on a set of VMs, then verify they are on
         for uuid in bios_uuids:
-            vsphere.power_control_vsphere(
+            vmware.power_control_vmware(
                 host, username, password, vm_name, uuid, "on")
 
         for uuid in bios_uuids:
-            state = vsphere.power_query_vsphere(
+            state = vmware.power_query_vmware(
                 host, username, password, vm_name, uuid)
             self.expectThat(state, Equals("on"))
 
         # turn off a set of VMs, then verify they are off
         for uuid in instance_uuids:
-            vsphere.power_control_vsphere(
+            vmware.power_control_vmware(
                 host, username, password, vm_name, uuid, "off")
         for uuid in instance_uuids:
-            state = vsphere.power_query_vsphere(
+            state = vmware.power_query_vmware(
                 host, username, password, vm_name, uuid)
             self.expectThat(state, Equals("off"))
 
@@ -386,18 +386,18 @@ class TestVspherePyvmomi(MAASTestCase):
     def test_probe_and_enlist(self):
         num_servers = 100
         self.configure_vmomi_api(servers=num_servers)
-        mock_create_node = self.patch(vsphere, 'create_node')
+        mock_create_node = self.patch(vmware, 'create_node')
         system_id = factory.make_name('system_id')
         mock_create_node.side_effect = asynchronous(
             lambda *args, **kwargs: system_id)
-        mock_commission_node = self.patch(vsphere, 'commission_node')
+        mock_commission_node = self.patch(vmware, 'commission_node')
 
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
 
         yield deferToThread(
-            vsphere.probe_vsphere_and_enlist,
+            vmware.probe_vmware_and_enlist,
             factory.make_username(),
             host,
             username,

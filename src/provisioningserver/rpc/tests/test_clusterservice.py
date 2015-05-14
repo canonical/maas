@@ -1970,15 +1970,15 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
                 "virsh", fake_error))
 
 
-class TestClusterProtocol_AddVsphere(MAASTestCase):
+class TestClusterProtocol_AddVMware(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.AddVsphere.commandName)
+            cluster.AddVMware.commandName)
         self.assertIsNotNone(responder)
 
-    def test__calls_deferToThread_with_probe_vsphere_and_enlist(self):
+    def test__calls_deferToThread_with_probe_vmware_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
             clusterservice, 'deferToThread')
         user = factory.make_name('user')
@@ -1989,7 +1989,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
         protocol = random.choice(["http", "https"])
         prefix_filter = factory.make_name('prefix_filter')
 
-        call_responder(Cluster(), cluster.AddVsphere, {
+        call_responder(Cluster(), cluster.AddVMware, {
             "user": user,
             "host": host,
             "username": username,
@@ -2001,7 +2001,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_vsphere_and_enlist,
+                clusterservice.probe_vmware_and_enlist,
                 user, host, username, password, port=port,
                 protocol=protocol, prefix_filter=prefix_filter,
                 accept_all=True))
@@ -2015,7 +2015,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
 
-        call_responder(Cluster(), cluster.AddVsphere, {
+        call_responder(Cluster(), cluster.AddVMware, {
             "user": user,
             "host": host,
             "username": username,
@@ -2027,7 +2027,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_vsphere_and_enlist,
+                clusterservice.probe_vmware_and_enlist,
                 user, host, username, password, port=None,
                 protocol=None, prefix_filter=prefix_filter,
                 accept_all=True))
@@ -2042,7 +2042,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
 
-        call_responder(Cluster(), cluster.AddVsphere, {
+        call_responder(Cluster(), cluster.AddVMware, {
             "user": user,
             "host": host,
             "username": username,
@@ -2052,7 +2052,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_vsphere_and_enlist,
+                clusterservice.probe_vmware_and_enlist,
                 user, host, username, password, port=None,
                 protocol=None, prefix_filter=prefix_filter,
                 accept_all=True))
@@ -2069,7 +2069,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
 
-        call_responder(Cluster(), cluster.AddVsphere, {
+        call_responder(Cluster(), cluster.AddVMware, {
             "user": user,
             "host": host,
             "username": username,

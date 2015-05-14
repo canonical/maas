@@ -371,7 +371,7 @@ class NodeGroupHandler(OperationsHandler):
     def probe_and_enlist_hardware(self, request, uuid):
         """Add special hardware types.
 
-        :param model: The type of hardware. 'seamicro15k', 'virsh', 'vsphere',
+        :param model: The type of hardware. 'seamicro15k', 'virsh', 'vmware',
             'powerkvm', 'mscm', 'msftocs' and 'ucsm' are supported.
 
             seamicro15k is the model for the Seamicro 1500 Chassis.
@@ -415,6 +415,25 @@ class NodeGroupHandler(OperationsHandler):
         :param power_pass: The password to use, when qemu+ssh is given as a
             connection string and ssh key authentication is not being used.
         :type power_pass: unicode
+        :param prefix_filter: Filter nodes with supplied prefix.
+        :type prefix_filter: unicode
+
+        The following are required if you are probing vmware:
+
+        :param host: The VMware hostname or IP address
+        :type host: unicode
+        :param username: The VMware API username
+        :type username: unicode
+        :param password: The VMware API password
+        :type password: unicode
+
+
+        The following are optional if you are probing vmware:
+
+        :param protocol: The VMware API protocol (default: https)
+        :type protocol: unicode
+        :param port: The VMware API port (default: 443)
+        :type port: integer
         :param prefix_filter: Filter nodes with supplied prefix.
         :type prefix_filter: unicode
 
@@ -484,7 +503,7 @@ class NodeGroupHandler(OperationsHandler):
             self.do_probe_and_enlist_mscm(nodegroup, request, user)
         elif model == 'msftocs':
             self.do_probe_and_enlist_msftocs(nodegroup, request, user)
-        elif model == 'vsphere':
+        elif model == 'vmware':
             host = get_mandatory_param(request.data, 'host')
             username = get_mandatory_param(request.data, 'username')
             password = get_mandatory_param(request.data, 'password')
@@ -495,7 +514,7 @@ class NodeGroupHandler(OperationsHandler):
             prefix_filter = get_optional_param(
                 request.data, 'prefix_filter', default=None)
 
-            nodegroup.add_vsphere(
+            nodegroup.add_vmware(
                 user, host, username, password, port=port,
                 protocol=protocol, prefix_filter=prefix_filter,
                 accept_all=accept_all)

@@ -464,8 +464,8 @@ class AddSeaMicro15k(amp.Command):
     }
 
 
-class AddVsphere(amp.Command):
-    """Probe for and enlist VMware vSphere VMs (ESX, ESXi, or vCenter).
+class AddVMware(amp.Command):
+    """Probe for and enlist VMware virtual machines.
 
     :since: 1.8
     """

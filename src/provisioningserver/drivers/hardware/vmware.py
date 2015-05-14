@@ -11,9 +11,9 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'power_control_vsphere',
-    'power_query_vsphere',
-    'probe_vsphere_and_enlist',
+    'power_control_vmware',
+    'power_query_vmware',
+    'probe_vmware_and_enlist',
     ]
 
 from abc import abstractmethod
@@ -35,7 +35,7 @@ except ImportError:
     pyVmomi = None
     vmomi_api = None
 
-maaslog = get_maas_logger("drivers.vsphere")
+maaslog = get_maas_logger("drivers.vmware")
 
 
 class VMwareAPIException(Exception):
@@ -64,11 +64,11 @@ class VMwareAPI(object):
     def __init__(self, host, username, password,
                  port=None, protocol=None):
         """
-        :param host: The vSphere host to connect to
+        :param host: The VMware host to connect to
         :type host: string
-        :param port: The port on the vSphere host to connect to
+        :param port: The port on the VMware host to connect to
         :type port: integer
-        :param username: A username authorized for the specified vSphere host
+        :param username: A username authorized for the specified VMware host
         :type username: string
         :param password: The password corresponding to the supplied username
         :type password: string
@@ -83,16 +83,16 @@ class VMwareAPI(object):
 
     @abstractmethod
     def connect(self):
-        """Connects to the vSphere API"""
+        """Connects to the VMware API"""
         raise NotImplementedError
 
     @abstractmethod
     def is_connected(self):
-        """Returns True if the vSphere API is thought to be connected"""
+        """Returns True if the VMware API is thought to be connected"""
         raise NotImplementedError
 
     def disconnect(self):
-        """Disconnects from the vSphere API"""
+        """Disconnects from the VMware API"""
         raise NotImplementedError
 
     @abstractmethod
@@ -121,7 +121,7 @@ class VMwareAPI(object):
         """
         Sets the power state for the specified VM to the specified value.
         :param:power_change: the new desired state ('on' or 'off')
-        :except:VsphereError: if the power status could not be changed
+        :except:VMwareError: if the power status could not be changed
         """
         raise NotImplementedError
 
@@ -129,7 +129,7 @@ class VMwareAPI(object):
     def get_all_vm_properties(self):
         """
         Creates dictionary that catalogs every virtual machine present on
-        the vSphere server. Each key is a machine name, and each value is a
+        the VMware server. Each key is a machine name, and each value is a
         dictionary containing the following keys:
          - uuid: a UUID for the VM (to be used for power management)
          - macs: a list of MAC addresses associated with this VM
@@ -164,7 +164,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
 
         if not self.service_instance:
             raise VMwareAPIConnectionFailed(
-                "Could not connect to vSphere service API")
+                "Could not connect to VMware service API")
 
         return self.service_instance is not None
 
@@ -296,7 +296,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
         return virtual_machines
 
 
-def _get_vsphere_api(
+def _get_vmware_api(
         host, username, password, port=None, protocol=None):
     if pyVmomi is not None:
         # Attempt to detect the best available VMware API
@@ -307,10 +307,10 @@ def _get_vsphere_api(
             "Could not find a suitable VMware API (install python-pyvmomi)")
 
 
-def get_vsphere_servers(
+def get_vmware_servers(
         host, username, password, port=None, protocol=None):
     servers = {}
-    api = _get_vsphere_api(
+    api = _get_vmware_api(
         host, username, password, port=port, protocol=protocol)
 
     if api.connect():
@@ -322,7 +322,7 @@ def get_vsphere_servers(
 
 
 @synchronous
-def probe_vsphere_and_enlist(
+def probe_vmware_and_enlist(
         user, host, username, password, port=None,
         protocol=None, prefix_filter=None, accept_all=False):
 
@@ -330,10 +330,10 @@ def probe_vsphere_and_enlist(
     if prefix_filter is None:
         prefix_filter = ''
 
-    servers = get_vsphere_servers(
+    servers = get_vmware_servers(
         host, username, password, port=port, protocol=protocol)
 
-    maaslog.info("Found %d vSphere servers", len(servers))
+    maaslog.info("Found %d VMware servers", len(servers))
 
     for system_name in servers:
         if not system_name.startswith(prefix_filter):
@@ -352,12 +352,12 @@ def probe_vsphere_and_enlist(
             'power_pass': password,
         }
         maaslog.info(
-            "Creating vSphere node with MACs: %s (%s)",
+            "Creating VMware node with MACs: %s (%s)",
             properties['macs'], system_name)
 
         system_id = create_node(
             properties['macs'], properties['architecture'],
-            'vsphere', params, hostname=system_name).wait(30)
+            'vmware', params, hostname=system_name).wait(30)
 
         if accept_all and system_id is not None:
             commission_node(system_id, user).wait(30)
@@ -374,10 +374,10 @@ def _find_vm_by_uuid_or_name(api, uuid, vm_name):
     return vm
 
 
-def power_control_vsphere(
+def power_control_vmware(
         host, username, password, vm_name, uuid, power_change,
         port=None, protocol=None):
-    api = _get_vsphere_api(
+    api = _get_vmware_api(
         host, username, password, port=port, protocol=protocol)
 
     if api.connect():
@@ -402,11 +402,11 @@ def power_control_vsphere(
             api.disconnect()
 
 
-def power_query_vsphere(
+def power_query_vmware(
         host, username, password, vm_name, uuid, port=None, protocol=None):
     """Return the power state for the VM with the specified UUID,
-     using the vSphere API."""
-    api = _get_vsphere_api(
+     using the VMware API."""
+    api = _get_vmware_api(
         host, username, password, port=port, protocol=protocol)
 
     if api.connect():

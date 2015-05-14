@@ -52,7 +52,7 @@ from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
     AddVirsh,
-    AddVsphere,
+    AddVMware,
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
@@ -409,12 +409,13 @@ class NodeGroup(TimestampedModel):
                 AddVirsh, user=user, poweraddr=poweraddr, password=password,
                 prefix_filter=prefix_filter, accept_all=accept_all)
 
-    def add_vsphere(self, user, host, username, password, protocol=None,
-                    port=None, prefix_filter=None, accept_all=False):
-        """ Add virtual machines managed by vSphere, ESX, or ESXi.
+    def add_vmware(self, user, host, username, password, protocol=None,
+                   port=None, prefix_filter=None, accept_all=False):
+        """ Add virtual machines managed by vSphere, ESX, or ESXi, or other
+        VMware products which support the VMware API.
 
         :param user: MAAS user (for commissioning)
-        :param host: vSphere, ESX, or ESXi hostname.
+        :param host: VMware hostname.
         :param username: VMware API username.
         :param password: VMware API password.
         :param prefix_filter: imports VMs with names filtered by this prefix.
@@ -432,7 +433,7 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                AddVsphere, user=user, host=host, username=username,
+                AddVMware, user=user, host=host, username=username,
                 password=password, protocol=protocol, port=port,
                 prefix_filter=prefix_filter, accept_all=accept_all)
 

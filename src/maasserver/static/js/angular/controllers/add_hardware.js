@@ -172,7 +172,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 fields: virshFields
             },
             {
-                name: 'vsphere',
+                name: 'vmware',
                 description: 'VMWare',
                 fields: [
                     {

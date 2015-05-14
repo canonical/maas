@@ -73,7 +73,7 @@ QUERY_POWER_TYPES = [
     'sm15k',
     'ucsm',
     'virsh',
-    'vsphere',
+    'vmware',
 ]
 
 

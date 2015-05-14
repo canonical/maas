@@ -174,7 +174,7 @@ JSON_POWER_TYPE_PARAMETERS = [
         ],
     },
     {
-        'name': 'vsphere',
+        'name': 'vmware',
         'description': 'VMWare',
         'fields': [
             make_json_field(
