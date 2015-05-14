@@ -56,8 +56,8 @@ angular.module('MAAS').controller('NodesListController', [
             errors: {}
         };
         $scope.tabs.nodes.osSelection = {
-            osystem: "",
-            release: ""
+            osystem: null,
+            release: null
         };
         $scope.tabs.nodes.zoneSelection = null;
 

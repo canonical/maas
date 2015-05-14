@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.models.config import Config
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
@@ -48,18 +49,19 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User(), {})
         osystem = make_osystem_with_releases(self)
-        releases = [("", "Default OS Release")]
-        for release in osystem["releases"]:
-            releases.append((
-                "%s/%s" % (osystem["name"], release["name"]),
-                release["title"]))
+        releases = [
+            ("%s/%s" % (osystem["name"], release["name"]), release["title"])
+            for release in osystem["releases"]
+        ]
         expected_osinfo = {
             "osystems": [
-                ("", "Default OS"),
                 (osystem["name"], osystem["title"]),
-                ],
+            ],
             "releases": releases,
-            }
+            "default_osystem": Config.objects.get_config("default_osystem"),
+            "default_release": Config.objects.get_config(
+                "default_distro_series"),
+        }
         self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
 
     def test_node_actions_for_admin(self):

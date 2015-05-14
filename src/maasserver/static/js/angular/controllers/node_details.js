@@ -26,8 +26,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.actionError = null;
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.osSelection = {
-            osystem: "",
-            release: ""
+            osystem: null,
+            release: null
         };
         $scope.checkingPower = false;
         $scope.nic = {

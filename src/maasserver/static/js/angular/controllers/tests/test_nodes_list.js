@@ -229,8 +229,8 @@ describe("NodesListController", function() {
                 // Only the nodes tab uses the osSelection field.
                 if(tab === "nodes") {
                     expect(tabScope.osSelection).toEqual({
-                        osystem: "",
-                        release: ""
+                        osystem: null,
+                        release: null
                     });
                 }
             });

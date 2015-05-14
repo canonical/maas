@@ -19,6 +19,7 @@ __all__ = [
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootresource import BootResource
 from maasserver.models.candidatename import gen_candidate_names
+from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.utils.osystems import (
@@ -51,8 +52,11 @@ class GeneralHandler(Handler):
         osystems = list_all_usable_osystems()
         releases = list_all_usable_releases(osystems)
         return {
-            "osystems": list_osystem_choices(osystems),
-            "releases": list_release_choices(releases),
+            "osystems": list_osystem_choices(osystems, include_default=False),
+            "releases": list_release_choices(releases, include_default=False),
+            "default_osystem": Config.objects.get_config("default_osystem"),
+            "default_release": Config.objects.get_config(
+                "default_distro_series"),
         }
 
     def dehydrate_actions(self, actions):

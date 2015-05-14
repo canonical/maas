@@ -38,10 +38,7 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     var choice, choices = [];
                     for(i = 0; i < allChoices.length; i++) {
                         choice = allChoices[i];
-                        if($scope.ngModel.osystem === "" && choice[0] === "") {
-                            choices.push(choice);
-                        } else if($scope.ngModel.osystem !== "" &&
-                            choice[0].indexOf($scope.ngModel.osystem) > -1) {
+                        if(choice[0].indexOf($scope.ngModel.osystem) > -1) {
                             choices.push(choice);
                         }
                     }
@@ -50,18 +47,75 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                 return [];
             }
 
+            // Returns the defaultValue if its in the choices array. Otherwise
+            // it returns the weighted choice if present, followed by the
+            // first choice.
+            function getDefaultOrFirst(array, defaultValue, weightValue) {
+                var i, first, weightedPresent = false;
+                for(i = 0; i < array.length; i++) {
+                    if(angular.isUndefined(first)) {
+                        first = array[i][0];
+                    }
+                    if(array[i][0] === defaultValue) {
+                        return defaultValue;
+                    }
+                    if(angular.isString(weightValue) &&
+                        array[i][0] === weightValue) {
+                        weightedPresent = true;
+                    }
+                }
+                if(weightedPresent) {
+                    return weightValue;
+                }
+                if(angular.isUndefined(first)) {
+                    return null;
+                }
+                return first;
+            }
+
+            // Sets the default selected values for the ngModel. Only sets the
+            // values once the maasOsSelect is populated. Sets the selected
+            // osystem to default_osystem if present, followed by 'ubuntu' if
+            // present, followed by the first available. Sets the selected
+            // release to the default_release if present, followed by the first
+            // available.
+            function setDefault() {
+                // Do nothing if model is already set.
+                if(angular.isString($scope.ngModel.osystem) &&
+                    angular.isString($scope.ngModel.release)) {
+                    return;
+                }
+                // Do nothing if the default is not set.
+                if(angular.isUndefined($scope.maasOsSelect.default_osystem) ||
+                    angular.isUndefined($scope.maasOsSelect.default_release)) {
+                    return;
+                }
+
+                // Set the intial defaults.
+                $scope.ngModel.osystem = getDefaultOrFirst(
+                    $scope.maasOsSelect.osystems,
+                    $scope.maasOsSelect.default_osystem, "ubuntu");
+                $scope.releases = getSelectableReleases();
+                $scope.ngModel.release = getDefaultOrFirst(
+                    $scope.releases,
+                    $scope.ngModel.osystem + "/" +
+                    $scope.maasOsSelect.default_release);
+            }
+
             // Defaults
             if(!angular.isObject($scope.ngModel)) {
                 $scope.ngModel = {
-                    osystem: "",
-                    release: ""
+                    osystem: null,
+                    release: null
                 };
             }
             $scope.releases = getSelectableReleases();
 
-            // If the available os change update the available releases.
+            // If the available os change update the available releases and
+            // set the default.
             $scope.$watch("maasOsSelect.releases", function() {
                 $scope.releases = getSelectableReleases();
+                setDefault();
             });
 
             // Updates the default and selectable releases.

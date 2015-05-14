@@ -187,8 +187,8 @@ describe("NodeDetailsController", function() {
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.osSelection).toEqual({
-            osystem: "",
-            release: ""
+            osystem: null,
+            release: null
         });
     });
 
