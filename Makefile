@@ -154,32 +154,32 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create bin/py bin/ipy
 
 define karma-deps
-  karma
-  karma-chrome-launcher
-  karma-firefox-launcher
-  karma-jasmine
-  karma-opera-launcher
-  karma-phantomjs-launcher
-  karma-failed-reporter
+  karma@0.12.32
+  karma-chrome-launcher@0.1.12
+  karma-firefox-launcher@0.1.6
+  karma-jasmine@0.3.5
+  karma-opera-launcher@0.1.0
+  karma-phantomjs-launcher@0.1.4
+  karma-failed-reporter@0.0.3
 endef
 
 bin/karma: deps = $(strip $(karma-deps))
 bin/karma: prefix = include/nodejs
 bin/karma:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 5184000 --prefix $(prefix) $(deps)
+	npm install --cache-min 600 --prefix $(prefix) $(deps)
 	@ln -srf $(prefix)/node_modules/karma/bin/karma $@
 
 bin/protractor: prefix = include/nodejs
 bin/protractor:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 5184000 --prefix $(prefix) protractor
+	npm install --cache-min 600 --prefix $(prefix) protractor@2.0.0
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
 bin/sass: prefix = include/nodejs
 bin/sass:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 5184000 --prefix $(prefix) node-sass
+	npm install --cache-min 600 --prefix $(prefix) node-sass@3.1.0
 	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
 
 test: test-scripts-all = $(wildcard bin/test.*)
@@ -276,10 +276,13 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
 
-styles: bin/sass $(scss_output)
+styles: bin/sass clean-styles $(scss_output)
 
 $(scss_output): $(scss_inputs)
 	bin/sass --include-path=src/maasserver/static/scss --output-style compressed $< -o $(dir $@)
+
+clean-styles:
+	$(RM) $(scss_output)
 
 clean:
 	$(MAKE) -C acceptance $@
@@ -294,6 +297,7 @@ clean:
 	$(RM) -r man/.doctrees
 	$(RM) coverage.data coverage.xml
 	$(RM) -r coverage
+	$(RM) bin/protractor bin/karma bin/sass
 
 distclean: clean stop
 	$(RM) -r bin include lib local
