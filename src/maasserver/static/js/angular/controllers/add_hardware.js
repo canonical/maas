@@ -172,46 +172,8 @@ angular.module('MAAS').controller('AddHardwareController', [
                 fields: virshFields
             },
             {
-                name: 'esxi',
-                description: 'VMWare ESXi (virsh)',
-                fields: [
-                    {
-                        name: 'address',
-                        label: 'Address',
-                        field_type: 'string',
-                        "default": '',
-                        choices: [],
-                        required: true
-                    },
-                    {
-                        name: 'username',
-                        label: 'Username',
-                        field_type: 'string',
-                        "default": '',
-                        choices: [],
-                        required: true
-                    },
-                    {
-                        name: 'password',
-                        label: 'Password',
-                        field_type: 'string',
-                        "default": '',
-                        choices: [],
-                        required: true
-                    },
-                    {
-                        name: 'prefix_filter',
-                        label: 'Prefix filter',
-                        field_type: 'string',
-                        "default": '',
-                        choices: [],
-                        required: false
-                    }
-                ]
-            },
-            {
                 name: 'vsphere',
-                description: 'VMWare (python-vmomi)',
+                description: 'VMWare',
                 fields: [
                     {
                         name: 'host',

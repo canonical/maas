@@ -174,18 +174,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         ],
     },
     {
-        'name': 'esxi',
-        'description': 'VMWare ESXi (virsh)',
-        'fields': [
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_id', "Power ID"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-        ],
-    },
-    {
         'name': 'vsphere',
-        'description': 'VMWare (python-pyvmomi)',
+        'description': 'VMWare',
         'fields': [
             make_json_field(
                 'power_vm_name', "VM Name (if UUID unknown)", required=False),

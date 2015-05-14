@@ -372,11 +372,10 @@ class NodeGroupHandler(OperationsHandler):
         """Add special hardware types.
 
         :param model: The type of hardware. 'seamicro15k', 'virsh', 'vsphere',
-            'esxi', 'powerkvm', 'mscm', 'msftocs' and 'ucsm' are supported.
+            'powerkvm', 'mscm', 'msftocs' and 'ucsm' are supported.
 
             seamicro15k is the model for the Seamicro 1500 Chassis.
             virsh is the model for Virtual Machines managed by Virsh.
-            esxi is the model for Virtual Machines managed by ESXi.
             powerkvm is the model for Virtual Machines on Power KVM,
             managed by Virsh.
             mscm is the model for the Moonshot Chassis Manager.
@@ -416,20 +415,6 @@ class NodeGroupHandler(OperationsHandler):
         :param power_pass: The password to use, when qemu+ssh is given as a
             connection string and ssh key authentication is not being used.
         :type power_pass: unicode
-        :param prefix_filter: Filter nodes with supplied prefix.
-        :type prefix_filter: unicode
-
-        The following are required if you are probing esxi:
-
-        :param address: The IP address of the esxi machine.
-        :type address: unicode
-        :param username: esxi username.
-        :type username: unicode
-        :param password: esxi password.
-        :type password: unicode
-
-        The following are optional if you are probing esxi:
-
         :param prefix_filter: Filter nodes with supplied prefix.
         :type prefix_filter: unicode
 
@@ -514,16 +499,6 @@ class NodeGroupHandler(OperationsHandler):
                 user, host, username, password, port=port,
                 protocol=protocol, prefix_filter=prefix_filter,
                 accept_all=accept_all)
-        elif model == 'esxi':
-            poweraddr = get_mandatory_param(request.data, 'address')
-            poweruser = get_mandatory_param(request.data, 'username')
-            password = get_mandatory_param(request.data, 'password')
-            prefix_filter = get_optional_param(
-                request.data, 'prefix_filter', default=None)
-
-            nodegroup.add_esxi(
-                user, poweruser, poweraddr, password=password,
-                prefix_filter=prefix_filter, accept_all=accept_all)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 

@@ -2082,63 +2082,7 @@ class TestClusterProtocol_AddVsphere(MAASTestCase):
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
-                "vSphere", fake_error))
-
-
-class TestClusterProtocol_AddESXi(MAASTestCase):
-
-    def test__is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.AddESXi.commandName)
-        self.assertIsNotNone(responder)
-
-    def test__calls_deferToThread_with_probe_esxi_and_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        user = factory.make_name('user')
-        poweruser = factory.make_name('poweruser')
-        poweraddr = factory.make_name('poweraddr')
-        password = factory.make_name('password')
-        prefix_filter = factory.make_name('prefix_filter')
-        call_responder(Cluster(), cluster.AddESXi, {
-            "user": user,
-            "poweruser": poweruser,
-            "poweraddr": poweraddr,
-            "password": password,
-            "prefix_filter": prefix_filter,
-            "accept_all": True,
-            })
-        self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
-                clusterservice.probe_esxi_and_enlist,
-                user, poweruser, poweraddr, password,
-                prefix_filter, True))
-
-    def test__logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
-        self.patch(clusterservice, 'maaslog')
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name('user')
-        poweruser = factory.make_name('poweruser')
-        poweraddr = factory.make_name('poweraddr')
-        password = factory.make_name('password')
-        prefix_filter = factory.make_name('prefix_filter')
-        call_responder(Cluster(), cluster.AddESXi, {
-            "user": user,
-            "poweruser": poweruser,
-            "poweraddr": poweraddr,
-            "password": password,
-            "prefix_filter": prefix_filter,
-            "accept_all": True,
-            })
-        self.assertThat(
-            clusterservice.maaslog.error,
-            MockAnyCall(
-                "Failed to probe and enlist %s nodes: %s",
-                "esxi", fake_error))
+                "VMware", fake_error))
 
 
 class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):

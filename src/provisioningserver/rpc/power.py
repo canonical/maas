@@ -67,7 +67,6 @@ from twisted.python import log
 QUERY_POWER_TYPES = [
     'amt',
     'dli',
-    'esxi',
     'ipmi',
     'mscm',
     'msftocs',

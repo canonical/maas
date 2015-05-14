@@ -70,4 +70,4 @@ class TestCompiledSCSS(MAASTestCase):
         tmp_css = self.read_content(
             os.path.join(output_dir, "maas-styles.css"))
         if in_tree_css != tmp_css:
-            self.fail("maas-styles.css is out-of-date.")
+            self.fail("maas-styles.css is out-of-date. (run 'make styles')")

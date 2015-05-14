@@ -57,7 +57,6 @@ from metadataserver.models import (
 )
 from mock import Mock
 from provisioningserver.rpc.cluster import (
-    AddESXi,
     AddSeaMicro15k,
     AddVirsh,
     AddVsphere,
@@ -446,45 +445,6 @@ class TestNodeGroupAPI(APITestCase):
                 username=username, password=password, protocol=None,
                 port=None, prefix_filter=prefix_filter,
                 accept_all=True))
-
-    def test_probe_and_enlist_hardware_adds_esxi(self):
-        self.become_admin()
-        user = self.logged_in_user
-        nodegroup = factory.make_NodeGroup()
-        model = 'esxi'
-        poweraddr = factory.make_ipv4_address()
-        password = factory.make_name('password')
-        poweruser = factory.make_name('poweruser')
-        prefix_filter = factory.make_name('filter')
-        accept_all = True
-
-        getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        client = getClientFor.return_value
-        nodegroup = factory.make_NodeGroup()
-
-        response = self.client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'probe_and_enlist_hardware',
-                'model': model,
-                'user': user.username,
-                'address': poweraddr,
-                'username': poweruser,
-                'password': password,
-                'prefix_filter': prefix_filter,
-                'accept_all': accept_all,
-            })
-
-        self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-
-        self.expectThat(
-            client,
-            MockCalledOnceWith(
-                AddESXi, user=user.username, poweruser=poweruser,
-                poweraddr=poweraddr, password=password,
-                prefix_filter=prefix_filter, accept_all=True))
 
     def test_probe_and_enlist_hardware_adds_msftocs(self):
         self.become_admin()
