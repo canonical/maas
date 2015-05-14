@@ -4,6 +4,8 @@
 ./.db.lock
 ./.hypothesis
 ./.idea
+./.idea/scopes
+./.idea/workspace.xml
 ./.installed.cfg
 ./.noseids
 ./acceptance/*.build
