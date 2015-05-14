@@ -1151,7 +1151,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_FilesystemGroup(
             self, uuid=None, group_type=None, name=None, create_params=None,
-            filesystems=None):
+            filesystems=None, node=None):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
         if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
@@ -1164,7 +1164,8 @@ class Factory(maastesting.factory.Factory):
             create_params=create_params)
         group.save()
         if filesystems is None:
-            node = self.make_Node()
+            if node is None:
+                node = self.make_Node()
             for _ in range(3):
                 block_device = self.make_PhysicalBlockDevice(node)
                 filesystem = self.make_Filesystem(
@@ -1179,11 +1180,11 @@ class Factory(maastesting.factory.Factory):
 
     def make_VirtualBlockDevice(
             self, name=None, path=None, size=None, block_size=None,
-            tags=None, uuid=None, filesystem_group=None):
+            tags=None, uuid=None, filesystem_group=None, node=None):
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:
-            filesystem_group = self.make_FilesystemGroup()
+            filesystem_group = self.make_FilesystemGroup(node=node)
         if name is None:
             if filesystem_group.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 name = self.make_name("lv")

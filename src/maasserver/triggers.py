@@ -177,52 +177,6 @@ DHCPLEASE_NODE_NOTIFY = dedent("""\
     """)
 
 
-# Procedure that is called when a node result is added or removed from a node.
-# Sends a notify message for node_update or device_update depending on if the
-# node is installable.
-NODERESULT_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
-    DECLARE
-      node RECORD;
-    BEGIN
-      SELECT system_id, installable INTO node
-      FROM maasserver_node
-      WHERE id = %s;
-
-      IF node.installable THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
-      ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
-# Procedure that is called when a MAC address is added or removed from a node.
-# Sends a notify message for node_update or device_update depending on if the
-# node is installable.
-MACADDRESS_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
-    DECLARE
-      node RECORD;
-    BEGIN
-      SELECT system_id, installable INTO node
-      FROM maasserver_node
-      WHERE id = %s;
-
-      IF node.installable THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
-      ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
 # Procedure that is called when a MAC address updated. Will send node_update
 # or device_update when the MAC address is moved from another node to a new
 # node. Sends a notify message for node_update or device_update depending on
@@ -260,7 +214,31 @@ MACADDRESS_UPDATE_NODE_NOTIFY = dedent("""\
     """)
 
 
-def get_notification_procedure(proc_name, event_name, cast):
+# Procedure that is called when a physical or virtual block device is updated.
+# Sends a notify message for node_update or device_update depending on if the
+# node is installable.
+PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id, installable INTO node
+      FROM maasserver_node, maasserver_blockdevice
+      WHERE maasserver_node.id = maasserver_blockdevice.node_id
+      AND maasserver_blockdevice.id = %s;
+
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSE
+        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
         DECLARE
@@ -270,6 +248,27 @@ def get_notification_procedure(proc_name, event_name, cast):
         END;
         $$ LANGUAGE plpgsql;
         """ % (proc_name, event_name, cast))
+
+
+def render_node_related_notification_procedure(proc_name, node_id_relation):
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        DECLARE
+          node RECORD;
+        BEGIN
+          SELECT system_id, installable INTO node
+          FROM maasserver_node
+          WHERE id = %s;
+
+          IF node.installable THEN
+            PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          ELSE
+            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """ % (proc_name, node_id_relation))
 
 
 def register_trigger(table, procedure, event, params=None, when="after"):
@@ -315,13 +314,13 @@ def register_all_triggers():
     """Register all triggers into the database."""
     # Node(installable) table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'node_create_notify', 'node_create', 'NEW.system_id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'node_update_notify', 'node_update', 'NEW.system_id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'node_delete_notify', 'node_delete', 'OLD.system_id'))
     register_trigger(
         "maasserver_node", "node_create_notify", "insert",
@@ -335,13 +334,13 @@ def register_all_triggers():
 
     # Node(device) table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'device_create_notify', 'device_create', 'NEW.system_id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'device_update_notify', 'device_update', 'NEW.system_id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'device_delete_notify', 'device_delete', 'OLD.system_id'))
     register_trigger(
         "maasserver_node", "device_create_notify", "insert",
@@ -355,13 +354,13 @@ def register_all_triggers():
 
     # Nodegroup table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'nodegroup_create_notify', 'nodegroup_create', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'nodegroup_update_notify', 'nodegroup_update', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'nodegroup_delete_notify', 'nodegroup_delete', 'OLD.id'))
     register_trigger(
         "maasserver_nodegroup", "nodegroup_create_notify", "insert")
@@ -398,13 +397,13 @@ def register_all_triggers():
 
     # Zone table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'zone_create_notify', 'zone_create', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'zone_update_notify', 'zone_update', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'zone_delete_notify', 'zone_delete', 'OLD.id'))
     register_trigger(
         "maasserver_zone", "zone_create_notify", "insert")
@@ -436,13 +435,13 @@ def register_all_triggers():
 
     # User table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'user_create_notify', 'user_create', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'user_update_notify', 'user_update', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'user_delete_notify', 'user_delete', 'OLD.id'))
     register_trigger(
         "auth_user", "user_create_notify", "insert")
@@ -453,13 +452,13 @@ def register_all_triggers():
 
     # Events table
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'event_create_notify', 'event_create', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'event_update_notify', 'event_update', 'NEW.id'))
     register_procedure(
-        get_notification_procedure(
+        render_notification_procedure(
             'event_delete_notify', 'event_delete', 'OLD.id'))
     register_trigger(
         "maasserver_event", "event_create_notify", "insert")
@@ -511,15 +510,11 @@ def register_all_triggers():
 
     # Node result table, update to linked node.
     register_procedure(
-        NODERESULT_NODE_NOTIFY % (
-            'nd_noderesult_link_notify',
-            'NEW.node_id',
-            ))
+        render_node_related_notification_procedure(
+            'nd_noderesult_link_notify', 'NEW.node_id'))
     register_procedure(
-        NODERESULT_NODE_NOTIFY % (
-            'nd_noderesult_unlink_notify',
-            'OLD.node_id',
-            ))
+        render_node_related_notification_procedure(
+            'nd_noderesult_unlink_notify', 'OLD.node_id'))
     register_trigger(
         "metadataserver_noderesult",
         "nd_noderesult_link_notify", "insert")
@@ -529,15 +524,11 @@ def register_all_triggers():
 
     # MAC address table, update to linked node.
     register_procedure(
-        MACADDRESS_NODE_NOTIFY % (
-            'nd_macaddress_link_notify',
-            'NEW.node_id',
-            ))
+        render_node_related_notification_procedure(
+            'nd_macaddress_link_notify', 'NEW.node_id'))
     register_procedure(
-        MACADDRESS_NODE_NOTIFY % (
-            'nd_macaddress_unlink_notify',
-            'OLD.node_id',
-            ))
+        render_node_related_notification_procedure(
+            'nd_macaddress_unlink_notify', 'OLD.node_id'))
     register_procedure(MACADDRESS_UPDATE_NODE_NOTIFY)
     register_trigger(
         "maasserver_macaddress",
@@ -548,3 +539,35 @@ def register_all_triggers():
     register_trigger(
         "maasserver_macaddress",
         "nd_macaddress_update_notify", "update")
+
+    # Block device table, update to linked node.
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nd_blockdevice_link_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nd_blockdevice_update_notify', 'NEW.node_id'))
+    register_procedure(
+        render_node_related_notification_procedure(
+            'nd_blockdevice_unlink_notify', 'OLD.node_id'))
+    register_procedure(
+        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY % (
+            'nd_physblockdevice_update_notify', 'NEW.blockdevice_ptr_id'))
+    register_procedure(
+        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY % (
+            'nd_virtblockdevice_update_notify', 'NEW.blockdevice_ptr_id'))
+    register_trigger(
+        "maasserver_blockdevice",
+        "nd_blockdevice_link_notify", "insert")
+    register_trigger(
+        "maasserver_blockdevice",
+        "nd_blockdevice_update_notify", "update")
+    register_trigger(
+        "maasserver_blockdevice",
+        "nd_blockdevice_unlink_notify", "delete")
+    register_trigger(
+        "maasserver_physicalblockdevice",
+        "nd_physblockdevice_update_notify", "update")
+    register_trigger(
+        "maasserver_virtualblockdevice",
+        "nd_virtblockdevice_update_notify", "update")

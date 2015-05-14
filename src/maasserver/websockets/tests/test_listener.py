@@ -15,17 +15,21 @@ __metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
+import random
 
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -408,6 +412,50 @@ class TransactionalHelpersMixin:
         for key, value in params.items():
             setattr(mac, key, value)
         return mac.save()
+
+    @transactional
+    def create_blockdevice(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_BlockDevice(**params)
+
+    @transactional
+    def create_physicalblockdevice(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_PhysicalBlockDevice(**params)
+
+    @transactional
+    def create_virtualblockdevice(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_VirtualBlockDevice(**params)
+
+    @transactional
+    def delete_blockdevice(self, id):
+        blockdevice = BlockDevice.objects.get(id=id)
+        blockdevice.delete()
+
+    @transactional
+    def update_blockdevice(self, id, params):
+        blockdevice = BlockDevice.objects.get(id=id)
+        for key, value in params.items():
+            setattr(blockdevice, key, value)
+        return blockdevice.save()
+
+    @transactional
+    def update_physicalblockdevice(self, id, params):
+        blockdevice = PhysicalBlockDevice.objects.get(id=id)
+        for key, value in params.items():
+            setattr(blockdevice, key, value)
+        return blockdevice.save()
+
+    @transactional
+    def update_virtualblockdevice(self, id, params):
+        blockdevice = VirtualBlockDevice.objects.get(id=id)
+        for key, value in params.items():
+            setattr(blockdevice, key, value)
+        return blockdevice.save()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1135,5 +1183,124 @@ class TestNodeMACAddressListener(
                 ('update', '%s' % node1.system_id),
                 ('update', '%s' % node2.system_id),
                 ], [dvs[0].value, dvs[1].value])
+        finally:
+            yield listener.stop()
+
+
+class TestNodeBlockDeviceListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_blockdevice, maasserver_physicalblockdevice, and
+    maasserver_virtualblockdevice tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_blockdevice, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        blockdevice = yield deferToThread(
+            self.create_blockdevice, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_blockdevice, blockdevice.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        blockdevice = yield deferToThread(
+            self.create_blockdevice, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_blockdevice, blockdevice.id, {
+                "size": random.randint(1000 * 1000, 1000 * 1000 * 1000)
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_physicalblockdevice_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        blockdevice = yield deferToThread(
+            self.create_physicalblockdevice, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_physicalblockdevice, blockdevice.id, {
+                    "model": factory.make_name("model")
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_virtualblockdevice_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        blockdevice = yield deferToThread(
+            self.create_virtualblockdevice, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_virtualblockdevice, blockdevice.id, {
+                    "uuid": factory.make_UUID()
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stop()

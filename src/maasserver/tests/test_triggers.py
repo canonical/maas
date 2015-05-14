@@ -19,10 +19,10 @@ from contextlib import closing
 from django.db import connection
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import (
-    get_notification_procedure,
     register_all_triggers,
     register_procedure,
     register_trigger,
+    render_notification_procedure,
 )
 from maasserver.utils.orm import psql_array
 
@@ -30,7 +30,7 @@ from maasserver.utils.orm import psql_array
 class TestTriggers(MAASServerTestCase):
 
     def test_register_trigger_doesnt_create_trigger_if_already_exists(self):
-        NODE_CREATE_PROCEDURE = get_notification_procedure(
+        NODE_CREATE_PROCEDURE = render_notification_procedure(
             'node_create_notify', 'node_create', 'NEW.system_id')
         register_procedure(NODE_CREATE_PROCEDURE)
         with closing(connection.cursor()) as cursor:
@@ -45,7 +45,7 @@ class TestTriggers(MAASServerTestCase):
         register_trigger("maasserver_node", "node_create_notify", "insert")
 
     def test_register_trigger_creates_missing_trigger(self):
-        NODE_CREATE_PROCEDURE = get_notification_procedure(
+        NODE_CREATE_PROCEDURE = render_notification_procedure(
             'node_create_notify', 'node_create', 'NEW.system_id')
         register_procedure(NODE_CREATE_PROCEDURE)
         register_trigger("maasserver_node", "node_create_notify", "insert")
@@ -95,6 +95,10 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_macaddress_nd_macaddress_link_notify",
             "maasserver_macaddress_nd_macaddress_unlink_notify",
             "maasserver_macaddress_nd_macaddress_update_notify",
+            "maasserver_blockdevice_nd_blockdevice_link_notify",
+            "maasserver_blockdevice_nd_blockdevice_unlink_notify",
+            "maasserver_physicalblockdevice_nd_physblockdevice_update_notify",
+            "maasserver_virtualblockdevice_nd_virtblockdevice_update_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
