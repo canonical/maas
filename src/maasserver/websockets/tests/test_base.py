@@ -192,6 +192,7 @@ class TestHandler(MAASServerTestCase):
         kwargs["queryset"] = Node.objects.all()
         kwargs["object_class"] = Node
         kwargs["pk"] = "system_id"
+        kwargs["pk_type"] = unicode
         handler = make_handler("TestNodesHandler", **kwargs)
         handler.__init__(factory.make_User(), {})
         return handler
@@ -639,13 +640,14 @@ class TestHandler(MAASServerTestCase):
 
     def test_on_listen_calls_listen(self):
         handler = self.make_nodes_handler()
+        pk = factory.make_name("system_id")
         mock_listen = self.patch(handler, "listen")
         mock_listen.side_effect = HandlerDoesNotExistError()
-        handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
+        handler.on_listen(sentinel.channel, sentinel.action, pk)
         self.assertThat(
             mock_listen,
             MockCalledOnceWith(
-                sentinel.channel, sentinel.action, sentinel.pk))
+                sentinel.channel, sentinel.action, pk))
 
     def test_on_listen_returns_None_if_unknown_action(
             self):
@@ -689,6 +691,18 @@ class TestHandler(MAASServerTestCase):
         self.assertTrue(
             node.system_id in handler.cache["loaded_pks"],
             "on_listen create did not add system_id to loaded_pks")
+
+    def test_on_listen_create_returns_update_if_pk_already_known(self):
+        handler = self.make_nodes_handler(fields=['hostname'])
+        node = factory.make_Node(owner=handler.user)
+        handler.cache["loaded_pks"].add(node.system_id)
+        self.assertEquals(
+            (
+                handler._meta.handler_name,
+                "update",
+                {"hostname": node.hostname}
+            ),
+            handler.on_listen(sentinel.channel, "create", node.system_id))
 
     def test_on_listen_update_returns_delete_action_if_obj_is_None(self):
         handler = self.make_nodes_handler()

@@ -115,6 +115,7 @@ class EventHandler(TimestampedModelHandler):
 
     def on_listen(self, channel, action, pk):
         """Called by the protocol when a channel notification occurs."""
+        pk = self._meta.pk_type(pk)
         if action == "delete":
             # Possible to get a delete for an event that is currently, not
             # being viewed by the user because it belongs to a differnet node.

@@ -571,3 +571,27 @@ def register_all_triggers():
     register_trigger(
         "maasserver_virtualblockdevice",
         "nd_virtblockdevice_update_notify", "update")
+
+    # SSH key table, update to linked user.
+    register_procedure(
+        render_notification_procedure(
+            'user_sshkey_link_notify', 'user_update', 'NEW.user_id'))
+    register_procedure(
+        render_notification_procedure(
+            'user_sshkey_unlink_notify', 'user_update', 'OLD.user_id'))
+    register_trigger(
+        "maasserver_sshkey", "user_sshkey_link_notify", "insert")
+    register_trigger(
+        "maasserver_sshkey", "user_sshkey_unlink_notify", "delete")
+
+    # SSL key table, update to linked user.
+    register_procedure(
+        render_notification_procedure(
+            'user_sslkey_link_notify', 'user_update', 'NEW.user_id'))
+    register_procedure(
+        render_notification_procedure(
+            'user_sslkey_unlink_notify', 'user_update', 'OLD.user_id'))
+    register_trigger(
+        "maasserver_sslkey", "user_sslkey_link_notify", "insert")
+    register_trigger(
+        "maasserver_sslkey", "user_sslkey_unlink_notify", "delete")

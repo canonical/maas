@@ -99,6 +99,10 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_blockdevice_nd_blockdevice_unlink_notify",
             "maasserver_physicalblockdevice_nd_physblockdevice_update_notify",
             "maasserver_virtualblockdevice_nd_virtblockdevice_update_notify",
+            "maasserver_sshkey_user_sshkey_link_notify",
+            "maasserver_sshkey_user_sshkey_unlink_notify",
+            "maasserver_sslkey_user_sslkey_link_notify",
+            "maasserver_sslkey_user_sslkey_unlink_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:

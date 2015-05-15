@@ -28,6 +28,8 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.sshkey import SSHKey
+from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
@@ -456,6 +458,28 @@ class TransactionalHelpersMixin:
         for key, value in params.items():
             setattr(blockdevice, key, value)
         return blockdevice.save()
+
+    @transactional
+    def create_sshkey(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_SSHKey(**params)
+
+    @transactional
+    def delete_sshkey(self, id):
+        key = SSHKey.objects.get(id=id)
+        key.delete()
+
+    @transactional
+    def create_sslkey(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_SSLKey(**params)
+
+    @transactional
+    def delete_sslkey(self, id):
+        key = SSLKey.objects.get(id=id)
+        key.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1302,5 +1326,87 @@ class TestNodeBlockDeviceListener(
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestUserSSHKeyListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the maasserver_sshkey
+    table that notifies its user."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        user = yield deferToThread(self.create_user)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_sshkey, {"user": user})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        user = yield deferToThread(self.create_user)
+        sshkey = yield deferToThread(self.create_sshkey, {"user": user})
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_sshkey, sshkey.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestUserSSLKeyListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the maasserver_sslkey
+    table that notifies its user."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        user = yield deferToThread(self.create_user)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_sslkey, {"user": user})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        user = yield deferToThread(self.create_user)
+        sslkey = yield deferToThread(self.create_sslkey, {"user": user})
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_sslkey, sslkey.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
             yield listener.stop()

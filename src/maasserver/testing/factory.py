@@ -570,6 +570,13 @@ class Factory(maastesting.factory.Factory):
         key.save()
         return key
 
+    def make_SSLKey(self, user, key_string=None):
+        if key_string is None:
+            key_string = get_data('data/test_x509_0.pem')
+        key = SSLKey(key=key_string, user=user)
+        key.save()
+        return key
+
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):
         if name is None:

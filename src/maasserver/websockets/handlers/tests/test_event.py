@@ -211,11 +211,12 @@ class TestEventHandler(MAASServerTestCase):
         handler = EventHandler(user, {})
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
-        handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
+        pk = random.randint(1, 1000)
+        handler.on_listen(sentinel.channel, sentinel.action, pk)
         self.assertThat(
             mock_listen,
             MockCalledOnceWith(
-                sentinel.channel, sentinel.action, sentinel.pk))
+                sentinel.channel, sentinel.action, pk))
 
     def test_on_listen_returns_None_if_listen_returns_None(self):
         user = factory.make_User()
@@ -224,15 +225,16 @@ class TestEventHandler(MAASServerTestCase):
         mock_listen.return_value = None
         self.assertIsNone(
             handler.on_listen(
-                sentinel.channel, sentinel.action, sentinel.pk))
+                sentinel.channel, sentinel.action, random.randint(1, 1000)))
 
     def test_on_listen_delete_returns_handler_name_and_pk(self):
         user = factory.make_User()
+        pk = random.randint(1, 1000)
         handler = EventHandler(user, {})
         self.assertEquals(
-            (handler._meta.handler_name, "delete", sentinel.pk),
+            (handler._meta.handler_name, "delete", pk),
             handler.on_listen(
-                sentinel.channel, "delete", sentinel.pk))
+                sentinel.channel, "delete", pk))
 
     def test_on_listen_returns_None_if_event_node_id_not_in_cache(self):
         user = factory.make_User()

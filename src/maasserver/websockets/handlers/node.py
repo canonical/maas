@@ -72,6 +72,7 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         pk = 'system_id'
+        pk_type = unicode
         allowed_methods = [
             'list',
             'get',

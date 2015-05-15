@@ -72,6 +72,7 @@ class HandlerOptions(object):
     object_class = None
     queryset = None
     pk = 'id'
+    pk_type = int
     fields = None
     exclude = None
     list_fields = None
@@ -437,6 +438,7 @@ class Handler:
 
         Do not override this method instead override `listen`.
         """
+        pk = self._meta.pk_type(pk)
         if action == "delete":
             if pk in self.cache['loaded_pks']:
                 self.cache['loaded_pks'].remove(pk)
@@ -449,8 +451,13 @@ class Handler:
         except HandlerDoesNotExistError:
             obj = None
         if action == "create" and obj is not None:
-            self.cache['loaded_pks'].add(pk)
-            return self.on_listen_for_active_pk(action, pk, obj)
+            if pk in self.cache['loaded_pks']:
+                # The user already knows about this node, so its not a create
+                # to the user but an update.
+                return self.on_listen_for_active_pk("update", pk, obj)
+            else:
+                self.cache['loaded_pks'].add(pk)
+                return self.on_listen_for_active_pk(action, pk, obj)
         elif action == "update":
             if pk in self.cache['loaded_pks']:
                 if obj is None:
@@ -466,6 +473,13 @@ class Handler:
                 # the client as a create action instead of an update.
                 self.cache['loaded_pks'].add(pk)
                 return self.on_listen_for_active_pk("create", pk, obj)
+            else:
+                # User doesn't have access to this object, so do nothing.
+                pass
+        else:
+            # Unknown action or the user doesn't have permission to view the
+            # newly created object, so do nothing.
+            pass
         return None
 
     def on_listen_for_active_pk(self, action, pk, obj):
