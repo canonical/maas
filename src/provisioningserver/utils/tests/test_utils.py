@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -44,6 +46,7 @@ from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from provisioningserver.utils import (
     classify,
+    coerce_to_valid_hostname,
     commission_node,
     create_node,
     escape_py_literal,
@@ -409,6 +412,29 @@ class TestQuotePyLiteral(MAASTestCase):
         self.assertEqual(value, output)
 
 
+class TestCoerceHostname(PservTestCase):
+
+    def test_replaces_international_characters(self):
+        self.assertEqual("abc-123", coerce_to_valid_hostname("abc青い空123"))
+
+    def test_removes_illegal_dashes(self):
+        self.assertEqual("abc123", coerce_to_valid_hostname("-abc123-"))
+
+    def test_replaces_whitespace_and_special_characters(self):
+        self.assertEqual(
+            "abc123-ubuntu", coerce_to_valid_hostname("abc123 (ubuntu)"))
+
+    def test_makes_hostname_lowercase(self):
+        self.assertEqual(
+            "ubunturocks", coerce_to_valid_hostname("UbuntuRocks"))
+
+    def test_returns_none_if_result_empty(self):
+        self.assertIsNone(coerce_to_valid_hostname("-人間性-"))
+
+    def test_returns_none_if_result_too_large(self):
+        self.assertIsNone(coerce_to_valid_hostname('a' * 65))
+
+
 class TestCreateNode(PservTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -544,7 +570,7 @@ class TestCreateNode(PservTestCase):
             macs, arch, power_type, power_parameters)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "A node with one of the mac addressess in %s already "
+                "A node with one of the mac addresses in %s already "
                 "exists.", macs))
 
 

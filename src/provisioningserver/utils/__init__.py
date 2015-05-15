@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "create_node",
+    "coerce_to_valid_hostname",
     "commission_node",
     "filter_dict",
     "flatten",
@@ -60,7 +61,10 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
 )
-from twisted.protocols.amp import UnhandledCommand
+from twisted.protocols.amp import (
+    UnhandledCommand,
+    UnknownRemoteError,
+)
 
 
 maaslog = get_maas_logger("utils")
@@ -84,6 +88,21 @@ def node_exists(macs, url, client):
     return len(content) > 0
 
 
+def coerce_to_valid_hostname(hostname):
+    """Given a server name that may contain spaces and special characters,
+    attempts to derive a valid hostname.
+
+    :param hostname: the specified (possibly invalid) hostname
+    :return: the resulting string, or None if the hostname could not be coerced
+    """
+    hostname = hostname.lower()
+    hostname = re.sub(r'[^a-z0-9-]+', '-', hostname)
+    hostname = hostname.strip('-')
+    if hostname == '' or len(hostname) > 64:
+        return None
+    return hostname
+
+
 @asynchronous
 @inlineCallbacks
 def create_node(macs, arch, power_type, power_parameters, hostname=None):
@@ -98,6 +117,9 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     # Avoid circular dependencies.
     from provisioningserver.rpc.region import CreateNode
     from provisioningserver.cluster_config import get_cluster_uuid
+
+    if hostname is not None:
+        hostname = coerce_to_valid_hostname(hostname)
 
     for elapsed, remaining, wait in retries(15, 5, reactor):
         try:
@@ -126,7 +148,7 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
         # The node already exists on the region, so we log the error and
         # give up.
         maaslog.error(
-            "A node with one of the mac addressess in %s already exists.",
+            "A node with one of the mac addresses in %s already exists.",
             macs)
         returnValue(None)
     except UnhandledCommand:
@@ -135,6 +157,15 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
         maaslog.error(
             "Unable to create node on region: Region does not "
             "support the CreateNode RPC method.")
+        returnValue(None)
+    except UnknownRemoteError as e:
+        # This happens, for example, if a ValidationError occurs on the region.
+        # (In particular, we see this if the hostname is a duplicate.)
+        # We should probably create specific exceptions for these, so we can
+        # act on them appropriately.
+        maaslog.error(
+            "Unknown error while creating node %s: %s (see regiond.log)",
+            macs, e.description)
         returnValue(None)
     else:
         returnValue(response['system_id'])

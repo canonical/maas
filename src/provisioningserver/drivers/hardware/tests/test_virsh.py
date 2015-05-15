@@ -256,7 +256,8 @@ class TestVirsh(MAASTestCase):
         # actions to occur, but want to also check that they are called.
         mock_poweroff = self.patch(virsh.VirshSSH, 'poweroff')
         mock_create_node = self.patch(virsh, 'create_node')
-        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
+        mock_create_node.side_effect = asynchronous(
+            lambda *args, **kwargs: system_id)
         mock_commission_node = self.patch(virsh, 'commission_node')
 
         # Patch login and logout so that we don't really contact
@@ -285,12 +286,14 @@ class TestVirsh(MAASTestCase):
         self.expectThat(
             mock_create_node, MockCallsMatch(
                 call(
-                    fake_macs[0], fake_arch, 'virsh', called_params[0]),
+                    fake_macs[0], fake_arch, 'virsh', called_params[0],
+                    machines[0]),
                 call(
-                    fake_macs[1], fake_arch, 'virsh', called_params[1]),
+                    fake_macs[1], fake_arch, 'virsh', called_params[1],
+                    machines[1]),
                 call(
-                    fake_macs[2], fake_arch,
-                    'virsh', called_params[2])))
+                    fake_macs[2], fake_arch, 'virsh', called_params[2],
+                    machines[2])))
         mock_logout.assert_called()
         self.expectThat(
             mock_commission_node,

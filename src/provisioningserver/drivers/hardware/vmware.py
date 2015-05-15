@@ -19,6 +19,7 @@ __all__ = [
 from abc import abstractmethod
 from collections import OrderedDict
 import traceback
+from urllib import unquote
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
@@ -351,6 +352,11 @@ def probe_vmware_and_enlist(
             'power_user': username,
             'power_pass': password,
         }
+
+        # Note: the system name is URL encoded, so before we go to log
+        # and/or create the node, we need to unquote it.
+        # Otherwise we might pass in names like "Ubuntu%20(64-bit)"
+        system_name = unquote(system_name).decode('utf8')
         maaslog.info(
             "Creating VMware node with MACs: %s (%s)",
             properties['macs'], system_name)
