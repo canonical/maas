@@ -242,5 +242,9 @@ def remove_host_maps(ip_addresses, shared_key):
             maaslog.error(
                 "Could not remove host map for %s: %s",
                 ip_address, unicode(e))
-            raise CannotRemoveHostMap("%s: %s" % (
-                ip_address, e.output_as_unicode))
+            if 'not connected.' in e.output_as_unicode:
+                raise CannotRemoveHostMap(
+                    "The DHCP server could not be reached.")
+            else:
+                raise CannotRemoveHostMap("%s: %s" % (
+                    ip_address, e.output_as_unicode))

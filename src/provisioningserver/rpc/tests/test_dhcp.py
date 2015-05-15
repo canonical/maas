@@ -39,7 +39,10 @@ from provisioningserver.rpc import (
     dhcp,
     exceptions,
 )
-from provisioningserver.rpc.exceptions import CannotConfigureDHCP
+from provisioningserver.rpc.exceptions import (
+    CannotConfigureDHCP,
+    CannotRemoveHostMap,
+)
 from provisioningserver.utils.shell import ExternalProcessError
 
 
@@ -313,3 +316,42 @@ class TestStopAndDisableDHCP(MAASTestCase):
             call(self.expected_interfaces_file, ""),
         ))
         self.assertThat(self.stop_dhcp, MockCalledOnceWith())
+
+
+class TestStoppedDHCP(MAASTestCase):
+    """Test omshell error reporting"""
+
+    def setUp(self):
+        super(TestStoppedDHCP, self).setUp()
+        self.patch(ExternalProcessError, '__unicode__', lambda x: 'Error')
+
+        def raise_ExternalProcessError(*args, **kwargs):
+            raise ExternalProcessError(*args, **kwargs)
+
+        self.patch(Omshell, "remove", raise_ExternalProcessError)
+
+    def test__raises_CannotRemoveHostMap_if_omshell_offline(self):
+        """If the DHCP server is offline, report a specific message"""
+
+        omapi_key = factory.make_name('omapi-key')
+        ip_address = factory.make_ipv4_address()
+        self.patch(ExternalProcessError, 'output_as_unicode', 'not connected.')
+
+        self.assertRaises(CannotRemoveHostMap,
+                          dhcp.remove_host_maps, [ip_address], omapi_key)
+
+        try:
+            dhcp.remove_host_maps([ip_address], omapi_key)
+        except CannotRemoveHostMap as e:
+            self.assertEqual(e.args[0],
+                             "The DHCP server could not be reached.")
+
+    def test__raises_CannotRemoveHostMap_if_omshell_error(self):
+        """Raise a CannotRemoveHostMap if omshell returns an error"""
+
+        omapi_key = factory.make_name('omapi-key')
+        ip_address = factory.make_ipv4_address()
+        self.patch(ExternalProcessError, 'output_as_unicode', 'error.')
+
+        self.assertRaises(CannotRemoveHostMap,
+                          dhcp.remove_host_maps, [ip_address], omapi_key)
