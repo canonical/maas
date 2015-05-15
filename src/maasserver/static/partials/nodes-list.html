@@ -104,81 +104,58 @@
                 </div>
             </div>
             <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
+                <h3>Add machine</h3>
                 <div class="page-header__feedback" data-ng-hide="architectures.length">
                     <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
                     <p class="page-header__feedback-message info">
                         Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="images">images page</a>.
                     </p>
                 </div>
-                <ul class="add-machine__list twelve-col ng-hide" data-ng-show="showMachines()">
-                    <li class="add-machine__details twelve-col"
-                        data-ng-repeat="machine in machines"
-                        data-ng-class="{ active: machine === currentMachine, error: machineHasError(machine) }"
-                        data-ng-click="setCurrentMachine(machine)">
-                        <div class="name two-col">
-                            <h4>{$ machine.name $}</h4>
+                <form class="twelve-col ng-hide"  data-ng-show="showMachine()">
+                    <fieldset class="six-col no-padding">
+                        <div class="inline">
+                            <label for="cluser" class="two-col">Cluster</label>
+                            <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
+                                data-ng-model="machine.cluster"
+                                data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
+                            </select>
                         </div>
-                        <div class="cluster two-col">
-                            <p>Cluster {$ machine.cluster.cluster_name $}</p>
+                        <div class="inline">
+                            <label for="machine-name" class="two-col">Machine name</label>
+                            <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
+                                data-ng-model="machine.name">
                         </div>
-                        <div class="architecture two-col">
-                            <p>{$ machine.architecture $}</p>
+                        <div class="inline">
+                            <label for="architecture" class="two-col">Architecture</label>
+                            <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
+                                data-ng-model="machine.architecture"
+                                data-ng-options="arch for arch in architectures">
+                            </select>
                         </div>
-                        <div class="mac two-col">
-                            <p>{$ getDisplayMac(machine) $}</p>
+                        <div class="inline" data-ng-repeat="mac in machine.macs">
+                            {$ mac $}
+                            <label for="mac-address" class="two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
+                            <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
+                                   data-ng-class="{ invalid: mac.error }"
+                                   data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
                         </div>
-                        <div class="power-type four-col last-col">
-                            <p>{$ getDisplayPower(machine) $}</p>
+                        <div class="inline five-col">
+                            <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
                         </div>
-                        <div class="add-machine__details-form twelve-col">
-                            <form action="post" class="twelve-col">
-                                <fieldset class="six-col no-padding">
-                                    <div class="inline">
-                                        <label for="cluser" class="two-col">Cluster</label>
-                                        <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
-                                            data-ng-model="machine.cluster"
-                                            data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
-                                        </select>
-                                    </div>
-                                    <div class="inline">
-                                        <label for="machine-name" class="two-col">Machine name</label>
-                                        <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
-                                            data-ng-model="machine.name">
-                                    </div>
-                                    <div class="inline">
-                                        <label for="architecture" class="two-col">Architecture</label>
-                                        <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
-                                            data-ng-model="machine.architecture"
-                                            data-ng-options="arch for arch in architectures">
-                                        </select>
-                                    </div>
-                                    <div class="inline" data-ng-repeat="mac in machine.macs">
-                                        {$ mac $}
-                                        <label for="mac-address" class="two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
-                                        <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
-                                               data-ng-class="{ invalid: mac.error }"
-                                               data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
-                                    </div>
-                                    <div class="inline five-col">
-                                        <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
-                                    </div>
-                                    <div class="inline">
-                                        <label for="zone" class="two-col">Zone</label>
-                                        <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
-                                            data-ng-model="machine.zone"
-                                            data-ng-options="zone as zone.name for zone in zones">
-                                        </select>
-                                    </div>
-                                </fieldset>
-                                <fieldset class="six-col last-col no-padding"
-                                    data-maas-power-parameters="machine.cluster.power_types"
-                                    data-ng-model="machine.power">
-                                </fieldset>
-                            </form>
+                        <div class="inline">
+                            <label for="zone" class="two-col">Zone</label>
+                            <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
+                                data-ng-model="machine.zone"
+                                data-ng-options="zone as zone.name for zone in zones">
+                            </select>
                         </div>
-                    </li>
-                </ul>
-                <form action="post" class="twelve-col ng-hide border-bottom" data-ng-show="showChassis()">
+                    </fieldset>
+                    <fieldset class="six-col last-col no-padding"
+                        data-maas-power-parameters="machine.cluster.power_types"
+                        data-ng-model="machine.power">
+                    </fieldset>
+                </form>
+                <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
                     <fieldset class="six-col">
                         <div class="inline">
                             <label for="cluser" class="two-col">Cluster</label>
@@ -193,26 +170,37 @@
                         data-ng-model="chassis.power">
                     </fieldset>
                 </form>
-                <div class="twelve-col ng-hide" data-ng-show="showMachines()">
-                    <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
-                    <div class="right align-right">
-                        <a href="" class="margin-right alt" data-ng-click="actionCancel()">Cancel</a>
-                        <button class="cta-ubuntu"
-                            data-ng-class="{ secondary: machinesHaveErrors() }"
-                            data-ng-click="actionAddMachines()">
-                            Add <span data-ng-pluralize count="machines.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                        </button>
-                    </div>
+                <div class="page-header__feedback twelve-col no-margin-bottom" data-ng-show="showMachine()">
+                    <form class="form-inline">
+                        <span class="ng-hide" data-ng-show="error">
+                            <p class="page-header__feedback-message info">{$ error $}</p>
+                        </span>
+                        <div class="right align-right">
+                            <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                            <button class="cta-ubuntu secondary"
+                                data-ng-class="{ disabled: machineHasError() }"
+                                data-ng-click="saveMachine(true)">Save and add another</button>
+                            <button class="cta-ubuntu"
+                                data-ng-class="{ disabled: machineHasError() }"
+                                data-ng-click="saveMachine(false)">Save machine</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="twelve-col ng-hide" data-ng-show="showChassis()">
-                    <div class="right align-right">
-                        <a href="" class="margin-right alt" data-ng-click="actionCancel()">Cancel</a>
-                        <button class="cta-ubuntu"
-                            data-ng-class="{ secondary: chassisHasErrors() }"
-                            data-ng-click="actionAddChassis()">
-                            Add chassis</span>
-                        </button>
-                    </div>
+                <div class="page-header__feedback twelve-col no-margin-bottom ng-hide" data-ng-show="showChassis()">
+                    <form class="form-inline">
+                        <span class="ng-hide" data-ng-show="error">
+                            <p class="page-header__feedback-message info">{$ error $}</p>
+                        </span>
+                        <div class="right align-right">
+                            <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                            <button class="cta-ubuntu secondary"
+                                data-ng-class="{ disabled: chassisHasErrors() }"
+                                data-ng-click="saveChassis(true)">Save and add another</button>
+                            <button class="cta-ubuntu"
+                                data-ng-class="{ disabled: chassisHasErrors() }"
+                                data-ng-click="saveChassis(false)">Save chassis</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

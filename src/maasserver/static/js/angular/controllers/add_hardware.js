@@ -19,14 +19,14 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Set initial values.
         $scope.viewable = false;
-        $scope.model = 'hardware';
+        $scope.model = 'machine';
         $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
+        $scope.error = null;
 
         // Input values.
-        $scope.machines = [];
-        $scope.currentMachine = null;
+        $scope.machine = null;
         $scope.chassis = null;
 
         // Hard coded chassis types. This is because there is no method in
@@ -254,25 +254,25 @@ angular.module('MAAS').controller('AddHardwareController', [
         }
 
         // Return a new machine object.
-        function newMachine() {
-            // Clone the current machine instead of just creating a new one.
+        function newMachine(cloneMachine) {
+            // Clone the machine instead of just creating a new one.
             // This helps the user by already having the previous selected
             // items selected for the new machine.
-            if(angular.isObject($scope.currentMachine)) {
+            if(angular.isObject(cloneMachine)) {
                 return {
-                    cluster: $scope.currentMachine.cluster,
+                    cluster: cloneMachine.cluster,
                     name: '',
                     macs: [newMAC()],
-                    zone: $scope.currentMachine.zone,
-                    architecture: $scope.currentMachine.architecture,
+                    zone: cloneMachine.zone,
+                    architecture: cloneMachine.architecture,
                     power: {
-                        type: $scope.currentMachine.power.type,
+                        type: cloneMachine.power.type,
                         parameters: {}
                     }
                 };
             }
 
-            // No current machine. So create a new blank machine.
+            // No clone machine. So create a new blank machine.
             return {
                 cluster: masterCluster(),
                 name: '',
@@ -295,15 +295,6 @@ angular.module('MAAS').controller('AddHardwareController', [
                     parameters: {}
                 }
             };
-        }
-
-        // Set the machine a random hostname.
-        function setRandomHostname(machine) {
-            return RegionConnection.callMethod(
-                "general.random_hostname", {}).then(
-                    function(hostname) {
-                        machine.name = hostname;
-                    });
         }
 
         // Converts the machine information from how it is held in the UI to
@@ -353,13 +344,12 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.show = function(mode) {
             // Change the mode.
             if($scope.mode !== mode) {
-                if($scope.mode === "hardware") {
-                    $scope.machines = [];
-                    $scope.currentMachine = null;
-                    $scope.addMachine();
+                if($scope.mode === "machine") {
+                    $scope.machine = newMachine();
                 } else if($scope.mode === "chassis") {
                     $scope.chassis = newChassis();
                 }
+                $scope.error = null;
                 $scope.mode = mode;
             }
 
@@ -371,11 +361,6 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Start the polling of architectures.
             GeneralManager.startPolling("architectures");
-
-            // Update the currentMachine's hostname. This is to make sure
-            // it is not already a hostname that has been taken. This just
-            // helps reduce the chance of race conditions.
-            return setRandomHostname($scope.currentMachine);
         };
 
         // Called by the parent scope when this controller is hidden.
@@ -389,12 +374,12 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.$emit('addHardwareHidden');
         };
 
-        // Return True when architectures loaded and in hardware mode.
-        $scope.showMachines = function() {
+        // Return True when architectures loaded and in machine mode.
+        $scope.showMachine = function() {
             if($scope.architectures.length === 0) {
                 return false;
             }
-            return $scope.mode === "hardware";
+            return $scope.mode === "machine";
         };
 
         // Return True when architectures loaded and in chassis mode.
@@ -405,31 +390,18 @@ angular.module('MAAS').controller('AddHardwareController', [
             return $scope.mode === "chassis";
         };
 
-        // Add a new MAC address to the current machine.
+        // Add a new MAC address to the machine.
         $scope.addMac = function() {
-            $scope.currentMachine.macs.push(newMAC());
+            $scope.machine.macs.push(newMAC());
         };
 
-        // Add a new machine and set it as the current selection.
-        $scope.addMachine = function() {
-            var machine = newMachine();
-            $scope.machines.push(machine);
-            $scope.currentMachine = machine;
-            return setRandomHostname(machine);
-        };
-
-        // Change the current machine.
-        $scope.setCurrentMachine = function(machine) {
-            $scope.currentMachine = machine;
-        };
-
-        // Return true if the machines name is invalid.
-        $scope.invalidName = function(machine) {
+        // Return true if the machine name is invalid.
+        $scope.invalidName = function() {
             // Not invalid if empty.
-            if(machine.name.length === 0) {
+            if($scope.machine.name.length === 0) {
                 return false;
             }
-            return !ValidationService.validateHostname(machine.name);
+            return !ValidationService.validateHostname($scope.machine.name);
         };
 
         // Validate that the mac address is valid.
@@ -443,37 +415,29 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Return true when the machine is missing information or invalid
         // information.
-        $scope.machineHasError = function(machine) {
+        $scope.machineHasError = function() {
             // Early-out for errors.
             in_error = (
-                machine.cluster === null ||
-                machine.zone === null ||
-                machine.architecture === '' ||
-                machine.power.type === null ||
-                $scope.invalidName(machine));
+                $scope.machine === null ||
+                $scope.machine.cluster === null ||
+                $scope.machine.zone === null ||
+                $scope.machine.architecture === '' ||
+                $scope.machine.power.type === null ||
+                $scope.invalidName($scope.machine));
             if(in_error) {
                 return in_error;
             }
 
             // Make sure none of the mac addresses are in error. The first one
             // cannot be blank the remaining are allowed to be empty.
-            if(machine.macs[0].mac === '' || machine.macs[0].error) {
+            if($scope.machine.macs[0].mac === '' ||
+                $scope.machine.macs[0].error) {
                 return true;
             }
             var i;
-            for(i = 1; i < machine.macs.length; i++) {
-                var mac = machine.macs[i];
+            for(i = 1; i < $scope.machine.macs.length; i++) {
+                var mac = $scope.machine.macs[i];
                 if(mac.mac !== '' && mac.error) {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-        // Return true if any of the machines have errors.
-        $scope.machinesHaveErrors = function() {
-            for(i = 0; i < $scope.machines.length; i++) {
-                if($scope.machineHasError($scope.machines[i])) {
                     return true;
                 }
             }
@@ -494,93 +458,76 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.chassis.power.type, $scope.chassis.power.parameters);
         };
 
-        // Get the MAC address that is displayed in the machines header.
-        $scope.getDisplayMac = function(machine) {
-            if(machine.macs[0].mac === '') {
-                return "00:00:00:00:00:00";
-            } else {
-                return machine.macs[0].mac;
-            }
-        };
-
-        // Get the name of the power controller for the node.
-        $scope.getDisplayPower = function(machine) {
-            if(angular.isObject(machine.power.type)) {
-                return machine.power.type.description;
-            }
-            return "Missing power type";
-        };
-
-        // Called when the add hardware action is cancelled.
-        $scope.actionCancel = function() {
-            $scope.currentMachine = null;
-            $scope.machines = [];
-            $scope.addMachine();
+        // Called when the cancel button is pressed.
+        $scope.cancel = function() {
+            $scope.error = null;
+            $scope.machine = newMachine();
             $scope.chassis = newChassis();
 
             // Hide the controller.
             $scope.hide();
         };
 
-        // Called to perform the adding of machines.
-        $scope.actionAddMachines = function() {
-            // Does nothing if any error exists.
-            if($scope.machinesHaveErrors()) {
+        // Called to perform the saving of the machine.
+        $scope.saveMachine = function(addAnother) {
+            // Does nothing if machine has errors.
+            if($scope.machineHasError()) {
                 return;
             }
 
-            // Get the current machines and clear the current view.
-            var machines = $scope.machines;
-            $scope.currentMachine = null;
-            $scope.machines = [];
-            $scope.addMachine();
+            // Clear the error so it can be set again, if it fails to save
+            // the device.
+            $scope.error = null;
 
-            // Add all the machines.
-            angular.forEach(machines, function(machine) {
-                machine = convertMachineToProtocol(machine);
-                NodesManager.create(machine).then(null, function(error) {
-                    // This needs to be improved to show a correct error
-                    // message on the machines line.
-                    console.log(error);
+            // Add the machine.
+            NodesManager.create(convertMachineToProtocol($scope.machine)).then(
+                function() {
+                    if(addAnother) {
+                        $scope.machine = newMachine($scope.machine);
+                    } else {
+                        $scope.machine = newMachine();
+
+                        // Hide the scope if not adding another.
+                        $scope.hide();
+                    }
+                }, function(error) {
+                    $scope.error = error;
                 });
-            });
-
-            // Hide the controller.
-            $scope.hide();
         };
 
-        // Called to perform the adding of a chassis.
-        $scope.actionAddChassis = function() {
+        // Called to perform the saving of the chassis.
+        $scope.saveChassis = function(addAnother) {
             // Does nothing if error exists.
             if($scope.chassisHasErrors()) {
                 return;
             }
 
-            // Get the current chassis and clear the current info.
-            var chassis = $scope.chassis;
-            $scope.chassis = newChassis();
+            // Clear the error so it can be set again, if it fails to save
+            // the device.
+            $scope.error = null;
 
             // Create the parameters.
-            var params = angular.copy(chassis.power.parameters);
-            params.model = chassis.power.type.name;
+            var params = angular.copy($scope.chassis.power.parameters);
+            params.model = $scope.chassis.power.type.name;
 
             // Add the chassis. For now we use the API as the websocket doesn't
             // support probe and enlist.
             $http({
                 method: 'POST',
                 url: 'api/1.0/nodegroups/' +
-                    chassis.cluster.uuid +
+                    $scope.chassis.cluster.uuid +
                     '/?op=probe_and_enlist_hardware',
                 data: $.param(params),
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-            }).then(null, function(error) {
-                // This needs to be improved to show a correct error
-                // message on the machines line.
-                console.log(error);
+            }).then(function() {
+                $scope.chassis = newChassis();
+                if(!addAnother) {
+                    // Hide the scope if not adding another.
+                    $scope.hide();
+                }
+            }, function(error) {
+                $scope.error = error;
             });
-
-            // Hide the controller.
-            $scope.hide();
         };
 
         // Load clusters and zones. Once loaded create the first machine and
@@ -588,20 +535,20 @@ angular.module('MAAS').controller('AddHardwareController', [
         ManagerHelperService.loadManagers(
             [ClustersManager, ZonesManager]).then(function() {
                 // Add the first machine and chassis.
-                $scope.addMachine();
+                $scope.machine = newMachine();
                 $scope.chassis = newChassis();
             });
 
         // Load the general manager.
         ManagerHelperService.loadManager(GeneralManager).then(function() {
             if($scope.architectures.length > 0) {
-                // If the currentMachine doesn't have an architecture
+                // If the machine doesn't have an architecture
                 // set then it was created before all of the
                 // architectures were loaded. Set the default
                 // architecture for that machine.
-                if(angular.isObject($scope.currentMachine) &&
-                    $scope.currentMachine.architecture === '') {
-                    $scope.currentMachine.architecture = defaultArchitecture();
+                if(angular.isObject($scope.machine) &&
+                    $scope.machine.architecture === '') {
+                    $scope.machine.architecture = defaultArchitecture();
                 }
             }
         });

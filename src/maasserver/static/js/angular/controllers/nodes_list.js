@@ -90,7 +90,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.addHardwareOption = null;
         $scope.addHardwareOptions = [
             {
-                name: "hardware",
+                name: "machine",
                 title: "Machine"
             },
             {

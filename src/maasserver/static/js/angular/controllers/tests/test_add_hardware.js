@@ -77,6 +77,16 @@ describe("AddHardwareController", function() {
         });
     }
 
+    // Makes the AddHardwareController with the $scope.machine already
+    // initialized.
+    function makeControllerWithMachine() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        return controller;
+    }
+
     it("sets addHardwareScope on $scope.$parent", function() {
         var controller = makeController();
         expect(parentScope.addHardwareScope).toBe($scope);
@@ -88,8 +98,9 @@ describe("AddHardwareController", function() {
         expect($scope.clusters).toBe(ClustersManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.architectures).toEqual([]);
-        expect($scope.machines).toEqual([]);
-        expect($scope.currentMachine).toBeNull();
+        expect($scope.error).toBeNull();
+        expect($scope.machine).toBeNull();
+        expect($scope.chassis).toBeNull();
     });
 
     it("calls loadManagers with ClustersManager and ZonesManager", function() {
@@ -104,14 +115,14 @@ describe("AddHardwareController", function() {
             GeneralManager);
     });
 
-    it("intializes first machine once ClustersManager and ZonesManager loaded",
+    it("intializes machine once ClustersManager and ZonesManager loaded",
         function() {
             var defer = $q.defer();
             var controller = makeController(defer);
 
             defer.resolve();
             $scope.$digest();
-            expect($scope.machines.length).toBe(1);
+            expect($scope.machine).not.toBeNull();
         });
 
     it("intializes chassis once ClustersManager and ZonesManager loaded",
@@ -124,56 +135,47 @@ describe("AddHardwareController", function() {
             expect($scope.chassis).not.toBeNull();
         });
 
-    it("initializes currentMachine architecture with first arch", function() {
+    it("initializes machine architecture with first arch", function() {
         var defer = $q.defer();
         var controller = makeController(null, defer);
         var arch = makeName("arch");
         $scope.architectures = [arch];
-
-        var machine = {
+        $scope.machine = {
             architecture: ''
         };
-        $scope.machines.push(machine);
-        $scope.currentMachine = machine;
 
         defer.resolve();
         $scope.$digest();
-        expect(machine.architecture).toEqual(arch);
+        expect($scope.machine.architecture).toEqual(arch);
     });
 
-    it("initializes currentMachine architecture with amd64 arch", function() {
+    it("initializes machine architecture with amd64 arch", function() {
         var defer = $q.defer();
         var controller = makeController(null, defer);
         var arch = makeName("arch");
         $scope.architectures = [arch, "amd64/generic"];
-
-        var machine = {
+        $scope.machine = {
             architecture: ''
         };
-        $scope.machines.push(machine);
-        $scope.currentMachine = machine;
 
         defer.resolve();
         $scope.$digest();
-        expect(machine.architecture).toEqual("amd64/generic");
+        expect($scope.machine.architecture).toEqual("amd64/generic");
     });
 
-    it("doesnt initializes currentMachine architecture if set", function() {
+    it("doesnt initializes machine architecture if set", function() {
         var defer = $q.defer();
         var controller = makeController(null, defer);
         var arch = makeName("arch");
         var newArch = makeName("arch");
         $scope.architectures = [newArch];
-
-        var machine = {
+        $scope.machine = {
             architecture: arch
         };
-        $scope.machines.push(machine);
-        $scope.currentMachine = machine;
 
         defer.resolve();
         $scope.$digest();
-        expect(machine.architecture).toEqual(arch);
+        expect($scope.machine.architecture).toEqual(arch);
     });
 
     it("calls stopPolling when scope destroyed", function() {
@@ -190,21 +192,6 @@ describe("AddHardwareController", function() {
             var controller = makeController();
             $scope.show();
             expect($scope.viewable).toBe(true);
-        });
-
-        it("updates currentMachine with random hostname", function(done) {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.currentMachine.name = "";
-            var hostname = makeName("hostname");
-
-            // Return the hostname.
-            webSocket.returnData.push(makeFakeResponse(hostname));
-
-            $scope.show().then(function() {
-                expect($scope.currentMachine.name).toBe(hostname);
-                done();
-            });
         });
 
         it("calls startPolling for architectures", function() {
@@ -244,65 +231,30 @@ describe("AddHardwareController", function() {
 
     describe("addMac", function() {
 
-        it("adds mac address object to currentMachine", function() {
-            var controller = makeController();
-            $scope.addMachine();
+        it("adds mac address object to machine", function() {
+            var controller = makeControllerWithMachine();
             $scope.addMac();
-            expect($scope.currentMachine.macs.length).toBe(2);
-        });
-    });
-
-    describe("addMachine", function() {
-
-        it("adds new machine to list and sets as currentMachine", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            expect($scope.machines).toEqual([$scope.currentMachine]);
-        });
-
-        it("sets random hostname on machine", function(done) {
-            var controller = makeController();
-            var hostname = makeName("hostname");
-            webSocket.returnData.push(makeFakeResponse(hostname));
-            $scope.addMachine().then(function() {
-                expect($scope.currentMachine.name).toBe(hostname);
-                done();
-            });
-        });
-    });
-
-    describe("setCurrentMachine", function() {
-
-        it("sets currentMachine", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.addMachine();
-            expect($scope.currentMachine).toBe($scope.machines[1]);
-            $scope.setCurrentMachine($scope.machines[0]);
-            expect($scope.currentMachine).toBe($scope.machines[0]);
+            expect($scope.machine.macs.length).toBe(2);
         });
     });
 
     describe("invalidName", function() {
 
         it("return false if machine name empty", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            expect($scope.invalidName($scope.currentMachine)).toBe(false);
+            var controller = makeControllerWithMachine();
+            expect($scope.invalidName($scope.machine)).toBe(false);
         });
 
         it("return false if machine name valid", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.currentMachine.name = "abc";
-            expect($scope.invalidName($scope.currentMachine)).toBe(false);
+            var controller = makeControllerWithMachine();
+            $scope.machine.name = "abc";
+            expect($scope.invalidName($scope.machine)).toBe(false);
         });
 
         it("return true if machine name invalid", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.currentMachine.name = "ab_c.local";
-            expect($scope.invalidName($scope.currentMachine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.name = "ab_c.local";
+            expect($scope.invalidName($scope.machine)).toBe(true);
         });
     });
 
@@ -341,198 +293,129 @@ describe("AddHardwareController", function() {
 
     describe("machineHasError", function() {
 
+        it("returns true if machine is null", function() {
+            var controller = makeControllerWithMachine();
+            $scope.machine = null;
+            expect($scope.machineHasError()).toBe(true);
+        });
+
         it("returns true if cluster is null", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = null;
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = null;
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if zone is null", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = null;
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = null;
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if architecture is empty", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = '';
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = '';
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if power.type is null", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = null;
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = null;
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if machine.name invalid", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.name = "ab_c.local";
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.name = "ab_c.local";
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if mac[0] is empty", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if mac[0] is in error", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44';
-            machine.macs[0].error = true;
-            expect($scope.machineHasError(machine)).toBe(true);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44';
+            $scope.machine.macs[0].error = true;
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns true if mac[1] is in error", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            machine.macs.push({
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            $scope.machine.macs.push({
                 mac: '00:11:22:33:55',
                 error: true
             });
-            expect($scope.machineHasError(machine)).toBe(true);
+            expect($scope.machineHasError()).toBe(true);
         });
 
         it("returns false if all is correct", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            expect($scope.machineHasError(machine)).toBe(false);
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            expect($scope.machineHasError()).toBe(false);
         });
 
         it("returns false if all is correct and mac[1] is blank", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            machine.cluster = {};
-            machine.zone = {};
-            machine.architecture = makeName("arch");
-            machine.power.type = {};
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            machine.macs.push({
+            var controller = makeControllerWithMachine();
+            $scope.machine.cluster = {};
+            $scope.machine.zone = {};
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {};
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            $scope.machine.macs.push({
                 mac: '',
                 error: false
             });
-            expect($scope.machineHasError(machine)).toBe(false);
-        });
-    });
-
-    describe("machinesHaveErrors", function() {
-
-        it("returns true if one machine has error", function() {
-            var controller = makeController();
-
-            // 1st machine, no errors.
-            $scope.addMachine();
-            var machine1 = $scope.currentMachine;
-            machine1.cluster = {};
-            machine1.zone = {};
-            machine1.architecture = makeName("arch");
-            machine1.power.type = {};
-            machine1.macs[0].mac = '00:11:22:33:44:55';
-            machine1.macs[0].error = false;
-
-            // 2nd machine, errors.
-            $scope.addMachine();
-            var machine2 = $scope.currentMachine;
-            machine2.cluster = {};
-            machine2.zone = {};
-            machine2.architecture = '';
-            machine2.power.type = {};
-            machine2.macs[0].mac = '00:11:22:33:44:66';
-            machine2.macs[0].error = false;
-
-            expect($scope.machinesHaveErrors()).toBe(true);
-        });
-
-        it("returns false if no machines have errors", function() {
-            var controller = makeController();
-
-            // 1st machine, no errors.
-            $scope.addMachine();
-            var machine1 = $scope.currentMachine;
-            machine1.cluster = {};
-            machine1.zone = {};
-            machine1.architecture = makeName("arch");
-            machine1.power.type = {};
-            machine1.macs[0].mac = '00:11:22:33:44:55';
-            machine1.macs[0].error = false;
-
-            // 2nd machine, no errors.
-            $scope.addMachine();
-            var machine2 = $scope.currentMachine;
-            machine2.cluster = {};
-            machine2.zone = {};
-            machine2.architecture = makeName("arch");
-            machine2.power.type = {};
-            machine2.macs[0].mac = '00:11:22:33:44:66';
-            machine2.macs[0].error = false;
-
-            expect($scope.machinesHaveErrors()).toBe(false);
+            expect($scope.machineHasError()).toBe(false);
         });
     });
 
@@ -611,210 +494,186 @@ describe("AddHardwareController", function() {
         });
     });
 
-    describe("getDisplayMac", function() {
+    describe("cancel", function() {
 
-        it("returns 00:00:00:00:00:00 when mac[0] is empty", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            expect($scope.getDisplayMac($scope.currentMachine)).toBe(
-                "00:00:00:00:00:00");
+        it("clears error", function() {
+            var controller = makeControllerWithMachine();
+            $scope.error = makeName("error");
+            $scope.cancel();
+            expect($scope.error).toBeNull();
         });
 
-        it("returns mac from mac[0]", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.addMac();
-            $scope.currentMachine.macs[0].mac = "00:11";
-            expect($scope.getDisplayMac($scope.currentMachine)).toBe("00:11");
-        });
-    });
-
-    describe("getDisplayPower", function() {
-
-        it("returns missing text when power.type is null", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            expect($scope.getDisplayPower($scope.currentMachine)).toBe(
-                "Missing power type");
+        it("clears machine and adds a new one", function() {
+            var controller = makeControllerWithMachine();
+            $scope.machine.name = makeName("name");
+            $scope.cancel();
+            expect($scope.machine.name).toBe("");
         });
 
-        it("returns power description", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var description = makeName("description");
-            $scope.currentMachine.power.type = {
-                description: description
-            };
-            expect($scope.getDisplayPower($scope.currentMachine)).toBe(
-                description);
-        });
-    });
-
-    describe("actionCancel", function() {
-
-        it("clears machines and adds a new one", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            $scope.addMachine();
-            $scope.addMachine();
-            $scope.actionCancel();
-            expect($scope.machines.length).toBe(1);
-            expect($scope.currentMachine).toBe($scope.machines[0]);
+        it("clears chassis and adds a new one", function() {
+            var controller = makeControllerWithMachine();
+            $scope.chassis.power.type = makeName("type");
+            $scope.cancel();
+            expect($scope.chassis.power.type).toBeNull();
         });
 
         it("calls hide", function() {
-            var controller = makeController();
+            var controller = makeControllerWithMachine();
             spyOn($scope, "hide");
-            $scope.actionCancel();
+            $scope.cancel();
             expect($scope.hide).toHaveBeenCalled();
         });
     });
 
-    describe("actionAddMachines", function() {
+    describe("saveMachine", function() {
 
-        it("does nothing if errors", function() {
-            var controller = makeController();
-            $scope.addMachine();
-            var machine = $scope.currentMachine;
-            spyOn($scope, "machinesHaveErrors").and.returnValue(true);
-            $scope.actionAddMachines();
-            expect($scope.currentMachine).toBe(machine);
-        });
+        // Setup a valid machine before each test.
+        beforeEach(function() {
+            var controller = makeControllerWithMachine();
 
-        it("clears machines and adds a new one", function() {
-            var controller = makeController();
-
-            // Valid 1st machine
-            $scope.addMachine();
-            var machine1 = $scope.currentMachine;
-            machine1.cluster = {};
-            machine1.zone = {};
-            machine1.architecture = makeName("arch");
-            machine1.power.type = {};
-            machine1.macs[0].mac = '00:11:22:33:44:55';
-            machine1.macs[0].error = false;
-
-            // Valid 2nd machine
-            $scope.addMachine();
-            var machine2 = $scope.currentMachine;
-            machine2.cluster = {};
-            machine2.zone = {};
-            machine2.architecture = makeName("arch");
-            machine2.power.type = {};
-            machine2.macs[0].mac = '00:11:22:33:44:55';
-            machine2.macs[0].error = false;
-
-            $scope.actionAddMachines();
-            expect($scope.machines.length).toBe(1);
-            expect($scope.currentMachine).toBe($scope.machines[0]);
-        });
-
-        it("calls hide", function() {
-            var controller = makeController();
-            spyOn($scope, "machinesHaveErrors").and.returnValue(false);
-            spyOn($scope, "hide");
-            $scope.actionAddMachines();
-            expect($scope.hide).toHaveBeenCalled();
-        });
-
-        it("calls NodesManager.create with converted machine", function() {
-            var controller = makeController();
-
-            $scope.addMachine();
             $scope.addMac();
-            spyOn($scope, "invalidName").and.returnValue(false);
-            var machine = $scope.currentMachine;
-            machine.name = makeName("name");
-            machine.cluster = {
+            $scope.machine.name = makeName("name").replace("_", "");
+            $scope.machine.cluster = {
                 id: 1,
                 uuid: makeName("uuid"),
                 cluster_name: makeName("cluster_name")
             };
-            machine.zone = {
+            $scope.machine.zone = {
                 id: 1,
                 name: makeName("zone")
             };
-            machine.architecture = makeName("arch");
-            machine.power.type = {
+            $scope.machine.architecture = makeName("arch");
+            $scope.machine.power.type = {
                 name: "ether_wake"
             };
-            machine.power.parameters = {
+            $scope.machine.power.parameters = {
                 mac_address: "00:11:22:33:44:55"
             };
-            machine.macs[0].mac = '00:11:22:33:44:55';
-            machine.macs[0].error = false;
-            machine.macs[1].mac = '00:11:22:33:44:66';
-            machine.macs[1].error = false;
+            $scope.machine.macs[0].mac = '00:11:22:33:44:55';
+            $scope.machine.macs[0].error = false;
+            $scope.machine.macs[1].mac = '00:11:22:33:44:66';
+            $scope.machine.macs[1].error = false;
+        });
 
+        it("does nothing if errors", function() {
+            var error = makeName("error");
+            $scope.error = error;
+            // Force the machine to be invalid.
+            spyOn($scope, "machineHasError").and.returnValue(true);
+            $scope.saveMachine(false);
+            expect($scope.error).toBe(error);
+        });
+
+        it("clears error", function() {
+            $scope.error = makeName("error");
+            $scope.saveMachine(false);
+            expect($scope.error).toBeNull();
+        });
+
+        it("calls NodesManager.create with converted machine", function() {
             spyOn(NodesManager, "create").and.returnValue($q.defer().promise);
 
-            $scope.actionAddMachines();
+            $scope.saveMachine(false);
             expect(NodesManager.create).toHaveBeenCalledWith({
-                hostname: machine.name,
-                architecture: machine.architecture,
-                pxe_mac: machine.macs[0].mac,
-                extra_macs: [machine.macs[1].mac],
-                power_type: machine.power.type.name,
-                power_parameters: machine.power.parameters,
+                hostname: $scope.machine.name,
+                architecture: $scope.machine.architecture,
+                pxe_mac: $scope.machine.macs[0].mac,
+                extra_macs: [$scope.machine.macs[1].mac],
+                power_type: $scope.machine.power.type.name,
+                power_parameters: $scope.machine.power.parameters,
                 zone: {
-                    id: machine.zone.id,
-                    name: machine.zone.name
+                    id: $scope.machine.zone.id,
+                    name: $scope.machine.zone.name
                 },
                 nodegroup: {
-                    id: machine.cluster.id,
-                    uuid: machine.cluster.uuid,
-                    cluster_name: machine.cluster.cluster_name
+                    id: $scope.machine.cluster.id,
+                    uuid: $scope.machine.cluster.uuid,
+                    cluster_name: $scope.machine.cluster.cluster_name
                 }
             });
         });
-    });
 
-    describe("actionAddChassis", function() {
+        it("calls hide once NodesManager.create is resolved", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "create").and.returnValue(defer.promise);
+            spyOn($scope, "hide");
+            $scope.saveMachine(false);
+            defer.resolve();
+            $rootScope.$digest();
 
-        it("does nothing if errors", function() {
-            var controller = makeController();
-            var chassis = $scope.chassis;
-            spyOn($scope, "chassisHasErrors").and.returnValue(true);
-            $scope.actionAddChassis();
-            expect($scope.chassis).toBe(chassis);
+            expect($scope.hide).toHaveBeenCalled();
         });
 
-        it("resets chassis", function() {
+        it("resets machine once NodesManager.create is resolved", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "create").and.returnValue(defer.promise);
+            $scope.saveMachine(false);
+            defer.resolve();
+            $rootScope.$digest();
+
+            expect($scope.machine.name).toBe("");
+        });
+
+        it("clones machine once NodesManager.create is resolved", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "create").and.returnValue(defer.promise);
+
+            var cluster_name = $scope.machine.cluster.cluster_name;
+            $scope.saveMachine(true);
+            defer.resolve();
+            $rootScope.$digest();
+
+            expect($scope.machine.name).toBe("");
+            expect($scope.machine.cluster.cluster_name).toBe(cluster_name);
+        });
+
+        it("deosnt call hide if addAnother is true", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "create").and.returnValue(defer.promise);
+            spyOn($scope, "hide");
+
+            $scope.saveMachine(true);
+            defer.resolve();
+            $rootScope.$digest();
+
+            expect($scope.hide).not.toHaveBeenCalled();
+        });
+
+        it("sets error when NodesManager.create is rejected", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "create").and.returnValue(defer.promise);
+            spyOn($scope, "hide");
+
+            var error = makeName("error");
+            $scope.saveMachine(false);
+            defer.reject(error);
+            $rootScope.$digest();
+
+            expect($scope.error).toBe(error);
+            expect($scope.hide).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("saveChassis", function() {
+
+        // Setup a valid chassis before each test.
+        var httpDefer;
+        beforeEach(function() {
+            httpDefer = $q.defer();
+
+            // Mock $http.
+            $http = jasmine.createSpy("$http");
+            $http.and.returnValue(httpDefer.promise);
+
+            // Create the controller and the valid chassis.
             var controller = makeController();
-            var chassis = {
+            $scope.chassis = {
                 cluster: {
                     uuid: makeName("uuid")
                 },
                 power: {
                     type: {
                         name: makeName("model"),
-                        fields: []
-                    },
-                    parameters: {}
-                }
-            };
-            $scope.chassis = chassis;
-            $scope.actionAddChassis();
-            expect($scope.chassis).not.toBe(chassis);
-        });
-
-        it("calls $http with correct parameters", function() {
-            $http = jasmine.createSpy("$http");
-            $http.and.returnValue($q.defer().promise);
-            var controller = makeController();
-            var uuid = makeName("uuid");
-            var model = makeName("model");
-            var parameters = {
-                "one": makeName("one"),
-                "two": makeName("two")
-            };
-            $scope.chassis = {
-                cluster: {
-                    uuid: uuid
-                },
-                power: {
-                    type: {
-                        name: model,
                         fields: [
                             {
                                 name: "one",
@@ -826,38 +685,70 @@ describe("AddHardwareController", function() {
                             }
                         ]
                     },
-                    parameters: parameters
+                    parameters: {
+                        "one": makeName("one"),
+                        "two": makeName("two")
+                    }
                 }
             };
-            $scope.actionAddChassis();
-            parameters.model = model;
+        });
+
+        it("does nothing if errors", function() {
+            var error = makeName("error");
+            $scope.error = error;
+            spyOn($scope, "chassisHasErrors").and.returnValue(true);
+            $scope.saveChassis(false);
+            expect($scope.error).toBe(error);
+        });
+
+        it("calls $http with correct parameters", function() {
+            $scope.saveChassis(false);
+
+            var parameters = $scope.chassis.power.parameters;
+            parameters.model = $scope.chassis.power.type.name;
             expect($http).toHaveBeenCalledWith({
                 method: 'POST',
-                url: 'api/1.0/nodegroups/' + uuid +
+                url: 'api/1.0/nodegroups/' + $scope.chassis.cluster.uuid +
                     '/?op=probe_and_enlist_hardware',
                 data: $.param(parameters),
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             });
         });
 
-        it("calls hide", function() {
-            var controller = makeController();
-            var chassis = {
-                cluster: {
-                    uuid: makeName("uuid")
-                },
-                power: {
-                    type: {
-                        name: makeName("model"),
-                        fields: []
-                    },
-                    parameters: {}
-                }
-            };
-            $scope.chassis = chassis;
+        it("creates new chassis when $http resolves", function() {
+            $scope.saveChassis(false);
+            httpDefer.resolve();
+            $rootScope.$digest();
+
+            expect($scope.chassis.power.type).toBeNull();
+        });
+
+        it("calls hide if addAnother false when $http resolves", function() {
             spyOn($scope, "hide");
-            $scope.actionAddChassis();
+            $scope.saveChassis(false);
+            httpDefer.resolve();
+            $rootScope.$digest();
+
             expect($scope.hide).toHaveBeenCalled();
+        });
+
+        it("doesnt call hide if addAnother true when $http resolves",
+            function() {
+                spyOn($scope, "hide");
+                $scope.saveChassis(true);
+                httpDefer.resolve();
+                $rootScope.$digest();
+
+                expect($scope.hide).not.toHaveBeenCalled();
+            });
+
+        it("sets error when $http rejects", function() {
+            $scope.saveChassis(false);
+            var error = makeName("error");
+            httpDefer.reject(error);
+            $rootScope.$digest();
+
+            expect($scope.error).toBe(error);
         });
     });
 });
