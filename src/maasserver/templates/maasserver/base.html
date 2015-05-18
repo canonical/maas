@@ -100,7 +100,7 @@
                 </div>
             </header>
             {% endblock %}
-            <div id="main-content" class="row no-border">
+            <div id="main-content" class="no-border">
                 {% if user.is_authenticated %}
                 <ul id="flash-messages" class="flash-messages">
                     {% for persistent_error in persistent_errors %}
