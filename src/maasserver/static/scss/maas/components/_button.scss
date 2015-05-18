@@ -47,12 +47,12 @@
 }
 
 %secondary-cta {
-    color: #333;
+    color: $ubuntu-orange;
     border: 1px solid #b2b2b2;
-    background-color: #eee;
+    background-color: #FFF;
 
     &:hover {
-        background-color: #fff;
+        background-color: #F2F2F2;
     }
 }
 
@@ -79,9 +79,9 @@ form input[type='submit'] {
     }
 
     &.secondary {
-        color: #333;
+        color: $ubuntu-orange;
         border: 1px solid #b2b2b2;
-        background: #eee;
+        background: #FFF;
 
         &.external {
             background-image: url('../img/external-link-black.svg');
@@ -91,18 +91,27 @@ form input[type='submit'] {
         }
 
         &:hover {
-            background-color: #fff;
+            background-color: #F2F2F2;
         }
 
         &[disabled] {
             cursor: default;
-            color: lighten(#333, 50%);
+            color: lighten(#FFF, 50%);
             border: 1px solid #b2b2b2;
             background: #eee;
 
             &:hover {
                 background: #EEE;
             }
+        }
+    }
+
+    &.text-button {
+        background-color: transparent;
+        color: $ubuntu-orange;
+
+        &:hover {
+            text-decoration: underline;
         }
     }
 
@@ -142,11 +151,33 @@ a.link-cta-ubuntu {
         float: left;
         max-height: 36px;
         padding-right: 34px;
-        background-image: url('../img/chevron-white.svg');
-        background-repeat: no-repeat;
-        background-position: top 17px right 15px;
         width: 100%;
-        line-height: 1;
+        line-height: 1.2;
+        position: relative;
+
+        &:after {
+            @include rounded-corners(0px 3px 3px 0px);
+            content: '';
+            display: block;
+            height: 36px;
+            width: 34px;
+            background: red;
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-image: url('../img/chevron-white.svg');
+            background-color: $ubuntu-orange;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        &:hover {
+            background-color: $ubuntu-orange;
+
+            &:after {
+                background-color: darken($ubuntu-orange, 6.2%);
+            }
+        }
     }
 
     /**
@@ -202,14 +233,29 @@ a.link-cta-ubuntu {
 
         .cta-group__link {
             @extend %secondary-cta;
-            background-image: url('../img/icons/accordion-open.svg');
-            background-repeat: no-repeat;
             float: left;
             max-height: 36px;
             padding-right: 34px;
-            background-repeat: no-repeat;
-            background-position: top 17px right 15px;
             width: 100%;
+
+            &:after {
+                @include box-sizing();
+                background-image: url('../img/icons/accordion-open.svg');
+                background-repeat: no-repeat;
+                background-color: #fff;
+                border: 1px solid #b2b2b2;
+                border-left: none;
+                top: -1px;
+                right: -1px;
+            }
+
+            &:hover {
+                background-color: #FFF;
+
+                &:after {
+                    background-color: #F2F2F2;
+                }
+            }
         }
     }
 }

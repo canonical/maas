@@ -33,8 +33,10 @@ header.banner {
         &.nav-right {
 
             .logo-ubuntu {
-                @include background-size(100px);
+                @include background-size(100px 30px);
                 background-position: 5px 9px;
+                background-image: url('../img/logos/logo.png');
+                background-image: url('../img/logos/logo.svg'), none;
             }
         }
 
@@ -214,6 +216,10 @@ header.banner {
         position: absolute;
         top: 10px;
         z-index: 1000;
+
+        a {
+            font-weight: 300;
+        }
     }
 
     // Main page title
@@ -261,6 +267,7 @@ header.banner {
 
         .icon {
             vertical-align: 3px;
+            margin-right: 10px;
         }
 
         // Title identicator is used to show any sub pages and where

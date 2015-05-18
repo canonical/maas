@@ -184,6 +184,10 @@ form {
         &[disabled] {
             color: #888;
         }
+
+        &::-ms-expand {
+            display: none;
+        }
     }
 
     fieldset {
