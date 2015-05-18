@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import datetime
 import httplib
 import json
 import random
@@ -621,6 +622,17 @@ class TestImageAjax(MAASServerTestCase):
             for json_resource in json_obj['resources']
             ]
         self.assertItemsEqual(resource_ids, json_ids)
+
+    def test_returns_resources_datetime_format(self):
+        """Ensure the date/time format is correct"""
+        self.client_log_in()
+        resource = factory.make_usable_boot_resource()
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_updated = datetime.datetime.strptime(
+            json_obj['resources'][0]['lastUpdate'], "%a, %d %b. %Y %H:%M:%S")
+        self.assertEqual(resource.updated.timetuple(),
+                         json_updated.timetuple())
 
     def test_returns_resource_attributes(self):
         self.client_log_in()

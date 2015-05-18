@@ -599,7 +599,9 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                 complete=resource.complete, status=resource.status,
                 downloading=resource.downloading,
                 numberOfNodes=resource.number_of_nodes,
-                lastUpdate=resource.last_update.strftime('%c'))
+                lastUpdate=resource.last_update.strftime(
+                    "%a, %d %b. %Y %H:%M:%S")
+            )
             for resource in resources
             ]
         data = dict(
