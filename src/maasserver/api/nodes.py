@@ -431,8 +431,10 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        if node.status == NODE_STATUS.READY:
-            # Nothing to do.  This may be a redundant retry, and the
+        if node.status == NODE_STATUS.RELEASING or \
+                node.status == NODE_STATUS.READY:
+            # Nothing to do if this node is already releasing, otherwise
+            # this may be a redundant retry, and the
             # postcondition is achieved, so call this success.
             pass
         elif node.status in RELEASABLE_STATUSES:

@@ -525,7 +525,10 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_fails_for_other_node_states(self):
         releasable_statuses = (
-            RELEASABLE_STATUSES + [NODE_STATUS.READY])
+            RELEASABLE_STATUSES + [
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.READY
+            ])
         unreleasable_statuses = [
             status
             for status in map_enum(NODE_STATUS).values()
@@ -1339,6 +1342,7 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         APITransactionTestCase, and thus, have been separated
         from the TestNodeReleaseStickyIpAddressAPI above.
     """
+
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
