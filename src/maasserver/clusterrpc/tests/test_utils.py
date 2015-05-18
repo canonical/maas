@@ -35,10 +35,10 @@ class TestCallClusters(MAASServerTestCase):
     """Tests for `utils.call_clusters`."""
 
     def test__gets_clients_for_accepted_nodegroups_only(self):
-        # Create several pending nodegroups.
+        # Create several disabled nodegroups.
         nodegroups = [
             factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.PENDING)
+                status=NODEGROUP_STATUS.DISABLED)
             for _ in xrange(5)
         ]
 

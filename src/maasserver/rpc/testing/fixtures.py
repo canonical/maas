@@ -121,7 +121,7 @@ class ClusterRPCFixture(fixtures.Fixture):
         # node-group known at present.
         fake_connections = defaultdict(set)
         for nodegroup in NodeGroup.objects.all():
-            if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+            if nodegroup.status == NODEGROUP_STATUS.ENABLED:
                 connection = FakeConnection(nodegroup.uuid)
                 fake_connections[connection.ident].add(connection)
         # Patch the fake connections into place for this fixture's lifetime.

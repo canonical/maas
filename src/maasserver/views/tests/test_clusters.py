@@ -21,7 +21,6 @@ from lxml.html import fromstring
 from maasserver.enum import (
     NODEGROUP_STATE,
     NODEGROUP_STATUS,
-    NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
@@ -37,7 +36,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.clusters import ClusterListView
-from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     ContainsAll,
     HasLength,
@@ -47,93 +45,20 @@ from testtools.matchers import (
 
 class ClusterListingTest(MAASServerTestCase):
 
-    scenarios = [
-        ('accepted-clusters', {'status': NODEGROUP_STATUS.ACCEPTED}),
-        ('pending-clusters', {'status': NODEGROUP_STATUS.PENDING}),
-        ('rejected-clusters', {'status': NODEGROUP_STATUS.REJECTED}),
-    ]
-
     def get_url(self):
         """Return the listing url used in this scenario."""
-        return reverse(ClusterListView.status_links[
-            self.status])
-
-    def test_cluster_listing_contains_links_to_manipulate_clusters(self):
-        self.client_log_in(as_admin=True)
-        nodegroups = {
-            factory.make_NodeGroup(status=self.status)
-            for _ in range(3)
-            }
-        links = get_content_links(self.client.get(self.get_url()))
-        nodegroup_edit_links = [
-            reverse('cluster-edit', args=[nodegroup.uuid])
-            for nodegroup in nodegroups]
-        nodegroup_delete_links = [
-            reverse('cluster-delete', args=[nodegroup.uuid])
-            for nodegroup in nodegroups]
-        self.assertThat(
-            links,
-            ContainsAll(nodegroup_edit_links + nodegroup_delete_links))
+        return reverse('cluster-list')
 
     def make_listing_view(self, status):
         view = ClusterListView()
         view.status = status
         return view
 
-    def test_make_title_entry_returns_link_for_other_status(self):
-        # If the entry's status is different from the view's status,
-        # the returned entry is a link.
-        other_status = factory.pick_choice(
-            NODEGROUP_STATUS_CHOICES, but_not=[self.status])
-        factory.make_NodeGroup(status=other_status)
-        link_name = ClusterListView.status_links[other_status]
-        view = self.make_listing_view(self.status)
-        entry = view.make_title_entry(other_status, link_name)
-        status_name = NODEGROUP_STATUS_CHOICES[other_status][1]
-        self.assertEqual(
-            '<a href="%s">1 %s cluster</a>' % (
-                reverse(link_name), status_name.lower()),
-            entry)
-
-    def test_make_title_entry_returns_title_if_no_cluster(self):
-        # If no cluster correspond to the entry's status, the returned
-        # entry is not a link: it's a simple mention '0 <status> clusters'.
-        other_status = factory.pick_choice(
-            NODEGROUP_STATUS_CHOICES, but_not=[self.status])
-        link_name = ClusterListView.status_links[other_status]
-        view = self.make_listing_view(self.status)
-        entry = view.make_title_entry(other_status, link_name)
-        status_name = NODEGROUP_STATUS_CHOICES[other_status][1]
-        self.assertEqual(
-            '0 %s clusters' % status_name.lower(), entry)
-
-    def test_title_displays_number_of_clusters(self):
-        for _ in range(3):
-            factory.make_NodeGroup(status=self.status)
-        view = self.make_listing_view(self.status)
-        status_name = NODEGROUP_STATUS_CHOICES[self.status][1]
-        title = view.make_cluster_listing_title()
-        self.assertIn("3 %s clusters" % status_name.lower(), title)
-
-    def test_title_contains_links_to_other_listings(self):
-        view = self.make_listing_view(self.status)
-        other_statuses = []
-        # Compute a list with the statuses of the clusters not being
-        # displayed by the 'view'.  Create clusters with these statuses.
-        for status in map_enum(NODEGROUP_STATUS).values():
-            if status != self.status:
-                other_statuses.append(status)
-                factory.make_NodeGroup(status=status)
-        for status in other_statuses:
-            link_name = ClusterListView.status_links[status]
-            title = view.make_cluster_listing_title()
-            self.assertIn(reverse(link_name), title)
-
     def test_listing_is_paginated(self):
         self.patch(ClusterListView, "paginate_by", 2)
         self.client_log_in(as_admin=True)
         for _ in range(3):
-            factory.make_NodeGroup(status=self.status)
+            factory.make_NodeGroup()
         response = self.client.get(self.get_url())
         self.assertEqual(httplib.OK, response.status_code)
         doc = fromstring(response.content)
@@ -172,7 +97,7 @@ class ClusterListingStateTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         factory.make_BootResource()
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED, name=self.state)
+            status=NODEGROUP_STATUS.ENABLED, name=self.state)
 
         def mock_get_state(self):
             # Return a state, which is set to the name of the node.
@@ -180,7 +105,7 @@ class ClusterListingStateTest(MAASServerTestCase):
         self.patch(NodeGroup, 'get_state', mock_get_state)
 
         response = self.client.get(
-            reverse(ClusterListView.status_links[NODEGROUP_STATUS.ACCEPTED]))
+            reverse('cluster-list'))
         document = fromstring(response.content)
         images_col = document.xpath(
             "//td[@id='%s_images']" % nodegroup.uuid)[0]
@@ -198,14 +123,14 @@ class ClusterListingNoImagesTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         BootResource.objects.all().delete()
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
 
         def mock_get_state(self):
             return NODEGROUP_STATE.OUT_OF_SYNC
         self.patch(NodeGroup, 'get_state', mock_get_state)
 
         response = self.client.get(
-            reverse(ClusterListView.status_links[NODEGROUP_STATUS.ACCEPTED]))
+            reverse('cluster-list'))
         document = fromstring(response.content)
         images_col = document.xpath(
             "//td[@id='%s_images']" % nodegroup.uuid)[0]
@@ -226,111 +151,6 @@ class ClusterListingAccess(MAASServerTestCase):
         links = get_content_links(
             self.client.get(reverse('index')), element='#main-nav')
         self.assertNotIn(reverse('cluster-list'), links)
-
-
-class ClusterPendingListingTest(MAASServerTestCase):
-
-    def test_pending_listing_contains_form_to_accept_all_nodegroups(self):
-        self.client_log_in(as_admin=True)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-        response = self.client.get(reverse('cluster-list-pending'))
-        doc = fromstring(response.content)
-        forms = doc.cssselect('form#accept_all_pending_nodegroups')
-        self.assertEqual(1, len(forms))
-
-    def test_pending_listing_contains_form_to_reject_all_nodegroups(self):
-        self.client_log_in(as_admin=True)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-        response = self.client.get(reverse('cluster-list-pending'))
-        doc = fromstring(response.content)
-        forms = doc.cssselect('form#reject_all_pending_nodegroups')
-        self.assertEqual(1, len(forms))
-
-    def test_pending_listing_accepts_all_pending_nodegroups_POST(self):
-        self.client_log_in(as_admin=True)
-        nodegroups = {
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-        }
-        response = self.client.post(
-            reverse('cluster-list-pending'), {'mass_accept_submit': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            [reload_object(nodegroup).status for nodegroup in nodegroups],
-            [NODEGROUP_STATUS.ACCEPTED] * 2)
-
-    def test_pending_listing_rejects_all_pending_nodegroups_POST(self):
-        self.client_log_in(as_admin=True)
-        nodegroups = {
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
-        }
-        response = self.client.post(
-            reverse('cluster-list-pending'), {'mass_reject_submit': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            [reload_object(nodegroup).status for nodegroup in nodegroups],
-            [NODEGROUP_STATUS.REJECTED] * 2)
-
-
-class ClusterAcceptedListingTest(MAASServerTestCase):
-
-    def test_warning_is_displayed_if_a_cluster_is_disconnected(self):
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED)
-
-        self.patch(
-            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.DISCONNECTED)
-        response = self.client.get(reverse('cluster-list'))
-        document = fromstring(response.content)
-        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
-        self.assertIn('warning', nodegroup_row.get('class'))
-        warning_elems = (
-            nodegroup_row.xpath(
-                """//span[@title="Warning: this cluster is disconnected."]"""))
-        self.assertThat(
-            warning_elems, HasLength(1),
-            "No warning about disconnected cluster.")
-
-    def test_warning_is_displayed_if_region_is_missing_images(self):
-        self.client_log_in(as_admin=True)
-        BootResource.objects.all().delete()
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED)
-
-        self.patch(
-            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.OUT_OF_SYNC)
-        response = self.client.get(reverse('cluster-list'))
-        document = fromstring(response.content)
-        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
-        self.assertIn('warning', nodegroup_row.get('class'))
-        warning_elems = (
-            nodegroup_row.xpath(
-                "//span[@title=\"Warning: this cluster cannot sync images as "
-                "the region doesn't have any images.\"]"))
-        self.assertThat(
-            warning_elems, HasLength(1),
-            "No warning about region not containing images.")
-
-    def test_warning_is_displayed_if_a_cluster_is_out_of_sync(self):
-        self.client_log_in(as_admin=True)
-        factory.make_BootResource()
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED)
-
-        self.patch(
-            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.OUT_OF_SYNC)
-        response = self.client.get(reverse('cluster-list'))
-        document = fromstring(response.content)
-        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
-        self.assertIn('warning', nodegroup_row.get('class'))
-        warning_elems = (
-            nodegroup_row.xpath(
-                """//span[@title="Warning: this cluster is out-of-sync."]"""))
-        self.assertThat(
-            warning_elems, HasLength(1),
-            "No warning about out-of-sync cluster.")
 
 
 class ClusterDeleteTest(MAASServerTestCase):

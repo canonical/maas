@@ -295,7 +295,7 @@ class TestMetadataCommon(DjangoTestCase):
 
     def test_meta_data_local_hostname_returns_fqdn(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         hostname = factory.make_string()
         domain = factory.make_string()

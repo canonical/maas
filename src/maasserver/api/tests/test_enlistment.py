@@ -372,7 +372,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
             hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         response = self.client.post(
@@ -395,7 +395,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         hostname_without_domain = factory.make_name('hostname')
         domain = factory.make_name('domain')
         factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         response = self.client.post(

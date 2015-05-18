@@ -413,7 +413,7 @@ class Factory(maastesting.factory.Factory):
         """
         name = self.make_name('original-name')
         nodegroup = self.make_NodeGroup(
-            name=name, status=NODEGROUP_STATUS.ACCEPTED)
+            name=name, status=NODEGROUP_STATUS.ENABLED)
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node = self.make_Node(
@@ -510,7 +510,7 @@ class Factory(maastesting.factory.Factory):
         """
         nodegroup = kwargs.pop("nodegroup", None)
         if nodegroup is None:
-            nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+            nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = self.make_Node(
             mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
         ngi = self.make_NodeGroupInterface(

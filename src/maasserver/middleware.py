@@ -140,7 +140,7 @@ class ExternalComponentsMiddleware:
 
         If any clusters are disconnected, add a persistent error.
         """
-        clusters = NodeGroup.objects.filter(status=NODEGROUP_STATUS.ACCEPTED)
+        clusters = NodeGroup.objects.filter(status=NODEGROUP_STATUS.ENABLED)
         connected_cluster_uuids = {client.ident for client in getAllClients()}
         disconnected_clusters = {
             cluster for cluster in clusters

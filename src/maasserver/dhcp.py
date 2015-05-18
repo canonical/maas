@@ -151,7 +151,7 @@ def configure_dhcp_now(nodegroup):
         # calls to async tasks.
         return
 
-    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+    if nodegroup.status == NODEGROUP_STATUS.ENABLED:
         # Cluster is an accepted one.  Control DHCP for its managed interfaces.
         interfaces = nodegroup.get_managed_interfaces()
     else:

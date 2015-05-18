@@ -50,7 +50,7 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
     calls = []
     if nodegroups is None:
         nodegroups = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
     for ng in nodegroups:
         try:
             client = getClientFor(ng.uuid)

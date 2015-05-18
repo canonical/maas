@@ -603,7 +603,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 
     def test__ignores_non_accepted_clusters(self):
         factory.make_NodeGroup(status=factory.pick_enum(
-            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.ACCEPTED]))
+            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.ENABLED]))
 
         getAllClients = self.patch(nodegroup_module, 'getAllClients')
 
@@ -614,7 +614,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         self.assertThat(getAllClients, MockNotCalled())
 
     def test__registers_error_if_all_clusters_are_disconnected(self):
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         getAllClients = self.patch(nodegroup_module, 'getAllClients')
         getAllClients.return_value = []
@@ -632,9 +632,9 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 
     def test__registers_error_if_any_clusters_are_disconnected(self):
         clusters = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
         ]
 
         getAllClients = self.patch(middleware_module, 'getAllClients')
@@ -653,8 +653,8 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 
     def test__removes_error_once_all_clusters_are_connected(self):
         clusters = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
         ]
 
         getAllClients = self.patch(middleware_module, 'getAllClients')

@@ -179,7 +179,7 @@ class TestConsolidatingChanges(MAASServerTestCase):
     def make_managed_nodegroup(self):
         return factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
 
     def test__added_zones_applied_post_commit(self):
         dns_add_zones_now = self.patch_autospec(
@@ -355,7 +355,7 @@ class TestDNSServer(MAASServerTestCase):
             network = IPNetwork('192.168.0.1/24')
         return factory.make_NodeGroup(
             network=network,
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
     def create_nodegroup_with_static_ip(self, lease_number=1, nodegroup=None):
@@ -544,7 +544,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(settings, "DNS_CONNECT", True)
         old_network = IPNetwork('192.168.7.1/24')
         nodegroup = factory.make_NodeGroup(
-            network=old_network, status=NODEGROUP_STATUS.ACCEPTED,
+            network=old_network, status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
         _, node, lease = self.create_nodegroup_with_static_ip(
@@ -577,7 +577,7 @@ class TestDNSConfigModifications(TestDNSServer):
         network = IPNetwork('192.168.7.1/24')
         ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_NodeGroup(
-            network=network, status=NODEGROUP_STATUS.ACCEPTED,
+            network=network, status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
@@ -589,7 +589,7 @@ class TestDNSConfigModifications(TestDNSServer):
         network = IPNetwork('192.168.7.1/24')
         ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_NodeGroup(
-            network=network, status=NODEGROUP_STATUS.ACCEPTED,
+            network=network, status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         nodegroup.delete()
         self.assertEqual([''], self.dig_reverse_resolve(ip))

@@ -385,11 +385,11 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_creates_host_DHCP_and_DNS_mappings_with_given_ip(self):
         # Create a nodegroup for which we manage DHCP.
         factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         # Create a nodegroup for which we don't manage DHCP.
         factory.make_NodeGroup(
-            NODEGROUP_STATUS.ACCEPTED,
+            NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         device = factory.make_Node(
             installable=False, mac=True, disable_ipv4=False,

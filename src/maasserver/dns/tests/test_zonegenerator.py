@@ -53,7 +53,10 @@ from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
 )
-from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.enum import (
+    map_enum,
+    map_enum_unique_values,
+)
 from testtools import TestCase
 from testtools.matchers import (
     Equals,
@@ -304,7 +307,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def make_node_group(self, **kwargs):
         """Create an accepted nodegroup with a managed interface."""
         return factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, **kwargs)
 
     def test_get_forward_nodegroups_returns_empty_for_unknown_domain(self):
@@ -334,10 +337,10 @@ class TestZoneGenerator(MAASServerTestCase):
         domain = factory.make_name('domain')
         managed_nodegroup = self.make_node_group(name=domain)
         factory.make_NodeGroup(
-            name=domain, status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain, status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         factory.make_NodeGroup(
-            name=domain, status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain, status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
             {managed_nodegroup},
@@ -355,16 +358,16 @@ class TestZoneGenerator(MAASServerTestCase):
             status: factory.make_NodeGroup(
                 status=status, name=domain,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-            for status in map_enum(NODEGROUP_STATUS).values()
+            for status in map_enum_unique_values(NODEGROUP_STATUS).values()
             }
         self.assertEqual(
-            {nodegroups[NODEGROUP_STATUS.ACCEPTED]},
+            {nodegroups[NODEGROUP_STATUS.ENABLED]},
             ZoneGenerator._get_forward_nodegroups([domain]))
 
     def test_get_reverse_nodegroups_returns_only_dns_managed_nodegroups(self):
         nodegroups = {
             management: factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+                status=NODEGROUP_STATUS.ENABLED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             }
         self.assertEqual(
@@ -385,7 +388,7 @@ class TestZoneGenerator(MAASServerTestCase):
             for status in map_enum(NODEGROUP_STATUS).values()
             }
         self.assertEqual(
-            {nodegroups[NODEGROUP_STATUS.ACCEPTED]},
+            {nodegroups[NODEGROUP_STATUS.ENABLED]},
             ZoneGenerator._get_reverse_nodegroups(nodegroups.values()))
 
     def test_get_networks_returns_network(self):
@@ -419,7 +422,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_get_networks_returns_managed_networks(self):
         nodegroups = [
             factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+                status=NODEGROUP_STATUS.ENABLED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             ]
         networks_dict = ZoneGenerator._get_networks()

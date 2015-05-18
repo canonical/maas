@@ -21,13 +21,10 @@ __all__ = [
     "ClusterListView",
     ]
 
-from collections import OrderedDict
-
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -37,10 +34,7 @@ from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
 )
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUP_STATUS_CHOICES,
-)
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.forms import (
     NodeGroupEdit,
     NodeGroupInterfaceForm,
@@ -59,82 +53,17 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
     status = None
 
     def get_queryset(self):
-        return NodeGroup.objects.filter(
-            status=self.status).order_by('cluster_name')
-
-    # A record of the urls used to reach the clusters of different
-    # statuses.
-    status_links = OrderedDict((
-        (NODEGROUP_STATUS.ACCEPTED, 'cluster-list'),
-        (NODEGROUP_STATUS.PENDING, 'cluster-list-pending'),
-        (NODEGROUP_STATUS.REJECTED, 'cluster-list-rejected'),
-    ))
-
-    def make_title_entry(self, status, link_name):
-        """Generate an entry as used by make_cluster_listing_title().
-
-        This is a utility method only used by make_cluster_listing_title.
-        It is a separate method for clarity and to help testing."""
-        link = reverse(link_name)
-        status_name = NODEGROUP_STATUS_CHOICES[status][1]
-        nb_clusters = NodeGroup.objects.filter(
-            status=status).count()
-        entry = "%d %s cluster%s" % (
-            nb_clusters,
-            status_name.lower(),
-            's' if nb_clusters != 1 else '')
-        if nb_clusters != 0 and status != self.status:
-            entry = '<a href="%s">%s</a>' % (link, entry)
-        return entry
-
-    def make_cluster_listing_title(self):
-        """Generate this view's title with "tabs" for each cluster status.
-
-        Generate a title for this view with the number of clusters for each
-        possible status.  The title includes the links to the other listings
-        (i.e. if this is the listing for the accepted clusters, include links
-        to the listings of the pending/rejected clusters).  The title will be
-        of the form: "3 accepted clusters / 1 pending cluster / 2 rejected
-        clusters". (This is simpler to do in the view rather than write this
-        using the template language.)
-        """
-        return mark_safe(
-            ' / '.join(
-                self.make_title_entry(status, link_name)
-                for status, link_name in self.status_links.items()))
+        return NodeGroup.objects.all().order_by('cluster_name')
 
     def get_context_data(self, **kwargs):
         context = super(ClusterListView, self).get_context_data(**kwargs)
-        context['current_count'] = NodeGroup.objects.filter(
-            status=self.status).count()
-        context['title'] = self.make_cluster_listing_title()
+        cluster_count = NodeGroup.objects.count()
+        context['current_count'] = cluster_count
         # Display warnings (no images, cluster not connected) for clusters,
-        # but only for the display of 'accepted' clusters.
-        context['display_warnings'] = self.status == NODEGROUP_STATUS.ACCEPTED
-        context['status'] = self.status
-        context['statuses'] = NODEGROUP_STATUS
-        context['status_name'] = NODEGROUP_STATUS_CHOICES[self.status][1]
+        # but only for the display of ENABLED clusters.
+        context['display_warnings'] = self.status == NODEGROUP_STATUS.ENABLED
         context['region_has_images'] = BootResource.objects.exists()
         return context
-
-    def post(self, request, *args, **kwargs):
-        """Handle a POST request."""
-        if 'mass_accept_submit' in request.POST:
-            # Process accept clusters en masse.
-            number = NodeGroup.objects.accept_all_pending()
-            messages.info(request, "Accepted %d cluster(s)." % number)
-            return HttpResponseRedirect(reverse('cluster-list'))
-
-        elif 'mass_reject_submit' in request.POST:
-            # Process reject clusters en masse.
-            number = NodeGroup.objects.reject_all_pending()
-            messages.info(request, "Rejected %d cluster(s)." % number)
-            return HttpResponseRedirect(reverse('cluster-list'))
-
-        else:
-            # Unknown action: redirect to the cluster listing page (this
-            # shouldn't happen).
-            return HttpResponseRedirect(reverse('cluster-list'))
 
 
 class ClusterEdit(UpdateView):

@@ -1170,7 +1170,7 @@ class TestImportImages(MAASTestCase):
 
         bootresources._import_resources(force=True)
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            nodegroup.objects.import_boot_images_on_enabled_clusters,
             MockCalledOnceWith())
 
 

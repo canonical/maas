@@ -207,7 +207,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network)
         [interface] = nodegroup.get_managed_interfaces()
@@ -231,7 +231,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # two /16 networks.
         network = IPNetwork("10.1.0.0/8")
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network, static_ip_range_low=None,
             static_ip_range_high=None)
@@ -253,7 +253,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test_allows_sane_ipv4_dynamic_range_size(self):
         network = IPNetwork("10.1.0.0/8")
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network, static_ip_range_low=None,
             static_ip_range_high=None)
@@ -269,7 +269,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test_allows_any_size_ipv6_dynamic_range(self):
         network = factory.make_ipv6_network(slash=64)
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network)
         [interface] = nodegroup.get_managed_interfaces()
@@ -315,7 +315,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # cause more than one node on the nodegroup to have the
         # same FQDN.
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         base_hostname = factory.make_hostname("host")
         full_hostnames = [
@@ -337,7 +337,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
         conflicting_domain = factory.make_hostname("conflicting-domain")
         nodegroup_a = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             name=conflicting_domain)
         conflicting_hostname = factory.make_hostname("conflicting-hostname")
@@ -346,7 +346,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             nodegroup=nodegroup_a)
 
         nodegroup_b = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             name=conflicting_domain)
         factory.make_Node(

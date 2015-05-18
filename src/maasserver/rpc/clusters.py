@@ -95,7 +95,7 @@ def register_cluster(uuid, name=None, domain=None, networks=None, url=None):
             data["interfaces"] = json.dumps(networks)
 
     form = NodeGroupDefineForm(
-        data=data, status=NODEGROUP_STATUS.ACCEPTED,
+        data=data, status=NODEGROUP_STATUS.ENABLED,
         instance=cluster)
 
     if form.is_valid():

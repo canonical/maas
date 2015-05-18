@@ -53,7 +53,7 @@ from twisted.internet import defer
 
 
 def make_accepted_NodeGroup():
-    return factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+    return factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
 
 def make_Tag_without_populating():

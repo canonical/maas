@@ -1246,7 +1246,7 @@ class TestNode(MAASServerTestCase):
         dns_update_zones = self.patch(dns_config, 'dns_update_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             owner=factory.make_User(), power_type='ether_wake')
@@ -1662,7 +1662,7 @@ class TestNode(MAASServerTestCase):
             hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node = factory.make_Node(

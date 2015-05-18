@@ -123,7 +123,7 @@ class TestIsImportBootImagesRunningFor(MAASServerTestCase):
         mock_is_running = self.patch(
             clusterservice, "is_import_boot_images_running")
         mock_is_running.return_value = True
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.useFixture(RunningClusterRPCFixture())
         self.assertTrue(is_import_boot_images_running_for(nodegroup))
 
@@ -131,7 +131,7 @@ class TestIsImportBootImagesRunningFor(MAASServerTestCase):
         mock_is_running = self.patch(
             clusterservice, "is_import_boot_images_running")
         mock_is_running.return_value = False
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.useFixture(RunningClusterRPCFixture())
         self.assertFalse(is_import_boot_images_running_for(nodegroup))
 
@@ -148,7 +148,7 @@ class TestGetBootImages(MAASServerTestCase):
         self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def test_returns_boot_images(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.useFixture(RunningClusterRPCFixture())
 
         purposes = ['install', 'commissioning', 'xinstall']
@@ -282,7 +282,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
             ]
 
     def test_returns_boot_images_matching_subarchitecture(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()
@@ -297,7 +297,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
                 param['release']))
 
     def test_returns_boot_images_matching_subarches_in_boot_resources(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()

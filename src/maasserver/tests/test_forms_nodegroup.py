@@ -56,7 +56,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
         self.assertEqual(
-            (uuid, name, NODEGROUP_STATUS.PENDING, 0),
+            (uuid, name, NODEGROUP_STATUS.ENABLED, 0),
             (
                 nodegroup.uuid,
                 nodegroup.name,
@@ -68,11 +68,11 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, nodegroup.status)
+        self.assertEqual(NODEGROUP_STATUS.ENABLED, nodegroup.status)
 
     def test_validates_parameters(self):
         name = factory.make_name('name')
@@ -225,7 +225,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
@@ -235,7 +235,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         cluster_name = factory.make_name('cluster_name')
         uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             data={'cluster_name': cluster_name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
@@ -348,7 +348,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
 
     def test_accepts_name_change_if_nodegroup_not_accepted(self):
         nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
-        nodegroup.status = NODEGROUP_STATUS.PENDING
+        nodegroup.status = NODEGROUP_STATUS.DISABLED
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
         form = NodeGroupEdit(instance=nodegroup, data=data)

@@ -92,7 +92,7 @@ class NodeHostnameTest(MultipleUsersScenarios,
             hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         factory.make_Node(

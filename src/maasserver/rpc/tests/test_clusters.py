@@ -74,11 +74,11 @@ class TestRegister(MAASServerTestCase):
         cluster = register_cluster(
             factory.make_UUID(), factory.make_name("name"),
             factory.make_name("domain"), networks=[])
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, cluster.status)
+        self.assertEqual(NODEGROUP_STATUS.ENABLED, cluster.status)
 
     def test_name_domain_and_networks_are_optional(self):
         cluster = register_cluster(factory.make_UUID())
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, cluster.status)
+        self.assertEqual(NODEGROUP_STATUS.ENABLED, cluster.status)
 
     def get_cluster_networks(self, cluster):
         return [

@@ -69,7 +69,7 @@ class NodeGroupInterfaceManager(Manager):
     def get_by_network(self, network):
         """Find the NodeGroupInterface for a particular netaddr.IPNetwork"""
         interfaces = (
-            self.filter(nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
+            self.filter(nodegroup__status=NODEGROUP_STATUS.ENABLED)
                 .exclude(static_ip_range_low__isnull=True)
                 .exclude(static_ip_range_high__isnull=True)
         )
@@ -80,7 +80,7 @@ class NodeGroupInterfaceManager(Manager):
     def get_by_address(self, address):
         """Find the NodeGroupInterface for a particular netaddr.IPAddress"""
         interfaces = (
-            self.filter(nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
+            self.filter(nodegroup__status=NODEGROUP_STATUS.ENABLED)
                 .exclude(static_ip_range_low__isnull=True)
                 .exclude(static_ip_range_high__isnull=True)
         )

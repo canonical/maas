@@ -376,7 +376,7 @@ class TestBootResourcesAPI(APITestCase):
             reverse('boot_resources_handler'), params)
         self.assertEqual(httplib.CREATED, response.status_code)
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            nodegroup.objects.import_boot_images_on_enabled_clusters,
             MockCalledOnceWith())
 
     def test_import_requires_admin(self):
@@ -536,7 +536,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            nodegroup.objects.import_boot_images_on_enabled_clusters,
             MockCalledOnceWith())
 
     def test_PUT_with_multiple_requests_and_large_content(self):

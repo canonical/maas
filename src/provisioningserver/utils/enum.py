@@ -9,12 +9,14 @@ from __future__ import (
     unicode_literals,
     )
 
+
 str = None
 
 __metaclass__ = type
 __all__ = [
     'map_enum',
     'map_enum_reverse',
+    'map_enum_unique_values',
     ]
 
 
@@ -30,6 +32,18 @@ def map_enum(enum_class):
         for key, value in vars(enum_class).items()
         if not key.startswith('_')
     }
+
+
+def map_enum_unique_values(enum_class):
+    """Map out an enumeration class as a "NAME: value" dict, but only include
+    unique values in the enum."""
+    values_seen = set()
+    values = dict()
+    for key, value in vars(enum_class).items():
+        if value not in values_seen and not key.startswith('_'):
+            values[key] = value
+        values_seen.add(value)
+    return values
 
 
 def map_enum_reverse(enum_class, ignore=None):

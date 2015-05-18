@@ -86,7 +86,7 @@ class TestUpdateHostMaps(MAASServerTestCase):
     def make_managed_node_group():
         return factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
 
     def prepare_rpc(self):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -295,7 +295,7 @@ class TestRemoveHostMaps(MAASServerTestCase):
     def make_managed_node_group():
         return factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
 
     def prepare_rpc(self):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -448,7 +448,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
         # sent mappings via a different client.
         nodegroups = [
             factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED,
+                status=NODEGROUP_STATUS.ENABLED,
                 dhcp_key=factory.make_name("shared-key"))
             for _ in (1, 2)
         ]
@@ -485,7 +485,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
     def test__skips_IPv6_mappings(self):
         clients = DummyClients()
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             dhcp_key=factory.make_name("key"))
 
         static_mapping = {
@@ -529,7 +529,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         # Create and return an accepted nodegroup with a managed interface.
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
         [nodegroupiface] = nodegroup.get_managed_interfaces()
         return nodegroup, nodegroupiface
 

@@ -37,7 +37,7 @@ from testtools.matchers import (
 
 def make_interface(network=None):
     nodegroup = factory.make_NodeGroup(
-        status=NODEGROUP_STATUS.ACCEPTED,
+        status=NODEGROUP_STATUS.ENABLED,
         management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
         network=network)
     [interface] = nodegroup.get_managed_interfaces()

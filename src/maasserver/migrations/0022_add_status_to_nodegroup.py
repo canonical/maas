@@ -13,7 +13,7 @@ class Migration(SchemaMigration):
         
         # Adding field 'NodeGroup.status'
         # Accept existing nodegroups.
-        default_status = NODEGROUP_STATUS.ACCEPTED
+        default_status = NODEGROUP_STATUS.ENABLED
         db.add_column(u'maasserver_nodegroup', 'status', self.gf('django.db.models.fields.IntegerField')(default=default_status), keep_default=False)
 
 

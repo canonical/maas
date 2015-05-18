@@ -251,7 +251,7 @@ class TestDoConfigureDHCP(MAASServerTestCase):
         dns_server = self.make_address()
         maas_url = compose_URL("http://", dns_server)
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             dhcp_key=factory.make_name('key'),
             network=self.make_network(),
@@ -273,7 +273,7 @@ class TestDoConfigureDHCP(MAASServerTestCase):
         dns_server = self.make_address()
         maas_url = compose_URL("http://", dns_server)
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             dhcp_key=factory.make_string(),
             interface=factory.make_name('eth'),
@@ -336,7 +336,7 @@ def make_cluster(test, status=None, omapi_key=None, **kwargs):
     Status defaults to `ACCEPTED`.
     """
     if status is None:
-        status = NODEGROUP_STATUS.ACCEPTED
+        status = NODEGROUP_STATUS.ENABLED
     if omapi_key is None:
         # Set an arbitrary OMAPI key, so that the cluster won't need to
         # shell out to create one.
@@ -391,7 +391,7 @@ class TestConfigureDHCP(MAASServerTestCase):
 
     def test__does_not_configure_interfaces_if_nodegroup_not_accepted(self):
         configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
-        cluster = make_cluster(self, status=NODEGROUP_STATUS.PENDING)
+        cluster = make_cluster(self, status=NODEGROUP_STATUS.DISABLED)
         make_ipv4_interface(self, cluster)
         make_ipv6_interface(self, cluster)
         self.patch(settings, "DHCP_CONNECT", True)
@@ -496,7 +496,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.PENDING,
+            status=NODEGROUP_STATUS.DISABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
 
@@ -506,7 +506,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_nodegroup_name_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
 
@@ -517,7 +517,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_interface_IP_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.nodegroupinterface_set.all()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -530,7 +530,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_interface_management_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         [interface] = nodegroup.nodegroupinterface_set.all()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -542,7 +542,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_interface_name_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -555,7 +555,7 @@ class TestDHCPConnect(MAASServerTestCase):
     def test_dhcp_config_gets_written_when_netmask_changes(self):
         network = factory.make_ipv4_network(slash='255.255.255.0')
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED, network=network,
+            status=NODEGROUP_STATUS.ENABLED, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -567,7 +567,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_interface_router_ip_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -580,7 +580,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_ip_range_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -595,7 +595,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_is_not_written_when_foreign_dhcp_changes(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -612,11 +612,11 @@ class TestDHCPConnect(MAASServerTestCase):
         num_inactive_nodegroups = random.randint(1, 10)
         for _ in range(num_active_nodegroups):
             factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED,
+                status=NODEGROUP_STATUS.ENABLED,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         for _ in range(num_inactive_nodegroups):
             factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.PENDING,
+                status=NODEGROUP_STATUS.DISABLED,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
 
@@ -630,7 +630,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_managed_interface_is_deleted(self):
         interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
 

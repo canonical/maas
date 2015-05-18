@@ -107,7 +107,7 @@ class NodeGroupsHandler(OperationsHandler):
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """Import the boot images on all the accepted cluster controllers."""
-        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        NodeGroup.objects.import_boot_images_on_enabled_clusters()
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
             status=httplib.OK)

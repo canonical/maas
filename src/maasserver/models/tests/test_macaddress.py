@@ -892,7 +892,7 @@ class TestSetStaticIP(MAASServerTestCase):
         self.assertThat(static_ip, matcher)
 
     def test_sets_sticky_ip_from_connected_static_range(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(mac=True, nodegroup=nodegroup)
         mac = node.macaddress_set.all()[0]
         ngi = factory.make_NodeGroupInterface(
@@ -917,7 +917,7 @@ class TestSetStaticIP(MAASServerTestCase):
 
     def test_rejects_ip_from_dynamic_range(self):
         node = factory.make_Node(mac=True)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         ngi = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
 
@@ -934,7 +934,7 @@ class TestSetStaticIP(MAASServerTestCase):
         mac = node.macaddress_set.all()[0]
         network = factory.make_ipv4_network()
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED, network=network)
+            status=NODEGROUP_STATUS.ENABLED, network=network)
         ngi = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         mac.cluster_interface = ngi
@@ -968,7 +968,7 @@ class TestSetStaticIP(MAASServerTestCase):
             mac.set_static_ip(ip_address, user)
 
     def test_rejects_ip_if_allocation_with_other_type_already_exists(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         user = factory.make_User()
         node = factory.make_Node(mac=True, nodegroup=nodegroup)
         mac = node.macaddress_set.all()[0]

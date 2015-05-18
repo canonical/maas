@@ -155,23 +155,20 @@ class USERDATA_TYPE:
 
 class NODEGROUP_STATUS:
     """The vocabulary of a `NodeGroup`'s possible statuses."""
-    #: A nodegroup starts out as ``PENDING``.
-    DEFAULT = 0
+    #: A nodegroup starts out as ``ENABLED``.
+    DEFAULT = 1
 
-    #: The nodegroup has been created and awaits approval.
-    PENDING = 0
-    #:
-    ACCEPTED = 1
-    #:
-    REJECTED = 2
+    #: An ENABLED cluster is one that should be operational.
+    ENABLED = 1
+    #: A DISABLED cluster should not sync images or deploy new nodes.
+    DISABLED = 2
 
 
 # Django choices for NODEGROUP_STATUS: sequence of tuples (key, UI
 # representation).
 NODEGROUP_STATUS_CHOICES = (
-    (NODEGROUP_STATUS.PENDING, "Pending"),
-    (NODEGROUP_STATUS.ACCEPTED, "Accepted"),
-    (NODEGROUP_STATUS.REJECTED, "Rejected"),
+    (NODEGROUP_STATUS.ENABLED, "Enabled"),
+    (NODEGROUP_STATUS.DISABLED, "Disabled"),
     )
 
 

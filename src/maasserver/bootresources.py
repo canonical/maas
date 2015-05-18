@@ -954,7 +954,7 @@ def _import_resources(force=False):
                 len(sources))
 
         # Tell the clusters to download the data from the region.
-        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        NodeGroup.objects.import_boot_images_on_enabled_clusters()
     finally:
         kill_event.set()
         lock_thread.join()

@@ -138,7 +138,7 @@ class TestNodeGroupManager(MAASServerTestCase):
 
     def test_ensure_master_creates_accepted_nodegroup(self):
         master = NodeGroup.objects.ensure_master()
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
+        self.assertEqual(NODEGROUP_STATUS.ENABLED, master.status)
 
     def test_get_by_natural_key_looks_up_by_uuid(self):
         nodegroup = factory.make_NodeGroup()
@@ -189,47 +189,15 @@ class TestNodeGroupManager(MAASServerTestCase):
         self.assertEqual(
             [call(nodegroup)], recorder.call_args_list)
 
-    def test_reject_all_pending_rejects_nodegroups(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
-        changed = NodeGroup.objects.reject_all_pending()
-        self.assertEqual(
-            (NODEGROUP_STATUS.REJECTED, 1),
-            (reload_object(nodegroup).status, changed))
-
-    def test_reject_all_pending_does_not_change_others(self):
-        unaffected_status = factory.pick_enum(
-            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
-        nodegroup = factory.make_NodeGroup(status=unaffected_status)
-        changed_count = NodeGroup.objects.reject_all_pending()
-        self.assertEqual(
-            (unaffected_status, 0),
-            (reload_object(nodegroup).status, changed_count))
-
-    def test_accept_all_pending_accepts_nodegroups(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
-        changed = NodeGroup.objects.accept_all_pending()
-        self.assertEqual(
-            (NODEGROUP_STATUS.ACCEPTED, 1),
-            (reload_object(nodegroup).status, changed))
-
-    def test_accept_all_pending_does_not_change_others(self):
-        unaffected_status = factory.pick_enum(
-            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
-        nodegroup = factory.make_NodeGroup(status=unaffected_status)
-        changed_count = NodeGroup.objects.accept_all_pending()
-        self.assertEqual(
-            (unaffected_status, 0),
-            (reload_object(nodegroup).status, changed_count))
-
     def test_import_boot_images_on_accepted_clusters_calls_getClientFor(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
         ]
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
-        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
+        NodeGroup.objects.import_boot_images_on_enabled_clusters()
         expected_uuids = [
             nodegroup.uuid
             for nodegroup in accepted_nodegroups
@@ -246,7 +214,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             for status, _ in NODEGROUP_STATUS_CHOICES
         }
         self.assertItemsEqual(
-            [nodegroups[NODEGROUP_STATUS.ACCEPTED]],
+            [nodegroups[NODEGROUP_STATUS.ENABLED]],
             NodeGroup.objects.all_accepted())
 
 
@@ -293,7 +261,7 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_manages_dns_returns_True_if_managing_DNS(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.assertTrue(nodegroup.manages_dns())
 
@@ -306,9 +274,8 @@ class TestNodeGroup(MAASServerTestCase):
             ]
         self.assertEqual(
             {
-                NODEGROUP_STATUS.PENDING: False,
-                NODEGROUP_STATUS.ACCEPTED: True,
-                NODEGROUP_STATUS.REJECTED: False,
+                NODEGROUP_STATUS.ENABLED: True,
+                NODEGROUP_STATUS.DISABLED: False,
             },
             {
                 nodegroup.status: nodegroup.manages_dns()
@@ -318,7 +285,7 @@ class TestNodeGroup(MAASServerTestCase):
     def test_manages_dns_returns_False_if_no_interface_manages_DNS(self):
         nodegroups = {
             management: factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+                status=NODEGROUP_STATUS.ENABLED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             }
         self.assertEqual(
@@ -333,19 +300,19 @@ class TestNodeGroup(MAASServerTestCase):
             })
 
     def test_manages_dns_returns_False_if_nodegroup_has_no_interfaces(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertFalse(nodegroup.manages_dns())
 
     def test_manages_dhcp_returns_True_if_managing_DHCP(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertTrue(nodegroup.manages_dhcp())
 
     def test_manages_dhcp_returns_True_if_managing_DHCP_and_DNS(self):
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.assertTrue(nodegroup.manages_dhcp())
 
@@ -358,9 +325,8 @@ class TestNodeGroup(MAASServerTestCase):
             ]
         self.assertEqual(
             {
-                NODEGROUP_STATUS.PENDING: False,
-                NODEGROUP_STATUS.ACCEPTED: True,
-                NODEGROUP_STATUS.REJECTED: False,
+                NODEGROUP_STATUS.ENABLED: True,
+                NODEGROUP_STATUS.DISABLED: False,
             },
             {
                 nodegroup.status: nodegroup.manages_dhcp()
@@ -370,7 +336,7 @@ class TestNodeGroup(MAASServerTestCase):
     def test_manages_dhcp_returns_False_if_no_interface_manages_DHCP(self):
         nodegroups = {
             management: factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+                status=NODEGROUP_STATUS.ENABLED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             }
         self.assertEqual(
@@ -424,13 +390,13 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup(
             status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.accept()
-        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.ACCEPTED)
+        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.ENABLED)
 
     def test_reject_node_changes_status(self):
         nodegroup = factory.make_NodeGroup(
             status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.reject()
-        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.REJECTED)
+        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.DISABLED)
 
     def test_ensure_dhcp_key_creates_key(self):
         nodegroup = factory.make_NodeGroup(dhcp_key='')
@@ -489,7 +455,7 @@ class TestNodeGroup(MAASServerTestCase):
     def test_import_boot_images_end_to_end(self):
         proxy = 'http://%s.example.com' % factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -571,7 +537,7 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertEqual(NODEGROUP_STATE.SYNCING, nodegroup.get_state())
 
     def test_add_virsh_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -621,7 +587,7 @@ class TestNodeGroup(MAASServerTestCase):
             poweraddr, password, True)
 
     def test_add_vmware_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -683,7 +649,7 @@ class TestNodeGroup(MAASServerTestCase):
             prefix_filter=None, accept_all=True)
 
     def test_add_seamicro15k_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -742,7 +708,7 @@ class TestNodeGroup(MAASServerTestCase):
             user, mac, username, password, power_control, True)
 
     def test_enlist_nodes_from_mscm_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -796,7 +762,7 @@ class TestNodeGroup(MAASServerTestCase):
             user, host, username, password, True)
 
     def test_enlist_nodes_from_ucsm_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
@@ -850,7 +816,7 @@ class TestNodeGroup(MAASServerTestCase):
             user, url, username, password, True)
 
     def test_enlist_nodes_from_msftocs_end_to_end(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())

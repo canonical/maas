@@ -59,6 +59,7 @@ from provisioningserver.rpc.cluster import (
     ImportBootImages,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from south.modelsinspector import add_introspection_rules
 
 
 class NodeGroupManager(Manager):
@@ -98,7 +99,7 @@ class NodeGroupManager(Manager):
             master = self.new(
                 DEFAULT_DNS_ZONE_NAME, 'master', '127.0.0.1',
                 dhcp_key=generate_omapi_key(),
-                status=NODEGROUP_STATUS.ACCEPTED)
+                status=NODEGROUP_STATUS.ENABLED)
 
             # If any legacy nodes were still not associated with a node
             # group, enroll them in the master node group.
@@ -120,26 +121,16 @@ class NodeGroupManager(Manager):
             nodegroup.save()
         return nodegroups_count
 
-    def reject_all_pending(self):
-        """Change the status of the 'PENDING' nodegroup to 'REJECTED."""
-        return self._mass_change_status(
-            NODEGROUP_STATUS.PENDING, NODEGROUP_STATUS.REJECTED)
-
-    def accept_all_pending(self):
-        """Change the status of the 'PENDING' nodegroup to 'ACCEPTED."""
-        return self._mass_change_status(
-            NODEGROUP_STATUS.PENDING, NODEGROUP_STATUS.ACCEPTED)
-
-    def import_boot_images_on_accepted_clusters(self):
+    def import_boot_images_on_enabled_clusters(self):
         """Import the boot images on all the accepted cluster controllers."""
         accepted_nodegroups = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ACCEPTED)
+            status=NODEGROUP_STATUS.ENABLED)
         for nodegroup in accepted_nodegroups:
             nodegroup.import_boot_images()
 
     def all_accepted(self):
         """Return the set of all accepted node-groups."""
-        return self.filter(status=NODEGROUP_STATUS.ACCEPTED)
+        return self.filter(status=NODEGROUP_STATUS.ENABLED)
 
 
 class DomainNameField(CharField):
@@ -225,12 +216,12 @@ class NodeGroup(TimestampedModel):
 
     def accept(self):
         """Accept this nodegroup's enlistment."""
-        self.status = NODEGROUP_STATUS.ACCEPTED
+        self.status = NODEGROUP_STATUS.ENABLED
         self.save()
 
     def reject(self):
         """Reject this nodegroup's enlistment."""
-        self.status = NODEGROUP_STATUS.REJECTED
+        self.status = NODEGROUP_STATUS.DISABLED
         self.save()
 
     def save(self, *args, **kwargs):
@@ -260,7 +251,7 @@ class NodeGroup(TimestampedModel):
         This returns `True` when the `NodeGroup` is accepted, and has a
         `NodeGroupInterface` that's set to manage both DHCP and DNS.
         """
-        if self.status != NODEGROUP_STATUS.ACCEPTED:
+        if self.status != NODEGROUP_STATUS.ENABLED:
             return False
         # Filter in python instead of in SQL.  This will use the cached
         # version of self.nodegroupinterface_set if present.
@@ -275,7 +266,7 @@ class NodeGroup(TimestampedModel):
         This returns `True` when the `NodeGroup` is accepted, and has a
         `NodeGroupInterface` that's set to manage DHCP.
         """
-        if self.status != NODEGROUP_STATUS.ACCEPTED:
+        if self.status != NODEGROUP_STATUS.ENABLED:
             return False
         # Filter in python instead of in SQL.  This will use the cached
         # version of self.nodegroupinterface_set if present.
@@ -512,3 +503,6 @@ class NodeGroup(TimestampedModel):
             return client(
                 EnlistNodesFromMicrosoftOCS, user=user, ip=ip, port=port,
                 username=username, password=password, accept_all=accept_all)
+
+add_introspection_rules(
+    [], ["^maasserver\.models\.nodegroup\.DomainNameField"])

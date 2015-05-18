@@ -697,7 +697,7 @@ class TestMapGateways(MAASServerTestCase):
     def test__finds_IPv4_gateway(self):
         network = factory.make_ipv4_network(slash=24)
         gateway = factory.pick_ip_in_network(network)
-        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         cluster_interface = factory.make_NodeGroupInterface(
             cluster, network=network, router_ip=gateway,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -712,7 +712,7 @@ class TestMapGateways(MAASServerTestCase):
     def test__finds_IPv6_gateway(self):
         network = factory.make_ipv6_network()
         gateway = factory.pick_ip_in_network(network)
-        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         net_interface = factory.make_name('eth')
         ipv4_interface = factory.make_NodeGroupInterface(
             cluster, interface=net_interface,
@@ -730,7 +730,7 @@ class TestMapGateways(MAASServerTestCase):
             map_gateways(node))
 
     def test__finds_gateways_on_multiple_MACs(self):
-        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(nodegroup=cluster)
         network1 = factory.make_ipv4_network(slash=24)
         gateway1 = factory.pick_ip_in_network(network1)
@@ -755,7 +755,7 @@ class TestMapGateways(MAASServerTestCase):
             map_gateways(node))
 
     def test__finds_multiple_gateways_on_MAC(self):
-        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         net_interface = factory.make_name('eth')
         ipv4_network = factory.make_ipv4_network(slash=24)
         ipv4_gateway = factory.pick_ip_in_network(ipv4_network)

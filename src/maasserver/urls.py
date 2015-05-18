@@ -154,16 +154,8 @@ urlpatterns += patterns(
     'maasserver.views',
     adminurl(
         r'^clusters/$',
-        ClusterListView.as_view(status=NODEGROUP_STATUS.ACCEPTED),
+        ClusterListView.as_view(status=NODEGROUP_STATUS.ENABLED),
         name='cluster-list'),
-    adminurl(
-        r'^clusters/pending/$',
-        ClusterListView.as_view(status=NODEGROUP_STATUS.PENDING),
-        name='cluster-list-pending'),
-    adminurl(
-        r'^clusters/rejected/$',
-        ClusterListView.as_view(status=NODEGROUP_STATUS.REJECTED),
-        name='cluster-list-rejected'),
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/edit/$', ClusterEdit.as_view(),
         name='cluster-edit'),

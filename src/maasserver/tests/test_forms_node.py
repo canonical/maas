@@ -332,7 +332,7 @@ class TestNodeForm(MAASServerTestCase):
         # new nodes on unmanaged nodegroups with hostnames that match
         # that FQDN will be rejected.
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node = factory.make_Node(
             hostname=factory.make_name("hostname"), nodegroup=nodegroup)
@@ -349,7 +349,7 @@ class TestNodeForm(MAASServerTestCase):
         # If a node with a given FQDN exists on a managed nodegroup, new
         # nodes on that nodegroup with duplicate FQDNs will be rejected.
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED,
+            status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node = factory.make_Node(
             hostname=factory.make_name("hostname"), nodegroup=nodegroup)

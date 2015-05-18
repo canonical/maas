@@ -85,7 +85,7 @@ Config.objects.config_changed_connect("ntp_server", ntp_server_changed)
 def dhcp_post_delete_NodeGroupInterface(sender, instance, using, **kwargs):
     """A cluster interface has been deleted."""
     from maasserver.dhcp import configure_dhcp
-    if instance.nodegroup.status != NODEGROUP_STATUS.ACCEPTED:
+    if instance.nodegroup.status != NODEGROUP_STATUS.ENABLED:
         # Not an accepted cluster.  No point reconfiguring.
         return
     if instance.management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:

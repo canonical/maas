@@ -43,7 +43,7 @@ from twisted.python.failure import Failure
 
 class TestNetworksAPI(APITestCase):
 
-    def make_interface(self, status=NODEGROUP_STATUS.ACCEPTED, **kwargs):
+    def make_interface(self, status=NODEGROUP_STATUS.ENABLED, **kwargs):
         cluster = factory.make_NodeGroup(status=status, **kwargs)
         return factory.make_NodeGroupInterface(cluster)
 

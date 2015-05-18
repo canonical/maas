@@ -211,7 +211,7 @@ class BootResourcesHandler(OperationsHandler):
         # If an upload contained the full file, then we can have the clusters
         # sync a new resource.
         if file_content is not None:
-            NodeGroup.objects.import_boot_images_on_accepted_clusters()
+            NodeGroup.objects.import_boot_images_on_enabled_clusters()
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -310,7 +310,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
             if not rfile.largefile.valid:
                 raise MAASAPIBadRequest(
                     "Saved content does not match given SHA256 value.")
-            NodeGroup.objects.import_boot_images_on_accepted_clusters()
+            NodeGroup.objects.import_boot_images_on_enabled_clusters()
         return rc.ALL_OK
 
     @classmethod

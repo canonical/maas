@@ -202,7 +202,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertThat(
             [nodegroup.status for nodegroup in
              reload_objects(NodeGroup, nodegroups)],
-            AllMatch(Equals(NODEGROUP_STATUS.ACCEPTED)))
+            AllMatch(Equals(NODEGROUP_STATUS.ENABLED)))
 
     def test_accept_reserved_to_admin(self):
         response = self.client.post(
@@ -229,7 +229,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertThat(
             [nodegroup.status for nodegroup in
              reload_objects(NodeGroup, nodegroups)],
-            AllMatch(Equals(NODEGROUP_STATUS.REJECTED)))
+            AllMatch(Equals(NODEGROUP_STATUS.DISABLED)))
 
     def test_reject_reserved_to_admin(self):
         response = self.client.post(
@@ -247,11 +247,11 @@ class TestNodeGroupAPI(APITestCase):
         self.become_admin()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
         ]
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
@@ -663,7 +663,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         fake_client = Mock()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         mock_getClientFor.return_value = fake_client
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)

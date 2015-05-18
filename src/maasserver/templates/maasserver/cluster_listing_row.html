@@ -33,6 +33,7 @@
         <span class="icon success">&check;</span>
         {% endif %}
     </td>
+    <td>{{ cluster.get_status_display }}</td>
     <td>{{ cluster.get_managed_interfaces|length }}</td>
     <td>{{ cluster.node_set.count }}</td>
     <td id="{{ cluster.uuid }}_images">
