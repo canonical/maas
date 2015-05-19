@@ -213,6 +213,13 @@ class ProvisioningServiceMaker:
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
+    def _makeServiceMonitorService(self):
+        from provisioningserver.pserv_services.service_monitor_service \
+            import ServiceMonitorService
+        service_monitor = ServiceMonitorService(reactor)
+        service_monitor.setName("service_monitor")
+        return service_monitor
+
     def _makeIntrospectionService(self, endpoint):
         from provisioningserver.utils import introspect
         introspect_service = (
@@ -250,6 +257,9 @@ class ProvisioningServiceMaker:
 
         lease_upload_service = self._makeLeaseUploadService(rpc_service)
         lease_upload_service.setServiceParent(services)
+
+        service_monitor_service = self._makeServiceMonitorService()
+        service_monitor_service.setServiceParent(services)
 
         if options["introspect"] is not None:
             introspect = self._makeIntrospectionService(options["introspect"])

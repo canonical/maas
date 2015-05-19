@@ -38,6 +38,7 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
+from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import get_cluster_config
 from provisioningserver.utils.fs import (
     atomic_symlink,
@@ -185,6 +186,10 @@ def write_targets_conf(snapshot):
 
 def update_targets_conf(snapshot):
     """Runs tgt-admin to update the new targets from "maas.tgt"."""
+    # Ensure that tgt is running before tgt-admin is used.
+    service_monitor.ensure_service("tgt")
+
+    # Update the tgt config.
     targets_conf = os.path.join(snapshot, 'maas.tgt')
     call_and_check([
         'sudo',

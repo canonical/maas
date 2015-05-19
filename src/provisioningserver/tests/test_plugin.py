@@ -39,6 +39,9 @@ from provisioningserver.pserv_services.image_download_service import (
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
 )
+from provisioningserver.pserv_services.service_monitor_service import (
+    ServiceMonitorService,
+)
 from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
@@ -109,7 +112,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "image_download", "lease_upload",
-            "node_monitor", "rpc", "tftp", "image_service"
+            "node_monitor", "rpc", "tftp", "image_service",
+            "service_monitor",
             ]
         self.assertItemsEqual(expected_services, service.namedServices)
         self.assertEqual(
@@ -140,6 +144,14 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         dhcp_probe = service.getServiceNamed("dhcp_probe")
         self.assertIsInstance(dhcp_probe, DHCPProbeService)
+
+    def test_service_monitor_service(self):
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        service_monitor = service.getServiceNamed("service_monitor")
+        self.assertIsInstance(service_monitor, ServiceMonitorService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
