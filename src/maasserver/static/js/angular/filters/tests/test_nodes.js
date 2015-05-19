@@ -248,4 +248,73 @@ describe("nodesFilter", function() {
         expect(nodesFilter(nodes, "power:on zone:first")).toEqual(
             [matchingNode]);
     });
+
+    it("matches a tag", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["second", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:first")).toEqual(
+            [matchingNode]);
+    });
+
+    it("matches a negated tag", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["second", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:!third")).toEqual(
+            [matchingNode]);
+        expect(nodesFilter(nodes, "tags:!(third)")).toEqual(
+            [matchingNode]);
+        expect(nodesFilter(nodes, "tags:(!third)")).toEqual(
+            [matchingNode]);
+    });
+
+    it("matches a double negated tag", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["second", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:!!first")).toEqual(
+            [matchingNode]);
+        expect(nodesFilter(nodes, "tags:!(!first)")).toEqual(
+            [matchingNode]);
+        expect(nodesFilter(nodes, "tags:(!!first)")).toEqual(
+            [matchingNode]);
+    });
+
+    it("matches a direct and a negated tag", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["second", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:(first,!third)")).toEqual(
+            [matchingNode]);
+    });
+
+    it("matches two negated tags", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["second", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:(!second,!third)")).toEqual(
+            [matchingNode]);
+    });
+
 });

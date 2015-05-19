@@ -126,18 +126,36 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                             var negate = false;
 
                             // '!' at the beginning means the term is negated.
-                            if(term.indexOf('!') === 0) {
-                                negate = true;
+                            while(term.indexOf('!') === 0) {
+                                negate = !negate;
                                 term = term.substring(1);
                             }
 
                             if(angular.isArray(value)) {
-                                // Value is an array check if the term matches
-                                // any value in the array.
-                                for(j = 0; j < value.length; j++) {
-                                    if(matches(value[j], term, negate)) {
+                                // If value is an array check if the
+                                // term matches any value in the
+                                // array. If negated, check whether no
+                                // value in the array matches.
+                                if(negate) {
+                                    // Push to matched only if no value in
+                                    // the array matches term.
+                                    var no_match = true;
+                                    for(j = 0; j < value.length; j++) {
+                                        if(matches(value[j], term, false)) {
+                                            no_match = false;
+                                            break; // Skip remaining tests.
+                                        }
+                                    }
+                                    if(no_match) {
                                         matched.push(node);
                                         return;
+                                    }
+                                } else {
+                                    for(j = 0; j < value.length; j++) {
+                                        if(matches(value[j], term, false)) {
+                                            matched.push(node);
+                                            return;
+                                        }
                                     }
                                 }
                             } else {
