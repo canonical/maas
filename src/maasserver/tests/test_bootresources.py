@@ -1237,11 +1237,27 @@ class TestImportResourcesService(MAASTestCase):
         service = bootresources.ImportResourcesService()
         self.assertEqual(3600, service.step)
 
-    def test__calls__import_resources_in_thread(self):
+    def test__calls__maybe_import_resources(self):
         service = bootresources.ImportResourcesService()
         self.assertEqual(
-            (bootresources.import_resources_periodically, (), {}),
+            (service.maybe_import_resources, (), {}),
             service.call)
+
+    def test_maybe_import_resources_calls__import_resources_in_thread(self):
+        service = bootresources.ImportResourcesService()
+        deferToThread = self.patch(bootresources, "deferToThread")
+        service.maybe_import_resources()
+        self.assertThat(
+            deferToThread, MockCalledOnceWith(
+                bootresources.import_resources_periodically))
+
+    def test_maybe_import_resources_does_not_error(self):
+        service = bootresources.ImportResourcesService()
+        deferToThread = self.patch(bootresources, "deferToThread")
+        exception_type = factory.make_exception_type()
+        deferToThread.return_value = fail(exception_type())
+        d = service.maybe_import_resources()
+        self.assertIsNone(extract_result(d))
 
 
 class TestImportResourcesPeriodically(MAASTestCase):
@@ -1249,19 +1265,19 @@ class TestImportResourcesPeriodically(MAASTestCase):
 
     def test__calls__import_resources_in_thread_if_auto(self):
         Config.objects.set_config('boot_images_auto_import', True)
-        mock__import_resources_in_thread = self.patch(
-            bootresources, '_import_resources_in_thread')
+        mock__import_resources = self.patch(
+            bootresources, '_import_resources')
         bootresources.import_resources_periodically()
         self.assertThat(
-            mock__import_resources_in_thread, MockCalledOnceWith())
+            mock__import_resources, MockCalledOnceWith())
 
     def test__doesnt_call__import_resources_in_thread_if_no_auto(self):
         Config.objects.set_config('boot_images_auto_import', False)
-        mock__import_resources_in_thread = self.patch(
-            bootresources, '_import_resources_in_thread')
+        mock__import_resources = self.patch(
+            bootresources, '_import_resources')
         bootresources.import_resources_periodically()
         self.assertThat(
-            mock__import_resources_in_thread, MockNotCalled())
+            mock__import_resources, MockNotCalled())
 
 
 class TestImportResourcesProgressService(MAASServerTestCase):

@@ -966,18 +966,8 @@ def _import_resources_in_thread(force=False):
     Errors are logged. The returned `Deferred` will never errback so it's safe
     to use in a `TimerService`, for example.
     """
-    def coerce_subprocess_failures(failure):
-        failure.trap(CalledProcessError)
-        # Upgrade CalledProcessError to ExternalProcessError in-place so that
-        # we get the niceness of the latter but without losing the traceback.
-        # That may not so relevant here because Failure will have captured the
-        # traceback already, but it makes sense to be consistent.
-        ExternalProcessError.upgrade(failure.value)
-        return failure
-
     d = deferToThread(_import_resources, force=force)
-    d.addErrback(coerce_subprocess_failures)
-    d.addErrback(log.err, "Importing boot resources failed.")
+    d.addErrback(_handle_import_failures)
     return d
 
 
@@ -989,6 +979,17 @@ def import_resources():
     complete.
     """
     reactor.callFromThread(_import_resources_in_thread, force=True)
+
+
+def _handle_import_failures(failure):
+    if failure.check(CalledProcessError):
+        # Upgrade CalledProcessError to ExternalProcessError in-place so that
+        # we get the niceness of the latter but without losing the traceback.
+        # That may not so relevant here because Failure will have captured the
+        # traceback already, but it makes sense to be consistent.
+        ExternalProcessError.upgrade(failure.value)
+
+    log.err(failure, "Importing boot resources failed.")
 
 
 def is_import_resources_running():
@@ -1004,7 +1005,7 @@ def import_resources_periodically():
     the periodic image import mechanism has been disabled.
     """
     if Config.objects.get_config('boot_images_auto_import'):
-        return _import_resources_in_thread()
+        return _import_resources()
     else:
         maaslog.debug(
             "Skipping periodic import of boot resources as it is disabled.")
@@ -1022,7 +1023,12 @@ class ImportResourcesService(TimerService, object):
     """
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super(ImportResourcesService, self).__init__(
-            interval.total_seconds(), import_resources_periodically)
+            interval.total_seconds(), self.maybe_import_resources)
+
+    def maybe_import_resources(self):
+        d = deferToThread(import_resources_periodically)
+        d.addErrback(_handle_import_failures)
+        return d
 
 
 class ImportResourcesProgressService(TimerService, object):
