@@ -22,10 +22,12 @@ from subprocess import CalledProcessError
 import time
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    has_command_available,
     objectfork,
     pipefork,
     PipeForkError,
@@ -278,3 +280,22 @@ class TestObjectFork(MAASTestCase):
                 child(recv, send)
             else:
                 parent(recv, send)
+
+
+class TestHasCommandAvailable(MAASTestCase):
+
+    def test__calls_which(self):
+        mock_call_and_check = self.patch(shell_module, "call_and_check")
+        cmd = factory.make_name("cmd")
+        has_command_available(cmd)
+        self.assertThat(
+            mock_call_and_check, MockCalledOnceWith(["which", cmd]))
+
+    def test__returns_False_when_ExternalProcessError_raised(self):
+        self.patch(shell_module, "call_and_check").side_effect = (
+            ExternalProcessError(1, "cmd"))
+        self.assertFalse(has_command_available(factory.make_name("cmd")))
+
+    def test__returns_True_when_ExternalProcessError_not_raised(self):
+        self.patch(shell_module, "call_and_check")
+        self.assertTrue(has_command_available(factory.make_name("cmd")))

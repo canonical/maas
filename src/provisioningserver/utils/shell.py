@@ -314,3 +314,12 @@ def objectfork():
             fout.flush()  # cPickle.dump() does not flush.
 
         yield pid, recv, send
+
+
+def has_command_available(command):
+    """Return True if `command` is available on the system."""
+    try:
+        call_and_check(["which", command])
+    except ExternalProcessError:
+        return False
+    return True
