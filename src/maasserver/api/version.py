@@ -26,11 +26,13 @@ from maasserver.utils.version import get_maas_version_subversion
 CAP_NETWORKS_MANAGEMENT = 'networks-management'
 CAP_STATIC_IPADDRESSES = 'static-ipaddresses'
 CAP_IPv6_DEPLOYMENT_UBUNTU = 'ipv6-deployment-ubuntu'
+CAP_DEVICES_MANAGEMENT = 'devices-management'
 
 API_CAPABILITIES_LIST = [
     CAP_NETWORKS_MANAGEMENT,
     CAP_STATIC_IPADDRESSES,
     CAP_IPv6_DEPLOYMENT_UBUNTU,
+    CAP_DEVICES_MANAGEMENT,
     ]
 
 

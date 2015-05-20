@@ -10,11 +10,6 @@ list of the server's capabilities. It's transferred as a JSON document::
 
     {"capabilities": ["name-of-capability", ...]}
 
-.. note::
-
-  The view is called ``version`` because this will, later, include
-  version information too.
-
 
 List of capabilities
 --------------------
@@ -42,3 +37,9 @@ the version when creating a client application.
 ``ipv6-deployment-ubuntu``
   Deploy Ubuntu nodes with IPv6 networking enabled.  See :ref:`ipv6` for more
   about this feature.
+
+.. _cap-devices-management:
+
+``devices-management``
+  Management of devices (non-installable nodes).  Available since version 1.8.
+  See :ref:`devices` for more about this feature.
