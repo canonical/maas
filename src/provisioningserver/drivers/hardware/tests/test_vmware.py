@@ -88,6 +88,10 @@ class FakeVmomiNic(FakeVmomiVMConfigHardwareDevice):
         super(FakeVmomiNic, self).__init__()
         self.macAddress = factory.make_mac_address()
 
+    @property
+    def key(self):
+        return id(self)
+
 
 class FakeVmomiVMConfigHardware(object):
     def __init__(self, nics=None):
@@ -130,6 +134,9 @@ class FakeVmomiVM(object):
 
     def PowerOff(self):
         self.runtime.powerState = "poweredOff"
+
+    def ReconfigVM_Task(self, vmconf):
+        pass
 
 
 class FakeVmomiVmFolder(object):
@@ -404,5 +411,58 @@ class TestVMwarePyvmomi(MAASTestCase):
             password,
             accept_all=True)
 
-        self.expectThat(mock_create_node.call_count, Equals(num_servers))
-        self.expectThat(mock_commission_node.call_count, Equals(num_servers))
+        self.assertEqual(mock_create_node.call_count, num_servers)
+        self.assertEqual(mock_commission_node.call_count, num_servers)
+
+    @inlineCallbacks
+    def test_probe_and_enlist_reconfigures_boot_order_if_create_node_ok(self):
+        num_servers = 1
+        self.configure_vmomi_api(servers=num_servers)
+        mock_create_node = self.patch(vmware, 'create_node')
+        system_id = factory.make_name('system_id')
+        mock_create_node.side_effect = asynchronous(
+            lambda *args, **kwargs: system_id)
+        mock_reconfigure_vm = self.patch(FakeVmomiVM, 'ReconfigVM_Task')
+
+        # We need to not actually try to commission any nodes...
+        self.patch(vmware, 'commission_node')
+
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+
+        yield deferToThread(
+            vmware.probe_vmware_and_enlist,
+            factory.make_username(),
+            host,
+            username,
+            password,
+            accept_all=True)
+
+        self.assertEqual(mock_reconfigure_vm.call_count, num_servers)
+
+    @inlineCallbacks
+    def test_probe_and_enlist_skips_pxe_config_if_create_node_failed(self):
+        num_servers = 1
+        self.configure_vmomi_api(servers=num_servers)
+        mock_create_node = self.patch(vmware, 'create_node')
+        mock_create_node.side_effect = asynchronous(
+            lambda *args, **kwargs: None)
+        mock_reconfigure_vm = self.patch(FakeVmomiVM, 'ReconfigVM_Task')
+
+        # We need to not actually try to commission any nodes...
+        self.patch(vmware, 'commission_node')
+
+        host = factory.make_hostname()
+        username = factory.make_username()
+        password = factory.make_username()
+
+        yield deferToThread(
+            vmware.probe_vmware_and_enlist,
+            factory.make_username(),
+            host,
+            username,
+            password,
+            accept_all=True)
+
+        self.assertEqual(mock_reconfigure_vm.call_count, 0)

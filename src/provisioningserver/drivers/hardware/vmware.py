@@ -31,6 +31,7 @@ from provisioningserver.utils.twisted import synchronous
 
 try:
     import pyVmomi
+    from pyVmomi import vim
     import pyVim.connect as vmomi_api
 except ImportError:
     pyVmomi = None
@@ -178,13 +179,20 @@ class VMwarePyvmomiAPI(VMwareAPI):
 
     @staticmethod
     def _probe_network_cards(vm):
+        """Returns a list of MAC addresses for this VM, followed by a list
+        of unique keys that VMware uses to uniquely identify the NICs. The
+        MAC addresses are used to create the node. If the node is created
+        successfully, the keys will be used to set the boot order on the
+        virtual machine."""
         mac_addresses = []
+        nic_keys = []
         for device in vm.config.hardware.device:
             if hasattr(device, 'macAddress'):
                 mac = device.macAddress
                 if mac is not None and mac != "":
                     mac_addresses.append(mac)
-        return mac_addresses
+                    nic_keys.append(device.key)
+        return mac_addresses, nic_keys
 
     @staticmethod
     def _get_uuid(vm):
@@ -260,11 +268,25 @@ class VMwarePyvmomiAPI(VMwareAPI):
                     "set_power_state: Invalid power_change state: {state}"
                     .format(power_change))
 
+    @staticmethod
+    def set_pxe_boot(vm_properties):
+        boot_devices = []
+        for nic in vm_properties['nics']:
+            boot_nic = vim.vm.BootOptions.BootableEthernetDevice()
+            boot_nic.deviceKey = nic
+            boot_devices.append(boot_nic)
+        if len(boot_devices) > 0:
+            vmconf = vim.vm.ConfigSpec()
+            vmconf.bootOptions = vim.vm.BootOptions(bootOrder=boot_devices)
+            # use the reference to the VM we stashed away in the properties
+            vm_properties['this'].ReconfigVM_Task(vmconf)
+
     def _get_vm_properties(self, vm):
         """Gathers the properties for the specified VM, for inclusion into
         the dictionary containing the properties of all VMs."""
         properties = {}
 
+        properties['this'] = vm
         properties['uuid'] = self._get_uuid(vm)
 
         if "64" in vm.summary.config.guestId:
@@ -275,7 +297,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
         properties['power_state'] = self.pyvmomi_to_maas_powerstate(
             self._get_power_state(vm))
 
-        properties['macs'] = self._probe_network_cards(vm)
+        properties['macs'], properties['nics'] = self._probe_network_cards(vm)
 
         # These aren't needed now, but we might want them one day...
         # properties['cpus'] = vm.summary.config.numCpu
@@ -331,11 +353,23 @@ def probe_vmware_and_enlist(
     if prefix_filter is None:
         prefix_filter = ''
 
-    servers = get_vmware_servers(
+    api = _get_vmware_api(
         host, username, password, port=port, protocol=protocol)
 
-    maaslog.info("Found %d VMware servers", len(servers))
+    if api.connect():
+        try:
+            servers = api.get_all_vm_properties()
+            _probe_and_enlist_vmware_servers(
+                api, accept_all, host, password, port, prefix_filter, protocol,
+                servers, user, username)
+        finally:
+            api.disconnect()
 
+
+def _probe_and_enlist_vmware_servers(
+        api, accept_all, host, password, port, prefix_filter, protocol,
+        servers, user, username):
+    maaslog.info("Found %d VMware servers", len(servers))
     for system_name in servers:
         if not system_name.startswith(prefix_filter):
             maaslog.info(
@@ -364,6 +398,9 @@ def probe_vmware_and_enlist(
         system_id = create_node(
             properties['macs'], properties['architecture'],
             'vmware', params, hostname=system_name).wait(30)
+
+        if system_id is not None:
+            api.set_pxe_boot(properties)
 
         if accept_all and system_id is not None:
             commission_node(system_id, user).wait(30)
