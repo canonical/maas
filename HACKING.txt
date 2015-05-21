@@ -58,8 +58,9 @@ it seems to cause import errors for ``oauth`` when running the test
 suite.
 
 All other development dependencies are pulled automatically from
-`PyPI`_ when ``buildout`` runs. See `First time using buildout?`_ and
-`Running tests`_.
+`PyPI`_ when ``buildout`` runs. (``buildout`` will be automatically
+configured to create a cache, in order to improve build times.
+See ``utilities/configure-buildout``.)
 
 .. _PyPI:
   http://pypi.python.org/
@@ -76,29 +77,6 @@ MAAS`_, so PyCharm_ is an easy choice.
 
 .. _project files are included with MAAS:
   https://intellij-support.jetbrains.com/entries/23393067-How-to-manage-projects-under-Version-Control-Systems
-
-First time using buildout?
-==========================
-
-Buildout_ is used to develop MAAS. Buildout, if configured so, can
-cache downloaded files and built eggs. If you've not already done
-something similar, the following snippet will massively improve build
-times::
-
-    [buildout]
-    download-cache = /home/<your-user-name>/.buildout/cache
-    eggs-directory = /home/<your-user-name>/.buildout/eggs
-
-Put this in ``~/.buildout/default.cfg`` and create the ``cache``
-directory::
-
-    $ mkdir /home/<your-user-name>/.buildout/cache
-
-The ``eggs`` directory will be created automatically.
-
-.. _Buildout:
-  http://www.buildout.org/
-
 
 Running tests
 =============
