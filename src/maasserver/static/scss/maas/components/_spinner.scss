@@ -19,15 +19,14 @@
     text-indent: -9999em;
 
     &.spin {
-        border-radius: 50%;
-        width: 10px;
-        height: 10px;
-        border-top: 4px solid rgba(221, 72, 20, 0.3);
-        border-right: 4px solid rgba(221, 72, 20, 0.3);
-        border-bottom: 4px solid rgba(221, 72, 20, 0.3);
-        border-left: 4px solid #dd4814;
-        -webkit-animation: spin 1.1s infinite linear;
-        animation: spin 1.1s infinite linear;
+        background: url('../img/in_progress.png') no-repeat;
+        background-size: 16px 16px;
+        width: 16px;
+        height: 16px;
+        -webkit-animation: spin 1s infinite linear;
+        -moz-animation: spin 1s infinite linear;
+        animation: spin 1s infinite linear;
+        padding: 0;
     }
 }
 
