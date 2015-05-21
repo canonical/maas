@@ -128,6 +128,21 @@ class TestServiceMonitor(MAASTestCase):
         self.assertFalse(
             service_lock.locked(), "Service lock was not released.")
 
+    def test_get_service_state_raises_UnknownServiceError(self):
+        service_monitor = ServiceMonitor()
+        with ExpectedException(UnknownServiceError):
+            service_monitor.get_service_state(factory.make_name("service"))
+
+    def test_get_service_state_returns_state_from__get_service_status(self):
+        service = self.make_service_driver()
+        service_monitor = ServiceMonitor()
+        mock_get_service_status = self.patch(
+            service_monitor, "_get_service_status")
+        mock_get_service_status.return_value = (
+            sentinel.state, sentinel.process_state)
+        self.assertEquals(
+            sentinel.state, service_monitor.get_service_state(service.name))
+
     def test_ensure_all_services_calls_ensure_service_for_all_services(self):
         service_names = sorted([
             self.make_service_driver().name

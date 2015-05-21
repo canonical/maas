@@ -58,9 +58,15 @@ class ServiceRegistry(Registry):
 
 
 from provisioningserver.drivers.service.tgt import TGTService
+from provisioningserver.drivers.service.dhcp import (
+    DHCPv4Service,
+    DHCPv6Service,
+    )
 
 builtin_services = [
     TGTService(),
+    DHCPv4Service(),
+    DHCPv6Service(),
     ]
 for service in builtin_services:
     ServiceRegistry.register_item(service.name, service)

@@ -128,6 +128,14 @@ class ServiceMonitor:
         return service
 
     @synchronous
+    def get_service_state(self, name):
+        service = ServiceRegistry.get_item(name)
+        if service is None:
+            raise UnknownServiceError(
+                "Service '%s' is not registered." % name)
+        return self._get_service_status(service)[0]
+
+    @synchronous
     def ensure_all_services(self):
         """Ensures that all services from the `ServiceRegistry` are in their
         desired state."""

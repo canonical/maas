@@ -53,6 +53,51 @@ class TestOmshell(MAASTestCase):
                 server_address=server_address,
                 shared_key=shared_key))
 
+    def test_try_connection_calls_omshell_correctly(self):
+        server_address = factory.make_string()
+        shell = Omshell(server_address, "")
+
+        # Instead of calling a real omshell, we'll just record the
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, "obj: <null>"))
+        shell._run = recorder
+
+        shell.try_connection()
+
+        expected_script = dedent("""\
+            server {server}
+            connect
+            """)
+        expected_script = expected_script.format(server=server_address)
+
+        # Check that the 'stdin' arg contains the correct set of
+        # commands.
+        self.assertEqual(
+            [1, (expected_script,)],
+            [recorder.call_count, recorder.extract_args()[0]])
+
+    def test_try_connection_returns_True(self):
+        server_address = factory.make_string()
+        shell = Omshell(server_address, "")
+
+        # Instead of calling a real omshell, we'll just record the
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, "obj: <null>"))
+        shell._run = recorder
+
+        self.assertTrue(shell.try_connection())
+
+    def test_try_connection_returns_False(self):
+        server_address = factory.make_string()
+        shell = Omshell(server_address, "")
+
+        # Instead of calling a real omshell, we'll just record the
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, factory.make_string()))
+        shell._run = recorder
+
+        self.assertFalse(shell.try_connection())
+
     def test_create_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()

@@ -132,6 +132,29 @@ class Omshell:
             raise ExternalProcessError(proc.returncode, self.command, stdout)
         return proc.returncode, stdout
 
+    def try_connection(self):
+        # Don't pass the omapi_key as its not needed to just try to connect.
+        stdin = dedent("""\
+            server {self.server_address}
+            connect
+            """)
+        stdin = stdin.format(self=self)
+
+        returncode, output = self._run(stdin)
+
+        # If the omshell worked, the last line should reference a null
+        # object.  We need to strip blanks, newlines and '>' characters
+        # for this to work.
+        lines = output.strip('\n >').splitlines()
+        try:
+            last_line = lines[-1]
+        except IndexError:
+            last_line = ""
+        if "obj: <null" in last_line:
+            return True
+        else:
+            return False
+
     def create(self, ip_address, mac_address):
         # The "name" is not a host name; it's an identifier used within
         # the DHCP server.  We just happen to use the IP address.

@@ -20,21 +20,28 @@ __all__ = [
     "remove_host_maps",
 ]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-)
+import time
 
-from provisioningserver.dhcp import control
+from provisioningserver.dhcp import (
+    DHCPv4Server,
+    DHCPv6Server,
+    DISABLED_DHCP_SERVER,
+)
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
+from provisioningserver.drivers.service import (
+    SERVICE_STATE,
+    ServiceRegistry,
+)
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.path import get_path
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
     CannotRemoveHostMap,
+)
+from provisioningserver.service_monitor import (
+    service_monitor,
+    ServiceActionError,
 )
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.shell import ExternalProcessError
@@ -42,55 +49,6 @@ from provisioningserver.utils.twisted import synchronous
 
 
 maaslog = get_maas_logger("dhcp")
-
-# Location of the DHCPv4 configuration file.
-DHCPv4_CONFIG_FILE = '/etc/maas/dhcpd.conf'
-
-# Location of the DHCPv4 interfaces file.
-DHCPv4_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
-
-# Location of the DHCPv6 configuration file.
-DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
-
-# Location of the DHCPv6 interfaces file.
-DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
-
-# Message to put in the DHCP config file when the DHCP server gets stopped.
-DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
-
-
-class DHCPServer:
-    """Represents the settings and controls for a DHCP server.
-
-    :cvar descriptive_name: A name to use for this server in human-readable
-        texts.
-    :cvar template_basename: The base filename for the template to use when
-        generating configuration for this server.
-    :cvar interfaces_filename: The full path and filename for the server's
-        interfaces file.
-    :cvar config_filename: The full path and filename for the server's
-        configuration file.
-    :ivar omapi_key: The OMAPI secret key for the server.
-    """
-
-    __metaclass__ = ABCMeta
-
-    descriptive_name = abstractproperty()
-    template_basename = abstractproperty()
-    interfaces_filename = abstractproperty()
-    config_filename = abstractproperty()
-
-    def __init__(self, omapi_key):
-        super(DHCPServer, self).__init__()
-        self.omapi_key = omapi_key
-
-    @abstractmethod
-    def stop(self):
-        """Stop the DHCP server."""
-
-    @abstractmethod
-    def restart(self):
-        """Restart the DHCP server."""
 
 
 @synchronous
@@ -133,66 +91,86 @@ def configure(server, subnet_configs):
                 server.descriptive_name, e.output_as_unicode))
 
     if stopping:
+        service = ServiceRegistry.get_item(server.dhcp_service)
+        service.off()
         try:
-            server.stop()
-        except ExternalProcessError as e:
+            service_monitor.ensure_service(server.dhcp_service)
+        except ServiceActionError as e:
+            # Error is already logged by the service monitor, nothing to
+            # log for this exception.
+            raise CannotConfigureDHCP(
+                "%s server failed to stop: %s" % (
+                    server.descriptive_name, e))
+        except Exception as e:
             maaslog.error(
-                "%s server failed to stop: %s", server.descriptive_name,
-                unicode(e))
+                "%s server failed to stop: %s",
+                server.descriptive_name, e)
             raise CannotConfigureDHCP(
                 "%s server failed to stop: %s" % (
                     server.descriptive_name, e.output_as_unicode))
     else:
+        service = ServiceRegistry.get_item(server.dhcp_service)
+        service.on()
         try:
-            server.restart()
-        except ExternalProcessError as e:
+            service_monitor.restart_service(server.dhcp_service)
+        except ServiceActionError as e:
+            # Error is already logged by the service monitor, nothing to
+            # log for this exception.
+            raise CannotConfigureDHCP(
+                "%s server failed to restart: %s" % (
+                    server.descriptive_name, e))
+        except Exception as e:
             maaslog.error(
                 "%s server failed to restart (for network interfaces "
-                "%s): %s", server.descriptive_name, interfaces_config,
-                unicode(e))
+                "%s): %s", server.descriptive_name, interfaces_config, e)
             raise CannotConfigureDHCP(
                 "%s server failed to restart: %s" % (
                     server.descriptive_name, e.output_as_unicode))
 
 
-class DHCPv4Server(DHCPServer):
-    """Represents the settings and controls for a DHCPv4 server.
+def _try_omshell_connection():
+    """Try to connect to the DHCP server using Omshell.
 
-    See `DHCPServer`.
+    Tries a maximum of 3 times for a total of 1.5 seconds.
     """
-
-    descriptive_name = "DHCPv4"
-    template_basename = 'dhcpd.conf.template'
-    interfaces_filename = get_path(DHCPv4_INTERFACES_FILE)
-    config_filename = get_path(DHCPv4_CONFIG_FILE)
-
-    def stop(self):
-        """Stop the DHCPv4 server."""
-        control.stop_dhcpv4()
-
-    def restart(self):
-        """Restart the DHCPv4 server."""
-        control.restart_dhcpv4()
+    omshell = Omshell(
+        server_address='127.0.0.1', shared_key="")
+    for _ in range(3):
+        connectable = omshell.try_connection()
+        if connectable:
+            return True
+        else:
+            # Not able to connect. Wait half a second and
+            # try again.
+            time.sleep(0.5)
+    return False
 
 
-class DHCPv6Server(DHCPServer):
-    """Represents the settings and controls for a DHCPv6 server.
-
-    See `DHCPServer`.
-    """
-
-    descriptive_name = "DHCPv6"
-    template_basename = 'dhcpd6.conf.template'
-    interfaces_filename = get_path(DHCPv6_INTERFACES_FILE)
-    config_filename = get_path(DHCPv6_CONFIG_FILE)
-
-    def stop(self):
-        """Stop the DHCPv6 server."""
-        control.stop_dhcpv6()
-
-    def restart(self):
-        """Restart the DHCPv6 server."""
-        control.restart_dhcpv6()
+def _ensure_dhcpv4_is_accessible(exception):
+    """Ensure that the DHCPv4 server is accessible. Raise `exception` if
+    it will not be possible to contact the server."""
+    service = ServiceRegistry.get_item("dhcp4")
+    if service.is_on():
+        if service_monitor.get_service_state("dhcp4") != SERVICE_STATE.ON:
+            try:
+                service_monitor.ensure_service("dhcp4")
+                if not _try_omshell_connection():
+                    raise exception(
+                        "DHCPv4 server started but was unable to connect "
+                        "to omshell.")
+            except ServiceActionError as e:
+                # Error is already logged by the service monitor, nothing to
+                # log for this exception.
+                raise exception("DHCPv4 server failed to start: %s" % e)
+            except Exception as e:
+                error_msg = "DHCPv4 server failed to start: %s" % e
+                maaslog.error(error_msg)
+                raise exception(error_msg)
+        else:
+            # Service should be on and is already on, nothing needs to be done.
+            pass
+    else:
+        raise exception("DHCPv4 server is disabled.")
 
 
 @synchronous
@@ -203,6 +181,7 @@ def create_host_maps(mappings, shared_key):
         ``mac_address`` keys.
     :param shared_key: The key used to access the DHCP server via OMAPI.
     """
+    _ensure_dhcpv4_is_accessible(CannotCreateHostMap)
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
     for mapping in mappings:
@@ -214,8 +193,12 @@ def create_host_maps(mappings, shared_key):
             maaslog.error(
                 "Could not create host map for %s with address %s: %s",
                 mac_address, ip_address, unicode(e))
-            raise CannotCreateHostMap("%s -> %s: %s" % (
-                mac_address, ip_address, e.output_as_unicode))
+            if 'not connected.' in e.output_as_unicode:
+                raise CannotCreateHostMap(
+                    "The DHCP server could not be reached.")
+            else:
+                raise CannotCreateHostMap("%s -> %s: %s" % (
+                    mac_address, ip_address, e.output_as_unicode))
 
 
 @synchronous
@@ -232,6 +215,7 @@ def remove_host_maps(ip_addresses, shared_key):
     :param ip_addresses: A list of IP addresses.
     :param shared_key: The key used to access the DHCP server via OMAPI.
     """
+    _ensure_dhcpv4_is_accessible(CannotRemoveHostMap)
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
     for ip_address in ip_addresses:

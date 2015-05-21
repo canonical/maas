@@ -14,8 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from random import randint
-
 from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -31,19 +29,25 @@ from mock import (
     call,
     sentinel,
 )
-from provisioningserver.dhcp import control
 from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dhcp.testing.config import make_subnet_config
-from provisioningserver.path import get_path
+from provisioningserver.drivers.service import (
+    SERVICE_STATE,
+    ServiceRegistry,
+)
+from provisioningserver.drivers.service.dhcp import DHCPv4Service
 from provisioningserver.rpc import (
     dhcp,
     exceptions,
 )
 from provisioningserver.rpc.exceptions import (
-    CannotConfigureDHCP,
+    CannotCreateHostMap,
     CannotRemoveHostMap,
 )
+from provisioningserver.service_monitor import ServiceActionError
 from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.testing import RegistryFixture
+from testtools import ExpectedException
 
 
 class TestConfigureDHCP(MAASTestCase):
@@ -60,18 +64,18 @@ class TestConfigureDHCP(MAASTestCase):
     def patch_sudo_write_file(self):
         return self.patch_autospec(dhcp, 'sudo_write_file')
 
-    def patch_server_restart(self):
-        return self.patch_autospec(self.server, 'restart')
+    def patch_restart_service(self):
+        return self.patch_autospec(dhcp.service_monitor, 'restart_service')
 
-    def patch_server_stop(self):
-        return self.patch_autospec(self.server, 'stop')
+    def patch_ensure_service(self):
+        return self.patch_autospec(dhcp.service_monitor, 'ensure_service')
 
     def patch_get_config(self):
         return self.patch_autospec(dhcp, 'get_config')
 
     def test__extracts_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_server_restart()
+        self.patch_restart_service()
         subnets = [make_subnet_config() for _ in range(3)]
         self.configure(factory.make_name('key'), subnets)
         self.assertThat(
@@ -82,7 +86,7 @@ class TestConfigureDHCP(MAASTestCase):
 
     def test__eliminates_duplicate_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_server_restart()
+        self.patch_restart_service()
         interface = factory.make_name('interface')
         subnets = [make_subnet_config() for _ in range(2)]
         for subnet in subnets:
@@ -92,7 +96,7 @@ class TestConfigureDHCP(MAASTestCase):
 
     def test__composes_dhcp_config(self):
         self.patch_sudo_write_file()
-        self.patch_server_restart()
+        self.patch_restart_service()
         get_config = self.patch_get_config()
         omapi_key = factory.make_name('key')
         subnet = make_subnet_config()
@@ -105,7 +109,7 @@ class TestConfigureDHCP(MAASTestCase):
 
     def test__writes_dhcp_config(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_server_restart()
+        self.patch_restart_service()
 
         subnet = make_subnet_config()
         expected_config = factory.make_name('config')
@@ -119,7 +123,7 @@ class TestConfigureDHCP(MAASTestCase):
 
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_server_restart()
+        self.patch_restart_service()
         self.configure(factory.make_name('key'), [make_subnet_config()])
         self.assertThat(
             write_file,
@@ -127,36 +131,153 @@ class TestConfigureDHCP(MAASTestCase):
 
     def test__restarts_dhcp_server_if_subnets_defined(self):
         self.patch_sudo_write_file()
-        restart_dhcp = self.patch_server_restart()
+        dhcp_service = ServiceRegistry[self.server.dhcp_service]
+        on = self.patch_autospec(dhcp_service, "on")
+        restart_service = self.patch_restart_service()
         self.configure(factory.make_name('key'), [make_subnet_config()])
-        self.assertThat(restart_dhcp, MockCalledWith(ANY))
+        self.assertThat(on, MockCalledOnceWith())
+        self.assertThat(
+            restart_service, MockCalledOnceWith(self.server.dhcp_service))
 
     def test__stops_dhcp_server_if_no_subnets_defined(self):
         self.patch_sudo_write_file()
-        restart_dhcp = self.patch_server_restart()
-        stop_dhcp = self.patch_server_stop()
+        dhcp_service = ServiceRegistry[self.server.dhcp_service]
+        off = self.patch_autospec(dhcp_service, "off")
+        restart_service = self.patch_restart_service()
+        ensure_service = self.patch_ensure_service()
         self.configure(factory.make_name('key'), [])
-        self.assertThat(stop_dhcp, MockCalledWith(ANY))
-        self.assertThat(restart_dhcp, MockNotCalled())
+        self.assertThat(off, MockCalledOnceWith())
+        self.assertThat(
+            ensure_service, MockCalledOnceWith(self.server.dhcp_service))
+        self.assertThat(restart_service, MockNotCalled())
 
     def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file().side_effect = (
             ExternalProcessError(1, "sudo something"))
-        self.patch_server_restart()
+        self.patch_restart_service()
         self.assertRaises(
             exceptions.CannotConfigureDHCP, self.configure,
             factory.make_name('key'), [make_subnet_config()])
 
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
-        self.patch_server_restart().side_effect = (
-            ExternalProcessError(1, "sudo something"))
+        self.patch_restart_service().side_effect = ServiceActionError()
         self.assertRaises(
             exceptions.CannotConfigureDHCP, self.configure,
             factory.make_name('key'), [make_subnet_config()])
 
+    def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
+        self.patch_sudo_write_file()
+        self.patch_ensure_service().side_effect = ServiceActionError()
+        self.assertRaises(
+            exceptions.CannotConfigureDHCP, self.configure,
+            factory.make_name('key'), [])
+
+
+class TestEnsureDHCPv4IsAccessible(MAASTestCase):
+
+    def setUp(self):
+        super(TestEnsureDHCPv4IsAccessible, self).setUp()
+        # Ensure the global registry is empty for each test run.
+        self.useFixture(RegistryFixture())
+
+    def make_dhcpv4_service(self):
+        service = DHCPv4Service()
+        ServiceRegistry.register_item(service.name, service)
+        return service
+
+    def test__raises_exception_if_service_should_be_off(self):
+        service = self.make_dhcpv4_service()
+        service.off()
+        exception_type = factory.make_exception_type()
+        with ExpectedException(exception_type):
+            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+
+    def test__does_nothing_if_service_already_on(self):
+        service = self.make_dhcpv4_service()
+        service.on()
+        mock_get_state = self.patch_autospec(
+            dhcp.service_monitor, "get_service_state")
+        mock_get_state.return_value = SERVICE_STATE.ON
+        mock_ensure_service = self.patch_autospec(
+            dhcp.service_monitor, "ensure_service")
+        dhcp._ensure_dhcpv4_is_accessible(factory.make_exception_type())
+        self.assertThat(mock_ensure_service, MockNotCalled())
+
+    def test__calls_try_connection_to_check_omshell(self):
+        service = self.make_dhcpv4_service()
+        service.on()
+        mock_get_state = self.patch_autospec(
+            dhcp.service_monitor, "get_service_state")
+        mock_get_state.return_value = SERVICE_STATE.OFF
+        mock_ensure_service = self.patch_autospec(
+            dhcp.service_monitor, "ensure_service")
+        mock_omshell = self.patch_autospec(dhcp, "Omshell")
+        mock_try_connection = mock_omshell.return_value.try_connection
+        mock_try_connection.return_value = True
+        dhcp._ensure_dhcpv4_is_accessible(factory.make_exception_type())
+        self.assertThat(mock_ensure_service, MockCalledOnceWith("dhcp4"))
+        self.assertThat(mock_try_connection, MockCalledOnceWith())
+
+    def test__calls_try_connection_three_times_to_check_omshell(self):
+        service = self.make_dhcpv4_service()
+        service.on()
+        mock_get_state = self.patch_autospec(
+            dhcp.service_monitor, "get_service_state")
+        mock_get_state.return_value = SERVICE_STATE.OFF
+        mock_ensure_service = self.patch_autospec(
+            dhcp.service_monitor, "ensure_service")
+        mock_omshell = self.patch_autospec(dhcp, "Omshell")
+        self.patch_autospec(dhcp.time, "sleep")
+        mock_try_connection = mock_omshell.return_value.try_connection
+        mock_try_connection.return_value = False
+        fake_exception_type = factory.make_exception_type()
+        with ExpectedException(fake_exception_type):
+            dhcp._ensure_dhcpv4_is_accessible(fake_exception_type)
+        self.assertThat(mock_ensure_service, MockCalledOnceWith("dhcp4"))
+        self.assertEquals(mock_try_connection.call_count, 3)
+
+    def test__raises_exception_on_ServiceActionError(self):
+        service = self.make_dhcpv4_service()
+        service.on()
+        mock_get_state = self.patch_autospec(
+            dhcp.service_monitor, "get_service_state")
+        mock_get_state.return_value = SERVICE_STATE.OFF
+        mock_ensure_service = self.patch_autospec(
+            dhcp.service_monitor, "ensure_service")
+        mock_ensure_service.side_effect = ServiceActionError()
+        exception_type = factory.make_exception_type()
+        with ExpectedException(exception_type):
+            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+
+    def test__raises_exception_on_other_exceptions(self):
+        service = self.make_dhcpv4_service()
+        service.on()
+        mock_get_state = self.patch_autospec(
+            dhcp.service_monitor, "get_service_state")
+        mock_get_state.return_value = SERVICE_STATE.OFF
+        mock_ensure_service = self.patch_autospec(
+            dhcp.service_monitor, "ensure_service")
+        mock_ensure_service.side_effect = factory.make_exception()
+        exception_type = factory.make_exception_type()
+        with ExpectedException(exception_type):
+            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+
 
 class TestCreateHostMaps(MAASTestCase):
+
+    def setUp(self):
+        super(TestCreateHostMaps, self).setUp()
+        # Patch _ensure_dhcpv4_is_accessible.
+        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
+            dhcp, "_ensure_dhcpv4_is_accessible")
+
+    def test_calls__ensure_dhcpv4_is_accessible(self):
+        self.patch(dhcp, "Omshell")
+        dhcp.create_host_maps([], sentinel.shared_key)
+        self.assertThat(
+            self._ensure_dhcpv4_is_accessible,
+            MockCalledOnceWith(CannotCreateHostMap))
 
     def test_creates_omshell(self):
         omshell = self.patch(dhcp, "Omshell")
@@ -208,6 +329,16 @@ class TestRemoveHostMaps(MAASTestCase):
         super(TestRemoveHostMaps, self).setUp()
         self.patch(Omshell, "remove")
         self.patch(Omshell, "nullify_lease")
+        # Patch _ensure_dhcpv4_is_accessible.
+        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
+            dhcp, "_ensure_dhcpv4_is_accessible")
+
+    def test_calls__ensure_dhcpv4_is_accessible(self):
+        self.patch(dhcp, "Omshell")
+        dhcp.remove_host_maps([], sentinel.shared_key)
+        self.assertThat(
+            self._ensure_dhcpv4_is_accessible,
+            MockCalledOnceWith(CannotRemoveHostMap))
 
     def test_removes_omshell(self):
         omshell = self.patch(dhcp, "Omshell")
@@ -249,80 +380,14 @@ class TestRemoveHostMaps(MAASTestCase):
             logger.output)
 
 
-class TestStopAndDisableDHCP(MAASTestCase):
-    """Test how `DHCPServer` subclasses behave when given no subnets."""
-
-    scenarios = (
-        ("DHCPv4", {
-            "server": dhcp.DHCPv4Server,
-            "stop_dhcp": (control, "stop_dhcpv4"),  # For patching.
-            "expected_interfaces_file": get_path(dhcp.DHCPv4_INTERFACES_FILE),
-            "expected_config_file": get_path(dhcp.DHCPv4_CONFIG_FILE),
-        }),
-        ("DHCPv6", {
-            "server": dhcp.DHCPv6Server,
-            "stop_dhcp": (control, "stop_dhcpv6"),  # For patching.
-            "expected_interfaces_file": get_path(dhcp.DHCPv6_INTERFACES_FILE),
-            "expected_config_file": get_path(dhcp.DHCPv6_CONFIG_FILE),
-        }),
-    )
-
-    def setUp(self):
-        super(TestStopAndDisableDHCP, self).setUp()
-        # Avoid trying to actually write a file via sudo.
-        self.sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
-        # Avoid trying to actually stop a live DHCP server.
-        self.stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-
-    def test__writes_config_and_stops_dhcp_server(self):
-        omapi_key = factory.make_name('omapi-key')
-        server = self.server(omapi_key)
-        dhcp.configure(server, [])
-
-        self.assertThat(self.sudo_write_file, MockCallsMatch(
-            call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
-            call(self.expected_interfaces_file, ""),
-        ))
-        self.assertThat(self.stop_dhcp, MockCalledOnceWith())
-
-    def test__raises_CannotConfigureDHCP_when_config_file_write_fails(self):
-        # Simulate a failure when writing the configuration file.
-        self.sudo_write_file.side_effect = ExternalProcessError(
-            randint(1, 99), [factory.make_name("command")],
-            factory.make_name("stderr"))
-
-        omapi_key = factory.make_name('omapi-key')
-        server = self.server(omapi_key)
-
-        self.assertRaises(CannotConfigureDHCP, dhcp.configure, server, [])
-
-        self.assertThat(self.sudo_write_file, MockCalledOnceWith(
-            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
-        self.assertThat(self.stop_dhcp, MockNotCalled())
-
-    def test__raises_CannotStopDHCP_when_stop_fails(self):
-        # Simulate a failure when stopping the DHCP server.
-        self.stop_dhcp.side_effect = ExternalProcessError(
-            randint(1, 99), [factory.make_name("command")],
-            factory.make_name("stderr"))
-
-        omapi_key = factory.make_name('omapi-key')
-        server = self.server(omapi_key)
-
-        self.assertRaises(CannotConfigureDHCP, dhcp.configure, server, [])
-
-        self.assertThat(self.sudo_write_file, MockCallsMatch(
-            call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
-            call(self.expected_interfaces_file, ""),
-        ))
-        self.assertThat(self.stop_dhcp, MockCalledOnceWith())
-
-
-class TestStoppedDHCP(MAASTestCase):
+class TestOmshellError(MAASTestCase):
     """Test omshell error reporting"""
 
     def setUp(self):
-        super(TestStoppedDHCP, self).setUp()
+        super(TestOmshellError, self).setUp()
+        # Patch _ensure_dhcpv4_is_accessible.
+        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
+            dhcp, "_ensure_dhcpv4_is_accessible")
         self.patch(ExternalProcessError, '__unicode__', lambda x: 'Error')
 
         def raise_ExternalProcessError(*args, **kwargs):
