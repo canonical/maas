@@ -151,6 +151,11 @@ def get_distro_series_initial(osystems, instance, with_key_required=True):
             key_required = get_release_requires_key(release)
         else:
             key_required = ''
+    else:
+        # OS of the instance isn't part of the given OSes list so we can't
+        # figure out if the key is required or not, default to not requiring
+        # it.
+        key_required = ''
     if osystem_name is not None and osystem_name != '':
         if series is None:
             series = ''

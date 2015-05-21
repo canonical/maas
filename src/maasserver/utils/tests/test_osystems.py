@@ -212,6 +212,19 @@ class TestReleases(MAASServerTestCase):
             get_distro_series_initial(
                 [osystem], node, with_key_required=True))
 
+    def test_get_distro_series_initial_works_around_conflicting_os(self):
+        # Test for bug 1456892.
+        releases = [
+            make_rpc_release(requires_license_key=True) for _ in range(3)]
+        osystem = make_rpc_osystem(releases=releases)
+        release = random.choice(releases)
+        node = factory.make_Node(
+            osystem=osystem['name'], distro_series=release['name'])
+        self.assertEqual(
+            '%s/%s' % (osystem['name'], release['name']),
+            get_distro_series_initial(
+                [], node, with_key_required=True))
+
     def test_list_commissioning_choices_returns_empty_list_if_not_ubuntu(self):
         osystem = make_rpc_osystem()
         self.assertEqual([], list_commissioning_choices([osystem]))
