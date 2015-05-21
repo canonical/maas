@@ -91,6 +91,8 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    NODE_BOOT,
+    NODE_BOOT_CHOICES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -545,6 +547,13 @@ class NodeForm(MAASModelForm):
         except ValueError:
             raise ValidationError('Invalid size for swap: %s' % swap_size)
 
+    def clean_boot_type(self):
+        boot_type = self.cleaned_data.get('boot_type')
+        if not boot_type:
+            return NODE_BOOT.FASTPATH
+        else:
+            return boot_type
+
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
         if self.new_node and self.data.get('disable_ipv4') is None:
@@ -649,6 +658,9 @@ class NodeForm(MAASModelForm):
             "The size of the swap file in bytes. The field also accepts K, M, "
             "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
 
+    boot_type = forms.ChoiceField(
+        choices=NODE_BOOT_CHOICES, initial=NODE_BOOT.FASTPATH, required=False)
+
     class Meta:
         model = Node
 
@@ -664,6 +676,7 @@ class NodeForm(MAASModelForm):
             'license_key',
             'disable_ipv4',
             'swap_size',
+            'boot_type',
             )
 
 

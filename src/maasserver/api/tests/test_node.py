@@ -197,6 +197,14 @@ class TestNodeAPI(APITestCase):
                 parsed_result['zone']['name'],
                 parsed_result['zone']['description']])
 
+    def test_GET_returns_boot_type(self):
+        node = factory.make_Node()
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            node.boot_type, parsed_result['boot_type'])
+
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.

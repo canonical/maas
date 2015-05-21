@@ -69,6 +69,7 @@ class TestNodeForm(MAASServerTestCase):
                 'license_key',
                 'disable_ipv4',
                 'swap_size',
+                'boot_type',
                 'nodegroup',
             ], list(form.fields))
 
@@ -485,6 +486,7 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'license_key',
                 'disable_ipv4',
                 'swap_size',
+                'boot_type',
                 'power_type',
                 'power_parameters',
                 'cpu_count',

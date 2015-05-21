@@ -25,6 +25,7 @@ from maasserver import forms
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -1653,6 +1654,21 @@ class TestDeploymentStatus(APITestCase):
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertThat(
             response.content, Contains("Unknown node(s)"))
+
+    def test_PUT_updates_boot_type(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self),
+            boot_type=NODE_BOOT.FASTPATH,
+            )
+        response = self.client.put(
+            reverse('node_handler', args=[node.system_id]),
+            {'boot_type': NODE_BOOT.DEBIAN})
+        parsed_result = json.loads(response.content)
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(node.boot_type, parsed_result['boot_type'])
+        self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
 
     def test_PUT_updates_swap_size(self):
         node = factory.make_Node(owner=self.logged_in_user,

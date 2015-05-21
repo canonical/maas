@@ -101,6 +101,7 @@ DISPLAYED_NODE_FIELDS = (
     'substatus',
     'osystem',
     'distro_series',
+    'boot_type',
     'netboot',
     'power_type',
     'power_state',
@@ -299,6 +300,11 @@ class NodeHandler(OperationsHandler):
             accept K, M, G and T suffixes for values expressed respectively in
             kilobytes, megabytes, gigabytes and terabytes.
         :type swap_size: unicode
+        :param boot_type: The installation type of the node. 'fastpath': use
+            the default installer. 'di' use the debian installer.
+            Note that using 'di' is now deprecated and will be removed in favor
+            of the default installer in MAAS 1.9.
+        :type boot_type: unicode
 
         Returns 404 if the node is node found.
         Returns 403 if the user does not have permission to update the node.
@@ -830,6 +836,11 @@ class AnonNodesHandler(AnonymousOperationsHandler):
             comes from an IP range within a known nodegroup, that nodegroup
             will be used.)
         :param nodegroup: The id of the nodegroup this node belongs to.
+        :param boot_type: The installation type of the node. 'fastpath': use
+            the default installer. 'di' use the debian installer.
+            Note that using 'di' is now deprecated and will be removed in favor
+            of the default installer in MAAS 1.9.
+        :type boot_type: unicode
         """
         return create_node(request)
 

@@ -483,7 +483,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
         system_id = json.loads(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.NEW,
@@ -531,6 +531,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'osystem',
                 'distro_series',
                 'netboot',
+                'boot_type',
                 'power_type',
                 'power_state',
                 'tag_names',
@@ -629,6 +630,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'osystem',
                 'distro_series',
                 'netboot',
+                'boot_type',
                 'power_type',
                 'power_state',
                 'resource_uri',
@@ -781,6 +783,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'osystem',
                 'distro_series',
                 'netboot',
+                'boot_type',
                 'power_type',
                 'power_state',
                 'resource_uri',
