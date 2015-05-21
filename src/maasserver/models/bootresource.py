@@ -271,7 +271,7 @@ class BootResource(CleanSave, TimestampedModel):
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 
-    def __repr__(self):
+    def __unicode__(self):
         return "<BootResource %s>" % self.name
 
     @property

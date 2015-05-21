@@ -111,6 +111,9 @@ class LargeFile(CleanSave, TimestampedModel):
     # Max file storage size is 4TB.
     content = LargeObjectField()
 
+    def __unicode__(self):
+        return "<LargeFile size=%d sha256=%s>" % (self.total_size, self.sha256)
+
     @property
     def size(self):
         """Size of content."""

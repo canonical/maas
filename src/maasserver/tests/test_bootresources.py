@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import logging
 import os
 from os import environ
 from random import randint
@@ -29,7 +30,10 @@ from django.db import (
 )
 from django.http import StreamingHttpResponse
 from django.test.client import Client
-from fixtures import Fixture
+from fixtures import (
+    FakeLogger,
+    Fixture,
+)
 from maasserver import (
     bootresources,
     utils as utils_module,
@@ -39,6 +43,7 @@ from maasserver.bootresources import (
     download_all_boot_resources,
     download_boot_resources,
     get_simplestream_endpoint,
+    SimpleStreamsHandler,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.components import (
@@ -80,6 +85,7 @@ from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
+    Contains,
     ContainsAll,
     Equals,
     Is,
@@ -876,6 +882,19 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
         self.assertEqual(largefile, reload_object(rfile).largefile)
         self.assertThat(mock_save_later, MockNotCalled())
 
+    def test_insert_prints_warning_if_mismatch_largefile(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            product, resource = make_boot_resource_group_from_product(product)
+            largefile = factory.make_LargeFile()
+        product['sha256'] = largefile.sha256
+        product['size'] = largefile.total_size
+        store = BootResourceStore()
+        with FakeLogger("maas", logging.WARNING) as logger:
+            store.insert(product, sentinel.reader)
+        self.assertDocTestMatches(
+            "Hash mismatch for prev_file=...", logger.output)
+
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
         name, architecture, product = make_product()
         with transaction.atomic():
@@ -925,6 +944,38 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
         self.assertThat(
             mock_save_later,
             MockCalledOnceWith(rfile, sentinel.reader))
+
+    def test_insert_prints_error_when_breaking_resources(self):
+        # Test case for bug 1419041: if the call to insert() makes
+        # an existing complete resource incomplete: print an error in the
+        # log.
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            resource = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+                architecture=architecture)
+            release_name = resource.name.split('/')[1]
+            resource_set = factory.make_BootResourceSet(
+                resource, version=product['version_name'])
+            factory.make_boot_resource_file_with_content(
+                resource_set, filename=product['ftype'],
+                filetype=product['ftype'])
+            # The resource has a complete set.
+            self.assertIsNotNone(resource.get_latest_complete_set())
+            # The resource is references in the simplestreams endpoint.
+            simplestreams_content = (
+                SimpleStreamsHandler().get_product_index().content)
+            self.assertThat(simplestreams_content, Contains(release_name))
+        product['sha256'] = factory.make_string(size=64)
+        product['size'] = randint(1024, 2048)
+        store = BootResourceStore()
+
+        with FakeLogger("maas", logging.ERROR) as logger:
+            store.insert(product, sentinel.reader)
+
+        self.assertDocTestMatches(
+            "Resource %s has no complete resource set!" % resource,
+            logger.output)
 
     def test_resource_cleaner_removes_old_boot_resources(self):
         with transaction.atomic():

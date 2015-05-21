@@ -84,7 +84,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
 
     label = CharField(max_length=255, editable=False)
 
-    def __repr__(self):
+    def __unicode__(self):
         return "<BootResourceSet %s/%s>" % (self.version, self.label)
 
     @property

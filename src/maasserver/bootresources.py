@@ -236,6 +236,8 @@ class SimpleStreamsHandler:
             'format': "index:1.0"
             }
         data = sutil.dump_data(index) + "\n"
+        maaslog.debug(
+            "Simplestreams product index: %s.", data)
         return self.get_json_response(data)
 
     def get_product_item(self, resource, resource_set, rfile):
@@ -497,6 +499,8 @@ class BootResourceStore(ObjectStore):
         if resource_set is None:
             resource_set = BootResourceSet(resource=resource, version=version)
         resource_set.label = product['label']
+        maaslog.debug(
+            "Got boot resource set id=%s %s.", resource_set.id, resource_set)
         resource_set.save()
         return resource_set
 
@@ -511,6 +515,8 @@ class BootResourceStore(ObjectStore):
         if rfile is None:
             rfile = BootResourceFile(
                 resource_set=resource_set, filename=filename)
+        maaslog.debug(
+            "Got boot resource file id=%s %s.", rfile.id, rfile)
         rfile.filetype = filetype
         rfile.extra = {}
 
@@ -582,6 +588,10 @@ class BootResourceStore(ObjectStore):
                 # not allowed.
                 prev_largefile = largefile
                 largefile = None
+                maaslog.warning(
+                    "Hash mismatch for prev_file=%s resourceset=%s "
+                    "resource=%s",
+                    prev_largefile, resource_set, resource)
 
         if largefile is None:
             # The resource file current does not have a largefile linked. Lets
@@ -600,11 +610,17 @@ class BootResourceStore(ObjectStore):
                 sha256=sha256, total_size=total_size,
                 content=largeobject)
             needs_saving = True
+            maaslog.debug(
+                "New large file created %s.", largefile)
 
         # A largefile now exists for this resource file. Its either a new
         # largefile or an existing one that already existed in the database.
         rfile.largefile = largefile
         rfile.save()
+
+        if resource.get_latest_complete_set() is None:
+            maaslog.error(
+                "Resource %s has no complete resource set!", resource)
 
         if prev_largefile is not None:
             # If the previous largefile had a miss matching sha256 then it
@@ -727,12 +743,16 @@ class BootResourceStore(ObjectStore):
                 if not resource_set.complete:
                     # At this point all resource sets should be complete.
                     # Delete the extras that are not.
+                    maaslog.debug(
+                        "Deleting incomplete resourceset %s.", resource_set)
                     resource_set.delete()
                 else:
                     # It is complete, only keep the newest complete set.
                     if not found_complete:
                         found_complete = True
                     else:
+                        maaslog.debug(
+                            "Deleting obsolete resourceset %s.", resource_set)
                         resource_set.delete()
 
         # Cleanup the resources that don't have sets. This is done because
@@ -742,6 +762,8 @@ class BootResourceStore(ObjectStore):
         for resource in BootResource.objects.filter(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED):
             if not resource.sets.exists():
+                maaslog.debug(
+                    "Deleting empty resource %s.", resource)
                 resource.delete()
 
     def finalize(self):
