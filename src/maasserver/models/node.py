@@ -1578,13 +1578,19 @@ class Node(CleanSave, TimestampedModel):
         """Mark allocated or reserved node as available again and power off.
         """
         maaslog.info("%s: Releasing node", self.hostname)
-        try:
-            self.stop(self.owner)
-        except Exception as ex:
-            maaslog.error(
-                "%s: Unable to shut node down: %s", self.hostname,
-                unicode(ex))
-            raise
+
+        # Don't perform stop the node if its already off. Doing so will
+        # place an action in the power registry which is not needed and can
+        # block a following deploy action. See bug 1453954 for an example of
+        # the issue this will cause.
+        if self.power_state != POWER_STATE.OFF:
+            try:
+                self.stop(self.owner)
+            except Exception as ex:
+                maaslog.error(
+                    "%s: Unable to shut node down: %s", self.hostname,
+                    unicode(ex))
+                raise
 
         deallocate_ip_address = True
         if self.power_state == POWER_STATE.OFF:

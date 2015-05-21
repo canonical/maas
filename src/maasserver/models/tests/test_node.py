@@ -939,9 +939,11 @@ class TestNode(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        self.patch(node, 'stop')
         self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.OFF
         node.release()
+        self.expectThat(node.stop, MockNotCalled())
         self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
@@ -1180,15 +1182,26 @@ class TestNode(MAASServerTestCase):
         self.assertEqual("", node.osystem)
         self.assertEqual("", node.distro_series)
 
-    def test_release_powers_off_node(self):
+    def test_release_powers_off_node_when_on(self):
         user = factory.make_User()
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh')
+            status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh',
+            power_state=POWER_STATE.ON)
         self.patch(node, 'start_transition_monitor')
         node_stop = self.patch(node, 'stop')
         node.release()
         self.assertThat(
             node_stop, MockCalledOnceWith(user))
+
+    def test_release_doesnt_power_off_node_when_off(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh',
+            power_state=POWER_STATE.OFF)
+        self.patch(node, 'start_transition_monitor')
+        node_stop = self.patch(node, 'stop')
+        node.release()
+        self.assertThat(node_stop, MockNotCalled())
 
     def test_release_deallocates_static_ip_when_node_is_off(self):
         user = factory.make_User()
@@ -1255,7 +1268,8 @@ class TestNode(MAASServerTestCase):
         self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
     def test_release_logs_and_raises_errors_in_stopping(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, power_state=POWER_STATE.ON)
         maaslog = self.patch(node_module, 'maaslog')
         exception_class = factory.make_exception_type()
         exception = exception_class(factory.make_name())
@@ -1272,6 +1286,7 @@ class TestNode(MAASServerTestCase):
         # will leave the node in its previous state (i.e. DEPLOYED).
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, power_type="virsh",
+            power_state=POWER_STATE.ON,
             owner=factory.make_User())
         node_stop = self.patch(node, 'stop')
         node_stop.side_effect = factory.make_exception()
@@ -1671,7 +1686,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(expected_hostname, node.fqdn)
 
     def test_boot_type_has_fastpath_set_by_default(self):
-        node = factory.make_Node()
+        node = Node()
         self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
 
     def test_split_arch_returns_arch_as_tuple(self):

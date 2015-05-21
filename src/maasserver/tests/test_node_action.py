@@ -733,9 +733,10 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_autospec(node, 'start_transition_monitor')
         self.patch_autospec(node, 'stop_transition_monitor')
 
-    def make_action(self, action_class, node_status):
+    def make_action(self, action_class, node_status, power_state=None):
         node = factory.make_Node(
-            mac=True, status=node_status, power_type='ether_wake')
+            mac=True, status=node_status, power_type='ether_wake',
+            power_state=power_state)
         admin = factory.make_admin()
         return action_class(node, admin)
 
@@ -781,7 +782,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
             unicode(exception))
 
     def test_Release_handles_rpc_errors(self):
-        action = self.make_action(Release, NODE_STATUS.ALLOCATED)
+        action = self.make_action(
+            Release, NODE_STATUS.ALLOCATED, power_state=POWER_STATE.ON)
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
