@@ -323,5 +323,20 @@ up almost immediately.
   https://www.symantec.com/business/support/index?page=content&id=HOWTO6019
 
 
+Traffic between the region contoller and cluster controllers
+------------------------------------------------------------
+
+* Each cluster controller must be able to:
+
+  * Initiate TCP connections (for HTTP) to each region controller on
+    port 80 or port 5240, the choice of which depends on the setting of
+    ``MAAS_URL``.
+
+  * Initiate TCP connections (for RPC) to each region controller between
+    port 5250 and 5259 inclusive. This permits up to 10 ``maas-regiond``
+    processes on each region controller host. At present this is not
+    configurable.
+
+
 Once everything is set up and running, you are ready to :doc:`start
 enlisting nodes <nodes>`

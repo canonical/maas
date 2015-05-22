@@ -464,7 +464,10 @@ class RegionService(service.Service, object):
     This is a service - in the Twisted sense - that exposes the
     ``Region`` protocol on a port.
 
-    :ivar endpoints: The endpoints on which to listen.
+    :ivar endpoints: The endpoints on which to listen, as a list of lists.
+        Only one endpoint in each nested list will be bound (they will be
+        tried in order until the first success). In this way it is possible to
+        specify, say, a range of ports, but only bind one of them.
     :ivar ports: The opened :py:class:`IListeningPort`s.
     :ivar connections: Maps :class:`Region` connections to clusters.
     :ivar waiters: Maps cluster idents to callers waiting for a connection.
@@ -478,7 +481,10 @@ class RegionService(service.Service, object):
 
     def __init__(self):
         super(RegionService, self).__init__()
-        self.endpoints = [TCP4ServerEndpoint(reactor, 0)]
+        self.endpoints = [
+            [TCP4ServerEndpoint(reactor, port)
+             for port in xrange(5250, 5260)],
+        ]
         self.connections = defaultdict(set)
         self.waiters = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
@@ -529,15 +535,37 @@ class RegionService(service.Service, object):
             elif result.check(defer.CancelledError):
                 pass  # Ignore.
             else:
-                log.err(result)
+                log.err(result, "RegionServer endpoint failed to listen.")
+
+    @inlineCallbacks
+    def _bindFirst(self, endpoints, factory):
+        """Return the first endpoint to successfully listen.
+
+        :param endpoints: A sized iterable of `IStreamServerEndpoint`.
+        :param factory: A protocol factory.
+
+        :return: A `Deferred` yielding a :class:`twisted.internet.tcp.Port` or
+            the error encountered when trying to listen on the last of the
+            given endpoints.
+        """
+        assert len(endpoints) > 0, "No endpoint options specified."
+        last = len(endpoints) - 1
+        for index, endpoint in enumerate(endpoints):
+            try:
+                port = yield endpoint.listen(factory)
+            except:
+                if index == last:
+                    raise
+            else:
+                returnValue(port)
 
     @asynchronous
     def startService(self):
         """Start listening on an ephemeral port."""
         super(RegionService, self).startService()
         self.starting = defer.DeferredList(
-            (endpoint.listen(self.factory) for endpoint in self.endpoints),
-            consumeErrors=True)
+            (self._bindFirst(endpoint_options, self.factory)
+             for endpoint_options in self.endpoints))
 
         def log_failure(failure):
             if failure.check(defer.CancelledError):

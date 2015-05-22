@@ -272,7 +272,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         assert isinstance(self.rpc.endpoints, list)
         # Patch a fake UNIX endpoint in to the RPC service.
         endpoint = endpoints.UNIXServerEndpoint(reactor, self.sockfile)
-        self.monkey.add_patch(self.rpc, "endpoints", [endpoint])
+        self.monkey.add_patch(self.rpc, "endpoints", [[endpoint]])
 
         # The RPC service uses a defaultdict(set) to manage connections, but
         # let's check those assumptions.

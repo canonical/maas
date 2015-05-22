@@ -83,6 +83,7 @@ from mock import (
     ANY,
     call,
     Mock,
+    sentinel,
 )
 import netaddr
 from provisioningserver.network import discover_networks
@@ -144,8 +145,10 @@ from testtools.matchers import (
     HasLength,
     Is,
     IsInstance,
+    MatchesAll,
     MatchesListwise,
     MatchesStructure,
+    Not,
 )
 from twisted.application.service import Service
 from twisted.internet import (
@@ -160,6 +163,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
@@ -167,6 +171,7 @@ from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
+from twisted.python.reflect import fullyQualifiedName
 from zope.interface.verify import verifyObject
 
 
@@ -1223,7 +1228,8 @@ class TestRegionService(MAASTestCase):
         self.assertThat(service.connections, IsInstance(defaultdict))
         self.assertThat(service.connections.default_factory, Is(set))
         self.assertThat(
-            service.endpoints, AllMatch(Provides(IStreamServerEndpoint)))
+            service.endpoints, AllMatch(
+                AllMatch(Provides(IStreamServerEndpoint))))
         self.assertThat(service.factory, IsInstance(Factory))
         self.assertThat(service.factory.protocol, Equals(RegionServer))
 
@@ -1274,8 +1280,8 @@ class TestRegionService(MAASTestCase):
         service = RegionService()
 
         # Return an inert Deferred from the listen() call.
-        endpoints = self.patch(service, "endpoints", [Mock()])
-        endpoints[0].listen.return_value = Deferred()
+        endpoints = self.patch(service, "endpoints", [[Mock()]])
+        endpoints[0][0].listen.return_value = Deferred()
 
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
@@ -1296,28 +1302,112 @@ class TestRegionService(MAASTestCase):
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is not the messiah.")
-        endpoints = self.patch(service, "endpoints", [Mock()])
-        endpoints[0].listen.return_value = fail(exception)
+        endpoints = self.patch(service, "endpoints", [[Mock()]])
+        endpoints[0][0].listen.return_value = fail(exception)
 
-        err_calls = []
-        self.patch(log, "err", err_calls.append)
+        logged_failures = []
+        self.patch(log, "msg", (
+            lambda failure, **kw: logged_failures.append(failure)))
 
-        err_calls_expected = [
+        logged_failures_expected = [
             AfterPreprocessing(
                 (lambda failure: failure.value),
                 Is(exception)),
         ]
 
         yield service.startService()
-        self.assertThat(err_calls, MatchesListwise(err_calls_expected))
+        self.assertThat(
+            logged_failures, MatchesListwise(logged_failures_expected))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_binds_first_of_endpoint_options(self):
+        service = RegionService()
+
+        endpoint_1 = Mock()
+        endpoint_1.listen.return_value = succeed(sentinel.port1)
+        endpoint_2 = Mock()
+        endpoint_2.listen.return_value = succeed(sentinel.port2)
+        service.endpoints = [[endpoint_1, endpoint_2]]
+
+        yield service.startService()
+
+        self.assertThat(service.ports, Equals([sentinel.port1]))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_binds_first_of_real_endpoint_options(self):
+        service = RegionService()
+
+        # endpoint_1.listen(...) will bind to a random high-numbered port.
+        endpoint_1 = TCP4ServerEndpoint(reactor, 0)
+        # endpoint_2.listen(...), if attempted, will crash because only root
+        # (or a user with explicit capabilities) can do stuff like that. It's
+        # a reasonable assumption that the user running these tests is not
+        # root, but we'll check the port number later too to be sure.
+        endpoint_2 = TCP4ServerEndpoint(reactor, 1)
+
+        service.endpoints = [[endpoint_1, endpoint_2]]
+
+        yield service.startService()
+        self.addCleanup(wait_for_reactor(service.stopService))
+
+        # A single port has been bound.
+        self.assertThat(service.ports, MatchesAll(
+            HasLength(1), AllMatch(IsInstance(tcp.Port))))
+
+        # The port is not listening on port 1; i.e. a belt-n-braces check that
+        # endpoint_2 was not used.
+        [port] = service.ports
+        self.assertThat(port.getHost().port, Not(Equals(1)))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_binds_first_successful_of_endpoint_options(self):
+        service = RegionService()
+
+        endpoint_broken = Mock()
+        endpoint_broken.listen.return_value = fail(factory.make_exception())
+        endpoint_okay = Mock()
+        endpoint_okay.listen.return_value = succeed(sentinel.port)
+        service.endpoints = [[endpoint_broken, endpoint_okay]]
+
+        yield service.startService()
+
+        self.assertThat(service.ports, Equals([sentinel.port]))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_start_up_logs_failure_if_all_endpoint_options_fail(self):
+        service = RegionService()
+
+        error_1 = factory.make_exception_type()
+        error_2 = factory.make_exception_type()
+
+        endpoint_1 = Mock()
+        endpoint_1.listen.return_value = fail(error_1())
+        endpoint_2 = Mock()
+        endpoint_2.listen.return_value = fail(error_2())
+        service.endpoints = [[endpoint_1, endpoint_2]]
+
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+
+        self.assertDocTestMatches(
+            """\
+            RegionServer endpoint failed to listen.
+            Traceback (most recent call last):
+            Failure: %s:
+            """ % fullyQualifiedName(error_2),
+            logger.output)
 
     @wait_for_reactor
     def test_stopping_cancels_startup(self):
         service = RegionService()
 
         # Return an inert Deferred from the listen() call.
-        endpoints = self.patch(service, "endpoints", [Mock()])
-        endpoints[0].listen.return_value = Deferred()
+        endpoints = self.patch(service, "endpoints", [[Mock()]])
+        endpoints[0][0].listen.return_value = Deferred()
 
         service.startService()
         service.stopService()
@@ -1391,8 +1481,8 @@ class TestRegionService(MAASTestCase):
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is a very naughty boy.")
-        endpoints = self.patch(service, "endpoints", [Mock()])
-        endpoints[0].listen.return_value = fail(exception)
+        endpoints = self.patch(service, "endpoints", [[Mock()]])
+        endpoints[0][0].listen.return_value = fail(exception)
         # Suppress logged messages.
         self.patch(log.theLogPublisher, "observers", [])
 
