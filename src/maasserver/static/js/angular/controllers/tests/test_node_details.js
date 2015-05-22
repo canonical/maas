@@ -2040,4 +2040,48 @@ describe("NodeDetailsController", function() {
             expect($scope.nic.adding).toBe(true);
         });
     });
+
+    describe("cancelAddInterface", function() {
+
+        it("hides add MAC form, leaves the MAC value untouched", function() {
+            var controller = makeController();
+
+            $scope.nic = {
+                adding: true,
+                mac: "01:23:45:67:89:ab",
+                error: false,
+                errormsg: null
+            };
+            $scope.cancelAddInterface();
+
+            // Add MAC form is hidden.
+            expect($scope.nic.adding).toBe(false);
+
+            // MAC address is left alone.
+            expect($scope.nic.mac).toBe("01:23:45:67:89:ab");
+        });
+
+        it("hides add MAC form, clear errors if set", function() {
+            var controller = makeController();
+
+            $scope.nic = {
+                adding: true,
+                mac: "01:23:45:67:89:ab",
+                error: true,
+                errormsg: "This is an error message"
+            };
+            $scope.cancelAddInterface();
+
+            // Add MAC form is hidden.
+            expect($scope.nic.adding).toBe(false);
+
+            // Error message is reset.
+            expect($scope.nic.errormsg).toBe(null);
+
+            // MAC address is cleared.
+            expect($scope.nic.mac).toBe("");
+        });
+
+    });
+
 });

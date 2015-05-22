@@ -259,6 +259,15 @@ form {
     font-size: 0;
     margin-bottom: 10px;
 
+    &.error {
+        background-color: #fdf5f5;
+        box-shadow: 0px 0px 0px 5px #fdf5f5;
+
+        .ng-invalid {
+            border-color: #D2D2D2;
+        }
+    }
+
     label {
         display: inline-block;
         float: none;
@@ -287,6 +296,18 @@ form {
          * Required to fix the inline block invisible margin
          */
         font-size: 16px;
+
+        &:invalid {
+            -moz-box-shadow: none;
+        }
+
+        &:-moz-submit-invalid {
+            box-shadow: none;
+        }
+
+        &:-moz-ui-invalid {
+            box-shadow:none;
+        }
     }
 
     div {
@@ -302,6 +323,14 @@ form {
          */
         font-size: 16px;
         margin-top: 10px;
+    }
+
+    .error-message {
+        font-size: 12px;
+        color: #e85232;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        font-weight: normal;
     }
 
 }

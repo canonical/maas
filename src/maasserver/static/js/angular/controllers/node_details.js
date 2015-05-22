@@ -782,6 +782,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateNode(node);
         };
 
+        // Called to close the NIC add form (and clean it up).
+        $scope.cancelAddInterface = function() {
+            $scope.nic.adding = false;
+            if ($scope.nic.error) {
+                $scope.nic.error = false;
+                $scope.nic.errormsg = null;
+                $scope.nic.mac = "";
+            }
+        };
+
         // Return the ip address text for the given nic.
         $scope.getIPAddressText = function(nic) {
             return nic.ip_addresses.map(function(ipAddress) {
