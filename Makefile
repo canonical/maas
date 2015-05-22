@@ -84,9 +84,10 @@ bin/python:
 	bin/pip install hypothesis==0.7.2  # buildout can't install this.
 
 configure-buildout:
-	utilities/configure-buildout --quiet
+	utilities/configure-buildout
 
-bin/buildout: configure-buildout bin/python bootstrap/zc.buildout-1.5.2.tar.gz
+bin/buildout: bin/python bootstrap/zc.buildout-1.5.2.tar.gz
+	@utilities/configure-buildout --quiet
 	bin/python -m pip --quiet install --ignore-installed \
 	    --no-dependencies bootstrap/zc.buildout-1.5.2.tar.gz
 	$(RM) README.txt  # zc.buildout installs an annoying README.txt.
@@ -351,6 +352,7 @@ define phony_targets
   lint-doc
   lint-js
   lint-py
+  lint-rst
   man
   package
   package-clean
