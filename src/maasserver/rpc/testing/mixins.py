@@ -22,11 +22,11 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
+from maastesting.twisted import always_succeed_with
 from provisioningserver.rpc.cluster import (
     ComposeCurtinNetworkPreseed,
     GetPreseedData,
 )
-from provisioningserver.rpc.testing import always_succeed_with
 
 
 class PreseedRPCMixin:

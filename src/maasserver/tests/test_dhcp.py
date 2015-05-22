@@ -47,6 +47,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from maastesting.twisted import always_succeed_with
 from mock import (
     ANY,
     call,
@@ -60,7 +61,6 @@ from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
 )
-from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.url import compose_URL
 from testtools.matchers import (
     AllMatch,

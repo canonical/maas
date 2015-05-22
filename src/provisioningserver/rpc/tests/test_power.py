@@ -29,6 +29,10 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import (
+    always_succeed_with,
+    TwistedLoggerFixture,
+)
 from mock import (
     ANY,
     call,
@@ -45,10 +49,8 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import (
-    always_succeed_with,
     MockClusterToRegionRPCFixture,
     MockLiveClusterToRegionRPCFixture,
-    TwistedLoggerFixture,
 )
 from testtools import ExpectedException
 from testtools.deferredruntest import (

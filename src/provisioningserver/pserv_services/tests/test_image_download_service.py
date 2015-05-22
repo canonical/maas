@@ -26,6 +26,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     call,
     Mock,
@@ -42,7 +43,6 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
 )
-from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService

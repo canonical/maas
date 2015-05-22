@@ -25,6 +25,7 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     ANY,
     call,
@@ -36,10 +37,7 @@ from provisioningserver.rpc import (
     exceptions,
     region,
 )
-from provisioningserver.rpc.testing import (
-    MockClusterToRegionRPCFixture,
-    TwistedLoggerFixture,
-)
+from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from testtools.deferredruntest import extract_result
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (

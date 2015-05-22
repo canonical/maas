@@ -34,6 +34,10 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+)
 from metadataserver.models import commissioningscript
 from mock import (
     ANY,
@@ -42,10 +46,6 @@ from mock import (
 )
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
-from provisioningserver.rpc.testing import (
-    always_fail_with,
-    always_succeed_with,
-)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
 from testtools.monkey import MonkeyPatcher

@@ -28,7 +28,7 @@ from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.rpc.testing import TwistedLoggerFixture
+from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import (
     ContainsDict,
     Equals,

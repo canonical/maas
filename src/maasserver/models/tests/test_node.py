@@ -98,6 +98,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from maastesting.twisted import always_succeed_with
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -120,7 +121,6 @@ from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
-from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,

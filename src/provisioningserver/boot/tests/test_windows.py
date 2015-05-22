@@ -26,6 +26,10 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+)
 import mock
 from mock import sentinel
 from provisioningserver.boot import (
@@ -40,10 +44,6 @@ from provisioningserver.boot.windows import (
 from provisioningserver.config import Config
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
-from provisioningserver.rpc.testing import (
-    always_fail_with,
-    always_succeed_with,
-)
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.deferredruntest import extract_result
 from testtools.matchers import Is

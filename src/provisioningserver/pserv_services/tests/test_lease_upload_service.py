@@ -23,6 +23,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     ANY,
     call,
@@ -39,10 +40,7 @@ from provisioningserver.pserv_services.lease_upload_service import (
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLeases
-from provisioningserver.rpc.testing import (
-    MockClusterToRegionRPCFixture,
-    TwistedLoggerFixture,
-)
+from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService

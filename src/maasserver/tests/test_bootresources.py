@@ -73,6 +73,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     ANY,
     MagicMock,
@@ -81,7 +82,6 @@ from mock import (
 )
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
-from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (

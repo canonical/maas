@@ -32,12 +32,12 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     call,
     Mock,
     sentinel,
 )
-from provisioningserver.rpc.testing import TwistedLoggerFixture
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,

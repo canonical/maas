@@ -40,6 +40,7 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import TwistedLoggerFixture
 import mock
 from mock import (
     sentinel,
@@ -62,7 +63,6 @@ from provisioningserver.pserv_services.tftp import (
     TFTPService,
     UDPServer,
 )
-from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools import ExpectedException
 from testtools.matchers import (

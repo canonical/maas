@@ -79,6 +79,11 @@ from maastesting.matchers import (
     Provides,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+    TwistedLoggerFixture,
+)
 from mock import (
     ANY,
     call,
@@ -124,11 +129,8 @@ from provisioningserver.rpc.region import (
     UpdateNodePowerState,
 )
 from provisioningserver.rpc.testing import (
-    always_fail_with,
-    always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
-    TwistedLoggerFixture,
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root

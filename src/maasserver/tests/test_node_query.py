@@ -36,6 +36,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from maastesting.twisted import always_succeed_with
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
@@ -45,7 +46,6 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
 )
-from provisioningserver.rpc.testing import always_succeed_with
 from testtools.matchers import (
     Equals,
     Is,

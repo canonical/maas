@@ -58,6 +58,7 @@ from maasserver.websockets.handlers.node import (
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.twisted import always_succeed_with
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
@@ -65,7 +66,6 @@ from mock import Mock
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException

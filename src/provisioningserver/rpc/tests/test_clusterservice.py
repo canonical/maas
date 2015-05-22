@@ -43,6 +43,11 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+    TwistedLoggerFixture,
+)
 from mock import (
     ANY,
     call,
@@ -94,12 +99,9 @@ from provisioningserver.rpc.monitors import (
 from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
-    always_fail_with,
-    always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
     MockLiveClusterToRegionRPCFixture,
-    TwistedLoggerFixture,
 )
 from provisioningserver.rpc.testing.doubles import (
     DummyConnection,

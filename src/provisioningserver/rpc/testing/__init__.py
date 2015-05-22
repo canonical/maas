@@ -13,14 +13,11 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "always_fail_with",
-    "always_succeed_with",
     "are_valid_tls_parameters",
     "call_responder",
     "make_amp_protocol_factory",
     "MockClusterToRegionRPCFixture",
     "MockLiveClusterToRegionRPCFixture",
-    "TwistedLoggerFixture",
 ]
 
 from abc import (
@@ -28,18 +25,14 @@ from abc import (
     abstractmethod,
 )
 import collections
-from copy import copy
 import itertools
-import operator
 from os import path
 
 import fixtures
-from fixtures import (
-    EnvironmentVariable,
-    Fixture,
-)
+from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
+from maastesting.twisted import always_succeed_with
 from mock import (
     Mock,
     sentinel,
@@ -80,10 +73,7 @@ from twisted.internet.defer import (
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
-from twisted.python import (
-    log,
-    reflect,
-)
+from twisted.python import reflect
 from twisted.python.failure import Failure
 from twisted.test import iosim
 
@@ -116,35 +106,6 @@ def call_responder(protocol, command, arguments):
     d.addErrback(eb_massage_error)
 
     return d
-
-
-class TwistedLoggerFixture(Fixture):
-    """Capture all Twisted logging.
-
-    Temporarily replaces all log observers.
-    """
-
-    def __init__(self):
-        super(TwistedLoggerFixture, self).__init__()
-        self.logs = []
-
-    def dump(self):
-        """Return all logs as a string."""
-        return "\n---\n".join(
-            log.textFromEventDict(event) for event in self.logs)
-
-    # For compatibility with fixtures.FakeLogger.
-    output = property(dump)
-
-    def containsError(self):
-        return any(log["isError"] for log in self.logs)
-
-    def setUp(self):
-        super(TwistedLoggerFixture, self).setUp()
-        self.addCleanup(
-            operator.setitem, log.theLogPublisher.observers,
-            slice(None), log.theLogPublisher.observers[:])
-        log.theLogPublisher.observers[:] = [self.logs.append]
 
 
 are_valid_tls_parameters = MatchesDict({
@@ -502,25 +463,3 @@ def make_amp_protocol_factory(*commands):
     cls = type(name, (RPCProtocol,), {"__init__": __init__})
 
     return cls
-
-
-def always_succeed_with(result):
-    """Return a callable that always returns a successful Deferred.
-
-    The callable allows (and ignores) all arguments, and returns a shallow
-    `copy` of `result`.
-    """
-    def always_succeed(*args, **kwargs):
-        return defer.succeed(copy(result))
-    return always_succeed
-
-
-def always_fail_with(result):
-    """Return a callable that always returns a failed Deferred.
-
-    The callable allows (and ignores) all arguments, and returns a shallow
-    `copy` of `result`.
-    """
-    def always_fail(*args, **kwargs):
-        return defer.fail(copy(result))
-    return always_fail
