@@ -18,6 +18,7 @@ __all__ = []
 import random
 from textwrap import dedent
 
+from lxml import etree
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -51,7 +52,48 @@ SAMPLE_DUMPXML = dedent("""
       <vcpu placement='static'>1</vcpu>
       <os>
         <type arch='%s'>hvm</type>
+        <boot dev='hd'/>
+      </os>
+    </domain>
+    """)
+
+SAMPLE_DUMPXML_2 = dedent("""
+    <domain type='kvm'>
+      <name>test</name>
+      <memory unit='KiB'>4096576</memory>
+      <currentMemory unit='KiB'>4096576</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='%s'>hvm</type>
+        <boot dev='hd'/>
         <boot dev='network'/>
+      </os>
+    </domain>
+    """)
+
+SAMPLE_DUMPXML_3 = dedent("""
+    <domain type='kvm'>
+      <name>test</name>
+      <memory unit='KiB'>4096576</memory>
+      <currentMemory unit='KiB'>4096576</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='%s'>hvm</type>
+        <boot dev='network'/>
+      </os>
+    </domain>
+    """)
+
+SAMPLE_DUMPXML_4 = dedent("""
+    <domain type='kvm'>
+      <name>test</name>
+      <memory unit='KiB'>4096576</memory>
+      <currentMemory unit='KiB'>4096576</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='%s'>hvm</type>
+        <boot dev='network'/>
+        <boot dev='hd'/>
       </os>
     </domain>
     """)
@@ -178,7 +220,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(state, expected)
 
     def test_get_state_error(self):
-        conn = self.configure_virshssh('error')
+        conn = self.configure_virshssh('error:')
         expected = conn.get_state('')
         self.assertEqual(None, expected)
 
@@ -210,13 +252,30 @@ class TestVirsh(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def _probe_and_enlist_mock_run(self, *args):
+        args = args[0]
+        # if the argument is "define", we want to ensure that the boot
+        # order has been set up correctly.
+        if args[0] == "define":
+            xml_file = args[1]
+            with open(xml_file) as f:
+                xml = f.read()
+                doc = etree.XML(xml)
+                evaluator = etree.XPathEvaluator(doc)
+                boot_elements = evaluator(virsh.XPATH_BOOT)
+                self.assertEqual(2, len(boot_elements))
+                # make sure we set the network to come first, then the HD
+                self.assertEqual('network', boot_elements[0].attrib['dev'])
+                self.assertEqual('hd', boot_elements[1].attrib['dev'])
+        return ""
+
     @inlineCallbacks
     def test_probe_and_enlist(self):
         # Patch VirshSSH list so that some machines are returned
         # with some fake architectures.
         user = factory.make_name('user')
         system_id = factory.make_name('system_id')
-        machines = [factory.make_name('machine') for _ in range(3)]
+        machines = [factory.make_name('machine') for _ in range(4)]
         self.patch(virsh.VirshSSH, 'list').return_value = machines
         fake_arch = factory.make_name('arch')
         mock_arch = self.patch(virsh.VirshSSH, 'get_arch')
@@ -227,7 +286,8 @@ class TestVirsh(MAASTestCase):
         fake_states = [
             virsh.VirshVMState.ON,
             virsh.VirshVMState.OFF,
-            virsh.VirshVMState.OFF
+            virsh.VirshVMState.OFF,
+            virsh.VirshVMState.ON,
             ]
         mock_state = self.patch(virsh.VirshSSH, 'get_state')
         mock_state.side_effect = fake_states
@@ -239,7 +299,7 @@ class TestVirsh(MAASTestCase):
         called_params = []
         fake_macs = []
         for machine in machines:
-            macs = [factory.make_mac_address() for _ in range(3)]
+            macs = [factory.make_mac_address() for _ in range(4)]
             fake_macs.append(macs)
             called_params.append({
                 'power_address': poweraddr,
@@ -265,6 +325,16 @@ class TestVirsh(MAASTestCase):
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = True
         mock_logout = self.patch(virsh.VirshSSH, 'logout')
+        mock_get_machine_xml = self.patch(virsh.VirshSSH, 'get_machine_xml')
+        mock_get_machine_xml.side_effect = [
+            SAMPLE_DUMPXML,
+            SAMPLE_DUMPXML_2,
+            SAMPLE_DUMPXML_3,
+            SAMPLE_DUMPXML_4,
+        ]
+
+        mock_run = self.patch(virsh.VirshSSH, 'run')
+        mock_run.side_effect = self._probe_and_enlist_mock_run
 
         # Perform the probe and enlist
         yield deferToThread(
@@ -281,6 +351,9 @@ class TestVirsh(MAASTestCase):
         self.expectThat(
             mock_poweroff, MockCalledOnceWith(machines[0]))
 
+        self.expectThat(
+            mock_poweroff, MockCalledOnceWith(machines[3]))
+
         # Check that the create command had the correct parameters for
         # each machine.
         self.expectThat(
@@ -293,7 +366,11 @@ class TestVirsh(MAASTestCase):
                     machines[1]),
                 call(
                     fake_macs[2], fake_arch, 'virsh', called_params[2],
-                    machines[2])))
+                    machines[2]),
+                call(
+                    fake_macs[3], fake_arch, 'virsh', called_params[3],
+                    machines[3]),
+            ))
         mock_logout.assert_called()
         self.expectThat(
             mock_commission_node,

@@ -14,8 +14,11 @@ __all__ = [
     'probe_virsh_and_enlist',
     ]
 
+from tempfile import NamedTemporaryFile
+
 from lxml import etree
 import pexpect
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     commission_node,
     create_node,
@@ -23,7 +26,11 @@ from provisioningserver.utils import (
 from provisioningserver.utils.twisted import synchronous
 
 
+maaslog = get_maas_logger("drivers.virsh")
+
 XPATH_ARCH = "/domain/os/type/@arch"
+XPATH_BOOT = "/domain/os/boot"
+XPATH_OS = "/domain/os"
 
 # Virsh stores the architecture with a different
 # label then MAAS. This maps virsh architecture to
@@ -92,11 +99,30 @@ class VirshSSH(pexpect.spawn):
             self.dom_prefix = ''
         else:
             self.dom_prefix = dom_prefix
+        # Store a mapping of { machine_name: xml }.
+        self.xml = {}
 
     def _execute(self, poweraddr):
         """Spawns the pexpect command."""
         cmd = 'virsh --connect %s' % poweraddr
         self._spawn(cmd)
+
+    def get_machine_xml(self, machine):
+        # Check if we have a cached version of the XML.
+        # This is a short-lived object, so we don't need to worry about
+        # expiring objects in the cache.
+        if machine in self.xml:
+            return self.xml[machine]
+
+        # Grab the XML from virsh if we don't have it already.
+        output = self.run(['dumpxml', machine]).strip()
+        if output.startswith("error:"):
+            maaslog.error("%s: Failed to get XML for machine", machine)
+            return None
+
+        # Cache the XML, since we'll need it later to reconfigure the VM.
+        self.xml[machine] = output
+        return output
 
     def login(self, poweraddr, password=None):
         """Starts connection to virsh."""
@@ -143,23 +169,24 @@ class VirshSSH(pexpect.spawn):
         return '\n'.join(result[1:])
 
     def list(self):
-        """Lists all virtual machines by name."""
+        """Lists all VMs by name."""
         machines = self.run(['list', '--all', '--name'])
         machines = machines.strip().splitlines()
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
     def get_state(self, machine):
-        """Gets the virtual machine state."""
+        """Gets the VM state."""
         state = self.run(['domstate', machine])
         state = state.strip()
-        if 'error' in state:
+        if state.startswith('error:'):
             return None
         return state
 
     def get_mac_addresses(self, machine):
-        """Gets list of mac addressess assigned to the virtual machine."""
+        """Gets list of mac addressess assigned to the VM."""
         output = self.run(['domiflist', machine]).strip()
-        if 'error' in output:
+        if output.startswith("error:"):
+            maaslog.error("%s: Failed to get node MAC addresses", machine)
             return None
         output = output.splitlines()[2:]
         # Only return the last item of the line, as it is ensured that the
@@ -167,9 +194,10 @@ class VirshSSH(pexpect.spawn):
         return [line.split()[-1] for line in output]
 
     def get_arch(self, machine):
-        """Gets the virtual machine architecture."""
-        output = self.run(['dumpxml', machine]).strip()
-        if 'error' in output:
+        """Gets the VM architecture."""
+        output = self.get_machine_xml(machine)
+        if output is None:
+            maaslog.error("%s: Failed to get VM architecture", machine)
             return None
 
         doc = etree.XML(output)
@@ -180,17 +208,58 @@ class VirshSSH(pexpect.spawn):
         # name, that MAAS understands.
         return ARCH_FIX.get(arch, arch)
 
+    def configure_pxe_boot(self, machine):
+        """Given the specified machine, reads the XML dump and determines
+        if the boot order needs to be changed. The boot order needs to be
+        changed if it isn't (network, hd), and will be changed to that if
+        it is found to be set to anything else.
+        """
+        xml = self.get_machine_xml(machine)
+        if xml is None:
+            return False
+        doc = etree.XML(xml)
+        evaluator = etree.XPathEvaluator(doc)
+
+        # Remove any existing <boot/> elements under <os/>.
+        boot_elements = evaluator(XPATH_BOOT)
+
+        # Skip this if the boot order is already set up how we want it to be.
+        if (len(boot_elements) == 2 and
+                boot_elements[0].attrib['dev'] == 'network' and
+                boot_elements[1].attrib['dev'] == 'hd'):
+            return True
+
+        for element in boot_elements:
+            element.getparent().remove(element)
+
+        # Grab the <os/> element and put the <boot/> element we want in.
+        os = evaluator(XPATH_OS)[0]
+        os.append(etree.XML("<boot dev='network'/>"))
+        os.append(etree.XML("<boot dev='hd'/>"))
+
+        # Rewrite the XML in a temporary file to use with 'virsh define'.
+        with NamedTemporaryFile() as f:
+            f.write(etree.tostring(doc))
+            f.write('\n')
+            f.flush()
+            output = self.run(['define', f.name])
+            if output.startswith('error:'):
+                maaslog.error("%s: Failed to set network boot order", machine)
+                return False
+            maaslog.info("%s: Successfully set network boot order", machine)
+            return True
+
     def poweron(self, machine):
-        """Poweron a virtual machine."""
+        """Poweron a VM."""
         output = self.run(['start', machine]).strip()
-        if 'error' in output:
+        if output.startswith("error:"):
             return False
         return True
 
     def poweroff(self, machine):
-        """Poweroff a virtual machine."""
+        """Poweroff a VM."""
         output = self.run(['destroy', machine]).strip()
-        if 'error' in output:
+        if output.startswith("error:"):
             return False
         return True
 
@@ -198,7 +267,7 @@ class VirshSSH(pexpect.spawn):
 @synchronous
 def probe_virsh_and_enlist(user, poweraddr, password=None,
                            prefix_filter=None, accept_all=False):
-    """Extracts all of the virtual machines from virsh and enlists them
+    """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 
     :param user: user for the nodes.
@@ -230,6 +299,9 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
         system_id = create_node(
             macs, arch, 'virsh', params, hostname=machine).wait(30)
 
+        if system_id is not None:
+            conn.configure_pxe_boot(machine)
+
         if accept_all:
             commission_node(system_id, user).wait(30)
 
@@ -237,7 +309,7 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
 
 
 def power_control_virsh(poweraddr, machine, power_change, password=None):
-    """Powers controls a virtual machine using virsh."""
+    """Powers controls a VM using virsh."""
 
     # Force password to None if blank, as the power control
     # script will send a blank password if one is not set.
@@ -250,20 +322,20 @@ def power_control_virsh(poweraddr, machine, power_change, password=None):
 
     state = conn.get_state(machine)
     if state is None:
-        raise VirshError('Failed to get domain: %s' % machine)
+        raise VirshError('%s: Failed to get power state' % machine)
 
     if state == VirshVMState.OFF:
         if power_change == 'on':
             if conn.poweron(machine) is False:
-                raise VirshError('Failed to power on domain: %s' % machine)
+                raise VirshError('%s: Failed to power on VM' % machine)
     elif state == VirshVMState.ON:
         if power_change == 'off':
             if conn.poweroff(machine) is False:
-                raise VirshError('Failed to power off domain: %s' % machine)
+                raise VirshError('%s: Failed to power off VM' % machine)
 
 
 def power_state_virsh(poweraddr, machine, password=None):
-    """Return the power state for the virtual machine using virsh."""
+    """Return the power state for the VM using virsh."""
 
     # Force password to None if blank, as the power control
     # script will send a blank password if one is not set.

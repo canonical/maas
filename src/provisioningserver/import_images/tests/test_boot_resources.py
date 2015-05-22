@@ -369,6 +369,7 @@ class TestMain(MAASTestCase):
         # unit test might not put to the test.
         self.patch_maaslog()
         self.patch(boot_resources, 'call_and_check')
+        self.patch(boot_resources, "service_monitor")
 
         # We'll go through installation of a PXE boot loader here, but skip
         # all other boot loader types.  Testing them all is a job for proper
