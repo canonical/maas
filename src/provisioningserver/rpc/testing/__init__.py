@@ -61,7 +61,6 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
 )
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -525,25 +524,3 @@ def always_fail_with(result):
     def always_fail(*args, **kwargs):
         return defer.fail(copy(result))
     return always_fail
-
-
-def capture_result(d):
-    """Capture a result from a `Deferred` mid-flight.
-
-    Rather than at the end of a callback chain.
-
-    :type d: :py:class:`defer.Deferred`.
-    :return: A no-argument callable that will extract the current result from
-        the given `Deferred`, or raise an exception if it has not yet fired.
-        See py:func:`extract_result`.
-    """
-    # We don't need to use a Deferred here, but it's convenient because it
-    # pairs well with extract_result().
-    dest = defer.Deferred()
-
-    def capture(result):
-        dest.callback(result)
-        return result
-    d.addBoth(capture)
-
-    return lambda: extract_result(dest)
