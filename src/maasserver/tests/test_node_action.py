@@ -683,12 +683,21 @@ class TestMarkBrokenAction(MAASServerTestCase):
 class TestMarkFixedAction(MAASServerTestCase):
 
     def test_changes_status(self):
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
         user = factory.make_admin()
         action = MarkFixed(node, user)
         self.assertTrue(action.is_permitted())
         action.execute()
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_raise_NodeActionError_if_on(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.ON)
+        user = factory.make_admin()
+        action = MarkFixed(node, user)
+        self.assertTrue(action.is_permitted())
+        self.assertRaises(NodeActionError, action.execute)
 
     def test_requires_admin_permission(self):
         user = factory.make_User()

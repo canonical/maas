@@ -95,7 +95,7 @@
                         {$ tabs.nodes.actionProgress.completed $} of {$ tabs.nodes.actionProgress.total $}
                         nodes have been {$ tabs.nodes.actionOption.sentence $}.
                     </p>
-                    <p class="page-header__feedback-message error progress"
+                    <p class="page-header__feedback-message error"
                         data-ng-repeat="(error, nodes) in tabs.nodes.actionProgress.errors">
                         The {$ tabs.nodes.actionOption.title.toLowerCase() $} action for {$ nodes.length $}
                         <span data-ng-pluralize count="nodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>

@@ -422,6 +422,9 @@ class MarkFixed(NodeAction):
 
     def execute(self):
         """See `NodeAction.execute`."""
+        if self.node.power_state == POWER_STATE.ON:
+            raise NodeActionError(
+                "Unable to be mark fixed because the power is currently on.")
         self.node.mark_fixed()
 
 
