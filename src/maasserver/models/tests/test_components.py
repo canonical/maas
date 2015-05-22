@@ -17,6 +17,8 @@ __all__ = []
 
 import random
 
+from django.db import IntegrityError
+from maasserver import components as components_module
 from maasserver.components import (
     discard_persistent_error,
     get_persistent_error,
@@ -28,6 +30,7 @@ from maasserver.models.component_error import ComponentError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.utils.enum import map_enum
+from testtools import ExpectedException
 
 
 def get_random_component():
@@ -103,3 +106,25 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         error = ComponentError.objects.get(component=component)
         self.assertEqual(error.error, error2)  # Should update the message
         self.assertEqual(error.id, error_id)  # Should reuse the same id
+
+    def test_register_persistent_discards_integrity_error(self):
+        error_message = factory.make_string()
+        component = get_random_component()
+        mock__register_persistent_error = self.patch(
+            components_module, "_register_persistent_error")
+        mock__register_persistent_error.side_effect = IntegrityError()
+        # The real test here is that register_persistent_error doesn't raise
+        # an exception.
+        self.assertIsNone(register_persistent_error(component, error_message))
+
+    def test_register_persistent_raises_other_errors(self):
+        error_message = factory.make_string()
+        component = get_random_component()
+        exception_type = factory.make_exception_type()
+        mock__register_persistent_error = self.patch(
+            components_module, "_register_persistent_error")
+        exception_message = factory.make_string()
+        mock__register_persistent_error.side_effect = exception_type(
+            exception_message)
+        with ExpectedException(exception_type):
+            register_persistent_error(component, error_message)
