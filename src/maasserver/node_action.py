@@ -49,6 +49,8 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models.noderesult import NodeResult
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
@@ -427,7 +429,27 @@ class MarkFixed(NodeAction):
         if self.node.power_state == POWER_STATE.ON:
             raise NodeActionError(
                 "Unable to be mark fixed because the power is currently on.")
+        if not self.has_commissioning_data():
+            raise NodeActionError(
+                "Unable to be mark fixed because it has not been commissioned "
+                "successfully.")
         self.node.mark_fixed()
+
+    def has_commissioning_data(self):
+        """Return True when the node is missing the required commissioning
+        data."""
+        results = list(NodeResult.objects.filter(
+            node=self.node, result_type=RESULT_TYPE.COMMISSIONING))
+        if len(results) == 0:
+            return False
+        failed_results = [
+            result
+            for result in results
+            if result.script_result != 0
+        ]
+        if len(failed_results) > 0:
+            return False
+        return True
 
 
 ACTION_CLASSES = (

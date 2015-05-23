@@ -58,6 +58,8 @@ from maasserver.utils.orm import (
     post_commit_hooks,
 )
 from maastesting.matchers import MockCalledOnceWith
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models.noderesult import NodeResult
 from mock import ANY
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.utils.shell import ExternalProcessError
@@ -682,9 +684,18 @@ class TestMarkBrokenAction(MAASServerTestCase):
 
 class TestMarkFixedAction(MAASServerTestCase):
 
+    def make_commissioning_data(self, node, result=0, count=3):
+        return [
+            NodeResult.objects.create(
+                node=node, name=factory.make_name(), script_result=result,
+                result_type=RESULT_TYPE.COMMISSIONING)
+            for _ in range(count)
+            ]
+
     def test_changes_status(self):
         node = factory.make_Node(
             status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
+        self.make_commissioning_data(node)
         user = factory.make_admin()
         action = MarkFixed(node, user)
         self.assertTrue(action.is_permitted())
@@ -694,6 +705,34 @@ class TestMarkFixedAction(MAASServerTestCase):
     def test_raise_NodeActionError_if_on(self):
         node = factory.make_Node(
             status=NODE_STATUS.BROKEN, power_state=POWER_STATE.ON)
+        user = factory.make_admin()
+        action = MarkFixed(node, user)
+        self.assertTrue(action.is_permitted())
+        self.assertRaises(NodeActionError, action.execute)
+
+    def test_raise_NodeActionError_if_no_commissioning_results(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
+        user = factory.make_admin()
+        action = MarkFixed(node, user)
+        self.assertTrue(action.is_permitted())
+        self.assertRaises(NodeActionError, action.execute)
+
+    def test_raise_NodeActionError_if_one_commissioning_result_fails(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
+        self.make_commissioning_data(node)
+        self.make_commissioning_data(node, result=1, count=1)
+        user = factory.make_admin()
+        action = MarkFixed(node, user)
+        self.assertTrue(action.is_permitted())
+        self.assertRaises(NodeActionError, action.execute)
+
+    def test_raise_NodeActionError_if_multi_commissioning_result_fails(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, power_state=POWER_STATE.OFF)
+        self.make_commissioning_data(node)
+        self.make_commissioning_data(node, result=1)
         user = factory.make_admin()
         action = MarkFixed(node, user)
         self.assertTrue(action.is_permitted())
