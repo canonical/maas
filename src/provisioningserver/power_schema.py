@@ -296,10 +296,11 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': "American Power Conversion (APC) PDU",
         'fields': [
             make_json_field('power_address', "IP for APC PDU"),
-            make_json_field('power_user', "APC PDU username"),
-            make_json_field('power_pass', "APC PDU password"),
             make_json_field(
                 'node_outlet', "APC PDU node outlet number (1-16)"),
+            make_json_field(
+                'power_on_delay', "Power ON outlet delay (seconds)",
+                default='5'),
         ],
     },
 ]

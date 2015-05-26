@@ -264,6 +264,7 @@ class TestPowerAction(MAASTestCase):
         context = {
             'power_address': 'foo', 'power_user': 'bar', 'power_pass': 'baz',
             'node_outlet': "%s" % randint(1, 16), 'power_change': 'on',
+            'power_on_delay': '0',
         }
         action = PowerAction('apc')
         action.update_context(context)

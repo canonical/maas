@@ -17,10 +17,9 @@ from provisioningserver.drivers.hardware.apc import power_control_apc
 try:
     power_control_apc(
         {{escape_py_literal(power_address) | safe}},
-        {{escape_py_literal(power_user) | safe}},
-        {{escape_py_literal(power_pass) | safe}},
         {{escape_py_literal(node_outlet) | safe}},
         {{escape_py_literal(power_change) | safe}},
+        {{escape_py_literal(power_on_delay) | safe}},
     )
 except Exception as e:
     # This gets in the node event log: print the exception's message
@@ -37,8 +36,6 @@ from provisioningserver.drivers.hardware.apc import power_state_apc
 try:
     print(power_state_apc(
         {{escape_py_literal(power_address) | safe}},
-        {{escape_py_literal(power_user) | safe}},
-        {{escape_py_literal(power_pass) | safe}},
         {{escape_py_literal(node_outlet) | safe}},
     ))
 except Exception as e:
