@@ -26,6 +26,7 @@ from maasserver import forms
 from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    NODE_BOOT,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     POWER_STATE,
@@ -183,6 +184,14 @@ class TestNodeAPI(APITestCase):
             [
                 parsed_result['zone']['name'],
                 parsed_result['zone']['description']])
+
+    def test_GET_returns_boot_type(self):
+        node = factory.make_Node()
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            node.boot_type, parsed_result['boot_type'])
 
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
@@ -929,6 +938,20 @@ class TestNodeAPI(APITestCase):
 
         node = reload_object(node)
         self.assertEqual(original_setting, node.disable_ipv4)
+
+    def test_PUT_updates_boot_type(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self),
+            boot_type=NODE_BOOT.FASTPATH,
+            )
+        response = self.client_put(
+            self.get_node_uri(node), {'boot_type': NODE_BOOT.DEBIAN})
+        parsed_result = json.loads(response.content)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertEqual(node.boot_type, parsed_result['boot_type'])
+        self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.

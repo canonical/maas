@@ -69,6 +69,7 @@ class TestNodeForm(MAASServerTestCase):
                 'distro_series',
                 'license_key',
                 'disable_ipv4',
+                'boot_type',
                 'nodegroup'
             ], list(form.fields))
 
@@ -492,6 +493,7 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'distro_series',
                 'license_key',
                 'disable_ipv4',
+                'boot_type',
                 'power_type',
                 'power_parameters',
                 'cpu_count',

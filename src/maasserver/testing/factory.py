@@ -30,6 +30,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     IPADDRESS_TYPE,
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -213,8 +214,9 @@ class Factory(maastesting.factory.Factory):
     def make_Node(self, mac=False, hostname=None, status=None,
                   architecture="i386/generic", updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
-                  power_type=None, networks=None, sortable_name=False,
-                  power_state=None, disable_ipv4=None, **kwargs):
+                  power_type=None, networks=None, boot_type=None,
+                  sortable_name=False, power_state=None, disable_ipv4=None,
+                  **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -242,11 +244,13 @@ class Factory(maastesting.factory.Factory):
             power_state = self.pick_enum(POWER_STATE)
         if disable_ipv4 is None:
             disable_ipv4 = self.pick_bool()
+        if boot_type is None:
+            boot_type = self.pick_enum(NODE_BOOT)
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             nodegroup=nodegroup, routers=routers, zone=zone,
             power_type=power_type, disable_ipv4=disable_ipv4,
-            power_state=power_state,
+            power_state=power_state, boot_type=boot_type,
             **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited

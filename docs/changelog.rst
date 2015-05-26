@@ -2,6 +2,15 @@
 Changelog
 =========
 
+1.7.5
+=====
+
+Bug Fix Update
+--------------
+
+#1456969    MAAS cli/API: missing option set use-fast-installer /
+            use-debian-installer
+
 1.7.4
 =====
 

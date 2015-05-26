@@ -86,6 +86,8 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    NODE_BOOT,
+    NODE_BOOT_CHOICES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -481,6 +483,13 @@ class NodeForm(MAASModelForm):
             self.cleaned_data['disable_ipv4'] = False
         return self.cleaned_data['disable_ipv4']
 
+    def clean_boot_type(self):
+        boot_type = self.cleaned_data.get('boot_type')
+        if not boot_type:
+            return NODE_BOOT.FASTPATH
+        else:
+            return boot_type
+
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
         if self.new_node and self.data.get('disable_ipv4') is None:
@@ -578,6 +587,9 @@ class NodeForm(MAASModelForm):
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
 
+    boot_type = forms.ChoiceField(
+        choices=NODE_BOOT_CHOICES, initial=NODE_BOOT.FASTPATH, required=False)
+
     class Meta:
         model = Node
 
@@ -590,6 +602,7 @@ class NodeForm(MAASModelForm):
             'distro_series',
             'license_key',
             'disable_ipv4',
+            'boot_type',
             )
 
 

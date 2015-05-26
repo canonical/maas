@@ -100,6 +100,7 @@ DISPLAYED_NODE_FIELDS = (
     'substatus',
     'osystem',
     'distro_series',
+    'boot_type',
     'netboot',
     'power_type',
     'power_state',
@@ -235,6 +236,11 @@ class NodeHandler(OperationsHandler):
         :type power_parameters_skip_check: unicode
         :param zone: Name of a valid physical zone in which to place this node
         :type zone: unicode
+        :param boot_type: The installation type of the node. 'fastpath': use
+            the default installer. 'di' use the debian installer.
+            Note that using 'di' is now deprecated and will be removed in favor
+            of the default installer in MAAS 1.9.
+        :type boot_type: unicode
 
         Returns 404 if the node is node found.
         Returns 403 if the user does not have permission to update the node.
@@ -243,7 +249,6 @@ class NodeHandler(OperationsHandler):
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         Form = get_node_edit_form(request.user)
         form = Form(data=request.data, instance=node)
-
         if form.is_valid():
             return form.save()
         else:
@@ -689,6 +694,11 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         and re-install its operating system.  In anonymous enlistment and when
         the enlistment is done by a non-admin, the node is held in the
         "New" state for approval by a MAAS admin.
+        :param boot_type: The installation type of the node. 'fastpath': use
+            the default installer. 'di' use the debian installer.
+            Note that using 'di' is now deprecated and will be removed in favor
+            of the default installer in MAAS 1.9.
+        :type boot_type: unicode
         """
         # XXX 2014-02-11 bug=1278685
         # There's no documentation here on what parameters can be passed!
