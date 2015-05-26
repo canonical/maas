@@ -25,7 +25,6 @@ from maasserver import forms
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
-    NODE_BOOT,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -1660,75 +1659,6 @@ class TestDeploymentStatus(APITestCase):
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertThat(
             response.content, Contains("Unknown node(s)"))
-
-    def test_PUT_updates_boot_type(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user,
-            architecture=make_usable_architecture(self),
-            boot_type=NODE_BOOT.FASTPATH,
-            )
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'boot_type': NODE_BOOT.DEBIAN})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(node.boot_type, parsed_result['boot_type'])
-        self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
-
-    def test_PUT_updates_swap_size(self):
-        node = factory.make_Node(owner=self.logged_in_user,
-                                 architecture=make_usable_architecture(self))
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': 5 * 1000 ** 3})  # Making sure we overflow 32 bits
-        parsed_result = json.loads(response.content)
-        node = reload_object(node)
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(node.swap_size, parsed_result['swap_size'])
-
-    def test_PUT_updates_swap_size_suffixes(self):
-        node = factory.make_Node(owner=self.logged_in_user,
-                                 architecture=make_usable_architecture(self))
-
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': '5K'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(5000, parsed_result['swap_size'])
-
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': '5M'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(5000000, parsed_result['swap_size'])
-
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': '5G'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(5000000000, parsed_result['swap_size'])
-
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': '5T'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(5000000000000, parsed_result['swap_size'])
-
-    def test_PUT_updates_swap_size_invalid_suffix(self):
-        node = factory.make_Node(owner=self.logged_in_user,
-                                 architecture=make_usable_architecture(self))
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'swap_size': '5E'})  # We won't support exabytes yet
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual('Invalid size for swap: 5E',
-                         parsed_result['swap_size'][0])
 
 
 class TestBackwardCompatiblityFixNodesAPI(APITestCase):
