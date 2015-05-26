@@ -207,7 +207,6 @@ class NodeHandler(TimestampedModelHandler):
 
             # Events
             data["events"] = self.dehydrate_events(obj)
-            data["events_total"] = Event.objects.filter(node=obj).count()
 
             # Machine output
             data = self.dehydrate_summary_output(obj, data)

@@ -200,7 +200,6 @@ class TestNodeHandler(MAASServerTestCase):
                 self.dehydrate_event(event)
                 for event in events
             ],
-            "events_total": Event.objects.filter(node=node).count(),
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
