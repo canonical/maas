@@ -71,7 +71,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual('diane', parsed_result['hostname'])
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
+        self.assertEqual(
+            'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
@@ -140,7 +143,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual('diane', parsed_result['hostname'])
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
+        self.assertEqual(
+            'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
@@ -163,7 +169,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual('diane', parsed_result['hostname'])
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
+        self.assertEqual(
+            'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)

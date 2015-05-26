@@ -39,6 +39,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
+    NodeGroup,
     StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
@@ -150,7 +151,11 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
-        self.assertEqual(node.hostname, parsed_result['hostname'])
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
+        self.assertEqual(
+            "%s.%s" % (node.hostname, domain_name),
+            parsed_result['hostname'])
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
     def test_GET_returns_associated_tag(self):
@@ -620,7 +625,10 @@ class TestNodeAPI(APITestCase):
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual('francis', parsed_result['hostname'])
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
+        self.assertEqual(
+            'francis.%s' % domain_name, parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 

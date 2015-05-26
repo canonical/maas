@@ -531,12 +531,16 @@ class Node(CleanSave, TimestampedModel):
     def fqdn(self):
         """Fully qualified domain name for this node.
 
-        If MAAS manages DNS for this node, the domain part of the
-        hostname (if present), is replaced by the domain configured
-        on the cluster controller.
-        If not, simply return the node's hostname.
+        If MAAS manages DNS for this node or if this node doesn't have a
+        domain name set, replace or add the domain name configured
+        on the cluster controller.  Otherwise simply return the node's
+        hostname.
         """
-        if self.nodegroup.manages_dns():
+        should_add_domain_name = (
+            self.nodegroup.manages_dns() or
+            self.hostname == strip_domain(self.hostname)
+        )
+        if should_add_domain_name:
             return nodegroup_fqdn(self.hostname, self.nodegroup.name)
         return self.hostname
 

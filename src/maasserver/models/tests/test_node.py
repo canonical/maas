@@ -1661,7 +1661,7 @@ class TestNode(MAASServerTestCase):
         node.nodegroup = None
         self.assertRaises(ValidationError, node.save)
 
-    def test_fqdn_returns_hostname_if_dns_not_managed(self):
+    def test_fqdn_if_dns_not_managed_and_has_domain_name(self):
         nodegroup = factory.make_NodeGroup(
             name=factory.make_string(),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -1670,6 +1670,17 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             nodegroup=nodegroup, hostname=hostname_with_domain)
         self.assertEqual(hostname_with_domain, node.fqdn)
+
+    def test_fqdn_if_dns_not_managed_and_no_domain_name(self):
+        domain = factory.make_name('domain')
+        nodegroup = factory.make_NodeGroup(
+            name=domain,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        hostname_without_domain = factory.make_string()
+        node = factory.make_Node(
+            nodegroup=nodegroup, hostname=hostname_without_domain)
+        self.assertEqual(
+            "%s.%s" % (hostname_without_domain, domain), node.fqdn)
 
     def test_fqdn_replaces_hostname_if_dns_is_managed(self):
         hostname_without_domain = factory.make_name('hostname')

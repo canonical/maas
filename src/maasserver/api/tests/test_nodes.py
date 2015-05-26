@@ -848,7 +848,10 @@ class TestNodesAPI(APITestCase):
         })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
-        self.assertEqual(desired_node.hostname, parsed_result['hostname'])
+        domain_name = desired_node.nodegroup.name
+        self.assertEqual(
+            "%s.%s" % (desired_node.hostname, domain_name),
+            parsed_result['hostname'])
 
     def test_POST_acquire_would_rather_fail_than_disobey_constraint(self):
         # If "acquire" is passed a constraint, it won't return a node
@@ -883,8 +886,11 @@ class TestNodesAPI(APITestCase):
             'name': node.hostname,
         })
         self.assertEqual(httplib.OK, response.status_code)
+        nodegroup = NodeGroup.objects.ensure_master()
+        domain_name = nodegroup.name
         self.assertEqual(
-            node.hostname, json.loads(response.content)['hostname'])
+            "%s.%s" % (node.hostname, domain_name),
+            json.loads(response.content)['hostname'])
 
     def test_POST_acquire_treats_unknown_name_as_resource_conflict(self):
         # A name constraint naming an unknown node produces a resource
