@@ -37,6 +37,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.pagetitle = "Nodes";
         $scope.tabs.nodes.currentpage = "nodes";
         $scope.tabs.nodes.manager = NodesManager;
+        $scope.tabs.nodes.previous_search = "";
         $scope.tabs.nodes.search = "";
         $scope.tabs.nodes.searchValid = true;
         $scope.tabs.nodes.selectedItems = NodesManager.getSelectedItems();
@@ -66,6 +67,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.pagetitle = "Devices";
         $scope.tabs.devices.currentpage = "devices";
         $scope.tabs.devices.manager = DevicesManager;
+        $scope.tabs.devices.previous_search = "";
         $scope.tabs.devices.search = "";
         $scope.tabs.devices.searchValid = true;
         $scope.tabs.devices.selectedItems = DevicesManager.getSelectedItems();
@@ -123,14 +125,15 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Sets the search bar to only show selected.
         function enterViewSelected(tab) {
+            $scope.tabs[tab].previous_search = $scope.tabs[tab].search;
             $scope.tabs[tab].search = "in:(Selected)";
         }
 
         // Clear search bar from viewing selected.
         function leaveViewSelected(tab) {
             if(isViewingSelected(tab)) {
-                $scope.tabs[tab].search = "";
-                delete $scope.tabs[tab].filters["in"];
+                $scope.tabs[tab].search = $scope.tabs[tab].previous_search;
+                $scope.updateFilters(tab);
             }
         }
 

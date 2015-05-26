@@ -219,6 +219,7 @@ describe("NodesListController", function() {
             it("sets initial values on $scope", function() {
                 var controller = makeController();
                 var tabScope = $scope.tabs[tab];
+                expect(tabScope.previous_search).toBe("");
                 expect(tabScope.search).toBe("");
                 expect(tabScope.searchValid).toBe(true);
                 expect(tabScope.filtered_items).toEqual([]);
@@ -612,6 +613,15 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].search).toBe("in:(Selected)");
                 });
 
+                it("sets previous_search to search value", function() {
+                    var controller = makeController();
+                    var search = makeName("search");
+                    $scope.tabs[tab].search = search;
+                    $scope.tabs[tab].actionErrorCount = 1;
+                    $scope.actionOptionSelected(tab);
+                    expect($scope.tabs[tab].previous_search).toBe(search);
+                });
+
                 it("action deploy calls startPolling for osinfo", function() {
                     var controller = makeController();
                     $scope.tabs[tab].actionOption = {
@@ -896,7 +906,7 @@ describe("NodesListController", function() {
                             $scope.tabs[tab].actionProgress.completed).toBe(1);
                     });
 
-                it("resets search when in:selected after complete",
+                it("resets search to previous_search after complete",
                     function() {
                     var controller = makeController();
                     var defer = $q.defer();
@@ -904,14 +914,16 @@ describe("NodesListController", function() {
                         $scope.tabs[tab].manager,
                         "performAction").and.returnValue(defer.promise);
                     var object = makeObject(tab);
+                    var prev_search = makeName("search");
                     $scope.tabs[tab].manager._items.push(object);
                     $scope.tabs[tab].manager._selectedItems.push(object);
+                    $scope.tabs[tab].previous_search = prev_search;
                     $scope.tabs[tab].search = "in:(Selected)";
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.actionGo(tab);
                     defer.resolve();
                     $scope.$digest();
-                    expect($scope.tabs[tab].search).toBe("");
+                    expect($scope.tabs[tab].search).toBe(prev_search);
                 });
 
                 it("ignores search when not in:selected after complete",
