@@ -78,9 +78,16 @@ issue_ipmi_command() {
     result=$(echo workaround |\
     LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} ${user_option} -p ${power_pass} "$@")
 
+    exit_status=$?
+
     if echo $result | grep -q "password invalid"
     then
         echo "Invalid password" >&2
+        exit 2
+    fi
+
+    if [ $exit_status -ne 0 ]; then
+        echo $result >&2
         exit 2
     fi
 
