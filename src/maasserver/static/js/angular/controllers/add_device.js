@@ -35,14 +35,21 @@ angular.module('MAAS').controller('AddDeviceController', [
             }
         ];
 
-        // Makes a new device.
-        function makeDevice() {
+        // Makes a new interface.
+        function makeInterface() {
             return {
-                name: "",
                 mac: "",
                 ipAssignment: null,
                 clusterInterfaceId: null,
                 ipAddress: ""
+            };
+        }
+
+        // Makes a new device.
+        function makeDevice() {
+            return {
+                name: "",
+                interfaces: [makeInterface()]
             };
         }
 
@@ -53,13 +60,25 @@ angular.module('MAAS').controller('AddDeviceController', [
         // how it is handled over the websocket.
         function convertDeviceToProtocol(device) {
             // Return the new object.
-            return {
+            var convertedDevice = {
                 hostname: device.name,
-                primary_mac: device.mac,
-                ip_assignment: device.ipAssignment.name,
-                ip_address: device.ipAddress,
-                "interface": device.clusterInterfaceId
+                primary_mac: device.interfaces[0].mac,
+                extra_macs: [],
+                interfaces: []
             };
+            var i;
+            for(i = 1; i < device.interfaces.length; i++) {
+                convertedDevice.extra_macs.push(device.interfaces[i].mac);
+            }
+            angular.forEach(device.interfaces, function(nic) {
+                convertedDevice.interfaces.push({
+                    mac: nic.mac,
+                    ip_assignment: nic.ipAssignment.name,
+                    ip_address: nic.ipAddress,
+                    "interface": nic.clusterInterfaceId
+                });
+            });
+            return convertedDevice;
         }
 
         // Gets the cluster interface by id from the managed cluster
@@ -106,9 +125,16 @@ angular.module('MAAS').controller('AddDeviceController', [
         };
 
         // Return text to show an interfaces static range.
-        $scope.getInterfaceStaticRange = function(nic) {
-            return nic.network + " (" +
-                nic.static_range.low + " - " + nic.static_range.high + ")";
+        $scope.getInterfaceStaticRange = function(cInterfaceId) {
+            if(!angular.isNumber(cInterfaceId)) {
+                return "";
+            }
+            var clusterInterface = getInterfaceById(cInterfaceId);
+            if(!angular.isObject(clusterInterface)) {
+                return "";
+            }
+            return clusterInterface.static_range.low + " - " +
+                clusterInterface.static_range.high + " (Optional)";
         };
 
         // Returns true if the name is in error.
@@ -121,47 +147,60 @@ angular.module('MAAS').controller('AddDeviceController', [
         };
 
         // Returns true if the MAC is in error.
-        $scope.macHasError = function() {
+        $scope.macHasError = function(deviceInterface) {
             // If the MAC is empty don't show error.
-            if($scope.device.mac.length === 0) {
+            if(deviceInterface.mac.length === 0) {
                 return false;
             }
-            return !ValidationService.validateMAC($scope.device.mac);
+            // If the MAC is invalid show error.
+            if(!ValidationService.validateMAC(deviceInterface.mac)) {
+                return true;
+            }
+            // If the MAC is the same as another MAC show error.
+            var i;
+            for(i = 0; i < $scope.device.interfaces.length; i++) {
+                var isSelf = $scope.device.interfaces[i] === deviceInterface;
+                if(!isSelf &&
+                    $scope.device.interfaces[i].mac === deviceInterface.mac) {
+                    return true;
+                }
+            }
+            return false;
         };
 
         // Returns true if the IP address is in error.
-        $scope.ipHasError = function() {
+        $scope.ipHasError = function(deviceInterface) {
             // If the IP is empty don't show error.
-            if($scope.device.ipAddress.length === 0) {
+            if(deviceInterface.ipAddress.length === 0) {
                 return false;
             }
             // If ip address is invalid, then exit early.
-            if(!ValidationService.validateIP($scope.device.ipAddress)) {
+            if(!ValidationService.validateIP(deviceInterface.ipAddress)) {
                 return true;
             }
             var i, inNetwork, managedInterfaces = $scope.getManagedInterfaces();
-            if(angular.isObject($scope.device.ipAssignment)){
-                if($scope.device.ipAssignment.name === "external") {
+            if(angular.isObject(deviceInterface.ipAssignment)){
+                if(deviceInterface.ipAssignment.name === "external") {
                     // External IP address cannot be within a managed interface
                     // on one of the clusters.
                     for(i = 0; i < managedInterfaces.length; i++) {
                         inNetwork = ValidationService.validateIPInNetwork(
-                            $scope.device.ipAddress,
+                            deviceInterface.ipAddress,
                             managedInterfaces[i].network);
                         if(inNetwork) {
                             return true;
                         }
                     }
-                } else if($scope.device.ipAssignment.name === "static" &&
-                    angular.isNumber($scope.device.clusterInterfaceId)) {
+                } else if(deviceInterface.ipAssignment.name === "static" &&
+                    angular.isNumber(deviceInterface.clusterInterfaceId)) {
                     // Static IP address must be within the static range
                     // of the selected clusterInterface.
                     var clusterInterface = getInterfaceById(
-                        $scope.device.clusterInterfaceId);
+                        deviceInterface.clusterInterfaceId);
                     inNetwork = ValidationService.validateIPInNetwork(
-                        $scope.device.ipAddress, clusterInterface.network);
+                        deviceInterface.ipAddress, clusterInterface.network);
                     var inDynamicRange = ValidationService.validateIPInRange(
-                        $scope.device.ipAddress, clusterInterface.network,
+                        deviceInterface.ipAddress, clusterInterface.network,
                         clusterInterface.dynamic_range.low,
                         clusterInterface.dynamic_range.high);
                     if(!inNetwork || inDynamicRange) {
@@ -175,24 +214,51 @@ angular.module('MAAS').controller('AddDeviceController', [
         // Return true when the device is missing information or invalid
         // information.
         $scope.deviceHasError = function() {
-            // Early-out for errors.
-            in_error = (
-                $scope.device.name === '' ||
-                $scope.device.mac === '' ||
-                !angular.isObject($scope.device.ipAssignment) ||
-                $scope.nameHasError() ||
-                $scope.macHasError());
-            if(in_error) {
-                return in_error;
+            if($scope.device.name === '' || $scope.nameHasError()) {
+                return true;
             }
-            if($scope.device.ipAssignment.name === "external") {
-                return $scope.device.ipAddress === '' || $scope.ipHasError();
-            }
-            if($scope.device.ipAssignment.name === "static") {
-                return !angular.isNumber($scope.device.clusterInterfaceId) ||
-                    $scope.ipHasError();
+
+            var i;
+            for(i = 0; i < $scope.device.interfaces.length; i++) {
+                var deviceInterface = $scope.device.interfaces[i];
+                if(deviceInterface.mac === '' ||
+                    $scope.macHasError(deviceInterface) ||
+                    !angular.isObject(deviceInterface.ipAssignment)) {
+                    return true;
+                }
+                var externalIpError = (
+                    deviceInterface.ipAssignment.name === "external" && (
+                        deviceInterface.ipAddress === '' ||
+                        $scope.ipHasError(deviceInterface)));
+                var staticIpError = (
+                    deviceInterface.ipAssignment.name === "static" && (
+                        !angular.isNumber(deviceInterface.clusterInterfaceId) ||
+                        $scope.ipHasError(deviceInterface)));
+                if(externalIpError || staticIpError) {
+                    return true;
+                }
             }
             return false;
+        };
+
+        // Adds new interface to device.
+        $scope.addInterface = function() {
+            $scope.device.interfaces.push(makeInterface());
+        };
+
+        // Returns true if the first interface in the device interfaces array.
+        $scope.isPrimaryInterface = function(deviceInterface) {
+            return $scope.device.interfaces.indexOf(deviceInterface) === 0;
+        };
+
+        // Removes the interface from the devices interfaces array.
+        $scope.deleteInterface = function(deviceInterface) {
+            // Don't remove the primary.
+            if($scope.isPrimaryInterface(deviceInterface)) {
+                return;
+            }
+            $scope.device.interfaces.splice(
+                $scope.device.interfaces.indexOf(deviceInterface), 1);
         };
 
         // Called when cancel clicked.

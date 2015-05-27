@@ -30,7 +30,6 @@ from maasserver.forms import (
 from maasserver.models.node import Device
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.orm import commit_within_atomic_block
 from maasserver.websockets.base import (
@@ -68,6 +67,45 @@ def update_host_maps(static_mappings, nodegroups):
         for nodegroup in nodegroups
         }
     return list(dhcp.update_host_maps(static_mappings))
+
+
+def get_MACAddress_from_list(mac_addresses, mac):
+    """Return the `MACAddress` object based on the mac value."""
+    for mac_obj in mac_addresses:
+        if mac_obj.mac_address == mac:
+            return mac_obj
+    return None
+
+
+def delete_device_and_static_ip_addresses(
+        device, external_static_ips, assigned_sticky_ips):
+    """Delete the created external and sticky ips and the created device.
+
+    This function calls `commit_within_atomic_block` to force the transaction
+    to be saved.
+    """
+    for static_ip, _ in external_static_ips:
+        static_ip.deallocate()
+    for static_ip, _ in assigned_sticky_ips:
+        static_ip.deallocate()
+    device.delete()
+    commit_within_atomic_block()
+
+
+def log_static_allocations(device, external_static_ips, assigned_sticky_ips):
+    """Log the allocation of the static ip address."""
+    all_ips = [
+        static_ip.ip
+        for static_ip, _ in external_static_ips
+        ]
+    all_ips.extend([
+        static_ip.ip
+        for static_ip, _ in assigned_sticky_ips
+        ])
+    if len(all_ips) > 0:
+        maaslog.info(
+            "%s: Sticky IP address(es) allocated: %s",
+            device.hostname, ', '.join(all_ips))
 
 
 class DeviceHandler(TimestampedModelHandler):
@@ -260,98 +298,102 @@ class DeviceHandler(TimestampedModelHandler):
         # XXX blake_r 03-04-15 bug=1440102: This is very ugly and a repeat
         # of code in other places. Needs to be refactored.
 
-        # Create the object, then link ip_address to the device based
-        # on the users choice.
+        # Create the object with the form and then create all of the interfaces
+        # based on the users choices.
         data = super(DeviceHandler, self).create(params)
         device_obj = Device.objects.get(system_id=data['system_id'])
-        mac_address = device_obj.get_pxe_mac()
-        ip_assignment = params["ip_assignment"]
-        if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
-            sticky_ip = mac_address.set_static_ip(
-                params["ip_address"], self.user)
+        mac_addresses = list(device_obj.macaddress_set.all())
+        external_static_ips = []
+        assigned_sticky_ips = []
+
+        # Acquire all of the needed ip address based on the user selection.
+        for nic in params["interfaces"]:
+            mac_address = get_MACAddress_from_list(mac_addresses, nic["mac"])
+            ip_assignment = nic["ip_assignment"]
+            if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
+                sticky_ip = mac_address.set_static_ip(
+                    nic["ip_address"], self.user)
+                external_static_ips.append(
+                    (sticky_ip, mac_address))
+            elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
+                # Nothing needs to be done. It will get an ip address in the
+                # dynamic range the first time it DHCP from a cluster
+                # interface.
+                pass
+            elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
+                # Link the MAC address to the cluster interface.
+                cluster_interface = NodeGroupInterface.objects.get(
+                    id=nic["interface"])
+                mac_address.cluster_interface = cluster_interface
+                mac_address.save()
+
+                # Convert an empty string to None.
+                ip_address = nic.get("ip_address")
+                if not ip_address:
+                    ip_address = None
+
+                # Claim the static ip.
+                sticky_ips = mac_address.claim_static_ips(
+                    alloc_type=IPADDRESS_TYPE.STICKY,
+                    requested_address=ip_address)
+                assigned_sticky_ips.extend([
+                    (static_ip, mac_address)
+                    for static_ip in sticky_ips
+                    ])
+
+        # Commit all of the changes before telling the clusters to
+        # update.
+        commit_within_atomic_block()
+
+        # Update the managed clusters with all the external static ip
+        # addresses.
+        if len(external_static_ips) > 0:
             dhcp_managed_clusters = [
                 cluster
                 for cluster in NodeGroup.objects.all()
                 if cluster.manages_dhcp()
                 ]
-
-            # Commit the change and tell all the managed clusters to
-            # update thier host maps.
-            commit_within_atomic_block()
+            claims = [
+                (static_ip.ip, mac.mac_address.get_raw())
+                for static_ip, mac in external_static_ips
+                ]
             failures = update_host_maps(
-                [(sticky_ip.ip, mac_address.mac_address.get_raw())],
-                dhcp_managed_clusters)
+                claims, dhcp_managed_clusters)
             if len(failures) > 0:
-                # Failed to update the cluster. Remove the allocated static
-                # ip address and delete the newly created device. Since it
-                # was committed before the call to update_host_maps.
-                sticky_ip.deallocate()
-                device_obj.delete()
+                # Delete the created device and ip addresses.
+                delete_device_and_static_ip_addresses(
+                    device_obj, external_static_ips, assigned_sticky_ips)
 
-                # Commit again so this raised failure will not roll back
-                # the deletions above.
-                commit_within_atomic_block()
-
-                # Now raise the first error to show a reason to the user. It
-                # is possible to have multiple errors, but at the moment
+                # Now raise the first error to show a reason to the user.
+                # It is possible to have multiple errors, but at the moment
                 # we only raise the first error.
                 raise HandlerError(failures[0].value)
-            sticky_ips = [sticky_ip]
 
-        elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
-            # Nothing needs to be done. It will get an ip address in the
-            # dynamic range the first time it DHCP from a cluster interface.
-            pass
-
-        elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
-            # Link the MAC address to the cluster interface.
-            cluster_interface = NodeGroupInterface.objects.get(
-                id=params["interface"])
-            mac_address.cluster_interface = cluster_interface
-            mac_address.save()
-
-            # Convert an empty string to None.
-            ip_address = params.get("ip_address")
-            if not ip_address:
-                ip_address = None
-
-            # Claim the static ip.
-            sticky_ips = mac_address.claim_static_ips(
-                alloc_type=IPADDRESS_TYPE.STICKY,
-                requested_address=ip_address)
+        # Update the devices cluster with all the assigned sticky ip
+        # addresses.
+        if len(assigned_sticky_ips) > 0:
             claims = [
-                (static_ip.ip, mac_address.mac_address.get_raw())
-                for static_ip in sticky_ips
+                (static_ip.ip, mac.mac_address.get_raw())
+                for static_ip, mac in assigned_sticky_ips
                 ]
-
-            # Commit the change and tell all the cluster for this device to
-            # update its host map.
-            commit_within_atomic_block()
-            failures = update_host_maps(claims, [device_obj.nodegroup])
+            failures = update_host_maps(
+                claims, [device_obj.nodegroup])
             if len(failures) > 0:
-                # Failed to update the cluster. Remove all allocated static
-                # ip address and delete the newly created device. Since it
-                # was committed before the call to update_host_maps.
-                StaticIPAddress.objects.delete_by_node(device_obj)
-                device_obj.delete()
+                # Delete the created device and ip addresses.
+                delete_device_and_static_ip_addresses(
+                    device_obj, external_static_ips, assigned_sticky_ips)
 
-                # Commit again so this raised failure will not roll back
-                # the deletions above.
-                commit_within_atomic_block()
-
-                # Now raise the first error to show a reason to the user. It
-                # is possible to have multiple errors, but at the moment
+                # Now raise the first error to show a reason to the user.
+                # It is possible to have multiple errors, but at the moment
                 # we only raise the first error.
                 raise HandlerError(failures[0].value)
 
         # Update the DNS zone for the master cluster as all device entries
         # go into that cluster.
-        if ip_assignment in [
-                DEVICE_IP_ASSIGNMENT.EXTERNAL, DEVICE_IP_ASSIGNMENT.STATIC]:
+        log_static_allocations(
+            device_obj, external_static_ips, assigned_sticky_ips)
+        if len(external_static_ips) > 0 or len(assigned_sticky_ips) > 0:
             dns_update_zones([NodeGroup.objects.ensure_master()])
-            maaslog.info(
-                "%s: Sticky IP address(es) allocated: %s", device_obj.hostname,
-                ', '.join(allocation.ip for allocation in sticky_ips))
 
         return self.full_dehydrate(device_obj)
 

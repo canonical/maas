@@ -158,6 +158,28 @@ describe("AddDeviceController", function() {
         };
     }
 
+    // Make a interface
+    function makeInterface(mac, ipAssignment, clusterInterfaceId, ipAddress) {
+        if(angular.isUndefined(mac)) {
+            mac = "";
+        }
+        if(angular.isUndefined(ipAssignment)) {
+            ipAssignment = null;
+        }
+        if(angular.isUndefined(clusterInterfaceId)) {
+            clusterInterfaceId = null;
+        }
+        if(angular.isUndefined(ipAddress)) {
+            ipAddress = "";
+        }
+        return {
+            mac: mac,
+            ipAssignment: ipAssignment,
+            clusterInterfaceId: clusterInterfaceId,
+            ipAddress: ipAddress
+        };
+    }
+
     it("sets addDeviceScope on $scope.$parent", function() {
         var controller = makeController();
         expect(parentScope.addDeviceScope).toBe($scope);
@@ -184,10 +206,12 @@ describe("AddDeviceController", function() {
         ]);
         expect($scope.device).toEqual({
             name: "",
-            mac: "",
-            ipAssignment: null,
-            clusterInterfaceId: null,
-            ipAddress: ""
+            interfaces: [{
+                mac: "",
+                ipAssignment: null,
+                clusterInterfaceId: null,
+                ipAddress: ""
+            }]
         });
     });
 
@@ -263,9 +287,12 @@ describe("AddDeviceController", function() {
         it("returns text including low and high of static range", function() {
             var controller = makeController();
             var nic = makeManagedClusterInterface();
-            expect($scope.getInterfaceStaticRange(nic)).toEqual(
-                nic.network + " (" + nic.static_range.low +
-                " - " + nic.static_range.high + ")");
+            $scope.clusters = [
+                makeCluster([nic])
+                ];
+            expect($scope.getInterfaceStaticRange(nic.id)).toEqual(
+                nic.static_range.low + " - " + nic.static_range.high +
+                " (Optional)");
         });
     });
 
@@ -293,19 +320,44 @@ describe("AddDeviceController", function() {
 
         it("returns false if mac is empty", function() {
             var controller = makeController();
-            expect($scope.macHasError()).toBe(false);
+            var nic = makeInterface();
+            expect($scope.macHasError(nic)).toBe(false);
         });
 
         it("returns false if valid mac", function() {
             var controller = makeController();
-            $scope.device.mac = "00:00:11:22:33:44";
-            expect($scope.macHasError()).toBe(false);
+            var nic = makeInterface("00:00:11:22:33:44");
+            expect($scope.macHasError(nic)).toBe(false);
+        });
+
+        it("returns false if not repeat mac", function() {
+            var controller = makeController();
+            var nic = makeInterface("00:00:11:22:33:44");
+            var nic2 = makeInterface("00:00:11:22:33:55");
+            $scope.device.interfaces = [
+                nic,
+                nic2
+            ];
+            expect($scope.macHasError(nic)).toBe(false);
+            expect($scope.macHasError(nic2)).toBe(false);
         });
 
         it("returns true if invalid mac", function() {
             var controller = makeController();
-            $scope.device.mac = "00:00:11:22:33";
-            expect($scope.macHasError()).toBe(true);
+            var nic = makeInterface("00:00:11:22:33");
+            expect($scope.macHasError(nic)).toBe(true);
+        });
+
+        it("returns true if repeat mac", function() {
+            var controller = makeController();
+            var nic = makeInterface("00:00:11:22:33:44");
+            var nic2 = makeInterface("00:00:11:22:33:44");
+            $scope.device.interfaces = [
+                nic,
+                nic2
+            ];
+            expect($scope.macHasError(nic)).toBe(true);
+            expect($scope.macHasError(nic2)).toBe(true);
         });
     });
 
@@ -313,31 +365,36 @@ describe("AddDeviceController", function() {
 
         it("returns false if ip is empty", function() {
             var controller = makeController();
-            expect($scope.ipHasError()).toBe(false);
+            var nic = makeInterface();
+            expect($scope.ipHasError(nic)).toBe(false);
         });
 
         it("returns false if valid ipv4", function() {
             var controller = makeController();
-            $scope.device.ipAddress = "192.168.1.1";
-            expect($scope.ipHasError()).toBe(false);
+            var nic = makeInterface();
+            nic.ipAddress = "192.168.1.1";
+            expect($scope.ipHasError(nic)).toBe(false);
         });
 
         it("returns false if valid ipv6", function() {
             var controller = makeController();
-            $scope.device.ipAddress = "2001:db8::1";
-            expect($scope.ipHasError()).toBe(false);
+            var nic = makeInterface();
+            nic.ipAddress = "2001:db8::1";
+            expect($scope.ipHasError(nic)).toBe(false);
         });
 
         it("returns true if invalid ipv4", function() {
             var controller = makeController();
-            $scope.device.ipAddress = "192.168.1";
-            expect($scope.ipHasError()).toBe(true);
+            var nic = makeInterface();
+            nic.ipAddress = "192.168.1";
+            expect($scope.ipHasError(nic)).toBe(true);
         });
 
         it("returns true if invalid ipv6", function() {
             var controller = makeController();
-            $scope.device.ipAddress = "2001::db8::1";
-            expect($scope.ipHasError()).toBe(true);
+            var nic = makeInterface();
+            nic.ipAddress = "2001::db8::1";
+            expect($scope.ipHasError(nic)).toBe(true);
         });
 
         it("returns false if external ip out of managed network", function() {
@@ -346,11 +403,12 @@ describe("AddDeviceController", function() {
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
             // No class A address is in the fake networks.
-            $scope.device.ipAddress = "10.0.1.1";
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = "10.0.1.1";
+            deviceInterface.ipAssignment = {
                 name: "external"
             };
-            expect($scope.ipHasError()).toBe(false);
+            expect($scope.ipHasError(deviceInterface)).toBe(false);
         });
 
         it("returns true if external ip in managed network", function() {
@@ -358,11 +416,12 @@ describe("AddDeviceController", function() {
             var nic = makeManagedClusterInterface();
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
-            $scope.device.ipAddress = nic.static_range.low;
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = nic.static_range.low;
+            deviceInterface.ipAssignment = {
                 name: "external"
             };
-            expect($scope.ipHasError()).toBe(true);
+            expect($scope.ipHasError(deviceInterface)).toBe(true);
         });
 
         it("returns false if static in managed network", function() {
@@ -370,11 +429,12 @@ describe("AddDeviceController", function() {
             var nic = makeManagedClusterInterface();
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
-            $scope.device.ipAddress = nic.static_range.low;
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = nic.static_range.low;
+            deviceInterface.ipAssignment = {
                 name: "static"
             };
-            expect($scope.ipHasError()).toBe(false);
+            expect($scope.ipHasError(deviceInterface)).toBe(false);
         });
 
         it("returns false if static ip in select network", function() {
@@ -382,12 +442,13 @@ describe("AddDeviceController", function() {
             var nic = makeManagedClusterInterface();
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
-            $scope.device.ipAddress = nic.static_range.low;
-            $scope.device.clusterInterfaceId = nic.id;
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = nic.static_range.low;
+            deviceInterface.clusterInterfaceId = nic.id;
+            deviceInterface.ipAssignment = {
                 name: "static"
             };
-            expect($scope.ipHasError()).toBe(false);
+            expect($scope.ipHasError(deviceInterface)).toBe(false);
         });
 
         it("returns true if static ip out of select network", function() {
@@ -396,12 +457,13 @@ describe("AddDeviceController", function() {
             var otherNic = makeManagedClusterInterface();
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
-            $scope.device.ipAddress = otherNic.static_range.low;
-            $scope.device.clusterInterfaceId = nic.id;
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = otherNic.static_range.low;
+            deviceInterface.clusterInterfaceId = nic.id;
+            deviceInterface.ipAssignment = {
                 name: "static"
             };
-            expect($scope.ipHasError()).toBe(true);
+            expect($scope.ipHasError(deviceInterface)).toBe(true);
         });
 
         it("returns true if static ip in dynamic range of network", function() {
@@ -409,12 +471,13 @@ describe("AddDeviceController", function() {
             var nic = makeManagedClusterInterface();
             var cluster = makeCluster([nic]);
             $scope.clusters = [cluster];
-            $scope.device.ipAddress = nic.dynamic_range.low;
-            $scope.device.clusterInterfaceId = nic.id;
-            $scope.device.ipAssignment = {
+            var deviceInterface = makeInterface();
+            deviceInterface.ipAddress = nic.dynamic_range.low;
+            deviceInterface.clusterInterfaceId = nic.id;
+            deviceInterface.ipAssignment = {
                 name: "static"
             };
-            expect($scope.ipHasError()).toBe(true);
+            expect($scope.ipHasError(deviceInterface)).toBe(true);
         });
     });
 
@@ -422,8 +485,8 @@ describe("AddDeviceController", function() {
 
         it("returns true if name empty", function() {
             var controller = makeController();
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             expect($scope.deviceHasError()).toBe(true);
@@ -432,7 +495,7 @@ describe("AddDeviceController", function() {
         it("returns true if mac empty", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             expect($scope.deviceHasError()).toBe(true);
@@ -441,8 +504,8 @@ describe("AddDeviceController", function() {
         it("returns true if name invalid", function() {
             var controller = makeController();
             $scope.device.name = "ab_c.local";
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             expect($scope.deviceHasError()).toBe(true);
@@ -451,8 +514,8 @@ describe("AddDeviceController", function() {
         it("returns true if mac invalid", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             expect($scope.deviceHasError()).toBe(true);
@@ -461,15 +524,15 @@ describe("AddDeviceController", function() {
         it("returns true if missing ip assignment selection", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             expect($scope.deviceHasError()).toBe(true);
         });
 
         it("returns false if dynamic ip assignment selection", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             expect($scope.deviceHasError()).toBe(false);
@@ -478,33 +541,33 @@ describe("AddDeviceController", function() {
         it("returns true if external ip assignment and ip empty", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "external"
             };
-            $scope.device.ipAddress = "";
+            $scope.device.interfaces[0].ipAddress = "";
             expect($scope.deviceHasError()).toBe(true);
         });
 
         it("returns true if external ip assignment and ip invalid", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "external"
             };
-            $scope.device.ipAddress = "192.168";
+            $scope.device.interfaces[0].ipAddress = "192.168";
             expect($scope.deviceHasError()).toBe(true);
         });
 
         it("returns false if external ip assignment and ip valid", function() {
             var controller = makeController();
             $scope.device.name = "abc";
-            $scope.device.mac = '00:11:22:33:44:55';
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "external"
             };
-            $scope.device.ipAddress = "192.168.1.1";
+            $scope.device.interfaces[0].ipAddress = "192.168.1.1";
             expect($scope.deviceHasError()).toBe(false);
         });
 
@@ -512,8 +575,8 @@ describe("AddDeviceController", function() {
             function() {
                 var controller = makeController();
                 $scope.device.name = "abc";
-                $scope.device.mac = '00:11:22:33:44:55';
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
                 expect($scope.deviceHasError()).toBe(true);
@@ -526,11 +589,11 @@ describe("AddDeviceController", function() {
                 var cluster = makeCluster([nic]);
                 $scope.clusters = [cluster];
                 $scope.device.name = "abc";
-                $scope.device.mac = '00:11:22:33:44:55';
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
                 expect($scope.deviceHasError()).toBe(false);
             });
 
@@ -542,12 +605,12 @@ describe("AddDeviceController", function() {
                 var cluster = makeCluster([nic]);
                 $scope.clusters = [cluster];
                 $scope.device.name = "abc";
-                $scope.device.mac = '00:11:22:33:44:55';
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.clusterInterfaceId = nic.id;
-                $scope.device.ipAddress = "192.168";
+                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].ipAddress = "192.168";
                 expect($scope.deviceHasError()).toBe(true);
             });
 
@@ -560,12 +623,13 @@ describe("AddDeviceController", function() {
                 var cluster = makeCluster([nic]);
                 $scope.clusters = [cluster];
                 $scope.device.name = "abc";
-                $scope.device.mac = '00:11:22:33:44:55';
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.clusterInterfaceId = nic.id;
-                $scope.device.ipAddress = otherNic.static_range.low;
+                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].ipAddress =
+                    otherNic.static_range.low;
                 expect($scope.deviceHasError()).toBe(true);
             });
 
@@ -577,14 +641,60 @@ describe("AddDeviceController", function() {
                 var cluster = makeCluster([nic]);
                 $scope.clusters = [cluster];
                 $scope.device.name = "abc";
-                $scope.device.mac = '00:11:22:33:44:55';
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.clusterInterfaceId = nic.id;
-                $scope.device.ipAddress = nic.static_range.low;
+                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].ipAddress = nic.static_range.low;
                 expect($scope.deviceHasError()).toBe(false);
             });
+    });
+
+    describe("addInterface", function() {
+
+        it("adds another interface", function() {
+            var controller = makeController();
+            $scope.addInterface();
+            expect($scope.device.interfaces.length).toBe(2);
+        });
+    });
+
+    describe("isPrimaryInterface", function() {
+
+        it("returns true for first interface", function() {
+            var controller = makeController();
+            $scope.addInterface();
+            expect(
+                $scope.isPrimaryInterface(
+                    $scope.device.interfaces[0])).toBe(true);
+        });
+
+        it("returns false for second interface", function() {
+            var controller = makeController();
+            $scope.addInterface();
+            expect(
+                $scope.isPrimaryInterface(
+                    $scope.device.interfaces[1])).toBe(false);
+        });
+    });
+
+    describe("deleteInterface", function() {
+
+        it("doesnt remove primary interface", function() {
+            var controller = makeController();
+            var nic = $scope.device.interfaces[0];
+            $scope.deleteInterface(nic);
+            expect($scope.device.interfaces[0]).toBe(nic);
+        });
+
+        it("removes interface", function() {
+            var controller = makeController();
+            $scope.addInterface();
+            var nic = $scope.device.interfaces[1];
+            $scope.deleteInterface(nic);
+            expect($scope.device.interfaces.indexOf(nic)).toBe(-1);
+        });
     });
 
     describe("cancel", function() {
@@ -629,10 +739,8 @@ describe("AddDeviceController", function() {
             spyOn($scope, "deviceHasError").and.returnValue(false);
             spyOn(DevicesManager, "create").and.returnValue(
                 $q.defer().promise);
-            $scope.device = {
-                ipAssignment: {
-                    name: "dynamic"
-                }
+            $scope.device.interfaces[0].ipAssignment = {
+                name: "dynamic"
             };
             $scope.save();
             expect($scope.error).toBeNull();
@@ -651,20 +759,26 @@ describe("AddDeviceController", function() {
             var ipAddress = makeName("ip");
             $scope.device = {
                 name: name,
-                mac: mac,
-                ipAssignment: {
-                    name: assignment
-                },
-                clusterInterfaceId: nicId,
-                ipAddress: ipAddress
+                interfaces: [{
+                    mac: mac,
+                    ipAssignment: {
+                        name: assignment
+                    },
+                    clusterInterfaceId: nicId,
+                    ipAddress: ipAddress
+                }]
             };
             $scope.save();
             expect(DevicesManager.create).toHaveBeenCalledWith({
                 hostname: name,
                 primary_mac: mac,
-                ip_assignment: assignment,
-                ip_address: ipAddress,
-                "interface": nicId
+                extra_macs: [],
+                interfaces: [{
+                    mac: mac,
+                    ip_assignment: assignment,
+                    ip_address: ipAddress,
+                    "interface": nicId
+                }]
             });
         });
 
@@ -675,7 +789,7 @@ describe("AddDeviceController", function() {
             var defer = $q.defer();
             spyOn(DevicesManager, "create").and.returnValue(defer.promise);
             $scope.device.name = makeName("name");
-            $scope.device.ipAssignment = {
+            $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
             };
             $scope.save();
@@ -692,7 +806,7 @@ describe("AddDeviceController", function() {
                 var defer = $q.defer();
                 spyOn(DevicesManager, "create").and.returnValue(defer.promise);
                 $scope.device.name = makeName("name");
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "dynamic"
                 };
                 spyOn($scope, "hide");
@@ -710,7 +824,7 @@ describe("AddDeviceController", function() {
                 var defer = $q.defer();
                 spyOn(DevicesManager, "create").and.returnValue(defer.promise);
                 $scope.device.name = makeName("name");
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "dynamic"
                 };
                 spyOn($scope, "hide");
@@ -728,7 +842,7 @@ describe("AddDeviceController", function() {
                 var defer = $q.defer();
                 spyOn(DevicesManager, "create").and.returnValue(defer.promise);
                 $scope.device.name = makeName("name");
-                $scope.device.ipAssignment = {
+                $scope.device.interfaces[0].ipAssignment = {
                     name: "dynamic"
                 };
                 $scope.save();

@@ -65,6 +65,7 @@ def static_resources(context):
             'js/angular/directives/dbl_click_overlay.js',
             'js/angular/directives/contenteditable.js',
             'js/angular/directives/sticky_header.js',
+            'js/angular/directives/placeholder.js',
             'js/angular/filters/nodes.js',
             'js/angular/controllers/error.js',
             'js/angular/controllers/nodes_list.js',

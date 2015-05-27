@@ -278,51 +278,69 @@
             </div>
             <div class="page-header__dropdown ng-hide" data-ng-show="addDeviceScope.viewable" data-ng-controller="AddDeviceController">
                 <h3>Add device</h3>
-                <form action="post" class="twelve-col">
-                    <fieldset class="six-col no-padding">
+                <form class="twelve-col">
+                    <fieldset class="twelve-col last-col no-padding">
                         <div class="inline">
                             <label for="device-name" class="two-col">Name</label>
                             <input type="text" id="device-name" class="three-col" placeholder="Name your device"
                                 data-ng-model="device.name"
                                 data-ng-class="{ invalid: nameHasError() }">
                         </div>
-                        <div class="inline">
-                            <label for="mac-address" class="two-col">MAC address</label>
-                            <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
-                                data-ng-model="device.mac"
-                                data-ng-class="{ invalid: macHasError() }">
-                        </div>
                     </fieldset>
-                    <fieldset class="six-col last-col no-padding">
-                        <div class="inline">
-                            <label for="ip-assignment" class="two-col">IP assigment</label>
-                            <select name="ip-assignment" id="ip-assignment" class="three-col"
-                                placeholder="Select IP assignment" data-ng-model="device.ipAssignment"
-                                data-ng-options="assigment.title for assigment in ipAssignments">
-                                <option value="" disabled selected>Select IP assignment</option>
-                            </select>
-                        </div>
-                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'external'">
-                            <label for="ip-address" class="two-col">IP address</label>
-                            <input type="text" id="ip-address" class="three-col" placeholder="000.000.000.000"
-                                data-ng-model="device.ipAddress"
-                                data-ng-class="{ invalid: ipHasError() }">
-                        </div>
-                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'static'">
-                            <label for="network" class="two-col">Network</label>
-                            <select name="network" id="network" class="three-col"
-                                placeholder="Select network" data-ng-model="device.clusterInterfaceId"
-                                data-ng-options="interface.id as getInterfaceStaticRange(interface) for interface in getManagedInterfaces()">
-                                <option value="" disabled selected>Select network</option>
-                            </select>
-                        </div>
-                        <div class="inline ng-hide" data-ng-show="device.ipAssignment.name === 'static'">
-                            <label for="ip-address" class="two-col">IP address</label>
-                            <input type="text" id="ip-address" class="three-col" placeholder="000.000.000.000 (Optional)"
-                                data-ng-model="device.ipAddress"
-                                data-ng-class="{ invalid: ipHasError() }">
-                        </div>
-                    </fieldset>
+                    <table class="no-margin-bottom table-listing">
+                        <thead>
+                            <tr class="table-listing__row">
+                                <th class="t20">MAC address</th>
+                                <th class="t20">IP assignment</th>
+                                <th class="t20">Network</th>
+                                <th class="t35">IP address</th>
+                                <th class="t5"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-listing__row"
+                                data-ng-repeat="interface in device.interfaces">
+                                <td class="t20 table-listing__cell">
+                                    <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
+                                        data-ng-model="interface.mac"
+                                        data-ng-class="{ invalid: macHasError(interface) }">
+                                </td>
+                                <td class="t20 table-listing__cell">
+                                    <select name="ip-assignment" id="ip-assignment"
+                                        placeholder="Select IP assignment" data-ng-model="interface.ipAssignment"
+                                        data-ng-options="assigment.title for assigment in ipAssignments">
+                                        <option value="" disabled selected>Select IP assignment</option>
+                                    </select>
+                                </td>
+                                <td class="t20 table-listing__cell">
+                                    <select name="network" id="network"
+                                        placeholder="Select network" data-ng-model="interface.clusterInterfaceId"
+                                        data-ng-options="cInterface.id as cInterface.network for cInterface in getManagedInterfaces()"
+                                        data-ng-show="interface.ipAssignment.name === 'static'">
+                                        <option value="" disabled selected>Select network</option>
+                                    </select>
+                                </td>
+                                <td class="t35 table-listing__cell">
+                                    <input type="text" id="ip-address" placeholder="000.000.000.000"
+                                        data-ng-model="interface.ipAddress"
+                                        data-ng-class="{ invalid: ipHasError(interface) }"
+                                        data-ng-show="interface.ipAssignment.name === 'external'">
+                                    <input type="text" id="ip-address" ng-placeholder="getInterfaceStaticRange(interface.clusterInterfaceId)"
+                                        data-ng-model="interface.ipAddress"
+                                        data-ng-class="{ invalid: ipHasError(interface) }"
+                                        data-ng-show="interface.ipAssignment.name === 'static' && interface.clusterInterfaceId">
+                                </td>
+                                <td class="t5 align-right">
+                                    <!-- space needed to set correct height -->
+                                    <span data-ng-show="isPrimaryInterface(interface)">&nbsp;</span>
+                                    <a title="Delete interface" class="icon delete"
+                                        data-ng-click="deleteInterface(interface)"
+                                        data-ng-hide="isPrimaryInterface(interface)">delete</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="cta-ubuntu secondary" data-ng-click="addInterface()">+ Add another interface</button>
                 </form>
                 <div class="page-header__feedback twelve-col no-margin-bottom">
                     <div class="twelve-col ng-hide" data-ng-show="error">
