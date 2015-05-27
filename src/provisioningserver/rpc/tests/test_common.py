@@ -14,14 +14,20 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 import re
 
+from maastesting.factory import factory
 from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import (
+    always_fail_with,
+    TwistedLoggerFixture,
+)
 from mock import (
     create_autospec,
     sentinel,
@@ -29,12 +35,14 @@ from mock import (
 from provisioningserver.rpc import common
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools import ExpectedException
+from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Equals,
     Is,
     IsInstance,
     Not,
 )
+from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransport
@@ -131,3 +139,110 @@ class TestRPCProtocol(MAASTestCase):
         protocol.makeConnection(StringTransport())
         protocol.connectionLost(connectionDone)
         self.assertThat(protocol.onConnectionLost, IsFiredDeferred())
+
+
+class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
+
+    answer_seq = b"%d" % random.randrange(0, 2 ** 32)
+    answer_box = amp.AmpBox(_answer=answer_seq)
+
+    error_seq = b"%d" % random.randrange(0, 2 ** 32)
+    error_box = amp.AmpBox(
+        _error=error_seq, _error_code=amp.UNHANDLED_ERROR_CODE,
+        _error_description=factory.make_string())
+
+    scenarios = (
+        ("_answerReceived", {"seq": answer_seq, "box": answer_box}),
+        ("_errorReceived", {"seq": error_seq, "box": error_box}),
+    )
+
+    def test_unhandled_errors_logged_and_do_not_cause_disconnection(self):
+        protocol = common.RPCProtocol()
+        protocol.makeConnection(StringTransport())
+        # Poke a request into the dispatcher that will always fail.
+        d = Deferred().addCallback(lambda _: 0 / 0)
+        protocol._outstandingRequests[self.seq] = d
+        # Push a box in response to the request.
+        with TwistedLoggerFixture() as logger:
+            protocol.ampBoxReceived(self.box)
+        # The Deferred does not have a dangling error.
+        self.assertThat(extract_result(d), Is(None))
+        # The transport is still connected.
+        self.assertThat(protocol.transport.disconnecting, Is(False))
+        # The error has been logged.
+        self.assertDocTestMatches(
+            """\
+            Unhandled failure during AMP request. This is probably a bug.
+            Please ensure that this error is handled within application code.
+            Traceback (most recent call last):
+            ...
+            """,
+            logger.output)
+
+
+class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
+
+    def test_unhandled_errors_do_not_cause_disconnection(self):
+        protocol = common.RPCProtocol()
+        protocol.makeConnection(StringTransport())
+        # Ensure that the superclass dispatchCommand() will fail.
+        dispatchCommand = self.patch(amp.AMP, "dispatchCommand")
+        dispatchCommand.side_effect = always_fail_with(ZeroDivisionError())
+        # Push a command box into the protocol.
+        seq = b"%d" % random.randrange(0, 2 ** 32)
+        cmd = factory.make_string()
+        box = amp.AmpBox(_ask=seq, _command=cmd)
+        with TwistedLoggerFixture() as logger:
+            protocol.ampBoxReceived(box)
+        # The transport is still connected.
+        self.expectThat(protocol.transport.disconnecting, Is(False))
+        # The error has been logged on the originating side of the AMP
+        # session, along with an explanatory message. The message includes a
+        # command reference.
+        cmd_ref = common.make_command_ref(box)
+        self.assertDocTestMatches(
+            """\
+            Unhandled failure dispatching AMP command. This is probably a bug.
+            Please ensure that this error is handled within application code
+            or declared in the signature of the %s command. [%s]
+            Traceback (most recent call last):
+            ...
+
+            """ % (cmd, cmd_ref),
+            logger.output)
+        # A simpler error message has been transmitted over the wire. It
+        # includes the same command reference as logged locally.
+        protocol.transport.io.seek(0)
+        observed_boxes_sent = amp.parse(protocol.transport.io)
+        expected_boxes_sent = [
+            amp.AmpBox(
+                _error=seq, _error_code=amp.UNHANDLED_ERROR_CODE,
+                _error_description="Unknown Error [%s]" % cmd_ref),
+        ]
+        self.assertThat(observed_boxes_sent, Equals(expected_boxes_sent))
+
+
+class TestMakeCommandRef(MAASTestCase):
+    """Tests for `common.make_command_ref`."""
+
+    def test__command_ref_includes_host_pid_command_and_ask_sequence(self):
+        host = factory.make_name("hostname")
+        pid = random.randint(99, 9999999)
+        cmd = factory.make_name("command")
+        ask = random.randint(99, 9999999)
+        box = amp.AmpBox(_command=cmd, _ask=ask)
+
+        self.patch(common, "gethostname").return_value = host
+        self.patch(common, "getpid").return_value = pid
+
+        self.assertThat(common.make_command_ref(box), Equals(
+            "%s:pid=%s:cmd=%s:ask=%s" % (host, pid, cmd, ask)))
+
+    def test__replaces_missing_ask_with_none(self):
+        box = amp.AmpBox(_command="command")
+
+        self.patch(common, "gethostname").return_value = "host"
+        self.patch(common, "getpid").return_value = 1234
+
+        self.assertThat(common.make_command_ref(box), Equals(
+            "host:pid=1234:cmd=command:ask=none"))

@@ -19,10 +19,15 @@ __all__ = [
     "RPCProtocol",
 ]
 
+from os import getpid
+from socket import gethostname
+
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
+from twisted.python import log
+from twisted.python.failure import Failure
 
 
 class Identify(amp.Command):
@@ -143,6 +148,33 @@ class Client:
         return hash(self._conn)
 
 
+def make_command_ref(box):
+    """Make a textual description of an AMP command box.
+
+    This is intended to help correlating exceptions between distributed parts
+    of MAAS. The reference takes the form::
+
+      $hostname:pid=$pid:cmd=$command_name:ask=$ask_sequence
+
+    where:
+
+      * ``hostname`` is the hostname of the machine on which the error
+        occurred.
+
+      * ``pid`` is the process ID of where the error originated.
+
+      * ``command_name`` is the AMP command name.
+
+      * ``ask_sequence`` is the sequence number used for RPC calls that expect
+        a reply; see http://amp-protocol.net/ for details.
+
+    An extended variant might be valuable: a ``make_box_ref`` function that
+    returns unambiguous references for command, answer, and errors boxes.
+    """
+    return "%s:pid=%d:cmd=%s:ask=%s" % (
+        gethostname(), getpid(), box[amp.COMMAND], box.get(amp.ASK, "none"))
+
+
 class RPCProtocol(amp.AMP, object):
     """A specialisation of `amp.AMP`.
 
@@ -169,3 +201,49 @@ class RPCProtocol(amp.AMP, object):
     def connectionLost(self, reason):
         super(RPCProtocol, self).connectionLost(reason)
         self.onConnectionLost.callback(None)
+
+    def dispatchCommand(self, box):
+        """Call up, but coerce errors into non-fatal failures.
+
+        This is called by `_commandReceived`, which is responsible for
+        capturing unhandled errors and transmitting them back to the remote
+        side. It does this within a :class:`amp.QuitBox` which immediately
+        disconnects the transport after being transmitted.
+
+        Here we capture all errors before `_commandReceived` sees them and
+        wrap them with :class:`amp.RemoteAmpError`. This prevents the
+        disconnecting behaviour.
+        """
+        d = super(RPCProtocol, self).dispatchCommand(box)
+
+        def coerce_error(failure):
+            if failure.check(amp.RemoteAmpError):
+                return failure
+            else:
+                command = box[amp.COMMAND]
+                command_ref = make_command_ref(box)
+                log.err(failure, (
+                    "Unhandled failure dispatching AMP command. This is "
+                    "probably a bug. Please ensure that this error is handled "
+                    "within application code or declared in the signature of "
+                    "the %s command. [%s]") % (command, command_ref))
+                return Failure(amp.RemoteAmpError(
+                    amp.UNHANDLED_ERROR_CODE, b"Unknown Error [%s]" %
+                    command_ref.encode("ascii"), fatal=False, local=failure))
+
+        return d.addErrback(coerce_error)
+
+    def unhandledError(self, failure):
+        """Terminal errback, after application code has seen the failure.
+
+        `amp.BoxDispatcher.unhandledError` calls the `amp.IBoxSender`'s
+        `unhandledError`. In the default implementation this disconnects the
+        transport.
+
+        Here we instead log the failure but do *not* disconnect because it's
+        too disruptive to the running of MAAS.
+        """
+        log.err(failure, (
+            "Unhandled failure during AMP request. This is probably a bug. "
+            "Please ensure that this error is handled within application "
+            "code."))
