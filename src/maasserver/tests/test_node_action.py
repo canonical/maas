@@ -263,6 +263,14 @@ class TestCommissionAction(MAASServerTestCase):
         ("READY", {"status": NODE_STATUS.READY}),
     )
 
+    def test_raise_NodeActionError_if_on(self):
+        node = factory.make_Node(
+            status=self.status, power_state=POWER_STATE.ON)
+        user = factory.make_admin()
+        action = Commission(node, user)
+        self.assertTrue(action.is_permitted())
+        self.assertRaises(NodeActionError, action.execute)
+
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
             mac=True, status=self.status,
@@ -793,7 +801,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.addCleanup(node_query.enable)
         node_query.disable()
 
-        action = self.make_action(Commission, NODE_STATUS.READY)
+        action = self.make_action(
+            Commission, NODE_STATUS.READY, POWER_STATE.OFF)
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(

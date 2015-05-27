@@ -236,6 +236,9 @@ class Commission(NodeAction):
 
     def execute(self):
         """See `NodeAction.execute`."""
+        if self.node.power_state == POWER_STATE.ON:
+            raise NodeActionError(
+                "Unable to be commissioned because the power is currently on.")
         try:
             self.node.start_commissioning(self.user)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
