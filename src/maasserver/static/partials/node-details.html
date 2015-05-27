@@ -196,6 +196,10 @@
                             </dd>
                         <dt class="two-col">Operating System</dt>
                             <dd class="four-col last-col">{$ getOSText() $}</dd>
+                        <dt class="two-col ng-hide" data-ng-show="node.third_party_driver">Third Party Driver</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.third_party_driver">
+                                {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
+                            </dd>
                     </dl>
                 </div>
                 <div class="controls two-col last-col" data-ng-hide="summary.editing">

@@ -25,6 +25,7 @@ from lxml import etree
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
@@ -41,6 +42,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
 from maasserver.utils.orm import transactional
 from maasserver.websockets.base import (
@@ -61,7 +63,10 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.twisted import always_succeed_with
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
-from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+from metadataserver.models.commissioningscript import (
+    LIST_MODALIASES_OUTPUT_NAME,
+    LLDP_OUTPUT_NAME,
+)
 from mock import Mock
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
@@ -180,6 +185,7 @@ class TestNodeHandler(MAASServerTestCase):
             .exclude(type__level=logging.DEBUG)
             .select_related("type")
             .order_by('-id')[:50])
+        driver = get_third_party_driver(node)
         data = {
             "actions": compile_node_actions(node, user).keys(),
             "architecture": node.architecture,
@@ -253,6 +259,10 @@ class TestNodeHandler(MAASServerTestCase):
                 tag.name
                 for tag in node.tags.all()
             ],
+            "third_party_driver": {
+                "module": driver["module"] if "module" in driver else "",
+                "comment": driver["comment"] if "comment" in driver else "",
+            },
             "updated": dehydrate_datetime(node.updated),
             "zone": {
                 "id": node.zone.id,
@@ -306,6 +316,13 @@ class TestNodeHandler(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
         factory.make_PhysicalBlockDevice(node)
+
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=True)
+        data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
+        factory.make_NodeResult_for_commissioning(
+            node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
+            data=data.encode("utf-8"))
 
         mac_address = node.macaddress_set.all()[0]
         factory.make_StaticIPAddress(mac=mac_address)

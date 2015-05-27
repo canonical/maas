@@ -3093,7 +3093,7 @@
       16:28:11.699310'}
   model: metadataserver.noderesult
   pk: 17
-- fields: {created: !!timestamp '2015-03-23 16:28:11.747953', data: '', name: 00-maas-04-list-modaliases.out,
+- fields: {created: !!timestamp '2015-03-23 16:28:11.747953', data: 'cGNpOnYwMDAwMTU5MGQwMDAwMDA0N3N2MDAwMDE1OTBzZDAwMDAwMDQ3YmMqc2MqaSoK', name: 00-maas-04-list-modaliases.out,
     node: 8, result_type: 0, script_result: 0, updated: !!timestamp '2015-03-23 16:28:11.747953'}
   model: metadataserver.noderesult
   pk: 19

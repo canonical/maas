@@ -24,12 +24,14 @@ from lxml import etree
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
 from maasserver.utils.orm import transactional
 from maasserver.websockets.base import (
@@ -214,6 +216,15 @@ class NodeHandler(TimestampedModelHandler):
                 obj, RESULT_TYPE.COMMISSIONING)
             data["installation_results"] = self.dehydrate_node_results(
                 obj, RESULT_TYPE.INSTALLATION)
+
+            # Third party drivers
+            if Config.objects.get_config('enable_third_party_drivers'):
+                driver = get_third_party_driver(obj)
+                if "module" in driver and "comment" in driver:
+                    data["third_party_driver"] = {
+                        "module": driver["module"],
+                        "comment": driver["comment"],
+                    }
 
         return data
 
