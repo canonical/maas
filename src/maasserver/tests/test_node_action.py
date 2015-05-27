@@ -274,7 +274,7 @@ class TestCommissionAction(MAASServerTestCase):
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
             mac=True, status=self.status,
-            power_type='ether_wake')
+            power_type='ether_wake', power_state=POWER_STATE.OFF)
         self.patch_autospec(node, 'start_transition_monitor')
         node_start = self.patch(node, 'start')
         node_start.side_effect = lambda user, user_data: post_commit()

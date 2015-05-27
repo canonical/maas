@@ -377,17 +377,11 @@
                     </tbody>
                 </table>
             </div>
-            <div class="controls four-col last-col no-margin-bottom" data-ng-show="node.events.length">
-                <div class="two-col no-margin-bottom">
-                   <a href="" class="link-cta-ubuntu clear right"></a>
-                </div>
-                <div class="two-col last-col no-margin-bottom">
-                    <a href="#/node/{$ node.system_id $}/events"
-                       class="link-cta-ubuntu secondary full">View more</a>
-                </div>
-            </div>
-            <p class="twelve-col text-center" data-ng-show="allowShowMoreEvents()">
-                <a href="" data-ng-click="showMoreEvents()">Load next 10 events</a>
+            <p class="twelve-col text-center">
+                <span data-ng-show="allowShowMoreEvents()">
+                    <a href="" data-ng-click="showMoreEvents()">Load next 10 events</a> |
+                </span>
+                <a href="#/node/{$ node.system_id $}/events">View full history</a>
             </p>
         </div>
     </div>
