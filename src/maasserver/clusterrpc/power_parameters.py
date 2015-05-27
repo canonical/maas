@@ -53,6 +53,8 @@ FIELD_TYPE_MAPPINGS = {
     'string': forms.CharField,
     'mac_address': MACAddressFormField,
     'choice': forms.ChoiceField,
+    # This is used on the API so a password field is just a char field.
+    'password': forms.CharField,
 }
 
 

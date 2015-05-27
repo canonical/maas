@@ -52,10 +52,19 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                 var type = scope.field.field_type;
                 var req = scope.field.required ? 'required="required" ' : '';
                 var html = "";
-                if(type === "string" || type === "mac_address") {
+                if(type === "string" || type === "mac_address" ||
+                   type === "password") {
                     // Build an input element with the correct attributes.
+                    var input_type = 'type="text"';
+                    if(type === "password") {
+                        // If the input field is a password field, display it
+                        // as text or password depending on if we're editing
+                        // the fields.
+                        input_type = "data-ng-type=\"ngModel.editing && " +
+                            "'text' || 'password'\"";
+                    }
                     html =
-                        '<input type="text" ' +
+                        '<input ' + input_type + ' ' +
                         'name="' + scope.field.name + '" ' +
                         req + 'data-ng-model="' + attrs.ngModel + '" ' +
                         'data-ng-disabled="' + attrs.ngDisabled + '" ';

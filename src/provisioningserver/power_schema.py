@@ -124,7 +124,7 @@ def make_json_field(
     :param label: The label to be presented to the user for this field.
     :type label: string
     :param field_type: The type of field to create. Can be one of
-        (string, choice, mac_address). Defaults to string.
+        (string, choice, mac_addres, password). Defaults to string.
     :type field_type: string.
     :param choices: The collection of choices to present to the user.
         Needs to be structured as a list of lists, otherwise
@@ -135,7 +135,7 @@ def make_json_field(
     :param required: Whether or not a value for the field is required.
     :type required: boolean
     """
-    if field_type not in ('string', 'mac_address', 'choice'):
+    if field_type not in ('string', 'mac_address', 'choice', 'password'):
         field_type = 'string'
     if choices is None:
         choices = []
@@ -170,7 +170,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_id', "Power ID"),
             make_json_field(
                 'power_pass', "Power password (optional)",
-                required=False),
+                required=False, field_type='password'),
         ],
     },
     {
@@ -183,7 +183,8 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_uuid', "VM UUID (if known)", required=False),
             make_json_field('power_address', "VMware hostname"),
             make_json_field('power_user', "VMware username"),
-            make_json_field('power_pass', "VMware password"),
+            make_json_field(
+                'power_pass', "VMware password", field_type='password'),
             make_json_field(
                 'power_port', "VMware API port (optional)", required=False),
             make_json_field(
@@ -198,7 +199,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_address', "Power address"),
             make_json_field('power_id', "Power ID"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
         ],
     },
     {
@@ -210,7 +212,8 @@ JSON_POWER_TYPE_PARAMETERS = [
                 choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0),
             make_json_field('power_address', "IP address"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
             make_json_field('mac_address', "Power MAC")
         ],
     },
@@ -220,7 +223,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
             make_json_field('power_hwaddress', "Power hardware address"),
         ],
     },
@@ -231,7 +235,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('system_id', "System ID"),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
             make_json_field(
                 'power_control', "Power control type", field_type='choice',
                 choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi'),
@@ -243,7 +248,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field(
                 'mac_address', "MAC Address", field_type='mac_address'),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
             make_json_field('power_address', "Power address")
         ],
     },
@@ -254,7 +260,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('system_id', "Outlet ID"),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
         ],
     },
     {
@@ -264,7 +271,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('uuid', "Server UUID"),
             make_json_field('power_address', "URL for XML API"),
             make_json_field('power_user', "API user"),
-            make_json_field('power_pass', "API password"),
+            make_json_field(
+                'power_pass', "API password", field_type='password'),
         ],
     },
     {
@@ -273,7 +281,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field('power_address', "IP for MSCM CLI API"),
             make_json_field('power_user', "MSCM CLI API user"),
-            make_json_field('power_pass', "MSCM CLI API password"),
+            make_json_field(
+                'power_pass', "MSCM CLI API password", field_type='password'),
             make_json_field(
                 'node_id',
                 "Node ID - Must adhere to cXnY format "
@@ -287,7 +296,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_address', "Power address"),
             make_json_field('power_port', "Power port"),
             make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
             make_json_field('blade_id', "Blade ID (Typically 1-24)"),
         ],
     },
@@ -300,7 +310,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'node_outlet', "APC PDU node outlet number (1-16)"),
             make_json_field(
                 'power_on_delay', "Power ON outlet delay (seconds)",
-                default='5'),
+                default='5', field_type='password'),
         ],
     },
 ]

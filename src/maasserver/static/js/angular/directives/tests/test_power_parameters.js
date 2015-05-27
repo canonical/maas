@@ -151,6 +151,16 @@ describe("maasPowerParameters", function() {
             var select = directive.find("select");
             expect(select.attr("data-ng-disabled")).toBe("disabled");
         });
+
+        it("creates password for field_type of password", function() {
+            $scope.field = makeField("test", "password");
+            var directive = compileDirective("field", "value");
+            var input = directive.find("input");
+            expect(input.attr("name")).toBe("test");
+            expect(input.attr("data-ng-model")).toBe("value");
+            expect(input.attr("data-ng-type")).toBe(
+                "ngModel.editing && 'text' || 'password'");
+        });
     });
 
     describe("maas-power-parameters", function() {

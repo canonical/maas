@@ -60,6 +60,7 @@ def static_resources(context):
             'js/angular/directives/call_to_action.js',
             'js/angular/directives/power_parameters.js',
             'js/angular/directives/os_select.js',
+            'js/angular/directives/type.js',
             'js/angular/directives/accordion.js',
             'js/angular/directives/dbl_click_overlay.js',
             'js/angular/directives/contenteditable.js',
