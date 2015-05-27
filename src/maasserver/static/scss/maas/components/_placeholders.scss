@@ -31,6 +31,11 @@
     }
 
     &.delete {
+        background-image: url('../img/icons/delete.png');
+        background-image: url('../img/icons/delete.svg'), none;
+    }
+
+    &.remove {
         background-image: url('../img/icons/remove.png');
         background-image: url('../img/icons/remove.svg'), none;
     }

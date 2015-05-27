@@ -238,6 +238,26 @@ describe("AddHardwareController", function() {
         });
     });
 
+    describe("removeMac", function() {
+
+        it("removes mac address object from machine", function() {
+            var controller = makeControllerWithMachine();
+            $scope.addMac();
+            var mac = $scope.machine.macs[1];
+            $scope.removeMac(mac);
+            expect($scope.machine.macs.length).toBe(1);
+        });
+
+        it("ignores second remove if mac object removed again", function() {
+            var controller = makeControllerWithMachine();
+            $scope.addMac();
+            var mac = $scope.machine.macs[1];
+            $scope.removeMac(mac);
+            $scope.removeMac(mac);
+            expect($scope.machine.macs.length).toBe(1);
+        });
+    });
+
     describe("invalidName", function() {
 
         it("return false if machine name empty", function() {

@@ -132,12 +132,14 @@
                                 data-ng-options="arch for arch in architectures">
                             </select>
                         </div>
-                        <div class="inline" data-ng-repeat="mac in machine.macs">
+                        <div class="inline five-col" data-ng-repeat="mac in machine.macs">
                             {$ mac $}
                             <label for="mac-address" class="two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
-                            <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
+                            <input type="text" id="mac-address" class="three-col last-col" placeholder="00:00:00:00:00:00"
                                    data-ng-class="{ invalid: mac.error }"
                                    data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
+                            <span class="icon remove" title="Delete MAC"
+                                data-ng-hide="mac === machine.macs[0]" data-ng-click="removeMac(mac)"></span>
                         </div>
                         <div class="inline five-col">
                             <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>

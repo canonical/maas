@@ -325,6 +325,13 @@ form {
         margin-top: 10px;
     }
 
+    .icon {
+        position: absolute;
+        top: 11px;
+        right: 10px;
+        cursor: pointer;
+    }
+
     .error-message {
         font-size: 12px;
         color: #e85232;
@@ -332,7 +339,6 @@ form {
         margin-bottom: 10px;
         font-weight: normal;
     }
-
 }
 
 /* 1. INLINE FORM ----------------------------------------------------

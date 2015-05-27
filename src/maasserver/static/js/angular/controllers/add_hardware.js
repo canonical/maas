@@ -395,6 +395,14 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.machine.macs.push(newMAC());
         };
 
+        // Remove a MAC address to the machine.
+        $scope.removeMac = function(mac) {
+            var idx = $scope.machine.macs.indexOf(mac);
+            if(idx > -1) {
+                $scope.machine.macs.splice(idx, 1);
+            }
+        };
+
         // Return true if the machine name is invalid.
         $scope.invalidName = function() {
             // Not invalid if empty.
