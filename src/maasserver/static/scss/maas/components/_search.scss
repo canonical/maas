@@ -13,6 +13,10 @@
     position: relative;
     padding-bottom: 20px;
 
+    input[type='search'] {
+        -webkit-appearance: textfield;
+    }
+
     .search__input {
         @include box-sizing();
         @include rounded-corners(4px);
