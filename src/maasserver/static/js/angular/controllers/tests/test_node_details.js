@@ -2007,6 +2007,12 @@ describe("NodeDetailsController", function() {
 
             // No error message is set.
             expect($scope.nic.errormsg).toBe(null);
+
+            // Error state is cleared
+            expect($scope.nic.error).toBe(false);
+
+            // Field contents are empty
+            expect($scope.nic.mac).toBe("");
         });
 
         it("sets and shows error message, shows form on failure", function() {
@@ -2038,6 +2044,9 @@ describe("NodeDetailsController", function() {
 
             // Add MAC form is visible
             expect($scope.nic.adding).toBe(true);
+
+            // Field contents are left untouched
+            expect($scope.nic.mac).toBe("01:23:45:67:89:ab");
         });
     });
 

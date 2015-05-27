@@ -286,8 +286,7 @@
                                 class="three-col last-col"
                                 data-ng-class="{ invalid: nic.error }"
                                 data-ng-model="nic.mac"
-                                data-ng-pattern="/^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/"
-                                required>
+                                data-ng-change="nicMACChanged()">
                             <span class="three-col push-four last-col right error-message"
                                 data-ng-show="nic.errormsg">{$ nic.errormsg $}</span>
                         </div>

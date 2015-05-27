@@ -33,7 +33,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.nic = {
             adding: false,
             error: false,
-            errormsg: ""
+            errormsg: "",
+            mac: ""
         };
 
         // Holds errors that are displayed on the details page.
@@ -432,8 +433,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
                 updateName();
                 updateSummary();
-                $scope.nic.adding = false; // Hide the add nic form.
-                $scope.nic.errormsg = null;
+                resetAddMACAddressState();
             }, function(error) {
                 handleSaveError(error);
                 updateName();
@@ -450,6 +450,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateSummary();
             updateMachineOutput();
             startWatching();
+        }
+
+        // Clears Add MAC Address form error state
+        function resetAddMACAddressState() {
+            $scope.nic.adding = false; // Hide the add nic form.
+            $scope.nic.error = false; // Reset the error markers.
+            $scope.nic.errormsg = null;
+            $scope.nic.mac = "";
         }
 
         $scope.getPowerStateClass = function() {
@@ -571,6 +579,23 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return true;
             }
             return false;
+        };
+
+        // Fired by data-ng-change of the new MAC address input
+        $scope.nicMACChanged = function() {
+            // Clear error status and error message if set.
+            if($scope.nic.error) {
+                $scope.nic.error = false;
+                $scope.nic.errormsg = null;
+            }
+            // If contents are either empty or valid, set nic.error to
+            // false, otherwise, set it to true.
+            if($scope.nic.mac === "" ||
+               ValidationService.validateMAC($scope.nic.mac)) {
+                $scope.nic.error = false;
+            } else {
+                $scope.nic.error = true;
+            }
         };
 
         // Called when the actionOption has changed.
