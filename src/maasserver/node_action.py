@@ -205,7 +205,7 @@ class SetZone(NodeAction):
     name = "set-zone"
     display = "Set Zone"
     display_sentence = "Zone set"
-    actionable_statuses = (NODE_STATUS.NEW, NODE_STATUS.READY)
+    actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     installable_permission = NODE_PERMISSION.ADMIN
     installable_only = False
