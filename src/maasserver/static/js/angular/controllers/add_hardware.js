@@ -47,7 +47,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 field_type: 'string',
                 "default": '',
                 choices: [],
-                required: true
+                required: false
             },
             {
                 name: 'prefix_filter',
