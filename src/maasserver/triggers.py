@@ -412,6 +412,23 @@ def register_all_triggers():
     register_trigger(
         "maasserver_zone", "zone_delete_notify", "delete")
 
+    # Tag table
+    register_procedure(
+        render_notification_procedure(
+            'tag_create_notify', 'tag_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'tag_update_notify', 'tag_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'tag_delete_notify', 'tag_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_tag", "tag_create_notify", "insert")
+    register_trigger(
+        "maasserver_tag", "tag_update_notify", "update")
+    register_trigger(
+        "maasserver_tag", "tag_delete_notify", "delete")
+
     # Node tag link table
     register_procedure(
         NODE_TAG_NOTIFY % (

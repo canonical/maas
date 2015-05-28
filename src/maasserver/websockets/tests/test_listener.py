@@ -31,6 +31,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
@@ -322,10 +323,16 @@ class TransactionalHelpersMixin:
         node.save()
 
     @transactional
-    def update_tag(self, tag, new_name):
-        tag.name = new_name
-        tag.save()
-        return tag
+    def update_tag(self, id, params):
+        tag = Tag.objects.get(id=id)
+        for key, value in params.items():
+            setattr(tag, key, value)
+        return tag.save()
+
+    @transactional
+    def delete_tag(self, id):
+        tag = Tag.objects.get(id=id)
+        tag.delete()
 
     @transactional
     def create_user(self, params=None):
@@ -726,6 +733,62 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield listener.stop()
 
 
+class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the tag
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("tag", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            tag = yield deferToThread(self.create_tag)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % tag.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("tag", lambda *args: dv.set(args))
+        tag = yield deferToThread(self.create_tag)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_tag,
+                tag.id,
+                {'name': factory.make_name('tag')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % tag.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("tag", lambda *args: dv.set(args))
+        tag = yield deferToThread(self.create_tag)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_tag, tag.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % tag.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
 class TestNodeTagListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
@@ -792,7 +855,7 @@ class TestNodeTagListener(
         yield listener.start()
         try:
             tag = yield deferToThread(
-                self.update_tag, tag, factory.make_name("tag"))
+                self.update_tag, tag.id, {'name': factory.make_name("tag")})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
