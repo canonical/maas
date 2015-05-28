@@ -597,8 +597,11 @@ class TestWebSocketFactory(MAASTestCase):
 
     def test_loads_all_handlers(self):
         factory = WebSocketFactory()
-        self.assertItemsEqual(
-            ["device", "general", "node", "cluster", "user", "zone", "event"],
+        self.assertItemsEqual([
+            "device", "general", "node",
+            "cluster", "user", "zone",
+            "event", "tag",
+            ],
             factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
@@ -670,7 +673,7 @@ class TestWebSocketFactory(MAASTestCase):
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = WebSocketFactory()
         self.assertItemsEqual(
-            ["node", "device", "nodegroup", "user", "zone", "event"],
+            ["node", "device", "nodegroup", "user", "zone", "event", "tag"],
             factory.listener.listeners.keys())
 
     @transactional
