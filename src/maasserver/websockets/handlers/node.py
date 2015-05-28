@@ -29,6 +29,7 @@ from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
 from maasserver.third_party_drivers import get_third_party_driver
@@ -457,9 +458,36 @@ class NodeHandler(TimestampedModelHandler):
         node_obj = Node.objects.get(system_id=data['system_id'])
         node_obj.nodegroup = NodeGroup.objects.get(
             uuid=params['nodegroup']['uuid'])
-        node_obj.power_parameters = params.get("power_parameters", {})
+        node_obj.power_parameters = params.get("power_parameters")
+        if node_obj.power_parameters is None:
+            node_obj.power_parameters = {}
+
+        # Update the tags for the node.
+        self.update_tags(node_obj, params['tags'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
+
+    def update_tags(self, node_obj, tags):
+        # Loop through the nodes current tags. If the tag exists in `tags` then
+        # nothing needs to be done so its removed from `tags`. If it does not
+        # exists then the tag was removed from the node and should be removed
+        # from the nodes set of tags.
+        for tag in node_obj.tags.all():
+            if tag.name not in tags:
+                node_obj.tags.remove(tag)
+            else:
+                tags.remove(tag.name)
+
+        # All the tags remaining in `tags` are tags that are not linked to
+        # node. Get or create that tag and add the node to the tags set.
+        for tag_name in tags:
+            tag_obj, _ = Tag.objects.get_or_create(name=tag_name)
+            if tag_obj.is_defined:
+                raise HandlerError(
+                    "Cannot add tag %s to node because it has a "
+                    "definition." % tag_name)
+            tag_obj.node_set.add(node_obj)
+            tag_obj.save()
 
     def action(self, params):
         """Perform the action on the object."""

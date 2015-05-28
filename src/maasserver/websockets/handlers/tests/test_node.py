@@ -614,6 +614,58 @@ class TestNodeHandler(MAASServerTestCase):
             "mac_address": power_mac,
         }))
 
+    def test_update_adds_tags_to_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(mac=True, architecture=architecture)
+        tags = [
+            factory.make_Tag(definition='').name
+            for _ in range(3)
+            ]
+        node_data = self.dehydrate_node(node, user)
+        node_data["tags"] = tags
+        updated_node = handler.update(node_data)
+        self.assertItemsEqual(tags, updated_node["tags"])
+
+    def test_update_removes_tag_from_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(mac=True, architecture=architecture)
+        tags = []
+        for _ in range(3):
+            tag = factory.make_Tag(definition='')
+            tag.node_set.add(node)
+            tag.save()
+            tags.append(tag.name)
+        node_data = self.dehydrate_node(node, user)
+        removed_tag = tags.pop()
+        node_data["tags"].remove(removed_tag)
+        updated_node = handler.update(node_data)
+        self.assertItemsEqual(tags, updated_node["tags"])
+
+    def test_update_creates_tag_for_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(mac=True, architecture=architecture)
+        tag_name = factory.make_name("tag")
+        node_data = self.dehydrate_node(node, user)
+        node_data["tags"].append(tag_name)
+        updated_node = handler.update(node_data)
+        self.assertItemsEqual([tag_name], updated_node["tags"])
+
+    def test_update_raise_HandlerError_if_tag_has_definition(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(mac=True, architecture=architecture)
+        tag = factory.make_Tag()
+        node_data = self.dehydrate_node(node, user)
+        node_data["tags"].append(tag.name)
+        self.assertRaises(HandlerError, handler.update, node_data)
+
     def test_missing_action_raises_error(self):
         user = factory.make_User()
         node = factory.make_Node()
