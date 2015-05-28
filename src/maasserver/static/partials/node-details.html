@@ -112,7 +112,7 @@
                     <div class="ng-hide" data-ng-show="isSuperUser()">
                         <div class="inline">
                             <label for="cluser" class="two-col">Cluster</label>
-                            <div class="three-col" data-maas-dbl-click-overlay="editSummary()">
+                            <div class="three-col">
                                 <select name="cluster" id="cluster" placeholder="Choose a cluster"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.cluster.selected"
@@ -123,7 +123,7 @@
                         </div>
                         <div class="inline">
                             <label for="zone" class="two-col">Zone</label>
-                            <div class="three-col" data-maas-dbl-click-overlay="editSummary()">
+                            <div class="three-col">
                                 <select name="zone" id="zone"placeholder="Choose a zone"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.zone.selected"
@@ -134,7 +134,7 @@
                         </div>
                         <div class="inline">
                             <label for="architecture" class="two-col">Architecture</label>
-                            <div class="three-col" data-maas-dbl-click-overlay="editSummary()">
+                            <div class="three-col">
                                 <select name="architecture" id="architecture" placeholder="Choose an architecture"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.architecture.selected"
@@ -230,8 +230,7 @@
                 <fieldset class="six-col"
                     data-ng-disabled="!power.editing"
                     data-maas-power-parameters="power.types"
-                    data-ng-model="power"
-                    data-dbl-click-overlay="editPower()">
+                    data-ng-model="power">
                 </fieldset>
                 <div class="controls two-col last-col" data-ng-hide="power.editing">
                     <a href="" class="link-cta-ubuntu secondary full"

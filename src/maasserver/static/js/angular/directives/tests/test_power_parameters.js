@@ -201,19 +201,6 @@ describe("maasPowerParameters", function() {
                 expect(select.attr("data-ng-disabled")).toBe("ngDisabled");
             });
 
-        it("wraps select with data-maas-dbl-click-overlay", function() {
-            var fields = [
-                makeField("test1"),
-                makeField("test2")
-                ];
-            var powerType = makePowerType("test", "Test Title", fields);
-            $scope.powerTypes = [powerType];
-            var directive = compileDirective("powerTypes", "value");
-            var overlay = directive.find("div[data-maas-dbl-click-overlay]");
-            expect(overlay.attr("data-maas-dbl-click-overlay")).toBe(
-                "dblClickOverlay()");
-        });
-
         it("creates option with description", function() {
             var fields = [
                 makeField("test1"),

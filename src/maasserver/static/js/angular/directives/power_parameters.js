@@ -9,8 +9,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     $templateCache.put('directive/templates/power-parameters.html', [
         '<div class="inline">',
             '<label for="power-type" class="two-col">Power type</label>',
-            '<div class="three-col" ',
-                'data-maas-dbl-click-overlay="dblClickOverlay()">',
+            '<div class="three-col">',
                 '<select name="power-type" id="power-type" ',
                     'placeholder="Choose a power type" ',
                     'data-ng-disabled="ngDisabled" ',
@@ -29,8 +28,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '<label for="{$ field.name $}" class="two-col">',
                 '{$ field.label $}',
             '</label>',
-            '<div class="three-col" ',
-                'data-maas-dbl-click-overlay="dblClickOverlay()">',
+            '<div class="three-col">',
                 '<maas-power-input field="field" ',
                     'data-ng-disabled="ngDisabled" ',
                     'data-ng-model="ngModel.parameters[field.name]">',
@@ -123,8 +121,7 @@ angular.module('MAAS').directive('maasPowerParameters', function() {
         scope: {
             maasPowerParameters: '=',
             ngModel: '=',
-            ngDisabled: '=',
-            dblClickOverlay: '&'
+            ngDisabled: '='
         },
         templateUrl: 'directive/templates/power-parameters.html'
     };
