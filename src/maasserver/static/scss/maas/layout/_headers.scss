@@ -286,7 +286,7 @@ header.banner {
 
                 &:hover {
                     text-decoration: none;
-                    border-bottom: 1px solid #888;
+                    border-bottom: 3px solid #888;
                 }
 
                 &:focus,
@@ -296,7 +296,7 @@ header.banner {
 
                 &.active {
                     color: #333;
-                    border-bottom: 1px solid $ubuntu-orange;
+                    border-bottom: 3px solid $ubuntu-orange;
 
                     &:hover {
                         text-decoration: none;
