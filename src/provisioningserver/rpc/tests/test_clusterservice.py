@@ -122,6 +122,7 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import (
     error,
@@ -473,6 +474,24 @@ class TestClusterClientService(MAASTestCase):
         expected_rpc_info_url = maas_url + "rpc/"
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
+
+    def test_update_connect_503_error_is_logged_tersely(self):
+        getPage = self.patch(clusterservice, "getPage")
+        getPage.return_value = fail(web.error.Error("503"))
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
+        _get_rpc_info_url.return_value = sentinel.rpc_info_url
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(getPage, MockCalledOnceWith(
+            sentinel.rpc_info_url, agent=ANY))
+        dump = logger.dump()
+        self.assertIn("Region is not advertising RPC endpoints.", dump)
 
     def test_update_connect_error_is_logged_tersely(self):
         getPage = self.patch(clusterservice, "getPage")

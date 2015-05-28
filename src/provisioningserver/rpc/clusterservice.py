@@ -86,6 +86,7 @@ from provisioningserver.security import (
 )
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.twisted import DeferredValue
+from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -766,8 +767,21 @@ class ClusterClientService(TimerService, object):
 
     @classmethod
     def _fetch_rpc_info(cls, url):
+
+        def catch_503_error(failure):
+            # Catch `twisted.web.error.Error` if has a 503 status code. That
+            # means the region is not all the way up. Ignore the error as this
+            # service will try again after the calculated interval.
+            failure.trap(web.error.Error)
+            if failure.value.status != "503":
+                failure.raiseException()
+            else:
+                return {"eventloops": None}
+
         d = getPage(url, agent=fullyQualifiedName(cls))
-        return d.addCallback(json.loads)
+        d.addCallback(json.loads)
+        d.addErrback(catch_503_error)
+        return d
 
     def _calculate_interval(self, num_eventloops, num_connections):
         """Calculate the update interval.
