@@ -515,3 +515,22 @@ def sudo(command_args):
         return command_args
     else:
         return ['sudo', '-n'] + command_args
+
+
+FIRST_PROC_COMM = '/proc/1/comm'
+
+
+INIT_SYSTEMS = {'init': 'upstart', 'systemd': 'systemd'}
+
+
+def get_init_system():
+    """Returns 'upstart' or 'systemd'."""
+    # Circular imports.
+    from provisioningserver.utils.fs import read_text_file
+    init_system = read_text_file(FIRST_PROC_COMM).strip()
+    try:
+        return INIT_SYSTEMS[init_system]
+    except KeyError:
+        raise ValueError(
+            "Unable to determine init daemon: "
+            "unknown comm value for process 1: '%s'" % init_system)

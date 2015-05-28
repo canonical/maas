@@ -30,7 +30,7 @@ from provisioningserver.drivers.service import (
     ServiceRegistry,
 )
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.utils.shell import has_command_available
+from provisioningserver.utils import get_init_system
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
@@ -91,17 +91,9 @@ class ServiceMonitor:
 
     def __init__(self, init_system=None):
         if init_system is None:
-            init_system = self._get_init_system()
+            init_system = get_init_system()
         self.init_system = init_system
         self.service_locks = {}
-
-    def _get_init_system(self):
-        """Return "upstart" or "systemd" depending on the version of the
-        init system the system is running."""
-        if has_command_available("systemctl"):
-            return "systemd"
-        else:
-            return "upstart"
 
     def _get_service_lock(self, service):
         """Return the lock for service."""

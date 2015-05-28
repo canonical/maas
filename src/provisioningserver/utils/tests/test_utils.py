@@ -52,6 +52,7 @@ from provisioningserver.utils import (
     escape_py_literal,
     filter_dict,
     flatten,
+    get_init_system,
     get_cluster_config,
     locate_config,
     maas_custom_config_markers,
@@ -62,6 +63,7 @@ from provisioningserver.utils import (
     in_develop_mode,
     sudo,
 )
+from testtools import ExpectedException
 from testtools.matchers import (
     DirExists,
     EndsWith,
@@ -704,3 +706,26 @@ class TestSudo(MAASTestCase):
     def test_returns_command_with_sudo_prepended_not_in_develop_mode(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
         self.assertEquals(['sudo', '-n'] + cmd, sudo(cmd))
+
+
+class TestGetInitSystem(MAASTestCase):
+
+    def test__identifies_upstart(self):
+        filename = self.make_file(contents='init')
+        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
+        self.assertEqual('upstart', get_init_system())
+
+    def test__identifies_systemd(self):
+        filename = self.make_file(contents='systemd')
+        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
+        self.assertEqual('systemd', get_init_system())
+
+    def test__raises_if_unknown(self):
+        contents = factory.make_name('unknown')
+        filename = self.make_file(contents=contents)
+        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
+        expected_message = (
+            "Unable to determine init daemon: unknown comm value for "
+            "process 1: '%s'" % contents)
+        with ExpectedException(ValueError, expected_message):
+            get_init_system()

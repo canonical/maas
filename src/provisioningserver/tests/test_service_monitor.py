@@ -73,35 +73,12 @@ class TestServiceMonitor(MAASTestCase):
         ServiceRegistry.register_item(service.name, service)
         return service
 
-    def test_init_determines_init_system_upstart(self):
-
-        def mock_has_command_available(cmd):
-            if cmd == "systemctl":
-                return False
-            else:
-                raise Exception("Should have been called with systemctl.")
-
+    def test_init_determines_init_system(self):
         mock_has_cmd = self.patch(
-            service_monitor_module, "has_command_available")
-        mock_has_cmd.side_effect = mock_has_command_available
+            service_monitor_module, "get_init_system")
+        mock_has_cmd.return_value = sentinel.init_system
         service_monitor = ServiceMonitor()
-        self.assertEquals("upstart", service_monitor.init_system)
-        self.assertThat(mock_has_cmd, MockCalledOnceWith("systemctl"))
-
-    def test_init_determines_init_system_systemd(self):
-
-        def mock_has_command_available(cmd):
-            if cmd == "systemctl":
-                return True
-            else:
-                raise Exception("Should have been called with systemctl.")
-
-        mock_has_cmd = self.patch(
-            service_monitor_module, "has_command_available")
-        mock_has_cmd.side_effect = mock_has_command_available
-        service_monitor = ServiceMonitor()
-        self.assertEquals("systemd", service_monitor.init_system)
-        self.assertThat(mock_has_cmd, MockCalledOnceWith("systemctl"))
+        self.assertEquals(sentinel.init_system, service_monitor.init_system)
 
     def test__get_service_lock_adds_lock_to_service_locks(self):
         service_monitor = ServiceMonitor()
