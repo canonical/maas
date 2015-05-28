@@ -53,6 +53,7 @@ versions_path = '_static/versions.js'
 from collections import OrderedDict
 doc_versions = OrderedDict([
     ('dev', 'Development trunk'),
+    ('1.8', 'MAAS 1.8'),
     ('1.7', 'MAAS 1.7'),
     ('1.6', 'MAAS 1.6'),
     ('1.5', 'MAAS 1.5'),
@@ -92,7 +93,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'MAAS'
-copyright = u'2012-2014, MAAS Developers'
+copyright = u'2012-2015, MAAS Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
