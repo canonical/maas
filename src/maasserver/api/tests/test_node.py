@@ -609,7 +609,8 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_commission_commissions_node(self):
         node = factory.make_Node(
-            status=NODE_STATUS.READY, owner=factory.make_User())
+            status=NODE_STATUS.READY, owner=factory.make_User(),
+            power_state=POWER_STATE.OFF)
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'commission'})
