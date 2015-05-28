@@ -211,6 +211,30 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             node.boot_type, parsed_result['boot_type'])
 
+    def test_GET_returns_pxe_mac(self):
+        node = factory.make_Node(mac=True)
+        first_mac = node.macaddress_set.first()
+        node.pxe_mac = first_mac
+        node.save()
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        expected_result = {
+            'mac_address': first_mac.mac_address.get_raw(),
+            'resource_uri': reverse(
+                'node_mac_handler',
+                args=[node.system_id, first_mac.mac_address.get_raw()])
+        }
+        self.assertEqual(
+            expected_result, parsed_result['pxe_mac'])
+
+    def test_GET_returns_null_pxe_mac(self):
+        node = factory.make_Node(mac=True)
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertIsNone(parsed_result['pxe_mac'])
+
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.

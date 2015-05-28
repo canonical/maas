@@ -92,6 +92,7 @@ DISPLAYED_NODE_FIELDS = (
     'hostname',
     'owner',
     ('macaddress_set', ('mac_address',)),
+    'pxe_mac',
     'architecture',
     'cpu_count',
     'memory',
