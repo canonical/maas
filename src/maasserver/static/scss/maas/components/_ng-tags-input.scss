@@ -21,6 +21,7 @@ tags-input {
     color: #333;
     border: 1px solid #D2D2D2;
     height: 100%;
+    border-radius: 2px;
 
     &.focused {
       outline: none;
@@ -40,13 +41,23 @@ tags-input {
       font-family: Ubuntu,Arial,"libra sans",sans-serif;
       font-size: 1em;
       font-weight: 300;
-      height: 26px;
-      line-height: 25px;
-      border: 1px solid #D2D2D2;
-      border-radius: 3px;
+      height: 30px;
+      line-height: 30px;
+
+      &:after {
+        content: ',';
+        color: #999;
+      }
+
+      &:last-of-type {
+
+        &:after {
+          content: '';
+        }
+      }
 
       .remove-button {
-        margin: 0 0 0 5px;
+        margin: 0 3px;
         padding: 0;
         border: none;
         background: none;
@@ -67,11 +78,16 @@ tags-input {
       margin: 2px;
       padding: 0;
       padding-left: 5px;
-      float: left;
+      float: none;
+      display: inline-block;
+      width: auto !important;
       height: 26px;
       font-family: Ubuntu,Arial,"libra sans",sans-serif;
       font-size: 1em;
       font-weight: 300;
+      position: relative;
+      top: inherit;
+      left: inherit;
 
       &.invalid-tag {
       }
@@ -81,6 +97,22 @@ tags-input {
       }
     }
 
+  }
+
+  .suggestion-list {
+    background: #FFF;
+    padding: 10px 8px;
+    border: 1px solid #D2D2D2;
+    border-top: 0;
+    border-radius: 0 0 2px 2px;
+
+    li {
+
+      &:hover {
+        background: #EEE;
+        cursor: pointer;
+      }
+    }
   }
 
   &.ng-invalid .tags {
@@ -107,6 +139,20 @@ tags-input {
       .input {
         cursor: default;
       }
+    }
+  }
+}
+
+.tag-link {
+
+  &:after {
+    content: ',';
+  }
+
+  &:last-of-type {
+
+    &:after {
+      content: '';
     }
   }
 }

@@ -151,10 +151,13 @@
                                 </dd>
                             <dt class="two-col">Tags</dt>
                                 <dd class="four-col last-col">
-                                    <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
-                                        <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
-                                    </span>
+                                    <div class="three-col no-margin-bottom">
+                                        <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
+                                            <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+                                        </span>
+                                    </div>
                                     <tags-input ng-model="summary.tags"
+                                        class="three-col"
                                         data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
                                         <auto-complete source="tagsAutocomplete($query)"></auto-complete>
                                     </tags-input>
@@ -350,7 +353,7 @@
                                 <td class="t25" colspan="2" data-ng-show="storage.column === 'model'">{$ disk.model $}</td>
                                 <td class="t25 ng-hide" colspan="2" data-ng-show="storage.column === 'serial'">{$ disk.serial $}</td>
                                 <td class="t20">
-                                    <span data-ng-repeat="tag in disk.tags" data-ng-hide="storage.editing">
+                                    <span class="tag-link" data-ng-repeat="tag in disk.tags" data-ng-hide="storage.editing">
                                         <a href="#/nodes/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                     </span>
                                     <tags-input ng-model="disk.tags"
