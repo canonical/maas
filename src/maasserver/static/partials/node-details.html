@@ -319,10 +319,12 @@
             <form>
                 <div class="twelve-col">
                     <h3 class="title">Storage</h3>
-                    <h4 data-ng-hide="node.physical_disks.length">
+                </div>
+                <div class="twelve-col">
+                    <h4 data-ng-hide="storage.physicalDisks.length">
                         No storage information. Commissioning this node will gather the storage information.
                     </h4>
-                    <table class="table-listing ng-hide" data-ng-show="node.physical_disks.length">
+                    <table class="table-listing ng-hide" data-ng-show="storage.physicalDisks.length">
                         <thead>
                             <tr>
                                 <th class="t20">Name</th>
@@ -341,16 +343,38 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="table-listing__row" data-ng-repeat="disk in node.physical_disks">
+                            <tr class="table-listing__row" data-ng-repeat="disk in storage.physicalDisks">
                                 <td class="t20">{$ disk.name $}</td>
                                 <td class="t25">{$ disk.path $}</td>
                                 <td class="t10">{$ disk.size_gb $}</td>
                                 <td class="t25" colspan="2" data-ng-show="storage.column === 'model'">{$ disk.model $}</td>
                                 <td class="t25 ng-hide" colspan="2" data-ng-show="storage.column === 'serial'">{$ disk.serial $}</td>
-                                <td class="t20">{$ disk.tags.join(', ') $}</td>
+                                <td class="t20">
+                                    <span data-ng-repeat="tag in disk.tags" data-ng-hide="storage.editing">
+                                        <a href="#/nodes/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
+                                    </span>
+                                    <tags-input ng-model="disk.tags"
+                                        data-ng-show="storage.editing" allowed-tags-pattern="[\w-]+">
+                                    </tags-input>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="controls two-col last-col" data-ng-show="storage.physicalDisks.length && !storage.editing">
+                    <a href="" class="link-cta-ubuntu secondary full"
+                        data-ng-show="canEdit()"
+                        data-ng-click="editStorage()">Edit</a>
+                </div>
+                <div class="controls four-col last-col ng-hide" data-ng-show="storage.editing">
+                    <div class="two-col no-margin-bottom">
+                        <a href="" class="link-cta-ubuntu clear right"
+                            data-ng-click="cancelEditStorage()">Cancel</a>
+                    </div>
+                    <div class="two-col last-col no-margin-bottom">
+                        <button class="cta-ubuntu full"
+                            data-ng-click="saveEditStorage()">Save changes</button>
+                    </div>
                 </div>
             </form>
         </div>

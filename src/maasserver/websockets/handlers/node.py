@@ -29,6 +29,7 @@ from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
@@ -232,6 +233,7 @@ class NodeHandler(TimestampedModelHandler):
     def dehydrate_physicalblockdevice(self, blockdevice):
         """Return `PhysicalBlockDevice` formatted for JSON encoding."""
         return {
+            "id": blockdevice.id,
             "name": blockdevice.name,
             "tags": blockdevice.tags,
             "path": blockdevice.path,
@@ -462,8 +464,9 @@ class NodeHandler(TimestampedModelHandler):
         if node_obj.power_parameters is None:
             node_obj.power_parameters = {}
 
-        # Update the tags for the node.
+        # Update the tags for the node and physical disks.
         self.update_tags(node_obj, params['tags'])
+        self.update_physical_disk_tags(params['physical_disks'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
 
@@ -488,6 +491,13 @@ class NodeHandler(TimestampedModelHandler):
                     "definition." % tag_name)
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
+
+    def update_physical_disk_tags(self, physical_disks):
+        # Loop through each physical disk and update the tags array list.
+        for disk in physical_disks:
+            disk_obj = PhysicalBlockDevice.objects.get(id=disk["id"])
+            disk_obj.tags = disk["tags"]
+            disk_obj.save(update_fields=['tags'])
 
     def action(self, params):
         """Perform the action on the object."""

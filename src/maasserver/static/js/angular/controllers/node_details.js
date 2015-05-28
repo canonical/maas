@@ -92,7 +92,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Storage section.
         $scope.storage = {
-            column: 'model'
+            editing: false,
+            column: 'model',
+            physicalDisks: []
         };
 
         // Events section.
@@ -272,6 +274,30 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updatePower();
         }
 
+        // Updates the storage section.
+        function updateStorage() {
+            // Update the viewable errors.
+            updateErrors();
+
+            // Do not update the items, when editing this would
+            // cause the users changes to change.
+            if($scope.storage.editing) {
+                return;
+            }
+
+            $scope.storage.physicalDisks = angular.copy(
+                $scope.node.physical_disks);
+
+            // Fix tags so they are stored correctly for the ngTagsInput.
+            angular.forEach($scope.storage.physicalDisks, function(disk) {
+                var tags = [];
+                angular.forEach(disk.tags, function(tag) {
+                    tags.push({ text: tag });
+                });
+                disk.tags = tags;
+            });
+        }
+
         // Updates the machine output section.
         function updateMachineOutput() {
             // Set if it should even be viewable.
@@ -379,6 +405,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
 
+            // Update the storage when the node physical_disks are updated.
+            $scope.$watch("node.physical_disks", updateStorage);
+
             // Update the machine output view when summary, commissioning, or
             // installation results are updated on the node.
             $scope.$watch("node.summary_xml", updateMachineOutput);
@@ -436,11 +465,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
                 updateName();
                 updateSummary();
+                updateStorage();
                 resetAddMACAddressState();
             }, function(error) {
                 handleSaveError(error);
                 updateName();
                 updateSummary();
+                updateStorage();
             });
         }
 
@@ -841,6 +872,42 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return nic.networks.map(function(network) {
                 return network.name + " (" + network.cidr + ")";
             }).join(', ');
+        };
+
+        // Called to enter edit mode in the storage section.
+        $scope.editStorage = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
+            $scope.storage.editing = true;
+        };
+
+        // Called to cancel editing in the storage section.
+        $scope.cancelEditStorage = function() {
+            $scope.storage.editing = false;
+            updateStorage();
+        };
+
+        // Called to save the changes made in the storage section.
+        $scope.saveEditStorage = function() {
+            $scope.storage.editing = false;
+
+            // Copy the node and make the changes.
+            var node = angular.copy($scope.node);
+            node.physical_disks = $scope.storage.physicalDisks;
+
+            // Fix the tags as ngTagsInput stores the tags as an object with
+            // a text field.
+            angular.forEach(node.physical_disks, function(disk) {
+                var tags = [];
+                angular.forEach(disk.tags, function(tag) {
+                    tags.push(tag.text);
+                });
+                disk.tags = tags;
+            });
+
+            // Update the node.
+            updateNode(node);
         };
 
         // Return true if the "load more" events button should be available.

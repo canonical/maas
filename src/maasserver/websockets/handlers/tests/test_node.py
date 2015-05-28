@@ -87,6 +87,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def dehydrate_physicalblockdevice(self, blockdevice):
         return {
+            "id": blockdevice.id,
             "name": blockdevice.name,
             "tags": blockdevice.tags,
             "path": blockdevice.path,
@@ -665,6 +666,22 @@ class TestNodeHandler(MAASServerTestCase):
         node_data = self.dehydrate_node(node, user)
         node_data["tags"].append(tag.name)
         self.assertRaises(HandlerError, handler.update, node_data)
+
+    def test_update_updates_tags_on_physical_block_device_for_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(mac=True, architecture=architecture)
+        factory.make_PhysicalBlockDevice(node=node)
+        blockdevice_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+            ]
+        node_data = self.dehydrate_node(node, user)
+        node_data["physical_disks"][0]["tags"] = blockdevice_tags
+        updated_node = handler.update(node_data)
+        self.assertItemsEqual(
+            blockdevice_tags, updated_node["physical_disks"][0]["tags"])
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()
