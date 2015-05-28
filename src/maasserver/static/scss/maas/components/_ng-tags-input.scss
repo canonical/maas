@@ -1,0 +1,112 @@
+@charset "UTF-8";
+
+/**
+ * ngTagsInput Styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+tags-input {
+  .tags {
+    -moz-appearance: textfield;
+    -webkit-appearance: textfield;
+    padding: 1px;
+    overflow: hidden;
+    word-wrap: break-word;
+    cursor: text;
+    background: #FFF;
+    color: #333;
+    border: 1px solid #D2D2D2;
+    height: 100%;
+
+    &.focused {
+      outline: none;
+    }
+
+    .tag-list {
+      margin: 0;
+      padding: 0;
+      list-style-type: none;
+    }
+
+    .tag-item {
+      margin: 2px;
+      padding: 0 5px;
+      display: inline-block;
+      float: left;
+      font-family: Ubuntu,Arial,"libra sans",sans-serif;
+      font-size: 1em;
+      font-weight: 300;
+      height: 26px;
+      line-height: 25px;
+      border: 1px solid #D2D2D2;
+      border-radius: 3px;
+
+      .remove-button {
+        margin: 0 0 0 5px;
+        padding: 0;
+        border: none;
+        background: none;
+        cursor: pointer;
+        vertical-align: middle;
+        font-family: Ubuntu,Arial,"libra sans",sans-serif;
+        font-size: 1em;
+        font-weight: 300;
+
+        &:active {
+        }
+      }
+    }
+
+    .input {
+      border: 0;
+      outline: none;
+      margin: 2px;
+      padding: 0;
+      padding-left: 5px;
+      float: left;
+      height: 26px;
+      font-family: Ubuntu,Arial,"libra sans",sans-serif;
+      font-size: 1em;
+      font-weight: 300;
+
+      &.invalid-tag {
+      }
+
+      &::-ms-clear {
+        display: none;
+      }
+    }
+
+  }
+
+  &.ng-invalid .tags {
+  }
+
+  &[disabled] {
+    .host:focus {
+      outline: none;
+    }
+
+    .tags {
+      cursor: default;
+
+      .tag-item {
+
+        .remove-button {
+          cursor: default;
+
+          &:active {
+          }
+        }
+      }
+
+      .input {
+        cursor: default;
+      }
+    }
+  }
+}

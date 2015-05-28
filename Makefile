@@ -249,7 +249,8 @@ lint-rst: bin/rst-lint
 # doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f -print0 '(' -name '*.html' -o -name '*.js' ')' | xargs -r0 -n20 -P4 $(pocketlint)
+	@find $(sources) -type f ! -path '*/angular/3rdparty/*' -print0 '(' -name '*.html' -o -name '*.js' ')' \
+		| xargs -r0 -n20 -P4 $(pocketlint)
 
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
