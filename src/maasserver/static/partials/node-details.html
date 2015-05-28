@@ -151,7 +151,13 @@
                                 </dd>
                             <dt class="two-col">Tags</dt>
                                 <dd class="four-col last-col">
-                                    {$ node.tags.join(', ') $}
+                                    <span data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
+                                        <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+                                    </span>
+                                    <tags-input ng-model="summary.tags"
+                                        data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
+                                        <auto-complete source="tagsAutocomplete($query)"></auto-complete>
+                                    </tags-input>
                                 </dd>
                         </dl>
                     </div>

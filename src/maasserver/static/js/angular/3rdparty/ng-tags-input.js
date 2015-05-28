@@ -226,7 +226,9 @@ tagsInput.directive('tagsInput', ["$timeout","$document","$window","tagsInputCon
                         return $scope.tagList.add(tag);
                     },
                     focusInput: function() {
-                        input[0].focus();
+                        // blake_r - Stop the focus as this breaks on the
+                        // version of AngularJS that ships with MAAS.
+                        //input[0].focus();
                     },
                     getTags: function() {
                         return $scope.tags;
@@ -344,7 +346,9 @@ tagsInput.directive('tagsInput', ["$timeout","$document","$window","tagsInputCon
                         if (scope.disabled) {
                             return;
                         }
-                        input[0].focus();
+                        // blake_r - Stop the focus as this breaks on the
+                        // version of AngularJS that ships with MAAS.
+                        //input[0].focus();
                     }
                 }
             };

@@ -36,7 +36,7 @@ describe("NodeDetailsController", function() {
 
     // Load the required dependencies for the NodeDetails controller and
     // mock the websocket connection.
-    var NodesManager, DevicesManager, GeneralManager, UsersManager;
+    var NodesManager, DevicesManager, GeneralManager, UsersManager, TagsManager;
     var RegionConnection, ManagerHelperService, ErrorService, webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
@@ -44,6 +44,7 @@ describe("NodeDetailsController", function() {
         ZonesManager = $injector.get("ZonesManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
+        TagsManager = $injector.get("TagsManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -150,6 +151,7 @@ describe("NodeDetailsController", function() {
             ZonesManager: ZonesManager,
             GeneralManager: GeneralManager,
             UsersManager: UsersManager,
+            TagsManager: TagsManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -213,7 +215,8 @@ describe("NodeDetailsController", function() {
             zone: {
                 selected: null,
                 options: ZonesManager.getItems()
-            }
+            },
+            tags: []
         });
         expect($scope.summary.cluster.options).toBe(
             ClustersManager.getItems());
@@ -261,7 +264,7 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
             NodesManager, ClustersManager, ZonesManager, GeneralManager,
-            UsersManager]);
+            UsersManager, TagsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -367,6 +370,7 @@ describe("NodeDetailsController", function() {
         expect($scope.summary.zone.selected).toBe(
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
+        expect($scope.summary.tags).toEqual(node.tags);
     });
 
     it("missing_power error visible if node power_type empty", function() {
@@ -593,6 +597,17 @@ describe("NodeDetailsController", function() {
         $scope.$destroy();
         expect(GeneralManager.stopPolling.calls.allArgs()).toEqual(
             [["architectures"], ["osinfo"]]);
+    });
+
+    describe("tagsAutocomplete", function() {
+
+        it("calls TagsManager.autocomplete with query", function() {
+            var controller = makeController();
+            spyOn(TagsManager, "autocomplete");
+            var query = makeName("query");
+            $scope.tagsAutocomplete(query);
+            expect(TagsManager.autocomplete).toHaveBeenCalledWith(query);
+        });
     });
 
     describe("getPowerStateClass", function() {
@@ -1309,6 +1324,10 @@ describe("NodeDetailsController", function() {
             $scope.summary.cluster.selected = makeCluster();
             $scope.summary.zone.selected = makeZone();
             $scope.summary.architecture.selected = makeName("architecture");
+            $scope.summary.tags = [
+                { text: makeName("tag") },
+                { text: makeName("tag") }
+                ];
         }
 
         it("does nothing if invalidArchitecture", function() {
@@ -1361,6 +1380,10 @@ describe("NodeDetailsController", function() {
             var newCluster = $scope.summary.cluster.selected;
             var newZone = $scope.summary.zone.selected;
             var newArchitecture = $scope.summary.architecture.selected;
+            var newTags = [];
+            angular.forEach($scope.summary.tags, function(tag) {
+                newTags.push(tag.text);
+            });
             $scope.saveEditSummary();
 
             var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
@@ -1369,6 +1392,7 @@ describe("NodeDetailsController", function() {
             expect(calledWithNode.zone).toEqual(newZone);
             expect(calledWithNode.zone).not.toBe(newZone);
             expect(calledWithNode.architecture).toBe(newArchitecture);
+            expect(calledWithNode.tags).toEqual(newTags);
         });
 
         it("calls updateSummary once updateItem resolves", function() {

@@ -7,11 +7,12 @@
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
     'NodesManager', 'ClustersManager', 'ZonesManager', 'GeneralManager',
-    'UsersManager', 'ManagerHelperService', 'ErrorService',
+    'UsersManager', 'TagsManager', 'ManagerHelperService', 'ErrorService',
     'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
         NodesManager, ClustersManager, ZonesManager, GeneralManager,
-        UsersManager, ManagerHelperService, ErrorService, ValidationService) {
+        UsersManager, TagsManager, ManagerHelperService, ErrorService,
+        ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -78,7 +79,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             zone: {
                 selected: null,
                 options: ZonesManager.getItems()
-            }
+            },
+            tags: []
         };
 
         // Power section.
@@ -255,6 +257,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.summary.zone.selected = ZonesManager.getItemFromList(
                 $scope.node.zone.id);
             $scope.summary.architecture.selected = $scope.node.architecture;
+            $scope.summary.tags = angular.copy($scope.node.tags);
 
             // Force editing mode on, if the architecture is invalid. This is
             // placed at the bottom because we wanted the selected items to
@@ -459,6 +462,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.nic.errormsg = null;
             $scope.nic.mac = "";
         }
+
+        // Called for autocomplete when the user is typing a tag name.
+        $scope.tagsAutocomplete = function(query) {
+            return TagsManager.autocomplete(query);
+        };
 
         $scope.getPowerStateClass = function() {
             // This will get called very early and node can be empty.
@@ -753,6 +761,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.nodegroup = angular.copy($scope.summary.cluster.selected);
             node.zone = angular.copy($scope.summary.zone.selected);
             node.architecture = $scope.summary.architecture.selected;
+            node.tags = [];
+            angular.forEach($scope.summary.tags, function(tag) {
+                node.tags.push(tag.text);
+            });
 
             // Update the node.
             updateNode(node);
@@ -908,7 +920,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             ClustersManager,
             ZonesManager,
             GeneralManager,
-            UsersManager
+            UsersManager,
+            TagsManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already
