@@ -333,12 +333,12 @@
                                 <th class="t20">Name</th>
                                 <th class="t25">Path</th>
                                 <th class="t10">Size (GB)</th>
-                                <th class="t25" colspan="2">
+                                <th class="table-listing__header" class="t25" colspan="2">
                                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                                    <a href="" data-ng-click="storage.column = 'model'">
+                                    <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'model'" data-ng-class="{active: storage.column === 'model'}">
                                         Model
                                     </a> |
-                                    <a href="" data-ng-click="storage.column = 'serial'">
+                                    <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'serial'" data-ng-class="{active: storage.column === 'serial'}">
                                         Serial
                                     </a>
                                 </th>

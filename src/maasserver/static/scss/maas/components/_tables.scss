@@ -30,24 +30,6 @@ table {
             color: #B2B2B2;
             border: none;
             border-bottom: 1px solid #B2B2B2;
-
-            a:link,
-            a:visited {
-                color: #B2B2B2;
-                font-weight: 300;
-
-                &:hover {
-                    color: #333;
-                }
-
-                &.sort-asc {
-                    background-image: url('../img/icon/sort_asce.svg');
-                }
-
-                &.sort-desc {
-                    background-image: url('../img/icon/sort_desc.svg');
-                }
-            }
         }
     }
 
@@ -118,27 +100,29 @@ table {
         border: none;
         border-bottom: 1px solid #B2B2B2;
 
-        a {
+        .table-listing__header-link {
             background-repeat: no-repeat;
             background-position: top 8px right 0;
+            color: #B2B2B2;
 
             &:hover {
-                color: $ubuntu-orange;
+                color: #333;
                 text-decoration: none;
             }
 
-            &.sort-asce {
-                color: #333;
-                background-image: url('../img/icons/sort_asce.svg');
-                padding-right: 12px;
+            &:focus,
+            &:active,
+            &:visited {
+                text-decoration: none;
             }
 
-            &.sort-desc {
+            &.active {
                 color: #333;
-                background-image: url('../img/icons/sort_desc.svg');
-                padding-right: 12px;
             }
 
+            &.sort {
+                text-decoration: underline;
+            }
         }
     }
 

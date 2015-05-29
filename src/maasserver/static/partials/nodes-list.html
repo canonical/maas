@@ -478,95 +478,96 @@
         </div>
     </aside>
     <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
-        <div id="search-bar" class="search">
-            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-            <input
-                type="search" placeholder="Search nodes" class="search__input"
-                data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
-                data-ng-class="{ error: !tabs.nodes.searchValid }" />
-            <input type="submit" class="search__submit"
-                data-ng-class="{ close: tabs.nodes.search.length > 0 }"
-                data-ng-click="clearSearch('nodes')" />
-        </div>
-        <table class="table-listing " id="nodes-listing">
-            <thead>
-                <tr class="table-listing__row">
-                    <th>
+        <form>
+            <div id="search-bar" class="search">
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                <input
+                    type="search" placeholder="Search nodes" class="search__input"
+                    data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
+                    data-ng-class="{ error: !tabs.nodes.searchValid }" />
+                <input type="submit" class="search__submit"
+                    data-ng-class="{ close: tabs.nodes.search.length > 0 }"
+                    data-ng-click="clearSearch('nodes')" />
+            </div>
+            <table class="table-listing " id="nodes-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
+                            <label class="checkbox-label" for="check-all"></label>
+                        </th>
+                        <th colspan="2" class="table-listing__header fixed">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="selectColumnOrSort('fqdn', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'fqdn', sort: tabs.nodes.predicate === 'fqdn', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
+                                <span title="Fully Qualified Domain Name">FQDN</span>
+                            </a> |
+                            <a href="" class="table-listing__header-link" data-ng-click="selectColumnOrSort('pxe_mac', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'pxe_mac', sort: tabs.nodes.predicate === 'pxe_mac', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
+                                <span title="Media Access Control addresses">MAC</span>
+                            </a>
+                        </th>
+                        <th class="table-listing__header align-center">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link align-center" data-ng-click="sortTable('power_state', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'power_state', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Power</a>
+                        </th>
+                        <th class="table-listing__header">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('status', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'status', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Status</a>
+                        </th>
+                        <th class="table-listing__header">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('owner', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'owner', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Owner</a>
+                        </th>
+                        <th class="table-listing__header align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('cpu_count', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate=== 'cpu_count', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Cores</a>
+                        </th>
+                        <th class="table-listing__header align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('memory', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'memory', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">RAM (GiB)</a>
+                        </th>
+                        <th class="table-listing__header align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('disks', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'disks', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Disks</a>
+                        </th>
+                        <th class="table-listing__header align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="table-listing__header-link" data-ng-click="sortTable('storage', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'storage', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Storage (GB)</a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
+                    <tr class="table-listing__row table-listing-row"
+                        data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
+                        data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }">
+                        <td class="table-listing__cell">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
+                            <label class="checkbox-label" for="{$ node.fqdn $}"></label>
+                        </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
-                        <label class="checkbox-label" for="check-all"></label>
-                    </th>
-                    <th colspan="2" class="table-listing__header fixed">
+                        <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
+                            <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
+                        </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="selectColumnOrSort('fqdn', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'fqdn', sort: tabs.nodes.predicate === 'fqdn', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
-                            <span title="Fully Qualified Domain Name">FQDN</span>
-                        </a> |
-                        <a href="" data-ng-click="selectColumnOrSort('pxe_mac', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'pxe_mac', sort: tabs.nodes.predicate === 'pxe_mac', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
-                            <span title="Media Access Control addresses">MAC</span>
-                        </a>
-                    </th>
-                    <th class="table-listing__header align-center">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" class="align-center" data-ng-click="sortTable('power_state', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'power_state', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Power</a>
-                    </th>
-                    <th class="table-listing__header">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('status', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'status', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Status</a>
-                    </th>
-                    <th class="table-listing__header">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('owner', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'owner', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Owner</a>
-                    </th>
-
-                    <th class="table-listing__header align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('cpu_count', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate=== 'cpu_count', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Cores</a>
-                    </th>
-                    <th class="table-listing__header align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('memory', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'memory', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">RAM (GiB)</a>
-                    </th>
-                    <th class="table-listing__header align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('disks', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'disks', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Disks</a>
-                    </th>
-                    <th class="table-listing__header align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('storage', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'storage', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Storage (GB)</a>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
-                <tr class="table-listing__row table-listing-row"
-                    data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
-                    data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }">
-                    <td class="table-listing__cell">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
-                        <label class="checkbox-label" for="{$ node.fqdn $}"></label>
-                    </td>
-                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
-                        <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
-                    </td>
-                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
-                        <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                        <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
-                    </td>
-                    <td class="powerstate align-center table-listing__cell">
-                        <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
-                    </td>
-                    <td class="table-listing__cell status">{$ node.status $}</td>
-                    <td class="table-listing__cell">{$ node.owner $}</td>
-                    <td class="align-right table-listing__cell">{$ node.cpu_count $}</td>
-                    <td class="align-right table-listing__cell">{$ node.memory $}</td>
-                    <td class="align-right table-listing__cell">{$ node.disks $}</td>
-                    <td class="align-right table-listing__cell">{$ node.storage $}</td>
-                </tr>
-            </tbody>
-        </table>
+                        <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
+                            <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                            <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                        </td>
+                        <td class="powerstate align-center table-listing__cell">
+                            <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
+                        </td>
+                        <td class="table-listing__cell status">{$ node.status $}</td>
+                        <td class="table-listing__cell">{$ node.owner $}</td>
+                        <td class="align-right table-listing__cell">{$ node.cpu_count $}</td>
+                        <td class="align-right table-listing__cell">{$ node.memory $}</td>
+                        <td class="align-right table-listing__cell">{$ node.disks $}</td>
+                        <td class="align-right table-listing__cell">{$ node.storage $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
     </div>
     <div class="nine-col last-col" class="ng-hide" data-ng-show="currentpage === 'devices'">
         <div class="search">
