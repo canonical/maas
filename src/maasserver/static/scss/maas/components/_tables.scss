@@ -67,7 +67,7 @@ table {
 .table-listing {
     text-align: left;
     width: 100%;
-    margin-bottom: 40px;
+    margin: 0 0 40px 0;
     border-collapse: separate;
     border-spacing: 0;
 
@@ -137,11 +137,11 @@ table {
             opacity: 0;
         }
 
-        input[type="text"],
+        input,
         select {
             position: absolute;
             left: 10px;
-            top: 6px;
+            top: 5px;
             width: 80%;
         }
     }

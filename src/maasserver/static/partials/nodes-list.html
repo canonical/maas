@@ -289,7 +289,7 @@
                                 data-ng-class="{ invalid: nameHasError() }">
                         </div>
                     </fieldset>
-                    <table class="no-margin-bottom table-listing">
+                    <table class="margin-bottom table-listing">
                         <thead>
                             <tr class="table-listing__row">
                                 <th class="t20">MAC address</th>
@@ -335,7 +335,7 @@
                                 <td class="t5 align-right">
                                     <!-- space needed to set correct height -->
                                     <span data-ng-show="isPrimaryInterface(interface)">&nbsp;</span>
-                                    <a title="Delete interface" class="icon delete"
+                                    <a title="Delete interface" class="icon remove"
                                         data-ng-click="deleteInterface(interface)"
                                         data-ng-hide="isPrimaryInterface(interface)">delete</a>
                                 </td>
@@ -590,24 +590,24 @@
                     </th>
                     <th class="table-listing__header t24">
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('fqdn', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'fqdn', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
                             <span title="Fully Qualified Domain Name">FQDN</span>
                         </a>
                     </th>
                     <th class="table-listing__header t25">
-                        <a href="" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('primary_mac', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'primary_mac', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">
                             <span title="Media Access Control addresses">MAC</span>
                         </a>
                     </th>
                     <th class="table-listing__header t15">
-                        <a href="" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP assignment</a>
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('ip_assignment', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'ip_assignment', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP assignment</a>
                     </th>
                     <th class="table-listing__header t20">
-                        <a href="" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP</a>
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('ip_address', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'ip_address', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">IP</a>
                     </th>
                     <th class="table-listing__header t15">
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <a href="" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">Owner</a>
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('owner', 'devices')" data-ng-class="{sort: tabs.devices.predicate === 'owner', 'sort-asc': tabs.devices.reverse === false, 'sort-desc': tabs.devices.reverse === true}">Owner</a>
                     </th>
                 </tr>
             </thead>
