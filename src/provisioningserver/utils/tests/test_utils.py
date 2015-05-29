@@ -63,7 +63,6 @@ from provisioningserver.utils import (
     in_develop_mode,
     sudo,
 )
-from testtools import ExpectedException
 from testtools.matchers import (
     DirExists,
     EndsWith,
@@ -711,21 +710,11 @@ class TestSudo(MAASTestCase):
 class TestGetInitSystem(MAASTestCase):
 
     def test__identifies_upstart(self):
-        filename = self.make_file(contents='init')
-        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
+        filename = os.path.join(factory.make_name(), factory.make_name())
+        self.patch(provisioningserver.utils, 'SYSTEMD_RUN_PATH', filename)
         self.assertEqual('upstart', get_init_system())
 
     def test__identifies_systemd(self):
-        filename = self.make_file(contents='systemd')
-        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
+        dirname = self.make_dir()
+        self.patch(provisioningserver.utils, 'SYSTEMD_RUN_PATH', dirname)
         self.assertEqual('systemd', get_init_system())
-
-    def test__raises_if_unknown(self):
-        contents = factory.make_name('unknown')
-        filename = self.make_file(contents=contents)
-        self.patch(provisioningserver.utils, 'FIRST_PROC_COMM', filename)
-        expected_message = (
-            "Unable to determine init daemon: unknown comm value for "
-            "process 1: '%s'" % contents)
-        with ExpectedException(ValueError, expected_message):
-            get_init_system()
