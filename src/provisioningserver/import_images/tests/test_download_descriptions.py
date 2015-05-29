@@ -14,7 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import logging
+
+from fixtures import FakeLogger
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.import_images import download_descriptions
@@ -334,3 +338,20 @@ class TestRepoDumper(MAASTestCase):
             os=os, release=release, arch=arch, subarch='generic',
             label=label)
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
+
+    def test_sync_does_not_propagate_ioerror(self):
+        mock_sync = self.patch(download_descriptions.BasicMirrorWriter, "sync")
+        mock_sync.side_effect = IOError()
+
+        boot_images_dict = BootImageMapping()
+        dumper = RepoDumper(boot_images_dict)
+
+        with FakeLogger("maas.import-images", level=logging.INFO) as maaslog:
+            # What we're testing here is that sync() doesn't raise IOError...
+            dumper.sync(sentinel.reader, sentinel.path)
+            # ... but we'll validate that we properly called the [mock]
+            # superclass method, and logged something, as well.
+            self.assertThat(
+                mock_sync, MockCalledOnceWith(sentinel.reader, sentinel.path))
+            self.assertDocTestMatches(
+                "...error...syncing boot images...", maaslog.output)

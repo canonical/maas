@@ -29,6 +29,7 @@ from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     ImageSpec,
+    maaslog,
 )
 from simplestreams.mirrors import (
     BasicMirrorWriter,
@@ -103,6 +104,14 @@ class RepoDumper(BasicMirrorWriter):
         if subarch == hwe_arch and 'generic' in subarches:
             self.boot_images_dict.set(
                 base_image._replace(subarch='generic'), compact_item)
+
+    def sync(self, reader, path):
+        try:
+            super(RepoDumper, self).sync(reader, path)
+        except IOError:
+            maaslog.warning(
+                "I/O error while syncing boot images. If this problem "
+                "persists, verify network connectivity and disk usage.")
 
 
 def value_passes_filter_list(filter_list, property_value):
