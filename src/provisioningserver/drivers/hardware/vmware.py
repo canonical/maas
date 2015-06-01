@@ -18,6 +18,7 @@ __all__ = [
 
 from abc import abstractmethod
 from collections import OrderedDict
+from importlib import import_module
 import traceback
 from urllib import unquote
 
@@ -29,15 +30,29 @@ from provisioningserver.utils import (
 from provisioningserver.utils.twisted import synchronous
 
 
-try:
-    import pyVmomi
-    from pyVmomi import vim
-    import pyVim.connect as vmomi_api
-except ImportError:
-    pyVmomi = None
-    vmomi_api = None
+vmomi_api = None
+vim = None
 
 maaslog = get_maas_logger("drivers.vmware")
+
+
+def try_pyvmomi_import():
+    """Attempt to import the pyVmomi API. This API is provided by the
+    python-pyvmomi package; if it doesn't work out, we need to notify
+    the user so they can install it.
+    """
+    global vim
+    global vmomi_api
+    try:
+        if vim is None:
+            vim_module = import_module('pyVmomi')
+            vim = getattr(vim_module, 'vim')
+        if vmomi_api is None:
+            vmomi_api = import_module('pyVim.connect')
+    except ImportError:
+        return False
+    else:
+        return True
 
 
 class VMwareAPIException(Exception):
@@ -321,7 +336,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
 
 def _get_vmware_api(
         host, username, password, port=None, protocol=None):
-    if pyVmomi is not None:
+    if try_pyvmomi_import():
         # Attempt to detect the best available VMware API
         return VMwarePyvmomiAPI(
             host, username, password, port=port, protocol=protocol)

@@ -40,14 +40,6 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 
-try:
-    import pyVmomi
-    import pyVim.connect as vmomi_api
-except ImportError:
-    pyVmomi = None
-    vmomi_api = None
-
-
 class FakeVmomiVMSummaryConfig(object):
     def __init__(self, name, has_instance_uuid=None, has_uuid=None):
         self.name = name
@@ -230,7 +222,7 @@ class TestVMwarePyvmomi(MAASTestCase):
 
     def setUp(self):
         super(TestVMwarePyvmomi, self).setUp()
-        if vmomi_api is None:
+        if vmware.try_pyvmomi_import() is False:
             self.skipTest('cannot test VMware without python-pyvmomi')
 
     def test_api_connection(self):
