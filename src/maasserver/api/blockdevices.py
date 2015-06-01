@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""API handlers: `PhysicalBlockDevice`."""
+"""API handlers: `BlockDevice`."""
 
 from __future__ import (
     absolute_import,
@@ -20,40 +20,38 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.models import PhysicalBlockDevice
+from maasserver.models import BlockDevice
 
 
-DISPLAYED_PHYSICALBLOCKDEVICE_FIELDS = (
+DISPLAYED_BLOCKDEVICE_FIELDS = (
     'id',
     'name',
     'path',
     'id_path',
     'size',
     'block_size',
-    'model',
-    'serial',
     'tags',
 )
 
 
-class PhysicalBlockDeviceHandler(OperationsHandler):
-    """Manage a PhysicalBlockDevice.
+class BlockDeviceHandler(OperationsHandler):
+    """Manage a BlockDevice.
 
     The device is identified by its database id.
     """
-    api_doc_section_name = "PhysicalBlockDevice"
+    api_doc_section_name = "BlockDevice"
     create = replace = update = read = None
-    model = PhysicalBlockDevice
-    fields = DISPLAYED_PHYSICALBLOCKDEVICE_FIELDS
+    model = BlockDevice
+    fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
     @admin_method
     @operation(idempotent=True)
     def add_tag(self, request, device_id):
-        """Add a tag to a PhysicalBlockDevice.
+        """Add a tag to a BlockDevice.
 
         :param tag: The tag being added.
         """
-        device = get_object_or_404(PhysicalBlockDevice, id=device_id)
+        device = get_object_or_404(BlockDevice, id=device_id)
         device.add_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -61,11 +59,11 @@ class PhysicalBlockDeviceHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=True)
     def remove_tag(self, request, device_id):
-        """Remove a tag from a PhysicalBlockDevice.
+        """Remove a tag from a BlockDevice.
 
         :param tag: The tag being removed.
         """
-        device = get_object_or_404(PhysicalBlockDevice, id=device_id)
+        device = get_object_or_404(BlockDevice, id=device_id)
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device

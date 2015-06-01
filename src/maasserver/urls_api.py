@@ -20,6 +20,7 @@ from django.conf.urls import (
 )
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
+from maasserver.api.blockdevices import BlockDeviceHandler
 from maasserver.api.boot_images import BootImagesHandler
 from maasserver.api.boot_resources import (
     BootResourceFileUploadHandler,
@@ -82,7 +83,6 @@ from maasserver.api.nodes import (
     NodesHandler,
 )
 from maasserver.api.not_found import not_found_handler
-from maasserver.api.physicalblockdevices import PhysicalBlockDeviceHandler
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
@@ -184,8 +184,8 @@ license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth)
-physicalblockdevice_handler = AdminRestrictedResource(
-    PhysicalBlockDeviceHandler, authentication=api_auth)
+blockdevice_handler = AdminRestrictedResource(
+    BlockDeviceHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -308,8 +308,8 @@ urlpatterns += patterns(
         'selections/(?P<id>[^/]+)/$',
         boot_source_selection_backward_handler,
         name='boot_source_selection_backward_handler'),
-    url(r'^physicalblockdevice/(?P<device_id>[^/]+)/$',
-        physicalblockdevice_handler, name='physicalblockdevice_handler'),
+    url(r'^blockdevice/(?P<device_id>[^/]+)/$',
+        blockdevice_handler, name='blockdevice_handler'),
 )
 
 

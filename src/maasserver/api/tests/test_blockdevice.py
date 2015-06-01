@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for devices API."""
+"""Tests for blockdevice API."""
 
 from __future__ import (
     absolute_import,
@@ -23,18 +23,18 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 
 
-def get_physicalblockdevice_uri(device):
-    """Return a PhysicalBlockDevice's URI on the API."""
-    return reverse('physicalblockdevice_handler', args=[device.id])
+def get_blockdevice_uri(device):
+    """Return a BlockDevice's URI on the API."""
+    return reverse('blockdevice_handler', args=[device.id])
 
 
-class TestDevicesAPI(APITestCase):
+class TestBlockDeviceAPI(APITestCase):
 
-    def test_add_tag_to_physical_block_device(self):
+    def test_add_tag_to_block_device(self):
         self.become_admin()
-        device = factory.make_PhysicalBlockDevice()
+        device = factory.make_BlockDevice()
         tag_to_be_added = factory.make_name('tag')
-        uri = get_physicalblockdevice_uri(device)
+        uri = get_blockdevice_uri(device)
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': tag_to_be_added})
 
@@ -49,11 +49,11 @@ class TestDevicesAPI(APITestCase):
         parsed_device = json.loads(response.content)
         self.assertIn(tag_to_be_added, parsed_device['tags'])
 
-    def test_remove_tag_from_physical_block_device(self):
+    def test_remove_tag_from_block_device(self):
         self.become_admin()
-        device = factory.make_PhysicalBlockDevice()
+        device = factory.make_BlockDevice()
         tag_to_be_removed = device.tags[0]
-        uri = get_physicalblockdevice_uri(device)
+        uri = get_blockdevice_uri(device)
         response = self.client.get(
             uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
 
