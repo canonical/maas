@@ -173,6 +173,48 @@ class TestConfigureDHCP(MAASTestCase):
             exceptions.CannotConfigureDHCP, self.configure,
             factory.make_name('key'), [])
 
+    def test__does_not_log_ServiceActionError(self):
+        self.patch_sudo_write_file()
+        self.patch_ensure_service().side_effect = ServiceActionError()
+        with FakeLogger("maas") as logger:
+            self.assertRaises(
+                exceptions.CannotConfigureDHCP, self.configure,
+                factory.make_name('key'), [])
+        self.assertDocTestMatches("", logger.output)
+
+    def test__does_log_other_exceptions(self):
+        self.patch_sudo_write_file()
+        self.patch_ensure_service().side_effect = (
+            factory.make_exception("DHCP is on strike today"))
+        with FakeLogger("maas") as logger:
+            self.assertRaises(
+                exceptions.CannotConfigureDHCP, self.configure,
+                factory.make_name('key'), [])
+        self.assertDocTestMatches(
+            "DHCPv... server failed to stop: DHCP is on strike today",
+            logger.output)
+
+    def test__does_not_log_ServiceActionError_when_restarting(self):
+        self.patch_sudo_write_file()
+        self.patch_restart_service().side_effect = ServiceActionError()
+        with FakeLogger("maas") as logger:
+            self.assertRaises(
+                exceptions.CannotConfigureDHCP, self.configure,
+                factory.make_name('key'), [make_subnet_config()])
+        self.assertDocTestMatches("", logger.output)
+
+    def test__does_log_other_exceptions_when_restarting(self):
+        self.patch_sudo_write_file()
+        self.patch_restart_service().side_effect = (
+            factory.make_exception("DHCP is on strike today"))
+        with FakeLogger("maas") as logger:
+            self.assertRaises(
+                exceptions.CannotConfigureDHCP, self.configure,
+                factory.make_name('key'), [make_subnet_config()])
+        self.assertDocTestMatches(
+            "DHCPv... server failed to restart (for network interfaces ...): "
+            "DHCP is on strike today", logger.output)
+
 
 class TestEnsureDHCPv4IsAccessible(MAASTestCase):
 

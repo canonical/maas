@@ -107,7 +107,7 @@ def configure(server, subnet_configs):
                 server.descriptive_name, e)
             raise CannotConfigureDHCP(
                 "%s server failed to stop: %s" % (
-                    server.descriptive_name, e.output_as_unicode))
+                    server.descriptive_name, e))
     else:
         service = ServiceRegistry.get_item(server.dhcp_service)
         service.on()
@@ -125,7 +125,7 @@ def configure(server, subnet_configs):
                 "%s): %s", server.descriptive_name, interfaces_config, e)
             raise CannotConfigureDHCP(
                 "%s server failed to restart: %s" % (
-                    server.descriptive_name, e.output_as_unicode))
+                    server.descriptive_name, e))
 
 
 def _try_omshell_connection():
