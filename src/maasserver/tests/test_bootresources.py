@@ -977,6 +977,21 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
             "Resource %s has no complete resource set!" % resource,
             logger.output)
 
+    def test_insert_doesnt_print_error_when_first_import(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+                architecture=architecture)
+        product['sha256'] = factory.make_string(size=64)
+        product['size'] = randint(1024, 2048)
+        store = BootResourceStore()
+
+        with FakeLogger("maas", logging.ERROR) as logger:
+            store.insert(product, sentinel.reader)
+
+        self.assertEquals('', logger.output)
+
     def test_resource_cleaner_removes_old_boot_resources(self):
         with transaction.atomic():
             resources = [

@@ -272,7 +272,8 @@ class BootResource(CleanSave, TimestampedModel):
     extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __unicode__(self):
-        return "<BootResource %s>" % self.name
+        return "<BootResource name=%s, arch=%s>" % (
+            self.name, self.architecture)
 
     @property
     def display_rtype(self):

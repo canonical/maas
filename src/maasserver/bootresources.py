@@ -563,6 +563,8 @@ class BootResourceStore(ObjectStore):
         :param reader: File-like object.
         """
         resource = self.get_or_create_boot_resource(product)
+        is_resource_initially_complete = (
+            resource.get_latest_complete_set() is not None)
         resource_set = self.get_or_create_boot_resource_set(
             resource, product)
         rfile = self.get_or_create_boot_resource_file(
@@ -618,7 +620,10 @@ class BootResourceStore(ObjectStore):
         rfile.largefile = largefile
         rfile.save()
 
-        if resource.get_latest_complete_set() is None:
+        is_resource_broken = (
+            is_resource_initially_complete and
+            resource.get_latest_complete_set() is None)
+        if is_resource_broken:
             maaslog.error(
                 "Resource %s has no complete resource set!", resource)
 
