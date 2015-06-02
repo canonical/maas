@@ -15,6 +15,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 from textwrap import dedent
 
 import crochet
@@ -29,6 +30,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+from mock import sentinel
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -48,6 +50,44 @@ from twisted.web.test.requesthelper import DummyRequest
 
 
 crochet.setup()
+
+
+class TestCleanPathRequest(MAASTestCase):
+
+    def test_requestReceived_converts_extra_slashes_to_single(self):
+        mock_super_requestReceived = self.patch(
+            webapp.Request, "requestReceived")
+        request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
+        path_pieces = [
+            factory.make_name("path")
+            for _ in range(3)
+            ]
+        double_path = ("/" * random.randint(2, 8)).join(path_pieces)
+        single_path = "/".join(path_pieces)
+        request.requestReceived(
+            sentinel.command, double_path, sentinel.version)
+        self.assertThat(
+            mock_super_requestReceived,
+            MockCalledOnceWith(
+                sentinel.command, single_path, sentinel.version))
+
+    def test_requestReceived_converts_extra_slashes_ignores_args(self):
+        mock_super_requestReceived = self.patch(
+            webapp.Request, "requestReceived")
+        request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
+        path_pieces = [
+            factory.make_name("path")
+            for _ in range(3)
+            ]
+        args = "?op=extra//data"
+        double_path = ("/" * random.randint(2, 8)).join(path_pieces) + args
+        single_path = "/".join(path_pieces) + args
+        request.requestReceived(
+            sentinel.command, double_path, sentinel.version)
+        self.assertThat(
+            mock_super_requestReceived,
+            MockCalledOnceWith(
+                sentinel.command, single_path, sentinel.version))
 
 
 class TestResourceOverlay(MAASTestCase):
@@ -77,6 +117,8 @@ class TestWebApplicationService(MAASTestCase):
     def test__init_creates_site_and_threadpool(self):
         service = self.make_webapp()
         self.assertThat(service.site, IsInstance(Site))
+        self.assertThat(
+            service.site.requestFactory, Is(webapp.CleanPathRequest))
         self.assertThat(service.threadpool, IsInstance(ThreadPool))
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
         # The thread-pool has not been started.

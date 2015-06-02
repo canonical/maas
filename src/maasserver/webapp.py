@@ -18,6 +18,7 @@ __all__ = [
 
 from httplib import SERVICE_UNAVAILABLE
 import os
+import re
 
 from django.conf import settings
 from lxml import html
@@ -37,7 +38,10 @@ from twisted.web.resource import (
     ErrorPage,
     Resource,
 )
-from twisted.web.server import Site
+from twisted.web.server import (
+    Request,
+    Site,
+)
 from twisted.web.static import File
 from twisted.web.util import Redirect
 from twisted.web.wsgi import WSGIResource
@@ -79,6 +83,20 @@ class StartFailedPage(ErrorPage, object):
         super(StartFailedPage, self).__init__(
             status=SERVICE_UNAVAILABLE, brief="MAAS failed to start",
             detail=html.tostring(traceback, encoding=unicode))
+
+
+class CleanPathRequest(Request, object):
+    """A request that supports '/+' in the path.
+
+    It converts all '/+' in the path to a single '/'.
+    """
+
+    def requestReceived(self, command, path, version):
+        path, sep, args = path.partition(b"?")
+        path = re.sub(r'/+', b'/', path)
+        path = b"".join([path, sep, args])
+        return super(CleanPathRequest, self).requestReceived(
+            command, path, version)
 
 
 class ResourceOverlay(Resource, object):
@@ -128,6 +146,7 @@ class WebApplicationService(StreamServerEndpointService):
 
     def __init__(self, endpoint):
         self.site = Site(StartPage())
+        self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.threadpool = ThreadPool(name=self.__class__.__name__)
         self.websocket = WebSocketFactory()
