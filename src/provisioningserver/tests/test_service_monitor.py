@@ -25,6 +25,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     call,
     sentinel,
 )
@@ -87,21 +88,23 @@ class TestServiceMonitor(MAASTestCase):
         self.assertIs(
             service_lock, service_monitor.service_locks[service_name])
 
+    def test__get_service_lock_uses_shared_lock(self):
+        service_monitor = ServiceMonitor()
+        service_shared_lock = self.patch(service_monitor, "_lock")
+        service_name = factory.make_name("service")
+        service_monitor._get_service_lock(service_name)
+        self.assertThat(
+            service_shared_lock.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            service_shared_lock.__exit__, MockCalledOnceWith(None, None, None))
+
     def test__lock_service_acquires_lock_for_service(self):
         service_monitor = ServiceMonitor()
         service_name = factory.make_name("service")
         service_lock = service_monitor._get_service_lock(service_name)
-        service_monitor._lock_service(service_name)
-        self.assertTrue(
-            service_lock.locked(), "Service lock was not acquired.")
-        service_lock.release()
-
-    def test__unlock_service_releases_lock_for_service(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        service_lock = service_monitor._get_service_lock(service_name)
-        service_monitor._lock_service(service_name)
-        service_monitor._unlock_service(service_name)
+        with service_lock:
+            self.assertTrue(
+                service_lock.locked(), "Service lock was not acquired.")
         self.assertFalse(
             service_lock.locked(), "Service lock was not released.")
 
@@ -157,16 +160,20 @@ class TestServiceMonitor(MAASTestCase):
     def test_ensure_service_calls_lock_and_unlock_even_with_exception(self):
         service = self.make_service_driver()
         service_monitor = ServiceMonitor()
+        exception_type = factory.make_exception_type()
         mock_ensure_service = self.patch(service_monitor, "_ensure_service")
-        mock_ensure_service.side_effect = factory.make_exception()
-        mock_lock = self.patch(service_monitor, "_lock_service")
-        mock_unlock = self.patch(service_monitor, "_unlock_service")
-        try:
-            service_monitor.ensure_service(service.name)
-        except:
-            pass
-        self.expectThat(mock_lock, MockCalledOnceWith(service.name))
-        self.expectThat(mock_unlock, MockCalledOnceWith(service.name))
+        mock_ensure_service.side_effect = exception_type
+        get_service_lock = self.patch(service_monitor, "_get_service_lock")
+
+        self.assertRaises(
+            exception_type, service_monitor.ensure_service, service.name)
+
+        self.expectThat(get_service_lock, MockCalledOnceWith(service.name))
+        lock = get_service_lock.return_value
+        self.expectThat(
+            lock.__enter__, MockCalledOnceWith())
+        self.expectThat(
+            lock.__exit__, MockCalledOnceWith(exception_type, ANY, ANY))
 
     def test_async_ensure_service_defers_to_a_thread(self):
         service_monitor = ServiceMonitor()
@@ -195,16 +202,20 @@ class TestServiceMonitor(MAASTestCase):
     def test_restart_service_calls_lock_and_unlock_even_with_exception(self):
         service = self.make_service_driver(SERVICE_STATE.ON)
         service_monitor = ServiceMonitor()
+        exception_type = factory.make_exception_type()
         mock_service_action = self.patch(service_monitor, "_service_action")
-        mock_service_action.side_effect = factory.make_exception()
-        mock_lock = self.patch(service_monitor, "_lock_service")
-        mock_unlock = self.patch(service_monitor, "_unlock_service")
-        try:
-            service_monitor.restart_service(service.name)
-        except:
-            pass
-        self.expectThat(mock_lock, MockCalledOnceWith(service.name))
-        self.expectThat(mock_unlock, MockCalledOnceWith(service.name))
+        mock_service_action.side_effect = exception_type
+        get_service_lock = self.patch(service_monitor, "_get_service_lock")
+
+        self.assertRaises(
+            exception_type, service_monitor.restart_service, service.name)
+
+        self.expectThat(get_service_lock, MockCalledOnceWith(service.name))
+        lock = get_service_lock.return_value
+        self.expectThat(
+            lock.__enter__, MockCalledOnceWith())
+        self.expectThat(
+            lock.__exit__, MockCalledOnceWith(exception_type, ANY, ANY))
 
     def test_restart_service_calls__service_action_with_restart(self):
         service = self.make_service_driver(SERVICE_STATE.ON)

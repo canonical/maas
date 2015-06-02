@@ -17,6 +17,7 @@ __all__ = [
     "service_monitor",
 ]
 
+from collections import defaultdict
 import os
 from subprocess import (
     PIPE,
@@ -93,23 +94,14 @@ class ServiceMonitor:
         if init_system is None:
             init_system = get_init_system()
         self.init_system = init_system
-        self.service_locks = {}
+        self.service_locks = defaultdict(Lock)
+        # A shared lock for critical sections.
+        self._lock = Lock()
 
     def _get_service_lock(self, service):
         """Return the lock for service."""
-        if service not in self.service_locks:
-            self.service_locks[service] = Lock()
-        return self.service_locks[service]
-
-    def _lock_service(self, service, blocking=True):
-        """Acquire lock for service."""
-        lock = self._get_service_lock(service)
-        lock.acquire(blocking)
-
-    def _unlock_service(self, service):
-        """Release lock for service."""
-        lock = self._get_service_lock(service)
-        lock.release()
+        with self._lock:
+            return self.service_locks[service]
 
     def _get_service_by_name(self, name):
         """Return service from its name in the `ServiceRegistry`."""
@@ -147,11 +139,8 @@ class ServiceMonitor:
     def ensure_service(self, name):
         """Ensures that a service is in its desired state."""
         service = self._get_service_by_name(name)
-        self._lock_service(name)
-        try:
+        with self._get_service_lock(name):
             self._ensure_service(service)
-        finally:
-            self._unlock_service(name)
 
     @asynchronous
     def async_ensure_service(self, name):
@@ -171,8 +160,7 @@ class ServiceMonitor:
             raise ServiceNotOnError(
                 "Service '%s' is not on, unable to restart." % (
                     service.service_name))
-        self._lock_service(name)
-        try:
+        with self._get_service_lock(name):
             self._service_action(service, "restart")
             active_state, process_state = self._get_service_status(service)
             if active_state != SERVICE_STATE.ON:
@@ -187,8 +175,6 @@ class ServiceMonitor:
                     "Service '%s' has been restarted. Its current state "
                     "is '%s' and '%s'." % (
                         service.service_name, active_state, process_state))
-        finally:
-            self._unlock_service(name)
 
     @asynchronous
     def async_restart_service(self, name):
