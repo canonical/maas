@@ -445,10 +445,21 @@ angular.module('MAAS').service(
             while(this._actionQueue.length > 0) {
                 var action = this._actionQueue.shift();
                 if(action.action === "create") {
-                    action.data.$selected = false;
-                    this._updateMetadata(
-                        action.data, METADATA_ACTIONS.CREATE);
-                    this._items.push(action.data);
+                    // Check that the received data doesn't already exists
+                    // in the _items list. If it does then this is actually
+                    // an update action not a create action.
+                    var idx = this._getIndexOfItem(
+                        this._items, action.data[this._pk]);
+                    if(idx >= 0) {
+                        // Actually this is an update action not a create
+                        // action. So replace the item instead of adding it.
+                        this._replaceItem(action.data);
+                    } else {
+                        action.data.$selected = false;
+                        this._updateMetadata(
+                            action.data, METADATA_ACTIONS.CREATE);
+                        this._items.push(action.data);
+                    }
                 } else if(action.action === "update") {
                     this._replaceItem(action.data);
                 } else if(action.action === "delete") {

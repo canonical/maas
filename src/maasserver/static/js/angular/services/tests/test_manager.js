@@ -824,6 +824,21 @@ describe("Manager", function() {
                 [addSelected(fakeNode, false)]);
         });
 
+        it("updates node in items list on create action if already exists",
+            function() {
+                var fakeNode = makeNode(false);
+                var updatedNode = stripSelected(fakeNode);
+                updatedNode.name = makeName("name");
+                NodesManager._items.push(fakeNode);
+                NodesManager._actionQueue.push({
+                    action: "create",
+                    data: updatedNode
+                });
+                NodesManager.processActions();
+                expect(NodesManager._items).toEqual(
+                    [addSelected(updatedNode, false)]);
+            });
+
         it("updates node in items list on update action", function() {
             var fakeNode = makeNode(false);
             var updatedNode = stripSelected(fakeNode);
