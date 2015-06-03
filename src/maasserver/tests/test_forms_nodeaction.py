@@ -84,7 +84,8 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_save_performs_requested_action(self):
         admin = factory.make_admin()
-        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(
+            status=NODE_STATUS.NEW, power_state=POWER_STATE.OFF)
         form = get_action_form(admin)(
             node, {NodeActionForm.input_name: Commission.name})
         self.assertTrue(form.is_valid())
