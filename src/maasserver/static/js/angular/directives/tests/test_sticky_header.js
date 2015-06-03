@@ -71,4 +71,18 @@ describe("maasStickyHeader", function() {
             };
             setTimeout(checkAndIncrement, 100);
         });
+
+    it("removes padding-top on $destroy", function(done) {
+        var directive = compileDirective();
+        var body = directive.find("div.maas-wrapper");
+        var header = directive.find("header");
+        var height = makeInteger(100, 3000);
+        header.height(height);
+        setTimeout(function() {
+            expect(body.css("padding-top")).toBe(height + 20 + "px");
+            $scope.$destroy();
+            expect(body.css("padding-top")).toBe('');
+            done();
+        }, 100);
+    });
 });

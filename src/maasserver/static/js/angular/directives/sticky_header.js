@@ -19,7 +19,7 @@ angular.module('MAAS').directive('maasStickyHeader', function() {
             var EXTRA_OFFSET = 20;
 
             // Current height of the header.
-            var headerHeight = element.height();
+            var headerHeight = -1;
 
             // Wrapper element. Grab the element from the root element, if that
             // fails search for the element as a parent of this directives.
@@ -97,12 +97,14 @@ angular.module('MAAS').directive('maasStickyHeader', function() {
             };
             checkHeaderHeight();
 
-            // Clear the timeouts when the scope is destroyed.
+            // Clear the timeouts and remove the padding-top on the wrapper
+            // element when the scope is destroyed.
             scope.$on("$destroy", function() {
                 clearTimeout(nextCheck);
                 if(angular.isDefined(nextUpdate)) {
                     clearTimeout(nextUpdate);
                 }
+                wrapperElement.css("padding-top", "");
             });
         }
     };
