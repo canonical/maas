@@ -123,14 +123,6 @@ def make_dnssec_validation_field(*args, **kwargs):
 
 
 CONFIG_ITEMS = {
-    'check_compatibility': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'required': False,
-            'label': "Check component compatibility and certification"
-        }
-    },
     'main_archive': {
         'default': 'http://archive.ubuntu.com/ubuntu',
         'form': forms.URLField,

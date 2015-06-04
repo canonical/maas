@@ -41,10 +41,10 @@ DNSSEC_VALIDATION_CHOICES = [
 
 
 def get_default_config():
+    """
+    :return: A dictionary mapping default settings keys to default values.
+    """
     return {
-        # # settings default values.
-        # Commissioning section configuration.
-        'check_compatibility': False,
         # Ubuntu section configuration.
         'main_archive': 'http://archive.ubuntu.com/ubuntu',
         'ports_archive': 'http://ports.ubuntu.com/ubuntu-ports',

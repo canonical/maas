@@ -1351,7 +1351,6 @@ class DiskErasingOnReleaseForm(ConfigForm):
 
 class CommissioningForm(ConfigForm):
     """Settings page, Commissioning section."""
-    check_compatibility = get_config_field('check_compatibility')
 
     def __init__(self, *args, **kwargs):
         # Skip ConfigForm.__init__ because we need the form intialized but

@@ -117,14 +117,12 @@ class SettingsTest(MAASServerTestCase):
         osystem = make_rpc_osystem('ubuntu', releases=[release])
         patch_usable_osystems(self, [osystem])
 
-        new_check_compatibility = factory.pick_bool()
         new_commissioning = release['name']
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
                 prefix='commissioning',
                 data={
-                    'check_compatibility': new_check_compatibility,
                     'commissioning_distro_series': (
                         new_commissioning),
                 }))
@@ -132,11 +130,9 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             (
-                new_check_compatibility,
                 new_commissioning,
             ),
             (
-                Config.objects.get_config('check_compatibility'),
                 Config.objects.get_config('commissioning_distro_series'),
             ))
 
