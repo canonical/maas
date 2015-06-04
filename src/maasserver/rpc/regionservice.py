@@ -66,6 +66,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
+from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -490,6 +491,7 @@ class RegionService(service.Service, object):
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
         self.ports = []
+        self.events = EventGroup("connected", "disconnected")
 
     def _getConnectionFor(self, ident, timeout):
         """Wait up to `timeout` seconds for a connection for `ident`.
@@ -513,15 +515,18 @@ class RegionService(service.Service, object):
     def _addConnectionFor(self, ident, connection):
         """Adds `connection` to the set of connections for `ident`.
 
-        Notifies all waiters of this new connection.
+        Notifies all waiters of this new connection and triggers the connected
+        event.
         """
         self.connections[ident].add(connection)
         for waiter in self.waiters[ident].copy():
             waiter.callback(connection)
+        self.events.connected.fire(ident)
 
     def _removeConnectionFor(self, ident, connection):
         """Removes `connection` from the set of connections for `ident`."""
         self.connections[ident].discard(connection)
+        self.events.disconnected.fire(ident)
 
     def _savePorts(self, results):
         """Save the opened ports to ``self.ports``.

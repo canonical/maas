@@ -134,6 +134,7 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.utils import events
 from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
 from testtools.deferredruntest import (
@@ -1234,6 +1235,8 @@ class TestRegionService(MAASTestCase):
                 AllMatch(Provides(IStreamServerEndpoint))))
         self.assertThat(service.factory, IsInstance(Factory))
         self.assertThat(service.factory.protocol, Equals(RegionServer))
+        self.assertThat(service.events.connected, IsInstance(events.Event))
+        self.assertThat(service.events.disconnected, IsInstance(events.Event))
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
@@ -1584,6 +1587,16 @@ class TestRegionService(MAASTestCase):
         self.assertThat(waiter1.callback, MockCallsMatch(call(c1), call(c2)))
         self.assertThat(waiter2.callback, MockCallsMatch(call(c1), call(c2)))
 
+    def test_addConnectionFor_fires_connected_event(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        c1 = DummyConnection()
+
+        mock_fire = self.patch(service.events.connected, "fire")
+        service._addConnectionFor(uuid, c1)
+
+        self.assertThat(mock_fire, MockCalledOnceWith(uuid))
+
     def test_removeConnectionFor_removes_connection(self):
         service = RegionService()
         uuid = factory.make_UUID()
@@ -1603,6 +1616,16 @@ class TestRegionService(MAASTestCase):
         service._removeConnectionFor(uuid, DummyConnection())
 
         self.assertEqual({uuid: set()}, service.connections)
+
+    def test_removeConnectionFor_fires_disconnected_event(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        c1 = DummyConnection()
+
+        mock_fire = self.patch(service.events.disconnected, "fire")
+        service._removeConnectionFor(uuid, c1)
+
+        self.assertThat(mock_fire, MockCalledOnceWith(uuid))
 
     @wait_for_reactor
     def test_getConnectionFor_returns_existing_connection(self):

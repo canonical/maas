@@ -22,6 +22,7 @@ import crochet
 from django.core.handlers.wsgi import WSGIHandler
 from lxml import html
 from maasserver import (
+    eventloop,
     start_up,
     webapp,
 )
@@ -112,6 +113,10 @@ class TestWebApplicationService(MAASTestCase):
     def make_webapp(self):
         service_endpoint = self.make_endpoint()
         service = webapp.WebApplicationService(service_endpoint)
+        # Patch the getServiceNamed so the WebSocketFactory does not
+        # error trying to register for events from the RPC service. In this
+        # test the RPC service is not started.
+        self.patch(eventloop.services, "getServiceNamed")
         return service
 
     def test__init_creates_site_and_threadpool(self):

@@ -19,8 +19,12 @@ import json
 import random
 
 from crochet import wait_for_reactor
+from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import transactional
 from maasserver.websockets import protocol as protocol_module
 from maasserver.websockets.handlers import (
@@ -64,6 +68,8 @@ class TestWebSocketProtocol(MAASServerTestCase):
     def make_protocol(self, patch_authenticate=True, transport_uri=''):
         self.patch(protocol_module, "PostgresListener")
         factory = WebSocketFactory()
+        self.patch(factory, "registerRPCEvents")
+        self.patch(factory, "unregisterRPCEvents")
         factory.startFactory()
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
@@ -579,10 +585,17 @@ class TestWebSocketProtocol(MAASServerTestCase):
             message, self.get_written_transport_message(protocol))
 
 
-class TestWebSocketFactory(MAASTestCase):
+class MakeProtocolFactoryMixin:
 
-    def make_protocol_with_factory(self, user=None):
+    def make_factory(self, rpc_service=None):
         factory = WebSocketFactory()
+        if rpc_service is None:
+            rpc_service = MagicMock()
+        self.patch(services, "getServiceNamed").return_value = rpc_service
+        return factory
+
+    def make_protocol_with_factory(self, user=None, rpc_service=None):
+        factory = self.make_factory(rpc_service=rpc_service)
         factory.startFactory()
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
@@ -595,8 +608,11 @@ class TestWebSocketFactory(MAASTestCase):
         self.addCleanup(lambda: protocol.connectionLost(""))
         return protocol, factory
 
+
+class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
+
     def test_loads_all_handlers(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertItemsEqual([
             "device", "general", "node",
             "cluster", "user", "zone",
@@ -606,37 +622,37 @@ class TestWebSocketFactory(MAASTestCase):
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
         mock_import = self.patch_autospec(protocol_module, "import_module")
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         factory.getSessionEngine()
         self.assertThat(
             mock_import,
             MockCalledOnceWith(protocol_module.settings.SESSION_ENGINE))
 
     def test_getHandler_returns_None_on_missing_handler(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertIsNone(factory.getHandler("unknown"))
 
     def test_getHandler_returns_NodeHandler(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertIs(
             NodeHandler,
             factory.getHandler("node"))
 
     def test_getHandler_returns_DeviceHandler(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertIs(
             DeviceHandler,
             factory.getHandler("device"))
 
     def test_buildProtocol_returns_WebSocketProtocol(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertIsInstance(
             factory.buildProtocol(sentinel.addr), WebSocketProtocol)
 
     @wait_for_reactor
     @inlineCallbacks
     def test_startFactory_starts_listener(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         yield factory.startFactory()
         try:
             self.expectThat(factory.listener.connected(), Equals(True))
@@ -646,7 +662,7 @@ class TestWebSocketFactory(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_startFactory_starts_threadpool(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         yield factory.startFactory()
         try:
             self.assertThat(factory.threadpool, IsInstance(ThreadPool))
@@ -656,8 +672,24 @@ class TestWebSocketFactory(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_startFactory_registers_rpc_handlers(self):
+        rpc_service = MagicMock()
+        factory = self.make_factory(rpc_service)
+        yield factory.startFactory()
+        try:
+            self.expectThat(
+                rpc_service.events.connected.registerHandler,
+                MockCalledOnceWith(factory.updateCluster))
+            self.expectThat(
+                rpc_service.events.disconnected.registerHandler,
+                MockCalledOnceWith(factory.updateCluster))
+        finally:
+            yield factory.stopFactory()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_stopFactory_stops_listener(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         yield factory.startFactory()
         yield factory.stopFactory()
         self.expectThat(factory.listener.connected(), Equals(False))
@@ -665,13 +697,27 @@ class TestWebSocketFactory(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopFactory_stops_threadpool(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         yield factory.startFactory()
         yield factory.stopFactory()
         self.assertEqual([], factory.threadpool.threads)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_stopFactory_unregisters_rpc_handlers(self):
+        rpc_service = MagicMock()
+        factory = self.make_factory(rpc_service)
+        yield factory.startFactory()
+        yield factory.stopFactory()
+        self.expectThat(
+            rpc_service.events.connected.unregisterHandler,
+            MockCalledOnceWith(factory.updateCluster))
+        self.expectThat(
+            rpc_service.events.disconnected.unregisterHandler,
+            MockCalledOnceWith(factory.updateCluster))
+
     def test_registerNotifiers_registers_all_notifiers(self):
-        factory = WebSocketFactory()
+        factory = self.make_factory()
         self.assertItemsEqual(
             ["node", "device", "nodegroup", "user", "zone", "event", "tag"],
             factory.listener.listeners.keys())
@@ -731,3 +777,23 @@ class TestWebSocketFactory(MAASTestCase):
             mock_class, sentinel.channel, action, sentinel.obj_id)
         self.assertThat(
             mock_sendNotify, MockCalledWith(name, action, data))
+
+
+class TestWebSocketFactoryTransactional(
+        MAASTransactionServerTestCase, MakeProtocolFactoryMixin):
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updateCluster_calls_onNotify_for_cluster_update(self):
+        user = yield deferToThread(transactional(maas_factory.make_User))
+        cluster = yield deferToThread(
+            transactional(maas_factory.make_NodeGroup))
+        protocol, factory = self.make_protocol_with_factory(user=user)
+        mock_onNotify = self.patch(factory, "onNotify")
+        cluster_handler = MagicMock()
+        factory.handlers["cluster"] = cluster_handler
+        yield factory.updateCluster(cluster.uuid)
+        self.assertThat(
+            mock_onNotify,
+            MockCalledOnceWith(
+                cluster_handler, "cluster", "update", cluster.id))

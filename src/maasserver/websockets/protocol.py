@@ -32,6 +32,8 @@ from django.contrib.auth import (
 )
 from django.contrib.auth.models import User
 from django.utils.importlib import import_module
+from maasserver.eventloop import services
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.orm import transactional
 from maasserver.websockets import handlers
 from maasserver.websockets.listener import PostgresListener
@@ -336,11 +338,13 @@ class WebSocketFactory(Factory):
     def startFactory(self):
         """Start the thread pool and the listener."""
         self.threadpool.start()
+        self.registerRPCEvents()
         return self.listener.start()
 
     def stopFactory(self):
         """Stop the thread pool and the listener."""
         stopped = self.listener.stop()
+        self.unregisterRPCEvents()
         self.threadpool.stop()
         return stopped
 
@@ -399,3 +403,59 @@ class WebSocketFactory(Factory):
 
     def buildProtocol(self, addr):
         return WebSocketProtocol(self)
+
+    def registerRPCEvents(self):
+        """Register for connected and disconnected events from the RPC
+        service."""
+        rpc_service = services.getServiceNamed("rpc")
+        rpc_service.events.connected.registerHandler(
+            self.updateCluster)
+        rpc_service.events.disconnected.registerHandler(
+            self.updateCluster)
+
+    def unregisterRPCEvents(self):
+        """Unregister from connected and disconnected events from the RPC
+        service."""
+        rpc_service = services.getServiceNamed("rpc")
+        rpc_service.events.connected.unregisterHandler(
+            self.updateCluster)
+        rpc_service.events.disconnected.unregisterHandler(
+            self.updateCluster)
+
+    def updateCluster(self, ident):
+        """Called when a cluster connects or disconnects from this region
+        over the RPC connection.
+
+        This is hard-coded to call the `ClusterHandler` as at the moment
+        it is the only handler that needs this event.
+        """
+        # The `ClusterHandler` expects the `on_listen` call to use the `id`
+        # of the `Cluster` object, not the uuid. The `uuid` for the cluster
+        # is converted into its `id`, and send to the onNotify call for the
+        # `ClusterHandler`.
+        d = deferToThreadPool(
+            reactor, self.threadpool, self.getCluster, ident)
+        d.addCallback(self.sendOnNotifyToCluster)
+        d.addErrback(
+            log.err,
+            "Failed to send 'update' notification for cluster(%s) when "
+            "RPC event fired." % ident)
+        return d
+
+    @synchronous
+    @transactional
+    def getCluster(self, cluster_uuid):
+        """Return `NodeGroup` with `cluster_uuid`."""
+        try:
+            return NodeGroup.objects.get(uuid=cluster_uuid)
+        except NodeGroup.DoesNotExist:
+            return None
+
+    def sendOnNotifyToCluster(self, cluster):
+        """Send onNotify to the `ClusterHandler` for `cluster`."""
+        cluster_handler = self.getHandler("cluster")
+        if cluster_handler is None or cluster is None:
+            return
+        else:
+            return self.onNotify(
+                cluster_handler, "cluster", "update", cluster.id)
