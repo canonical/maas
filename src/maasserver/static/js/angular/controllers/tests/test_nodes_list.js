@@ -464,7 +464,7 @@ describe("NodesListController", function() {
                     $scope.toggleFilter("hostname", "test", tab);
                     expect($scope.tabs[tab].filters).toEqual({
                         _: [],
-                        hostname: ["test"]
+                        hostname: ["=test"]
                     });
                 });
 
@@ -496,7 +496,7 @@ describe("NodesListController", function() {
                 it("sets $scope.search", function() {
                     var controller = makeController();
                     $scope.toggleFilter("hostname", "test", tab);
-                    expect($scope.tabs[tab].search).toBe("hostname:(test)");
+                    expect($scope.tabs[tab].search).toBe("hostname:(=test)");
                 });
             });
 

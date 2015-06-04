@@ -114,6 +114,27 @@ describe("SearchService", function() {
                     type: ["valid"]
                 }, "type", "valid")).toBe(true);
         });
+
+        it("returns false if exact value not in type", function() {
+            expect(SearchService.isFilterActive(
+                {
+                    type: ["valid"]
+                }, "type", "valid", true)).toBe(false);
+        });
+
+        it("returns true if exact value in type", function() {
+            expect(SearchService.isFilterActive(
+                {
+                    type: ["=valid"]
+                }, "type", "valid", true)).toBe(true);
+        });
+
+        it("returns true if lowercase value in type", function() {
+            expect(SearchService.isFilterActive(
+                {
+                    type: ["=Valid"]
+                }, "type", "valid", true)).toBe(true);
+        });
     });
 
     describe("toggleFilter", function() {
@@ -141,6 +162,36 @@ describe("SearchService", function() {
             };
             expect(SearchService.toggleFilter(
                 filters, "type", "value")).toEqual({
+                    type: ["exists"]
+                });
+        });
+
+        it("adds exact value to type in filters", function() {
+            var filters = {
+                type: ["exists"]
+            };
+            expect(SearchService.toggleFilter(
+                filters, "type", "value", true)).toEqual({
+                    type: ["exists", "=value"]
+                });
+        });
+
+        it("removes exact value to type in filters", function() {
+            var filters = {
+                type: ["exists", "value", "=value"]
+            };
+            expect(SearchService.toggleFilter(
+                filters, "type", "value", true)).toEqual({
+                    type: ["exists", "value"]
+                });
+        });
+
+        it("removes lowercase value to type in filters", function() {
+            var filters = {
+                type: ["exists", "=Value"]
+            };
+            expect(SearchService.toggleFilter(
+                filters, "type", "value", true)).toEqual({
                     type: ["exists"]
                 });
         });

@@ -125,6 +125,17 @@ describe("nodesFilter", function() {
         expect(nodesFilter(nodes, "hostname:!other")).toEqual([matchingNode]);
     });
 
+    it("matches on exact attribute", function() {
+        var matchingNode = {
+            hostname: "other"
+        };
+        var otherNode = {
+            hostname: "other2"
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "hostname:=other")).toEqual([matchingNode]);
+    });
+
     it("matches on array", function() {
         var matchingNode = {
             hostnames: ["name", "first"]
@@ -302,6 +313,18 @@ describe("nodesFilter", function() {
         };
         var nodes = [matchingNode, otherNode];
         expect(nodesFilter(nodes, "tags:(first,!third)")).toEqual(
+            [matchingNode]);
+    });
+
+    it("matches an exact direct and a negated tag", function() {
+        var matchingNode = {
+            tags: ["first", "second"]
+        };
+        var otherNode = {
+            tags: ["first1", "third"]
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "tags:(=first,!third)")).toEqual(
             [matchingNode]);
     });
 

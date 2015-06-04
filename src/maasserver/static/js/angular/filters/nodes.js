@@ -45,15 +45,27 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
 
         // Return true when lowercase value contains the already
         // lowercased lowerTerm.
-        function _matches(value, lowerTerm) {
+        function _matches(value, lowerTerm, exact) {
             if(angular.isNumber(value)) {
-                if(isInteger(value)) {
-                    return value >= parseInt(lowerTerm, 10);
+                if(exact) {
+                    if(isInteger(value)) {
+                        return value === parseInt(lowerTerm, 10);
+                    } else {
+                        return value === parseFloat(lowerTerm);
+                    }
                 } else {
-                    return value >= parseFloat(lowerTerm);
+                    if(isInteger(value)) {
+                        return value >= parseInt(lowerTerm, 10);
+                    } else {
+                        return value >= parseFloat(lowerTerm);
+                    }
                 }
             } else if(angular.isString(value)) {
-                return value.toLowerCase().indexOf(lowerTerm) >= 0;
+                if(exact) {
+                    return value.toLowerCase() === lowerTerm;
+                } else {
+                    return value.toLowerCase().indexOf(lowerTerm) >= 0;
+                }
             } else {
                 return value === lowerTerm;
             }
@@ -61,8 +73,8 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
 
         // Return true if value matches lowerTerm, unless negate is true then
         // return false if matches.
-        function matches(value, lowerTerm, negate) {
-            var match = _matches(value, lowerTerm);
+        function matches(value, lowerTerm, exact, negate) {
+            var match = _matches(value, lowerTerm, exact);
             if(negate) {
                 return !match;
             }
@@ -123,9 +135,21 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                         var i, j;
                         for(i = 0; i < terms.length; i++) {
                             var term = terms[i].toLowerCase();
-                            var negate = false;
+                            var exact = false, negate = false;
 
                             // '!' at the beginning means the term is negated.
+                            while(term.indexOf('!') === 0) {
+                                negate = !negate;
+                                term = term.substring(1);
+                            }
+
+                            // '=' at the beginning means to match exactly.
+                            if(term.indexOf('=') === 0) {
+                                exact = true;
+                                term = term.substring(1);
+                            }
+
+                            // Allow '!' after the '=' as well.
                             while(term.indexOf('!') === 0) {
                                 negate = !negate;
                                 term = term.substring(1);
@@ -141,7 +165,8 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                                     // the array matches term.
                                     var no_match = true;
                                     for(j = 0; j < value.length; j++) {
-                                        if(matches(value[j], term, false)) {
+                                        if(matches(
+                                            value[j], term, exact, false)) {
                                             no_match = false;
                                             break; // Skip remaining tests.
                                         }
@@ -152,7 +177,8 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                                     }
                                 } else {
                                     for(j = 0; j < value.length; j++) {
-                                        if(matches(value[j], term, false)) {
+                                        if(matches(
+                                            value[j], term, exact, false)) {
                                             matched.push(node);
                                             return;
                                         }
@@ -161,7 +187,7 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                             } else {
                                 // Standard value check that it matches the
                                 // term.
-                                if(matches(value, term, negate)) {
+                                if(matches(value, term, exact, negate)) {
                                     matched.push(node);
                                     return;
                                 }

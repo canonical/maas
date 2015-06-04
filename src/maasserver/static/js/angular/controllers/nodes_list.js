@@ -272,7 +272,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.toggleFilter = function(type, value, tab) {
             leaveViewSelected(tab);
             $scope.tabs[tab].filters = SearchService.toggleFilter(
-                $scope.tabs[tab].filters, type, value);
+                $scope.tabs[tab].filters, type, value, true);
             $scope.tabs[tab].search = SearchService.filtersToString(
                 $scope.tabs[tab].filters);
             shouldClearAction(tab);
@@ -281,7 +281,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Return True if the filter is active.
         $scope.isFilterActive = function(type, value, tab) {
             return SearchService.isFilterActive(
-                $scope.tabs[tab].filters, type, value);
+                $scope.tabs[tab].filters, type, value, true);
         };
 
         // Update the filters object when the search bar is updated.

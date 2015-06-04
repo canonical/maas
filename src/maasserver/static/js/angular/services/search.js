@@ -121,21 +121,42 @@ angular.module('MAAS').service('SearchService', function() {
         return search.trim();
     };
 
+    // Return the index of the value in the type for the filter.
+    this._getFilterValueIndex = function(filters, type, value) {
+        var values = filters[type];
+        if(angular.isUndefined(values)) {
+            return -1;
+        }
+        var lowerValues = values.map(function(value) {
+            return value.toLowerCase();
+        });
+        return lowerValues.indexOf(value.toLowerCase());
+    };
+
     // Return true if the type and value are in the filters.
-    this.isFilterActive = function(filters, type, value) {
+    this.isFilterActive = function(filters, type, value, exact) {
         var values = filters[type];
         if(angular.isUndefined(values)) {
             return false;
         }
-        return values.indexOf(value) !== -1;
+        if(angular.isUndefined(exact)) {
+            exact = false;
+        }
+        if(exact) {
+            value = "=" + value;
+        }
+        return this._getFilterValueIndex(filters, type, value) !== -1;
     };
 
     // Toggles a filter on or off based on type and value.
-    this.toggleFilter = function(filters, type, value) {
+    this.toggleFilter = function(filters, type, value, exact) {
         if(angular.isUndefined(filters[type])) {
             filters[type] = [];
         }
-        var idx = filters[type].indexOf(value);
+        if(exact) {
+            value = "=" + value;
+        }
+        var idx = this._getFilterValueIndex(filters, type, value);
         if(idx === -1) {
             filters[type].push(value);
         } else {
