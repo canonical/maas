@@ -149,6 +149,18 @@ describe("NodesListController", function() {
             "osinfo");
     });
 
+    it("saves current filters for nodes and devices when scope destroyed",
+        function() {
+            var controller = makeController();
+            var nodesFilters = {}, devicesFilters = {};
+            $scope.tabs.nodes.filters = nodesFilters;
+            $scope.tabs.devices.filters = devicesFilters;
+            $scope.$destroy();
+            expect(SearchService.retrieveFilters("nodes")).toBe(nodesFilters);
+            expect(SearchService.retrieveFilters("devices")).toBe(
+                devicesFilters);
+        });
+
     it("calls loadManagers with NodesManager, DevicesManager," +
         "GeneralManager, UsersManager",
         function() {
@@ -165,6 +177,24 @@ describe("NodesListController", function() {
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
     });
+
+    it("sets nodes search from SearchService",
+        function() {
+            var query = makeName("query");
+            SearchService.storeFilters(
+                "nodes", SearchService.getCurrentFilters(query));
+            var controller = makeController();
+            expect($scope.tabs.nodes.search).toBe(query);
+        });
+
+    it("sets devices search from SearchService",
+        function() {
+            var query = makeName("query");
+            SearchService.storeFilters(
+                "devices", SearchService.getCurrentFilters(query));
+            var controller = makeController();
+            expect($scope.tabs.devices.search).toBe(query);
+        });
 
     it("sets nodes search from $routeParams.query",
         function() {
@@ -228,7 +258,8 @@ describe("NodesListController", function() {
                 expect(tabScope.selectedItems).toBe(
                     tabScope.manager.getSelectedItems());
                 expect(tabScope.metadata).toBe(tabScope.manager.getMetadata());
-                expect(tabScope.filters).toBe(SearchService.emptyFilter);
+                expect(tabScope.filters).toEqual(
+                    SearchService.getEmptyFilter());
                 expect(tabScope.column).toBe("fqdn");
                 expect(tabScope.actionOption).toBeNull();
                 expect(tabScope.takeActionOptions).toEqual([]);
@@ -440,7 +471,7 @@ describe("NodesListController", function() {
                 it("calls SearchService.toggleFilter", function() {
                     var controller = makeController();
                     spyOn(SearchService, "toggleFilter").and.returnValue(
-                        SearchService.emptyFilter);
+                        SearchService.getEmptyFilter());
                     $scope.toggleFilter("hostname", "test", tab);
                     expect(SearchService.toggleFilter).toHaveBeenCalled();
                 });
@@ -507,8 +538,8 @@ describe("NodesListController", function() {
                         $scope.tabs[tab].search = "test hostname:(name";
                         $scope.updateFilters(tab);
                         expect(
-                            $scope.tabs[tab].filters).toBe(
-                                SearchService.emptyFilter);
+                            $scope.tabs[tab].filters).toEqual(
+                                SearchService.getEmptyFilter());
                         expect($scope.tabs[tab].searchValid).toBe(false);
                     });
             });

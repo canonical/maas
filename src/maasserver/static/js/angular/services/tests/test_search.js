@@ -146,10 +146,33 @@ describe("SearchService", function() {
         });
     });
 
-    describe("emptyFilter", function() {
+    describe("getEmptyFilter", function() {
 
         it("includes _ empty list", function() {
-            expect(SearchService.emptyFilter).toEqual({ _: [] });
+            expect(SearchService.getEmptyFilter()).toEqual({ _: [] });
+        });
+
+        it("returns different object on each call", function() {
+            var one = SearchService.getEmptyFilter();
+            var two = SearchService.getEmptyFilter();
+            expect(one).not.toBe(two);
+        });
+    });
+
+    describe("storeFilters/retrieveFilters", function() {
+
+        it("stores and retrieves the same object", function() {
+            var i, names = [], objects = [];
+            for(i = 0; i < 3; i++) {
+                names.push(makeName("name"));
+                objects.push({});
+            }
+            angular.forEach(names, function(name, idx) {
+                SearchService.storeFilters(name, objects[idx]);
+            });
+            angular.forEach(names, function(name, idx) {
+                expect(SearchService.retrieveFilters(name)).toBe(objects[idx]);
+            });
         });
     });
 });

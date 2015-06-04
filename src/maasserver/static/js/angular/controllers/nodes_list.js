@@ -45,7 +45,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.predicate = 'fqdn';
         $scope.tabs.nodes.allViewableChecked = false;
         $scope.tabs.nodes.metadata = NodesManager.getMetadata();
-        $scope.tabs.nodes.filters = SearchService.emptyFilter;
+        $scope.tabs.nodes.filters = SearchService.getEmptyFilter();
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
         $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
@@ -75,7 +75,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.predicate = 'fqdn';
         $scope.tabs.devices.allViewableChecked = false;
         $scope.tabs.devices.metadata = DevicesManager.getMetadata();
-        $scope.tabs.devices.filters = SearchService.emptyFilter;
+        $scope.tabs.devices.filters = SearchService.getEmptyFilter();
         $scope.tabs.devices.column = 'fqdn';
         $scope.tabs.devices.actionOption = null;
         $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
@@ -289,7 +289,7 @@ angular.module('MAAS').controller('NodesListController', [
             var filters = SearchService.getCurrentFilters(
                 $scope.tabs[tab].search);
             if(filters === null) {
-                $scope.tabs[tab].filters = SearchService.emptyFilter;
+                $scope.tabs[tab].filters = SearchService.getEmptyFilter();
                 $scope.tabs[tab].searchValid = false;
             } else {
                 $scope.tabs[tab].filters = filters;
@@ -477,10 +477,26 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.loading = false;
             });
 
-        // Stop polling when the scope is destroyed.
+        // Stop polling and save the current filter when the scope is destroyed.
         $scope.$on("$destroy", function() {
             GeneralManager.stopPolling("osinfo");
+            SearchService.storeFilters("nodes", $scope.tabs.nodes.filters);
+            SearchService.storeFilters("devices", $scope.tabs.devices.filters);
         });
+
+        // Restore the filters if any saved.
+        var nodesFilter = SearchService.retrieveFilters("nodes");
+        if(angular.isObject(nodesFilter)) {
+            $scope.tabs.nodes.search = SearchService.filtersToString(
+                nodesFilter);
+            $scope.updateFilters("nodes");
+        }
+        var devicesFilter = SearchService.retrieveFilters("devices");
+        if(angular.isObject(devicesFilter)) {
+            $scope.tabs.devices.search = SearchService.filtersToString(
+                devicesFilter);
+            $scope.updateFilters("devices");
+        }
 
         // Switch to the specified tab, if specified.
         if($routeParams.tab === "nodes" || $routeParams.tab === "devices") {

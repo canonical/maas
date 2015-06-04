@@ -6,13 +6,21 @@
 
 angular.module('MAAS').service('SearchService', function() {
 
+    // Holds an empty filter object.
+    var emptyFilter = { _: [] };
+
+    // Return a new empty filter;
+    this.getEmptyFilter = function() {
+        return angular.copy(emptyFilter);
+    };
+
     // Splits the search string into different terms based on white space.
     // This handles the ability for whitespace to be inside of '(', ')'.
     //
     // XXX blake_r 28-01-15: This could be improved with a regex, but was
     // unable to come up with one that would allow me to validate the end
     // ')' in the string.
-    function getSplitSearch(search) {
+    this.getSplitSearch = function(search) {
         var terms = search.split(' ');
         var fixedTerms = [];
         var spanningParentheses = false;
@@ -46,15 +54,15 @@ angular.module('MAAS').service('SearchService', function() {
             return null;
         }
         return fixedTerms;
-    }
+    };
 
     // Return all of the currently active filters for the given search.
-    function getCurrentFilters(search) {
-        var filters = { _: [] };
+    this.getCurrentFilters = function(search) {
+        var filters = this.getEmptyFilter();
         if(search.length === 0) {
             return filters;
         }
-        var searchTerms = getSplitSearch(search);
+        var searchTerms = this.getSplitSearch(search);
         if(!searchTerms) {
             return null;
         }
@@ -94,10 +102,10 @@ angular.module('MAAS').service('SearchService', function() {
             }
         });
         return filters;
-    }
+    };
 
     // Convert "filters" into a search string.
-    function filtersToString(filters) {
+    this.filtersToString = function(filters) {
         var search = "";
         angular.forEach(filters, function(terms, type) {
             // Skip empty and skip "_" as it gets appended at the
@@ -111,19 +119,19 @@ angular.module('MAAS').service('SearchService', function() {
             search = filters._.join(" ") + " " + search;
         }
         return search.trim();
-    }
+    };
 
     // Return true if the type and value are in the filters.
-    function isFilterActive(filters, type, value) {
+    this.isFilterActive = function(filters, type, value) {
         var values = filters[type];
         if(angular.isUndefined(values)) {
             return false;
         }
         return values.indexOf(value) !== -1;
-    }
+    };
 
     // Toggles a filter on or off based on type and value.
-    function toggleFilter(filters, type, value) {
+    this.toggleFilter = function(filters, type, value) {
         if(angular.isUndefined(filters[type])) {
             filters[type] = [];
         }
@@ -134,14 +142,18 @@ angular.module('MAAS').service('SearchService', function() {
             filters[type].splice(idx, 1);
         }
         return filters;
-    }
+    };
 
-    return {
-        emptyFilter: { _: [] },
-        getSplitSearch: getSplitSearch,
-        getCurrentFilters: getCurrentFilters,
-        filtersToString: filtersToString,
-        isFilterActive: isFilterActive,
-        toggleFilter: toggleFilter
+    // Holds all stored filters.
+    var storedFilters = {};
+
+    // Store a filter for later.
+    this.storeFilters = function(name, filters) {
+        storedFilters[name] = filters;
+    };
+
+    // Retrieve a stored fitler.
+    this.retrieveFilters = function(name) {
+        return storedFilters[name];
     };
 });
