@@ -214,6 +214,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.power.types = [];
             }
 
+            // If the cluster is disconnected then always force editing to
+            // false. Its not possible to stay editing the power section
+            // when the cluster is disconnected.
+            if(!cluster.connected) {
+                $scope.power.editing = false;
+            }
+
             // Do not update the selected items, when editing this would
             // cause the users selection to change.
             if($scope.power.editing) {
@@ -378,10 +385,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Update the availableActionOptions when the node actions change.
             $scope.$watch("node.actions", updateAvailableActionOptions);
 
-            // Update the errors when the selected cluster becomes connected
-            // or disconnected.
-            $scope.$watch("summary.cluster.selected.connected", updateErrors);
-
             // Update the summary when the node or clusters list is
             // updated.
             $scope.$watch("node.nodegroup.id", updateSummary);
@@ -404,6 +407,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // are updated.
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
+
+            // Update power section when the selected cluster becomes
+            // connected or disconnected. Calling updatePower also
+            // calls updateErrors
+            $scope.$watch("summary.cluster.selected.connected", updatePower);
 
             // Update the storage when the node physical_disks are updated.
             $scope.$watch("node.physical_disks", updateStorage);

@@ -365,6 +365,44 @@ describe("NodeDetailsController", function() {
             expect($scope.errors.cluster_disconnected.viewable).toBe(false);
         });
 
+    it("power section is disabled when the cluster disconnects",
+      function() {
+          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+          cluster.connected = false;
+
+          var controller = makeControllerResolveSetActiveItem();
+          expect($scope.power.editing).toBe(false);
+      });
+
+    it("power section is editable when the cluster connects",
+      function() {
+          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+          cluster.connected = true;
+
+          var controller = makeControllerResolveSetActiveItem();
+          expect($scope.power.editing).toBe(true);
+      });
+
+    it("power section editability transitions according to cluster connection",
+      function() {
+          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+          cluster.connected = true;
+
+          var controller = makeControllerResolveSetActiveItem();
+          // Should begin as true, ...
+          expect($scope.power.editing).toBe(true);
+
+          // turn false when the cluster disconnects...
+          cluster.connected = false;
+          $rootScope.$digest();
+          expect($scope.power.editing).toBe(false);
+
+          // ...and back on again, when it reconnects.
+          cluster.connected = true;
+          $rootScope.$digest();
+          expect($scope.power.editing).toBe(true);
+      });
+
     it("summary section is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.summary.cluster.selected).toBe(
@@ -590,12 +628,12 @@ describe("NodeDetailsController", function() {
         expect(watches).toEqual([
             "node.fqdn",
             "node.actions",
-            "summary.cluster.selected.connected",
             "node.nodegroup.id",
             "node.architecture",
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",
+            "summary.cluster.selected.connected",
             "node.physical_disks",
             "node.summary_xml",
             "node.summary_yaml",
