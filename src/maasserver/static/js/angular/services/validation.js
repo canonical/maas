@@ -49,7 +49,7 @@ angular.module('MAAS').service('ValidationService', function() {
             var parts = ipAddress.split('.');
             var octets = [];
             angular.forEach(parts, function(part) {
-                octets.push(parseInt(part, 8));
+                octets.push(parseInt(part, 10));
             });
             return octets;
         }

@@ -389,6 +389,46 @@ describe("ValidationService", function() {
                 },
                 valid: false
             },
+            // Tests the parseInt is using radix 10 for ipv4ToOctets.
+            // See bug 1462079 for more information.
+            {
+                ip: "192.168.1.8",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: true
+            },
+            // Tests the parseInt is using radix 10 for ipv4ToOctets.
+            // See bug 1462079 for more information.
+            {
+                ip: "192.168.1.9",
+                network: "192.168.1.0/24",
+                range: {
+                    low: "192.168.1.2",
+                    high: "192.168.1.100"
+                },
+                valid: true
+            },
+            {
+                ip: "172.16.1.9",
+                network: "172.16.0.0/16",
+                range: {
+                    low: "172.16.1.1",
+                    high: "172.16.2.254"
+                },
+                valid: true
+            },
+            {
+                ip: "10.1.1.9",
+                network: "10.0.0.0/8",
+                range: {
+                    low: "10.0.0.1",
+                    high: "10.5.255.254"
+                },
+                valid: true
+            },
             {
                 ip: "2001:67C:1562::1",
                 network: "2001:67C:1562::0/32",
