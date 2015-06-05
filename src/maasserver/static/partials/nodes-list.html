@@ -5,8 +5,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <a href=""
                     data-ng-class="{ active: currentpage === 'nodes' }"
-                    data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Node', 'other': 'Nodes'}"></ng-pluralize>
-                </a>
+                    data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Node', 'other': 'Nodes'}"></ng-pluralize></a>
                 <span class="divide"></span>
                 <a href=""
                     data-ng-class="{ active: currentpage === 'devices' }"
@@ -502,12 +501,13 @@
                         </th>
                         <th colspan="2" class="table-listing__header fixed">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <a href="" class="table-listing__header-link" data-ng-click="selectColumnOrSort('fqdn', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'fqdn', sort: tabs.nodes.predicate === 'fqdn', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
-                                <span title="Fully Qualified Domain Name">FQDN</span>
-                            </a> |
-                            <a href="" class="table-listing__header-link" data-ng-click="selectColumnOrSort('pxe_mac', 'nodes')" data-ng-class="{active: tabs.nodes.column === 'pxe_mac', sort: tabs.nodes.predicate === 'pxe_mac', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">
-                                <span title="Media Access Control addresses">MAC</span>
-                            </a>
+                            <a href="" class="table-listing__header-link"
+                                data-ng-click="selectColumnOrSort('fqdn', 'nodes')"
+                                data-ng-class="{active: tabs.nodes.column === 'fqdn', sort: tabs.nodes.predicate === 'fqdn', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}"><span title="Fully Qualified Domain Name">FQDN</span></a>
+                            |
+                            <a href="" class="table-listing__header-link"
+                                data-ng-click="selectColumnOrSort('pxe_mac', 'nodes')"
+                                data-ng-class="{active: tabs.nodes.column === 'pxe_mac', sort: tabs.nodes.predicate === 'pxe_mac', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}"><span title="Media Access Control addresses">MAC</span></a>
                         </th>
                         <th class="table-listing__header align-center">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
