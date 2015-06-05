@@ -20,6 +20,7 @@ from errno import ENOPROTOOPT
 import os
 import socket
 from socket import error as socket_error
+import sys
 
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
@@ -43,6 +44,27 @@ from twisted.web.resource import (
 )
 from twisted.web.server import Site
 from zope.interface import implementer
+
+
+def force_simplestreams_to_use_urllib2():
+    """Monkey-patch `simplestreams` to use `urllib2`.
+
+    This prevents the use of `requests` which /may/ be helping simplestreams
+    to lose file-descriptors.
+    """
+    import simplestreams.contentsource
+
+    if sys.version_info > (3, 0):
+        import urllib.request as urllib_request
+        import urllib.error as urllib_error
+    else:
+        import urllib2 as urllib_request
+        urllib_error = urllib_request
+
+    vars(simplestreams.contentsource).update(
+        URL_READER=simplestreams.contentsource.Urllib2UrlReader,
+        URL_READER_CLASSNAME="Urllib2UrlReader", urllib_error=urllib_error,
+        urllib_request=urllib_request)
 
 
 @implementer(ICredentialsChecker)
@@ -231,6 +253,7 @@ class ProvisioningServiceMaker:
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
+        force_simplestreams_to_use_urllib2()
 
         from provisioningserver import services
         from provisioningserver.config import Config
