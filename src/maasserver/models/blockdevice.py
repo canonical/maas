@@ -84,6 +84,25 @@ class BlockDevice(CleanSave, TimestampedModel):
     tags = ArrayField(
         dbtype="text", blank=True, null=False, default=[])
 
+    @property
+    def type(self):
+        # Circular imports, since PhysicalBlockDevice and VirtualBlockDevice
+        # extend from this calss.
+        from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+        try:
+            self.physicalblockdevice
+            return "physical"
+        except PhysicalBlockDevice.DoesNotExist:
+            try:
+                self.virtualblockdevice
+                return "virtual"
+            except VirtualBlockDevice.DoesNotExist:
+                pass
+        raise ValueError(
+            "BlockDevice is not a subclass of "
+            "PhysicalBlockDevice or VirtualBlockDevice")
+
     def display_size(self, include_suffix=True):
         return human_readable_bytes(self.size, include_suffix=include_suffix)
 

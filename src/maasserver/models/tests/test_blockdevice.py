@@ -17,6 +17,7 @@ __all__ = []
 from maasserver.models import BlockDevice
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools import ExpectedException
 from testtools.matchers import Equals
 
 
@@ -86,6 +87,19 @@ class TestBlockDeviceManager(MAASServerTestCase):
 
 class TestBlockDevice(MAASServerTestCase):
     """Tests for the `BlockDevice` model."""
+
+    def test_type_physical(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        self.assertEquals("physical", block_device.type)
+
+    def test_type_virtual(self):
+        block_device = factory.make_VirtualBlockDevice()
+        self.assertEquals("virtual", block_device.type)
+
+    def test_type_raise_ValueError(self):
+        block_device = factory.make_BlockDevice()
+        with ExpectedException(ValueError):
+            block_device.type
 
     def test_display_size(self):
         sizes = (

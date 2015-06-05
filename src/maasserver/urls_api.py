@@ -20,7 +20,10 @@ from django.conf.urls import (
 )
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
-from maasserver.api.blockdevices import BlockDeviceHandler
+from maasserver.api.blockdevices import (
+    BlockDeviceHandler,
+    BlockDevicesHandler,
+)
 from maasserver.api.boot_images import BootImagesHandler
 from maasserver.api.boot_resources import (
     BootResourceFileUploadHandler,
@@ -133,6 +136,10 @@ devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
 node_macs_handler = RestrictedResource(
     NodeMacsHandler, authentication=api_auth)
+blockdevices_handler = RestrictedResource(
+    BlockDevicesHandler, authentication=api_auth)
+blockdevice_handler = RestrictedResource(
+    BlockDeviceHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -184,8 +191,6 @@ license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth)
-blockdevice_handler = AdminRestrictedResource(
-    BlockDeviceHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -207,7 +212,10 @@ urlpatterns += patterns(
     url(
         r'^nodes/(?P<system_id>[^/]+)/macs/$', node_macs_handler,
         name='node_macs_handler'),
-
+    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
+        blockdevices_handler, name='blockdevices_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
+        blockdevice_handler, name='blockdevice_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),
@@ -308,8 +316,6 @@ urlpatterns += patterns(
         'selections/(?P<id>[^/]+)/$',
         boot_source_selection_backward_handler,
         name='boot_source_selection_backward_handler'),
-    url(r'^blockdevice/(?P<device_id>[^/]+)/$',
-        blockdevice_handler, name='blockdevice_handler'),
 )
 
 

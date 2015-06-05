@@ -20,12 +20,18 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.models import BlockDevice
+from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPINotFound
+from maasserver.models import (
+    BlockDevice,
+    Node,
+)
 
 
 DISPLAYED_BLOCKDEVICE_FIELDS = (
     'id',
     'name',
+    'type',
     'path',
     'id_path',
     'size',
@@ -34,36 +40,70 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
 )
 
 
-class BlockDeviceHandler(OperationsHandler):
-    """Manage a BlockDevice.
-
-    The device is identified by its database id.
-    """
-    api_doc_section_name = "BlockDevice"
-    create = replace = update = read = None
+class BlockDevicesHandler(OperationsHandler):
+    """Manage block devices on a node."""
+    api_doc_section_name = "Block devices"
+    create = replace = update = delete = None
     model = BlockDevice
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
+    def read(self, request, system_id):
+        """List all block devices belonging to node.
+
+        Returns 404 if the node is not found.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.VIEW)
+        return node.blockdevice_set.all()
+
+
+class BlockDeviceHandler(OperationsHandler):
+    """Manage a block device on a node."""
+    api_doc_section_name = "Block device"
+    create = replace = update = None
+    model = BlockDevice
+    fields = DISPLAYED_BLOCKDEVICE_FIELDS
+
+    def read(self, request, system_id, device_id):
+        """Read block device on node.
+
+        Returns 404 if the node or block device is not found.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.VIEW)
+        device = get_object_or_404(BlockDevice, id=device_id)
+        if device.node != node:
+            raise MAASAPINotFound()
+        return device
+
     @admin_method
     @operation(idempotent=True)
-    def add_tag(self, request, device_id):
+    def add_tag(self, request, system_id, device_id):
         """Add a tag to a BlockDevice.
 
         :param tag: The tag being added.
         """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.ADMIN)
         device = get_object_or_404(BlockDevice, id=device_id)
+        if device.node != node:
+            raise MAASAPINotFound()
         device.add_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
 
     @admin_method
     @operation(idempotent=True)
-    def remove_tag(self, request, device_id):
+    def remove_tag(self, request, system_id, device_id):
         """Remove a tag from a BlockDevice.
 
         :param tag: The tag being removed.
         """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.ADMIN)
         device = get_object_or_404(BlockDevice, id=device_id)
+        if device.node != node:
+            raise MAASAPINotFound()
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
