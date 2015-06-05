@@ -36,22 +36,48 @@ class Command(dbshell.Command):
         make_option(
             '--database', default=None, help="Database to connect to."),
         make_option(
+            '--dev', action='store_true', default=False,
+            help=(
+                "Connect to a development database database. "
+                "Default is to start, and connect to, a system-installed "
+                "database.")),
+        make_option(
             '--installed', '-i', action='store_true', default=False,
             help=(
-                "Connect to global, system-installed database.  "
-                "Default is to start, and connect to, database in a "
-                "development branch.")),
+                "Connect to global, system-installed database. "
+                "This is the default, unless a development environment is "
+                "detected.")),
         )
 
+    def get_development_database(self):
+        database = None
+        try:
+            # Installed systems won't have this fixture.
+            from maasserver.testing import database
+        except ImportError:
+            pass
+
+        return database
+
     def handle(self, **options):
-        if options.get('installed'):
+        database_fixture = self.get_development_database()
+        if options.get('dev'):
+            if database_fixture is None:
+                raise CommandError("No development database found.")
+        elif options.get('installed'):
+            # If we have a development database but the user passed in
+            # --installed, we need to use the system database instead.
+            # So clear it out if we found one.
+            database_fixture = None
+
+        if database_fixture is None:
             # Access the global system-installed MAAS database.
-            database = options.get('database')
-            if database is None:
-                database = 'maasdb'
+            database_name = options.get('database')
+            if database_name is None:
+                database_name = 'maasdb'
             try:
                 subprocess.check_call(
-                    ['sudo', '-u', 'postgres', 'psql', database])
+                    ['sudo', '-u', 'postgres', 'psql', database_name])
             except subprocess.CalledProcessError:
                 # If psql fails to run, it will print a message to stderr.
                 # Capturing that can get a little involved; psql might think
@@ -60,17 +86,11 @@ class Command(dbshell.Command):
                 # psql itself.
                 raise CommandError("psql failed.")
         else:
+            print("Using development database.")
+
             # Don't call up to Django's dbshell, because that ends up exec'ing
             # the shell, preventing this from clearing down the fixture.
-
-            # Import fixture here, because installed systems won't have it.
-            try:
-                from maasserver.testing import database
-            except ImportError as e:
-                raise ImportError(
-                    unicode(e) + "\n"
-                    "If this is an installed MAAS, use the --installed "
-                    "option.")
-            cluster = database.MAASClusterFixture(options.get('database'))
+            cluster = database_fixture.MAASClusterFixture(
+                options.get('database'))
             with cluster:
                 cluster.shell(cluster.dbname)
