@@ -178,6 +178,19 @@ angular.module('MAAS').controller('NodesListController', [
             }
         }
 
+        // Called when the filtered_items are updated. Checks if the
+        // filtered_items are empty and if the search still matches the
+        // previous search. This will reset the search when no nodes match
+        // the current filter.
+        function removeEmptyFilter(tab) {
+            if($scope.tabs[tab].filtered_items.length === 0 &&
+                $scope.tabs[tab].search !== "" &&
+                $scope.tabs[tab].search === $scope.tabs[tab].previous_search) {
+                $scope.tabs[tab].search = "";
+                $scope.updateFilters(tab);
+            }
+        }
+
         // Update the number of selected items which have an error based on the
         // current selected action.
         function updateActionErrorCount(tab) {
@@ -257,9 +270,11 @@ angular.module('MAAS').controller('NodesListController', [
         // should be checked or not.
         $scope.$watchCollection("tabs.nodes.filtered_items", function() {
             updateAllViewableChecked("nodes");
+            removeEmptyFilter("nodes");
         });
         $scope.$watchCollection("tabs.devices.filtered_items", function() {
             updateAllViewableChecked("devices");
+            removeEmptyFilter("devices");
         });
 
         // Shows the current selection.
@@ -270,12 +285,15 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Adds or removes a filter to the search.
         $scope.toggleFilter = function(type, value, tab) {
-            leaveViewSelected(tab);
+            // Don't allow a filter to be changed when an action is
+            // in progress.
+            if(angular.isObject($scope.tabs[tab].actionOption)) {
+                return;
+            }
             $scope.tabs[tab].filters = SearchService.toggleFilter(
                 $scope.tabs[tab].filters, type, value, true);
             $scope.tabs[tab].search = SearchService.filtersToString(
                 $scope.tabs[tab].filters);
-            shouldClearAction(tab);
         };
 
         // Return True if the filter is active.

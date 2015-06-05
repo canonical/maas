@@ -272,6 +272,66 @@ describe("NodesListController", function() {
                     expect(tabScope.osSelection.release).toBeNull();
                 }
             });
+
+            it("resets search matches previous search and empty filtered_items",
+                function() {
+                    var controller = makeController();
+                    var tabScope = $scope.tabs[tab];
+                    var search = makeName("search");
+
+                    // Add item to filtered_items.
+                    tabScope.filtered_items.push(makeObject(tab));
+                    tabScope.search = "in:(Selected)";
+                    tabScope.previous_search = search;
+                    $scope.$digest();
+
+                    // Empty the filtered_items, which should clear the search.
+                    tabScope.filtered_items.splice(0, 1);
+                    tabScope.search = search;
+                    $scope.$digest();
+                    expect(tabScope.search).toBe("");
+                });
+
+            it("doesnt reset search matches if not empty filtered_items",
+                function() {
+                    var controller = makeController();
+                    var tabScope = $scope.tabs[tab];
+                    var search = makeName("search");
+
+                    // Add item to filtered_items.
+                    tabScope.filtered_items.push(
+                        makeObject(tab), makeObject(tab));
+                    tabScope.search = "in:(Selected)";
+                    tabScope.previous_search = search;
+                    $scope.$digest();
+
+                    // Remove one item from filtered_items, which should not
+                    // clear the search.
+                    tabScope.filtered_items.splice(0, 1);
+                    tabScope.search = search;
+                    $scope.$digest();
+                    expect(tabScope.search).toBe(search);
+                });
+
+            it("doesnt reset search when previous search doesnt match",
+                function() {
+                    var controller = makeController();
+                    var tabScope = $scope.tabs[tab];
+
+                    // Add item to filtered_items.
+                    tabScope.filtered_items.push(makeObject(tab));
+                    tabScope.search = "in:(Selected)";
+                    tabScope.previous_search = makeName("search");
+                    $scope.$digest();
+
+                    // Empty the filtered_items, but change the search which
+                    // should stop the search from being reset.
+                    tabScope.filtered_items.splice(0, 1);
+                    var search = makeName("search");
+                    tabScope.search = search;
+                    $scope.$digest();
+                    expect(tabScope.search).toBe(search);
+                });
         });
 
     });
@@ -457,15 +517,14 @@ describe("NodesListController", function() {
 
             describe("toggleFilter", function() {
 
-                it("resets search if in:selected", function() {
+                it("does nothing if actionOption", function() {
                     var controller = makeController();
-                    $scope.tabs[tab].search = "in:(Selected)";
-                    $scope.tabs[tab].filters = { _: [], "in": ["Selected"] };
+                    $scope.tabs[tab].actionOption = {};
+
+                    var filters = { _: [], "in": ["Selected"] };
+                    $scope.tabs[tab].filters = filters;
                     $scope.toggleFilter("hostname", "test", tab);
-                    expect($scope.tabs[tab].filters).toEqual({
-                        _: [],
-                        hostname: ["=test"]
-                    });
+                    expect($scope.tabs[tab].filters).toEqual(filters);
                 });
 
                 it("calls SearchService.toggleFilter", function() {
@@ -951,6 +1010,7 @@ describe("NodesListController", function() {
                     $scope.tabs[tab].previous_search = prev_search;
                     $scope.tabs[tab].search = "in:(Selected)";
                     $scope.tabs[tab].actionOption = { name: "start" };
+                    $scope.tabs[tab].filtered_items = [makeObject(tab)];
                     $scope.actionGo(tab);
                     defer.resolve();
                     $scope.$digest();
