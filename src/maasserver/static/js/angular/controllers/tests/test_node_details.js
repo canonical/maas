@@ -347,6 +347,16 @@ describe("NodeDetailsController", function() {
             expect($scope.summary.editing).toBe(false);
         });
 
+    it("skips cluster_disconnected error if the nodegroup on node is invalid",
+        function() {
+            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+            cluster.connected = false;
+            node.nodegroup = undefined;
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.errors.cluster_disconnected.viewable).toBe(false);
+        });
+
     it("cluster_disconnected error visible if cluster disconnected",
         function() {
             var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
@@ -509,11 +519,25 @@ describe("NodeDetailsController", function() {
         expect($scope.machine_output.viewable).toBe(true);
     });
 
+    it("machine output not visible if commissioning_results not an array",
+        function() {
+            node.commissioning_results = undefined;
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.viewable).toBe(false);
+        });
+
     it("machine output visible if installation_results", function() {
         node.installation_results.push({});
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.machine_output.viewable).toBe(true);
     });
+
+    it("machine output not visible if installation_results not an array",
+        function() {
+            node.installation_results = undefined;
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.viewable).toBe(false);
+        });
 
     it("machine output summary view available if summary_xml and summary_yaml",
         function() {
@@ -2035,6 +2059,13 @@ describe("NodeDetailsController", function() {
             expect($scope.allowShowMoreEvents()).toBe(false);
         });
 
+        it("returns false if node.events is not array", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.node.events = undefined;
+            expect($scope.allowShowMoreEvents()).toBe(false);
+        });
+
         it("returns false if node has no events", function() {
             var controller = makeController();
             $scope.node = node;
@@ -2164,6 +2195,14 @@ describe("NodeDetailsController", function() {
             var controller = makeController();
             expect($scope.getInstallationData()).toBe("");
         });
+
+        it("returns blank string if installation results not an array",
+            function() {
+                var controller = makeController();
+                $scope.node = makeNode();
+                $scope.node.installation_results = undefined;
+                expect($scope.getInstallationData()).toBe("");
+            });
 
         it("returns blank string if no installation results", function() {
             var controller = makeController();

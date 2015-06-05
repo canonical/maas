@@ -155,12 +155,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Show the cluster disconnected error if the cluster is not
             // connected.
-            var cluster = ClustersManager.getItemFromList(
-                $scope.node.nodegroup.id);
-            if(!cluster.connected) {
-                showError("cluster_disconnected");
-            } else {
-                hideError("cluster_disconnected");
+            if(angular.isObject($scope.node.nodegroup)) {
+                var cluster = ClustersManager.getItemFromList(
+                    $scope.node.nodegroup.id);
+                if(!cluster.connected) {
+                    showError("cluster_disconnected");
+                } else {
+                    hideError("cluster_disconnected");
+                }
             }
         }
 
@@ -206,18 +208,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Always keep the available power types up-to-date even in
             // editing mode.
-            var cluster = ClustersManager.getItemFromList(
-                $scope.node.nodegroup.id);
+            var cluster;
+            if(angular.isObject($scope.node.nodegroup)) {
+                cluster = ClustersManager.getItemFromList(
+                    $scope.node.nodegroup.id);
+            }
             if(angular.isObject(cluster)) {
                 $scope.power.types = cluster.power_types;
             } else {
                 $scope.power.types = [];
             }
 
-            // If the cluster is disconnected then always force editing to
-            // false. Its not possible to stay editing the power section
-            // when the cluster is disconnected.
-            if(!cluster.connected) {
+            // If the no cluster or the cluster is disconnected then always
+            // force editing to false. Its not possible to stay editing the
+            // power section when the cluster is disconnected.
+            if(!angular.isObject(cluster) || !cluster.connected) {
                 $scope.power.editing = false;
             }
 
@@ -261,8 +266,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
 
-            $scope.summary.cluster.selected = ClustersManager.getItemFromList(
-                $scope.node.nodegroup.id);
+            if(angular.isObject($scope.node.nodegroup)) {
+                $scope.summary.cluster.selected =
+                    ClustersManager.getItemFromList($scope.node.nodegroup.id);
+            }
             $scope.summary.zone.selected = ZonesManager.getItemFromList(
                 $scope.node.zone.id);
             $scope.summary.architecture.selected = $scope.node.architecture;
@@ -311,8 +318,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.machine_output.viewable = (
                 angular.isString($scope.node.summary_xml) ||
                 angular.isString($scope.node.summary_yaml) ||
-                $scope.node.commissioning_results.length > 0 ||
-                $scope.node.installation_results.length > 0);
+                (angular.isArray($scope.node.commissioning_results) &&
+                    $scope.node.commissioning_results.length > 0) ||
+                (angular.isArray($scope.node.installation_results) &&
+                    $scope.node.installation_results.length > 0));
 
             // Grab the selected view name, so it can be kept the same if
             // possible.
@@ -336,13 +345,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     title: "Commissioning Summary"
                 });
             }
-            if($scope.node.commissioning_results.length > 0) {
+            if(angular.isArray($scope.node.commissioning_results) &&
+                $scope.node.commissioning_results.length > 0) {
                 $scope.machine_output.views.push({
                     name: "output",
                     title: "Commissioning Output"
                 });
             }
-            if($scope.node.installation_results.length > 0) {
+            if(angular.isArray($scope.node.installation_results) &&
+                $scope.node.installation_results.length > 0) {
                 $scope.machine_output.views.push({
                     name: "install",
                     title: "Installation Output"
@@ -923,6 +934,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(!angular.isObject($scope.node)) {
                 return false;
             }
+            if(!angular.isArray($scope.node.events)) {
+                return false;
+            }
             return (
                 $scope.node.events.length > 0 &&
                 $scope.node.events.length > $scope.events.limit &&
@@ -980,6 +994,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // results, but it is unused. Only one installation result will
             // exists for a node. Grab the first one in the array.
             var results = $scope.node.installation_results;
+            if(!angular.isArray(results)) {
+                return "";
+            }
             if(results.length === 0) {
                 return "";
             } else {
