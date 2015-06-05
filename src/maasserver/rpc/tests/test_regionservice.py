@@ -1718,7 +1718,25 @@ class TestRegionAdvertisingService(MAASTestCase):
     def test_init(self):
         ras = RegionAdvertisingService()
         self.assertEqual(60, ras.step)
-        self.assertEqual((deferToThread, (ras.update,), {}), ras.call)
+        self.assertEqual((ras.try_update, (), {}), ras.call)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_try_update_logs_all_errors(self):
+        ras = RegionAdvertisingService()
+        error = factory.make_exception_type()
+        self.patch(ras, "update").side_effect = error
+        with TwistedLoggerFixture() as logger:
+            yield ras.try_update()
+        self.assertDocTestMatches(
+            """
+            Failed to update this event-loop's advertisement;
+              %s's record may be out of date
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """ % eventloop.loop.name,
+            logger.output)
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
@@ -1926,6 +1944,70 @@ class TestRegionAdvertisingService(MAASTestCase):
             [("vic", "192.168.1.1", 1111)],
             service.dump())
 
+    def patch_port(self, port):
+        getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
+        getPort = getServiceNamed.return_value.getPort
+        getPort.side_effect = asynchronous(lambda: port)
+
+    def patch_addresses(self, addresses):
+        get_all_interface_addresses = self.patch(
+            regionservice, "get_all_interface_addresses")
+        get_all_interface_addresses.return_value = addresses
+
+    def test_update_deletes_overlapping_records(self):
+        service = RegionAdvertisingService()
+        service.prepare()
+
+        # The name of a fictional old event-loop.
+        example_name = factory.make_name("loop")
+        # Port and addresses on which the old and current loops are listening.
+        example_port = factory.pick_port()
+        example_addrs = {
+            factory.make_ipv4_address(),
+            factory.make_ipv4_address(),
+        }
+        self.patch_port(example_port)
+        self.patch_addresses(example_addrs)
+
+        # A non-overlapping host and port for the old event-loop.
+        for example_addr in iter(factory.make_ipv4_address, None):
+            if example_addr not in example_addrs:
+                example_non_overlapping_record = (
+                    example_name, example_addr, example_port)
+                break
+
+        # Populate the eventloops table with records for the old event-loop.
+        with closing(connection):
+            with closing(connection.cursor()) as cursor:
+                # Create the non-overlapping record.
+                cursor.execute("""\
+                  INSERT INTO eventloops (name, address, port, updated)
+                  VALUES (%s, %s, %s, DEFAULT)
+                """, example_non_overlapping_record)
+                # Create the overlapping records.
+                for example_addr in example_addrs:
+                    cursor.execute("""\
+                      INSERT INTO eventloops (name, address, port, updated)
+                      VALUES (%s, %s, %s, DEFAULT)
+                    """, [example_name, example_addr, example_port])
+
+        # All records for the old event-loop are present.
+        self.assertItemsEqual(
+            [example_non_overlapping_record] + [
+                (example_name, example_addr, example_port)
+                for example_addr in example_addrs
+            ],
+            service.dump())
+        # Updating replaces overlapping records with records for the current
+        # event-loop. The non-overlapping record remains.
+        service.update()
+        self.assertItemsEqual(
+            [example_non_overlapping_record] + [
+                (eventloop.loop.name, example_addr, example_port)
+                for example_addr in example_addrs
+            ],
+            service.dump())
+
     def test_dump(self):
         example_addresses = [
             (factory.make_ipv4_address(), factory.pick_port()),
@@ -1975,9 +2057,7 @@ class TestRegionAdvertisingService(MAASTestCase):
         service = RegionAdvertisingService()
 
         example_port = factory.pick_port()
-        getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
-        getPort = getServiceNamed.return_value.getPort
-        getPort.side_effect = asynchronous(lambda: example_port)
+        self.patch_port(example_port)
 
         example_ipv4_addrs = {
             factory.make_ipv4_address(),
@@ -1991,9 +2071,7 @@ class TestRegionAdvertisingService(MAASTestCase):
             factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
             factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
         }
-        get_all_interface_addresses = self.patch(
-            regionservice, "get_all_interface_addresses")
-        get_all_interface_addresses.return_value = (
+        self.patch_addresses(
             example_ipv4_addrs | example_ipv6_addrs |
             example_link_local_addrs)
 
@@ -2003,8 +2081,12 @@ class TestRegionAdvertisingService(MAASTestCase):
             [(addr, example_port) for addr in example_ipv4_addrs],
             service._get_addresses())
 
-        getServiceNamed.assert_called_once_with("rpc")
-        get_all_interface_addresses.assert_called_once_with()
+        self.assertThat(
+            eventloop.services.getServiceNamed,
+            MockCalledOnceWith("rpc"))
+        self.assertThat(
+            regionservice.get_all_interface_addresses,
+            MockCalledOnceWith())
 
     def test__get_addresses_when_rpc_down(self):
         service = RegionAdvertisingService()

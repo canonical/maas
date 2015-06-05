@@ -698,7 +698,12 @@ class RegionAdvertisingService(TimerService, object):
 
     def __init__(self, interval=60):
         super(RegionAdvertisingService, self).__init__(
-            interval, deferToThread, self.update)
+            interval, self.try_update)
+
+    def try_update(self):
+        return deferToThread(self.update).addErrback(
+            log.err, "Failed to update this event-loop's advertisement; "
+            "%s's record may be out of date" % (eventloop.loop.name,))
 
     @asynchronous
     def startService(self):
@@ -784,9 +789,11 @@ class RegionAdvertisingService(TimerService, object):
         event-loop running in the same process, and deletes - garbage
         collects - old records related to any event-loop.
         """
+        addresses = frozenset(self._get_addresses())
         with closing(connection.cursor()) as cursor:
             self._do_delete(cursor)
-            self._do_insert(cursor)
+            self._do_delete_overlap(cursor, addresses)
+            self._do_insert(cursor, addresses)
             self._do_collect(cursor)
 
     @synchronous
@@ -881,13 +888,25 @@ class RegionAdvertisingService(TimerService, object):
     def _do_delete(self, cursor):
         cursor.execute(self._delete_statement, [eventloop.loop.name])
 
+    _delete_overlap_statement = "DELETE FROM eventloops WHERE "
+    _delete_overlap_values_statement = "(address = %s AND port = %s)"
+
+    def _do_delete_overlap(self, cursor, addresses):
+        statement, values = [], []
+        for addr, port in addresses:
+            statement.append(self._delete_overlap_values_statement)
+            values.extend([addr, port])
+        if len(statement) != 0:
+            statement = self._delete_overlap_statement + " OR ".join(statement)
+            cursor.execute(statement, values)
+
     _insert_statement = "INSERT INTO eventloops (name, address, port) VALUES "
     _insert_values_statement = "(%s, %s, %s)"
 
-    def _do_insert(self, cursor):
+    def _do_insert(self, cursor, addresses):
         name = eventloop.loop.name
         statement, values = [], []
-        for addr, port in self._get_addresses():
+        for addr, port in addresses:
             statement.append(self._insert_values_statement)
             values.extend([name, addr, port])
         if len(statement) != 0:
