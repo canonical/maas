@@ -18,11 +18,13 @@ import os
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
 import provisioningserver
+from provisioningserver import plugin as plugin_module
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
@@ -120,6 +122,15 @@ class TestProvisioningServiceMaker(MAASTestCase):
             len(service.namedServices), len(service.services),
             "Not all services are named.")
         self.assertEqual(service, provisioningserver.services)
+
+    def test_makeService_patches_simplestreams(self):
+        mock_simplestreams_patch = (
+            self.patch(plugin_module, 'force_simplestreams_to_use_urllib2'))
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service_maker.makeService(options)
+        self.assertThat(mock_simplestreams_patch, MockCalledOnceWith())
 
     def test_image_download_service(self):
         options = Options()
