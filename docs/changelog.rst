@@ -2,14 +2,410 @@
 Changelog
 =========
 
+1.8.0
+=====
+
+Important announcements
+-----------------------
+
+**Region Controller now running on twisted.**
+ The MAAS Region Controller is now running as a twisted daemon. It is
+ no longer dependent on Apache in order to run. The MAAS Region
+ controller is now controlled by ``maas-regiond`` upstart job or systemd
+ unit. The ``maas-regiond`` daemon is available in port ``5240``.
+
+**Firewall ports for Region and Cluster controller communication**
+ The communication between Region and Cluster controller is now limited
+ to use the ports between ``5250`` and ``5259``. For all of those users who
+ are using a remote cluster (not running on the same machine as the
+ MAAS Region Controller), need to ensure that these ports are open in
+ the firewall.
+
+
+Major new features
+------------------
+
+**Web UI Re-design**
+ MAAS now includes a newly re-designed Web UI. The new Web UI features
+ a new design and a lot of usability improvements.  Some of the UI new
+ features include:
+
+ * Live Updating
+
+   The new UI now allows users to view the current status of the
+   various nodes of MAAS in real-time and without having to manually
+   refresh the browser.
+
+ * Bulk Actions
+
+   Quickly select multiple nodes or devices and perform actions. If
+   nodes or devices are not in a state where that action can be
+   performed MAAS will alert you to the machines allowing you to
+   modify your selection before performing the action.
+
+ * Live Searching
+
+   View the matching nodes or devices as you search. Just type and the
+   nodes will start to filter, no reloading or waiting for the page to
+   load.
+
+ * Better Filtering
+
+   Easily filter through the list of nodes and devices in MAAS to find
+   the specific nodes that match your search. Examples:
+
+   * All nodes that are Ready and have at least 2 disks::
+
+      status:Ready disks:2
+
+   * All nodes that are not Ready::
+
+      status:!Ready
+
+   * All nodes that have Failed to complete an action::
+
+      status:Failed
+
+   * All nodes that are deployed but their power is off::
+
+      status:Deployed power:off
+
+ * Node & Storage Tag Management
+
+   Administrators can now add and remove tags for both Machine and
+   Storage. This is now possible via the Web UI from the `Node Details`
+   page.
+
+ * Add Chassis
+
+   A new `Add Chassis` feature has been added to the UI. This is an
+   option of `Add Hardware`.  This not only allows administrators to
+   add machines that belong to a single chassis, but also allows
+   administrators to add Virtual Machines for both KVM and VMWare
+   based products.
+
+**Support for Devices**
+ MAAS adds a new concept for a different type of machines, called
+ `Devices`. `Devices` are machines that MAAS does not fully manage;
+ this means that MAAS can not power manage nor properly control.
+ `Devices` are machines in the Network that MAAS can provide network
+ services for (DHCP/DNS), or can track for inventory.
+
+ Administrators can assign three different types of IP Address to a
+ device:
+
+ * `External`, which can be any IP address on the network.
+ * `Static`, which can be selected manually or automatically, and
+   belongs to Subnetwork that MAAS can control.
+ * `Dynamic`, any IP address that is automatically assigned by MAAS
+   via DHCP. MAAS will automatically create a DNS mapping for any of
+   the IP addresses belonging to a Device.
+
+**Storage Discovery**
+ Storage that is attached to a node in MAAS is now a first class
+ citizen. Easily view and filter nodes based on the number of disks
+ and the size of each disk attached to a node. Information retrieved
+ from a storage device includes its name, model, serial, size,
+ block size, and extra information that is applied to a storage device
+ as a tag. MAAS will auto tag devices including tags for solid state
+ device (ssd), rotary, rpm speed, and connected bus.
+
+**Twisted Daemons**
+ The MAAS Region Controller no longer requires an Apache frontend. It
+ is still used by default to be backward compatible, but the MAAS
+ Region Controller is now a standalone Twisted process (the twisted
+ daemon for the Cluster Controller, ``maas-clusterd``, was introduced
+ in MAAS 1.7). The MAAS Region Controller is now ``maas-regiond``.
+
+ Starting from MAAS 1.8 the Region Controller and Cluster Controller
+ are noq controlled only by two daemons. (``maas-regiond`` and
+ ``maas-clusterd`` respectively)
+
+**DB Isolation**
+ Previously PostgreSQL was used in the default READ COMMITTED
+ transaction  isolation mode. It has now been increased to
+ REPEATABLE READ. PostgreSQL thus provides extra support to ensure
+ that changes in MAAS are logically consistent, a valuable aid in a
+ busy distributed system.
+
+**VMware support**
+ VMware products are now supported in MAAS. This allows MAAS to register
+ all the Virtual Machines that the VMWare product is running (or a subset
+ whose name matches a specified prefix), set them up to PXE boot, and
+ configure them for power management.
+
+ This feature requires the ``python-pyvmomi`` package to be installed.
+ (This is a suggested package, so be sure to use ``--install-suggests`` on
+ your ``apt-get`` command line when installing the MAAS cluster, or install
+ it manually.)
+
+ The following VMware products have been tested: vSphere Hypervisor 5.5,
+ ESXi 5.5, and Workstation 11. This feature supports both i386 and amd64
+ virtual machines.
+
+
+Minor notable changes
+---------------------
+**RPC Communication & Ports**
+ RPC communication between the Region Controller and the
+ Cluster Controller has now been limited to use the ports between 5250
+ and 5259, inclusive.
+
+**Discovered virtual machine names are imported into MAAS**
+ When using the new `Add Chassis` functionality (or the
+ ``probe_and_enlist`` API), virtual machines (VMs) imported into MAAS will
+ now use the names defined within the Hypervisor as hostnames in MAAS.
+ This feature works with KVM (virsh or PowerKVM) and VMWare VMs.
+
+ The names of the virtual machines will be converted into valid
+ hostnames, if possible. For example, if a VM called `Ubuntu 64-bit`
+ is imported, it will become `ubuntu-64-bit`.
+
+ Note that only the hostname portion of the name is used. For example,
+ if a VM is called `maas1.example.com`, only the “mass1” portion of the
+ name will be used as the node name. (The cluster configuration
+ determines the remainder of the DNS name.)
+
+**Virtual machine boot order is now set automatically**
+ When using the new `Add Chassis` functionality (or the
+ `probe_and_enlist` API) to add KVM or VMware virtual machines, MAAS
+ will automatically attempt to set each virtual machine’s boot order so
+ that the network cards (PXE) are attempted first. (This increases the
+ repeatability of VM deployments, because a VM whose boot order is
+ incorrectly set may work *once*, but subsequently fail to deploy.)
+
+**Systemd Support**
+ MAAS now supports systemd, allowing all of the MAAS daemons to run
+ with Systemd, if the Ubuntu system is running systemd by default
+ instead Upstart. These daemons include ``maas-regiond``,
+ ``maas-clusterd``, ``maas-dhcpd``, ``maas-dhcpd6``, ``maas-proxy``.
+
+**Upstart & Systemd improvements**
+ Both Upstart Jobs and Systemd Units now run and supervise various
+ instances of the ``maas-regiond`` in order to be able to effectively
+ handle all requests.
+
+
+Known Problems & Workarounds
+----------------------------
+
+**Disk space is not reclaimed when MAAS boot images are superseded**
+ Whenever new boot images are synced to ``maas-regiond``, new large
+ objects in the database are created for them, which may replace older
+ versions of the same image (for the specified version/architecture
+ combination). Unfortunately, the standard postgresql `autovacuum`
+ does not remove large objects that are no longer used; a
+ “full vacuum” is required for this. Therefore, a new command has
+ been introduced which will run the appropriate postgresql vacuum
+ command (See bug `1459876`_)::
+
+	maas-region-admin db_vacuum_lobjects
+
+ This command should be run with care (ideally, during a scheduled
+ maintenance period), since it could take a long time (on the order
+ of minutes) if there are a large number of superseded images.
+
+.. _1459876:
+  https://launchpad.net/bugs/1459876
+
+**MAAS logs to maas.log.1 instead of maas.log**
+ The `/var/log/maas/maas.log` is a rsyslog based log file, that gets
+ rotated in the form of `maas.log.1`, `maas.log.2.gz`, etc. In one
+ situation it has been seen that `maas.log` is empty, and rsyslog
+ was sending logs to `maas.log.1` instead. This has been identified
+ as an issue in rsyslog rather than maas. See bug `1460678`_.
+
+.. _1460678:
+  https://launchpad.net/bugs/1460678
+
+
+Major bugs fixed in this release
+--------------------------------
+
+See https://launchpad.net/maas/+milestone/1.8.0 for full details.
+
+#1185455    Not obvious how to search nodes along a specific axis, or multiple axes
+
+#1277545    Node list sort order not maintained
+
+#1300122    No way to get the version of the MAAS server through the API
+
+#1315072    Finding BMC IP address requires clicking "Edit node" in Web UI
+
+#1329267    CLI does not tell users to issue a "refresh" when the API gets out of date
+
+#1337874    Re-commissioning doesn't detect NIC changes
+
+#1352923    MAAS 1.8 requires arbitrary high-numbered port connections between cluster and region controllers
+
+#1384334    Dnssec failures cause nodes to be unable to resolve external addresses
+
+#1402100    Nodes can be in Ready state without commissioning data, if you mark a node in 'failed commisioning', broken and then fixed.
+
+#1412342    Maas.log only contains cluster logs
+
+#1424080    Deployment Failed -- Failed to get installation results
+
+#1432828    MAAS needs to write power off jobs to to systemd units instead of upstart
+
+#1433622    Maas cluster name should not / can not have trailing '.'
+
+#1433625    'APIErrorsMiddleware' object has no attribute 'RETRY_AFTER_SERVICE_UNAVAILABLE'
+
+#1435767    Retry mechanism fails with oauth-authenticated requests
+
+#1436027    Interfaces does not have entry for eth0
+
+#1437388    exceptions.AttributeError: 'NoneType' object has no attribute 'is_superuser'
+
+#1437426    No view for loading page or notification for connection error
+
+#1438218    django.db.transaction.TransactionManagementError: raised when deploying multiple nodes in the UI
+
+#1438606    Releasing node not transitioned to "Failed releasing"
+
+#1438808    Network and storage tables on node details page mis-aligned in Firefox
+
+#1438842    Cannot add an extra NIC
+
+#1439064    Title of individual commissioning result page is permanently "Loading..."
+
+#1439159    maas packaging in vivid needs to prevent isc-dhcpd and squid3 from running
+
+#1439239    MAAS API node details failures
+
+#1439322    Simultaneous IP address requests with only one succeeding
+
+#1439339    "Choose power type" dropdown broken in FF
+
+#1439359    When upgrading to MAAS 1.7 from MAAS 1.5, MAAS should trigger the image import automatically.
+
+#1439366    MAAS 1.7 should be backwards compatible with 1.5 the preseed naming convention
+
+#1440090    NIC information (networks / PXE interface) get's lost due to re-discovering NIC's during commissioning
+
+#1440763    Rregiond.log Tracebacks when trying to deploy 42 nodes at a time
+
+#1440765    oauth.oauth.OAuthError: Parameter not found: %s' % parameter
+
+#1441002    Maas api "device claim-sticky-ip-address" fails with "500: 'bool' object has not attribute 'uuid'".
+
+#1441021    No IP validation
+
+#1441399    Socket.error: [Errno 92] Protocol not available
+
+#1441610    Machines get stuck in releasing for a long time
+
+#1441652    502 Proxy Error when trying to access MAAS in browser
+
+#1441756    Manager service is not sending limit to region
+
+#1441841    Can't add a device that has IP address that it is within the wider range MAAS manages, but not within Dynamic/Static range MAAS manages
+
+#1441933    Internal Server Error when saving a cluster without Router IP
+
+#1442059    Failed deployment/release timeout
+
+#1442162    Spurious test failure: maasserver.api.tests.test_nodes.TestFilteredNodesListFromRequest.test_node_list_with_ids_orders_by_id
+
+#1443344    MAAS node details page shows BMC password in cleartext
+
+#1443346    utils.fs.atomic_write does not preserve file ownership
+
+#1443709    Error on request (58) node.check_power
+
+#1443917    IntegrityError: duplicate key value violates unique constraint "maasserver_componenterror_component_key", (component)=(clusters) already exists
+
+#1445950    Proxy error when trying to delete a windows image
+
+#1445959    Deploying a different OS from node details page yields in always deploying ubuntu
+
+#1445994    Add Devices button has disappeared
+
+#1445997    Clicking on a device takes be back to node details page
+
+#1446000    MAC is not shown in device list
+
+#1446810    Too Many Open Files in maas.log
+
+#1446840    Internal server error saving the clusters interfaces
+
+#1447009    Combo loader crash when requesting JS assets
+
+#1447208    deferToThread cannot wait for a thread in the same threadpool
+
+#1447736    Node isn't removed from the node listing when it becomes non-visible
+
+#1447739    Node isn't added to the node listing when it becomes visible
+
+#1449011    maas root node start distro_series=precise on a non-allocated node returns wrong error message
+
+#1449729    Nodes fail to commission
+
+#1450091    tgt does not auto-start on Vivid
+
+#1450115    django.db.utils.OperationalError raised when instantiating MAASAndNetworkForm
+
+#1450488    MAAS does not list all the tags
+
+#1451852    Legacy VMware "add chassis" option should be removed
+
+#1451857    Probe-and-enlist for VMware needs to update VM config to use PXE boot
+
+#1453730    Commissioning script contents is shown under other settings
+
+#1453954    500 error reported to juju when starting node - "another action is already in progress for that node"
+
+#1455151    Adding one device on fresh install shows as two devices until page refresh
+
+#1455643    Regression: Node listing extends past the edge of the screen
+
+#1456188    Auto image import stacktraces
+
+#1456538    Package install fails with "invoke-rc.d: unknown initscript, /etc/init.d/maas-regiond-worker not found."
+
+#1456698    Unable to deploy a node that is marked fixed when it is on
+
+#1456892    500 error: UnboundLocalError: local variable 'key_required' referenced before assignment
+
+#1456969    MAAS cli/API: missing option set use-fast-installer / use-debian-installer
+
+#1457203    Usability - Enter key in search field should not reset view and filter
+
+#1457708    Cluster gets disconnected after error: provisioningserver.service_monitor.UnknownServiceError: 'maas-dhcpd' is unknown to upstart.
+
+#1457786    Test suite runs sudo commands
+
+#1458894    Cluster image download gives up and logs an IOError too soon
+
+#1459380    MAAS logs 503 spurious errors when the region service isn't yet online
+
+#1459607    Spurious test: maasserver.api.tests.test_node.TestNodeAPI.test_POST_commission_commissions_node
+
+#1459876    When MAAS Boot Images are Superseded, Disk Space is not Reclaimed
+
+#1460485    MAAS doesn't transparently remove multiple slashes in URLs
+
+#1461181    Too many open files, after upgrade to rc1
+
+#1461256    Filter by node broken in Chromium - angular errors in java script console
+
+#1461977    Unused "Check component compatibility and certification" field should be removed
+
+#1462079    Devices can't add a device with a Static IP address outside of dyanmic/static range
+
+#1462320    eventloop table is out of date
+
+#1462507    BlockDevice API is not under the nodes endpoint
+
+
 1.7.5
 =====
 
 Bug Fix Update
 --------------
 
-#1456969    MAAS cli/API: missing option set use-fast-installer /
-            use-debian-installer
+#1456969    MAAS cli/API: missing option set use-fast-installer / use-debian-installer
 
 1.7.4
 =====
@@ -17,12 +413,11 @@ Bug Fix Update
 Bug Fix Update
 --------------
 
-#1456892    500 error: UnboundLocalError: local variable 'key_required'
-            referenced before assignment
-#1387859    When MAAS has too many leases, and lease parsing fails, MAAS fails
-            to auto-map NIC with network
-#1329267    Alert a command-line user of `maas` when their local API
-            description is out-of-date.
+#1456892    500 error: UnboundLocalError: local variable 'key_required' referenced before assignment
+
+#1387859    When MAAS has too many leases, and lease parsing fails, MAAS fails to auto-map NIC with network
+
+#1329267    Alert a command-line user of `maas` when their local API description is out-of-date.
 
 1.7.3
 =====
@@ -31,12 +426,14 @@ Bug Fix Update
 --------------
 
 #1441933    Internal Server Error when saving a cluster without Router IP
+
 #1441133    MAAS version not exposed over the API
+
 #1437094    Sorting by mac address on webui causes internal server error
-#1439359    Automatically set correct boot resources selection and start import
-            after upgrade from MAAS 1.5; Ensures MAAS is usable after upgrade.
-#1439366    Backwards compatibility with MAAS 1.5 preseeds and custom preseeds.
-            Ensures that users dont have to manually change preseeds names.
+
+#1439359    Automatically set correct boot resources selection and start import after upgrade from MAAS 1.5; Ensures MAAS is usable after upgrade.
+
+#1439366    Backwards compatibility with MAAS 1.5 preseeds and custom preseeds. Ensures that users dont have to manually change preseeds names.
 
 1.7.2
 =====
@@ -47,11 +444,17 @@ Bug Fix Update
 For full details see https://launchpad.net/maas/+milestone/1.7.2
 
 #1331214    Support AMT Version > 8
+
 #1397567    Fix call to amttool when restarting a node to not fail disk erasing.
+
 #1415538    Do not generate the 'option routers' stanza if router IP is None.
+
 #1403909    Do not deallocate StaticIPAddress before node has powered off.
+
 #1405998    Remove all OOPS reporting.
+
 #1423931    Update the nodes host maps when a sticky ip address is claimed over the API.
+
 #1433697    Look for bootloaders in /usr/lib/EXTLINUX
 
 
@@ -89,76 +492,147 @@ Bug fix update
 For full details see https://launchpad.net/maas/+milestone/1.7.1
 
 #1330765    If start_nodes() fails, it doesn't clean up after itself.
+
 #1373261    pserv.yaml rewrite breaks when previous generator URL uses IPv6 address
+
 #1386432    After update to the latest curtin that changes the log to install.log MAAS show's two installation logs
+
 #1386488    If rndc fails, you get an Internal Server Error page
+
 #1386502    No "failed" transition from "new"
+
 #1386914    twisted Unhandled Error when region can't reach upstream boot resource
+
 #1391139    Tagged VLAN on aliased NIC breaks migration 0099
+
 #1391161    Failure: twisted.internet.error.ConnectionDone: Connection was closed cleanly.
+
 #1391411    metadata API signal() is releasing host maps at the end of installation
+
 #1391897    Network names with dots cause internal server error when on node pages
+
 #1394382    maas does not know about VM "paused" state
+
 #1396308    Removing managed interface causes maas to delete nodes
+
 #1397356    Disk Wiping fails if installation is not Ubuntu
+
 #1398405    MAAS UI reports storage size in Gibibytes (base 2) but is labeled GB - Gigabytes (base 10).
+
 #1399331    MAAS leaking sensitive information in ps ax output
+
 #1400849    Check Power State disappears after upgrade to 1.7 bzr 3312
+
 #1401241    custom dd-tgz format images looked for in wrong path, so they don't work
+
 #1401983    Exception: deadlock detected
+
 #1403609    can not enlist chassis with maas admin node-group probe-and-enlist-mscm
+
 #1283106    MAAS allows the same subnet to be defined on two managed interfaces of the same cluster
+
 #1303925    commissioning fails silently if a node can't reach the region controller
+
 #1357073    power state changes are not reflected quickly enough in the UI
+
 #1360280    boot-source-selections api allows adding bogus and duplicated values
+
 #1368400    Can't power off nodes that are in Ready state but on
+
 #1370897    The node power monitoring service does not check nodes in parallel
+
 #1376024    gpg --batch [...]` error caused by race in BootSourceCacheService
+
 #1376716    AMT NUC stuck at boot prompt instead of powering down (no ACPI support in syslinux poweroff)
+
 #1378835    Config does not have a unique index on name
+
 #1379370    Consider removing transaction in claim_static_ip_addresses().
+
 #1379556    Panicky log warning that is irrelevant
+
 #1381444    Misleading error message in log "Unknown power_type 'sm15k'"
+
 #1382166    Message disclosing image import necessary visible while not logged in
+
 #1382237    UnicodeEncodeError when unable to create host maps
+
 #1383231    Error message when trying to reserve the same static IP twice is unhelpful
+
 #1383237    Error message trying to reserve an IP address when no static range is defined is misleading
+
 #1384424    Seamicro Machines do not have Power Status Tracking
+
 #1384428    HP Moonshot Chassis Manager lacks power status monitoring
+
 #1384924    need to provide a better upgrade message for images on the cluster but not on the region
+
 #1386517    DHCP leases are not released at the end of commissioning and possibly enlistment
+
 #1387239    MAAS does not provide an API for reserving a static IP for a given MAC address
+
 #1387414    Race when registering new event type
+
 #1388033    Trying to reserve a static IP when no more IPs are available results in 503 Service Unavailable with no error text
+
 #1389602    Inconsistent behavior in the checks to delete a node
+
 #1389733    node listing does not update the status and power of nodes
+
 #1390144    Node 'releasing' should have a timeout
+
 #1391193    API error documentation
+
 #1391421    Names of custom boot-resources not visible in the web UI
+
 #1391891    Spurious test failure: TestDNSForwardZoneConfig_GetGenerateDirectives.test_returns_single_entry_for_tiny_network
+
 #1393423    PowerKVM / VIrsh import should allow you to specify a prefix to filter VM's to import
+
 #1393953    dd-format images fail to deploy
+
 #1400909    Networks are being autocreated like eth0-eth0 instead of maas-eth0
+
 #1401349    Memory size changes to incorrect size when page is refreshed
+
 #1402237    Node event log queries are slow (over 1 second)
+
 #1402243    Nodes in 'Broken' state are being power queried constantly
+
 #1402736    clicking on zone link from node page - requested URL was not found on this server
+
 #1403043    Wrong top-level tab is selected when viewing a node
+
 #1381609    Misleading log message when a node has a MAC address not attached to a cluster interface
+
 #1386909    Misleading Error: Unable to identify boot image for (ubuntu/amd64/generic/trusty/local): cluster 'maas' does not have matching boot image.
+
 #1388373    Fresh image import of 3 archs displaying multiple rows for armhf and amd64
+
 #1398159    TFTP into MAAS server to get pxelinux.0 causes unhandled error
+
 #1383651    Node.start() and Node.stop() raise MulltipleFailures unnecessarily
+
 #1383668    null" when releasing an IP address is confusing
+
 #1389416    Power querying for UCSM not working
+
 #1399676    UX bug: mac address on the nodes page should be the MAC address it pxe booted from
+
 #1399736    MAAS should display memory sizes in properly labeld base 2 units - MiB, GiB, etc.
+
 #1401643    Documentation has wrong pattern for user provided preseeds
+
 #1401707    Slow web performance (5+ minute response time) on MAAS with many nodes
+
 #1403609    Fix MSCM chassis enlistment.
+
 #1409952    Correctly parse MAC Address for Power8 VM enlistment.
+
 #1409852    Do not fail when trying to perform an IP Address Reservation.
+
 #1413030    OS and Release no longer populate on Add Node page
+
 #1414036    Trying to add an empty network crashes (AddrFormatError)
 
 
@@ -708,50 +1182,89 @@ Fast installer is now the default
 Bugs fixed in this release
 --------------------------
 #1307779    fallback from specific to generic subarch broken
+
 #1310082    d-i with precise+hwe-s stops at "Architecture not supported"
-#1314174    Autodetection of the IPMI IP address fails when the 'power_address'
-of the power parameters is empty.
+
+#1314174    Autodetection of the IPMI IP address fails when the 'power_address' of the power parameters is empty.
+
 #1314267    MAAS dhcpd will re-issue leases for nodes
+
 #1317675    Exception powering down a virsh machine
+
 #1322256    Import boot resources failing to verify keyring
+
 #1322336    import_boot_images crashes with KeyError on 'keyring'
+
 #1322606    maas-import-pxe-files fails when run from the command line
+
 #1324237    call_and_check does not report error output
+
 #1328659    import_boot_images task fails on utopic
+
 #1332596    AddrFormatError: failed to detect a valid IP address from None executing upload_dhcp_leases task
+
 #1250370    "sudo maas-import-ephemerals" steps on ~/.gnupg/pubring.gpg
+
 #1250435    CNAME record leaks into juju's private-address, breaks host based access control
+
 #1305758    Import fails while writing maas.meta: No such file or directory
+
 #1308292    Unhelpful error when re-enlisting a previously enlisted node
-#1309601    maas-enlist prints "successfully enlisted" even when enlistment fail
-s.
+
+#1309601    maas-enlist prints "successfully enlisted" even when enlistment fails.
+
 #1309729    Fast path installer is not the default
+
 #1310844    find_ip_via_arp() results in unpredictable, and in some cases, incorrect IP addresses
+
 #1310846    amt template gives up way too easily
+
 #1312863    MAAS fails to detect SuperMicro-based server's power type
+
 #1314536    Copyright date in web UI is 2012
+
 #1315160    no support for different operating systems
+
 #1316627    API needed to allocate and return an extra IP for a container
+
 #1323291    Can't re-commission a commissioning node
+
 #1324268    maas-cli 'nodes list' or 'node read <system_id>' doesn't display the osystem or distro_series node fields
+
 #1325093    install centos using curtin
+
 #1325927    YUI.Array.each not working as expected
+
 #1328656    MAAS sends multiple stop_dhcp_server tasks even though there's no dhcp server running.
-#1331139    IP is inconsistently capitalized on the 'edit a cluster interface' p
-age
+
+#1331139    IP is inconsistently capitalized on the 'edit a cluster interface' page
+
 #1331148    When editing a cluster interface, last 3 fields are unintuitive
+
 #1331165    Please do not hardcode the IP address of Canonical services into MAAS managed DHCP configs
+
 #1338851    Add MAAS arm64/xgene support
+
 #1307693    Enlisting a SeaMicro or Virsh chassis twice will not replace the missing entries
+
 #1311726    No documentation about the supported power types and the related power parameters
+
 #1331982    API documentation for nodegroup op=details missing parameter
+
 #1274085    error when maas can't meet juju constraints is confusing and not helpful
+
 #1330778    MAAS needs support for managing nodes via the Moonshot HP iLO Chassis Manager CLI
+
 #1337683    The API client MAASClient doesn't encode list parameters when doing a GET
+
 #1190986    ERROR Nonce already used
+
 #1342135    Allow domains to be used for NTP server configuration, not just IPs
+
 #1337437    Allow 14.10 Utopic Unicorn as a deployable series
+
 #1350235    Package fails to install when the default route is through an aliased/tagged interface
+
 #1353597    PowerNV: format_bootif should make sure mac address is all lowercase
 
 1.5.3
