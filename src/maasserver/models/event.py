@@ -80,6 +80,9 @@ class Event(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         verbose_name = "Event record"
+        index_together = (
+            ("node", "id"),
+        )
 
     def __unicode__(self):
         return "%s (node=%s, type=%s, created=%s)" % (
