@@ -247,6 +247,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Patch the power action utility so that it says the node is
@@ -279,6 +281,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         power.power_action_registry[system_id] = power_change, sentinel.d
         self.patch(power, 'pause')
         power_action, execute = patch_power_action(
@@ -306,6 +310,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Simulate a failure to power up the node, then a success.
@@ -336,6 +342,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Patch the power action utility so that it says the node is
@@ -367,6 +375,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Simulate a persistent failure.
@@ -397,6 +407,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Simulate an exception.
@@ -423,6 +435,8 @@ class TestChangePowerState(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         power.power_action_registry[system_id] = power_change, sentinel.d
         # Simulate two failures to power up the node, then a success.
         power_action, execute = patch_power_action(
@@ -478,7 +492,7 @@ class TestChangePowerState(MAASTestCase):
                 system_id, hostname, power_change))
 
     @inlineCallbacks
-    def test__calls_power_driver_on_for_power_driver_power_types(self):
+    def test__calls_power_driver_on_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
@@ -509,7 +523,7 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals('on'))
 
     @inlineCallbacks
-    def test__calls_power_driver_off_for_power_driver_power_types(self):
+    def test__calls_power_driver_off_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
@@ -546,7 +560,8 @@ class TestChangePowerState(MAASTestCase):
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = 'on'
         context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
+            factory.make_name('context-key'): factory.make_name('context-val'),
+            'system_id': system_id
         }
         self.patch(power, 'is_power_driver_available', Mock(return_value=True))
         exception_message = factory.make_name('exception')
@@ -593,6 +608,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         # Patch the power action utility so that it says the node is
         # in on/off power state.
@@ -621,6 +638,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         _, _, io = self.patch_rpc_methods()
 
         d = power.get_power_state(
@@ -637,6 +656,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         # Simulate a failure to power query the node, then success.
         power_action, execute = patch_power_action(
@@ -666,6 +687,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power_state_update = self.patch_autospec(power, 'power_state_update')
 
@@ -692,6 +715,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power_state_update = self.patch_autospec(power, 'power_state_update')
 
@@ -715,6 +740,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         self.patch(power, 'pause')
         power_state_update = self.patch_autospec(power, 'power_state_update')
 
@@ -737,6 +764,8 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        self.patch(
+            power, 'is_power_driver_available', Mock(return_value=False))
         # Simulate two failures to power up the node, then a success.
         power_action, execute = patch_power_action(
             self, side_effect=[PowerActionFail, PowerActionFail, 'off'])

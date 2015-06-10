@@ -323,7 +323,10 @@ class PowerDriverRegistry(Registry):
         return schemas
 
 
+from provisioningserver.drivers.power.mscm import MSCMPowerDriver
+
 builtin_power_drivers = [
-    ]
+    MSCMPowerDriver(),
+]
 for driver in builtin_power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)

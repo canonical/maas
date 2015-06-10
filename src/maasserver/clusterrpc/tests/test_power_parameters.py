@@ -39,6 +39,7 @@ from provisioningserver.power_schema import (
     JSON_POWER_TYPE_PARAMETERS,
     make_json_field,
 )
+from provisioningserver.rpc.power import is_power_driver_available
 
 
 class TestPowerActionRendering(MAASServerTestCase):
@@ -47,6 +48,7 @@ class TestPowerActionRendering(MAASServerTestCase):
     scenarios = [
         (type['name'], {'power_type': type['name']})
         for type in JSON_POWER_TYPE_PARAMETERS
+        if not is_power_driver_available(type['name'])
     ]
 
     def make_random_parameters(self, power_change="on"):
