@@ -1083,8 +1083,7 @@ class TestClusterConfiguration(MAASTestCase):
 
     def test_set_maas_url_accepts_hostnames(self):
         config = ClusterConfiguration({})
-        example_url = factory.make_simple_http_url(
-            netloc="%s:%d" % (factory.make_hostname(), factory.pick_port()))
+        example_url = factory.make_simple_http_url()
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)

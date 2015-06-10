@@ -384,21 +384,34 @@ class Factory:
         if scheme != "")
 
     def make_parsed_url(
-            self, scheme=None, netloc=None, path=None, params=None,
-            query=None, fragment=None):
+            self, scheme=None, netloc=None, path=None, port=None,
+            params=None, query=None, fragment=None):
         """Generate a random parsed URL object.
 
         Contains randomly generated values for all parts of a URL: scheme,
         location, path, parameters, query, and fragment. However, each part
         can be overridden individually.
 
+        If port=None or port=True, make_port() will be used to select a random
+        port, while port=False will create a netloc for the URL that does not
+        specify a port. To specify a port in netloc, port parameter
+        must be False.
+
         :return: Instance of :py:class:`urlparse.ParseResult`.
         """
+        if port is not False and netloc is not None and netloc.count(':') == 1:
+            raise AssertionError(
+                'A port number has been requested, however the given netloc '
+                'spec %r already contains a port number.' % (netloc,))
         if scheme is None:
             # Select a scheme that allows parameters; see above.
             scheme = random.choice(self._make_parsed_url_schemes)
+        if port is None or port is True:
+            port = self.pick_port()
         if netloc is None:
             netloc = "%s.example.com" % self.make_name("netloc").lower()
+            if isinstance(port, (int, long)) and not isinstance(port, bool):
+                netloc += ":%d" % port
         if path is None:
             # A leading forward-slash will be added in geturl() if we
             # don't, so ensure it's here now so tests can compare URLs
@@ -431,11 +444,11 @@ class Factory:
         return self.make_parsed_url(
             scheme, netloc, path, params, query, fragment).geturl()
 
-    def make_simple_http_url(self, netloc=None, path=None):
+    def make_simple_http_url(self, netloc=None, path=None, port=None):
         """Create an arbitrary HTTP URL with only a location and path."""
         return self.make_parsed_url(
-            scheme="http", netloc=netloc, path=path, params="", query="",
-            fragment="").geturl()
+            scheme="http", netloc=netloc, path=path, port=port,
+            params="", query="", fragment="").geturl()
 
     def make_names(self, *prefixes):
         """Generate random names.

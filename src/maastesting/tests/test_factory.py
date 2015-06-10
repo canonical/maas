@@ -1,5 +1,4 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
-
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -34,12 +33,14 @@ from netaddr import (
 )
 from testtools.matchers import (
     Contains,
+    EndsWith,
     FileContains,
     FileExists,
     MatchesAll,
     Not,
     StartsWith,
 )
+from testtools.testcase import ExpectedException
 
 
 class TestFactory(MAASTestCase):
@@ -312,3 +313,49 @@ class TestFactory(MAASTestCase):
         with open(os.path.join(dest, filename), 'rb') as unpacked_file:
             contents = unpacked_file.read()
         self.assertGreater(len(contents), 0)
+
+    def test_make_parsed_url_accepts_explicit_port(self):
+        port = factory.pick_port()
+        url = factory.make_parsed_url(port=port)
+        self.assertThat(url.netloc, EndsWith(':%d' % port),
+                        'The generated URL does not contain'
+                        'a port specification for port %d' % port)
+
+    def test_make_parsed_url_can_omit_port(self):
+        url = factory.make_parsed_url(port=False)
+        self.assertThat(url.netloc, Not(Contains(':')),
+                        'Generated url: %s contains a port number'
+                        'in netloc segment' % url.geturl())
+
+    def test_make_parsed_url_pics_random_port(self):
+        url = factory.make_parsed_url()
+        self.assertThat(url.netloc, Contains(':'),
+                        'Generated url: %s does not contain '
+                        'a port number in netloc segment' % url.geturl())
+
+        self.assertTrue(url.netloc.split(':')[1].isdigit(),
+                        'Generated url: %s does not contain a valid '
+                        'port number in netloc segment' % url.geturl())
+
+        url = factory.make_parsed_url(port=True)
+
+        self.assertThat(url.netloc, Contains(':'),
+                        ('Generated url: %s does not contain '
+                         'a port number in netloc segment') % url.geturl())
+
+        self.assertTrue(url.netloc.split(':')[1].isdigit(),
+                        'Generated url: %s does not contain a valid '
+                        'port number in netloc segment' % url.geturl())
+
+    def test_make_parsed_url_asserts_with_conflicting_port_numbers(self):
+        with ExpectedException(AssertionError):
+            netloc = "%s:%d" % (factory.make_hostname(),
+                                factory.pick_port())
+            factory.make_parsed_url(netloc=netloc,
+                                    port=factory.pick_port())
+
+        with ExpectedException(AssertionError):
+            netloc = "%s:%d" % (factory.make_hostname(),
+                                factory.pick_port())
+            factory.make_parsed_url(netloc=netloc,
+                                    port=True)

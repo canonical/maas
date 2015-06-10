@@ -39,8 +39,7 @@ class TestRegionConfiguration(MAASTestCase):
 
     def test_set_maas_url_accepts_hostnames(self):
         config = RegionConfiguration({})
-        example_url = factory.make_simple_http_url(
-            netloc="%s:%d" % (factory.make_hostname(), factory.pick_port()))
+        example_url = factory.make_simple_http_url()
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)
@@ -97,11 +96,8 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         # It's also stored in the configuration database.
         self.assertEqual({self.option: example_value}, config.store)
 
-"""Tests for the maasregiond configuration interface."""
-
 
 class TestConfig(MAASTestCase):
-
     """Tests for `maasserver.config`."""
 
     def test_is_dev_environment_returns_false(self):
