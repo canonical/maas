@@ -14,15 +14,136 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.models import BlockDevice
+import random
+
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
+from maasserver.enum import NODE_PERMISSION
+from maasserver.models import (
+    BlockDevice,
+    PhysicalBlockDevice,
+    VirtualBlockDevice,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
 from testtools.matchers import Equals
 
 
+class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
+    """Tests for the `BlockDeviceManager.get_block_device_or_404`."""
+
+    def test__raises_Http404_when_invalid_node(self):
+        user = factory.make_admin()
+        block_device = factory.make_BlockDevice()
+        self.assertRaises(
+            Http404, BlockDevice.objects.get_block_device_or_404,
+            factory.make_name("system_id"), block_device.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__raises_Http404_when_invalid_device(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        self.assertRaises(
+            Http404, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, random.randint(0, 100), user,
+            NODE_PERMISSION.VIEW)
+
+    def test__view_raises_PermissionDenied_when_user_not_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        device = factory.make_BlockDevice(node=node)
+        self.assertRaises(
+            PermissionDenied, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, device.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__view_returns_device_when_no_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        device = factory.make_PhysicalBlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
+
+    def test__view_returns_device_when_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
+
+    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        device = factory.make_BlockDevice(node=node)
+        self.assertRaises(
+            PermissionDenied, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, device.id, user,
+            NODE_PERMISSION.EDIT)
+
+    def test__edit_returns_device_when_user_is_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        device = factory.make_BlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.id, user, NODE_PERMISSION.EDIT).id)
+
+    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        device = factory.make_BlockDevice(node=node)
+        self.assertRaises(
+            PermissionDenied, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, device.id, user,
+            NODE_PERMISSION.ADMIN)
+
+    def test__admin_returns_device_when_admin(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        device = factory.make_BlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
+
+
 class TestBlockDeviceManager(MAASServerTestCase):
     """Tests for the `BlockDeviceManager`."""
+
+    def test__raises_Http404_when_invalid_node(self):
+        user = factory.make_admin()
+        block_device = factory.make_BlockDevice()
+        self.assertRaises(
+            Http404, BlockDevice.objects.get_block_device_or_404,
+            factory.make_name("system_id"), block_device.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__raises_Http404_when_invalid_device(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        self.assertRaises(
+            Http404, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, random.randint(0, 100), user,
+            NODE_PERMISSION.VIEW)
+
+    def test__returns_device_when_admin(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        device = factory.make_BlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
+
+    def test__raises_PermissionDenied_when_user_requests_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        device = factory.make_BlockDevice(node=node)
+        self.assertRaises(
+            PermissionDenied, BlockDevice.objects.get_block_device_or_404,
+            node.system_id, device.id, user,
+            NODE_PERMISSION.ADMIN)
 
     def test_filter_by_tags_returns_devices_with_one_tag(self):
         tags = [factory.make_name('tag') for _ in range(3)]
@@ -100,6 +221,23 @@ class TestBlockDevice(MAASServerTestCase):
         block_device = factory.make_BlockDevice()
         with ExpectedException(ValueError):
             block_device.type
+
+    def test_actual_instance_returns_PhysicalBlockDevice(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        parent_type = BlockDevice.objects.get(id=block_device.id)
+        self.assertIsInstance(
+            parent_type.actual_instance, PhysicalBlockDevice)
+
+    def test_actual_instance_returns_VirtualBlockDevice(self):
+        block_device = factory.make_VirtualBlockDevice()
+        parent_type = BlockDevice.objects.get(id=block_device.id)
+        self.assertIsInstance(
+            parent_type.actual_instance, VirtualBlockDevice)
+
+    def test_actual_instance_returns_BlockDevice(self):
+        block_device = factory.make_BlockDevice()
+        self.assertIsInstance(
+            block_device.actual_instance, BlockDevice)
 
     def test_display_size(self):
         sizes = (

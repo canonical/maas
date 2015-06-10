@@ -144,6 +144,50 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_Node()))
 
+    def test_user_cannot_view_BlockDevice_when_not_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        device = factory.make_BlockDevice(node=node)
+        self.assertFalse(backend.has_perm(user, NODE_PERMISSION.VIEW, device))
+
+    def test_user_can_view_BlockDevice_when_no_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node()
+        device = factory.make_BlockDevice(node=node)
+        self.assertTrue(backend.has_perm(user, NODE_PERMISSION.VIEW, device))
+
+    def test_user_can_view_BlockDevice_when_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        device = factory.make_BlockDevice(node=node)
+        self.assertTrue(backend.has_perm(user, NODE_PERMISSION.VIEW, device))
+
+    def test_user_cannot_edit_when_not_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        device = factory.make_BlockDevice(node=node)
+        self.assertFalse(backend.has_perm(user, NODE_PERMISSION.EDIT, device))
+
+    def test_user_can_edit_VirtualBlockDevice_when_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        device = factory.make_VirtualBlockDevice(node=node)
+        self.assertTrue(backend.has_perm(user, NODE_PERMISSION.EDIT, device))
+
+    def test_user_has_no_admin_permission_on_BlockDevice(self):
+        # NODE_PERMISSION.ADMIN permission on block devices is granted to super
+        # user only.
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.ADMIN, factory.make_BlockDevice()))
+
 
 class TestNodeVisibility(MAASServerTestCase):
 

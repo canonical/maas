@@ -180,24 +180,38 @@ class MAASAuthorizationBackend(ModelBackend):
             # are prohibited from accessing maasserver services.
             return False
 
-        # Only Nodes can be checked. We also don't support perm checking
-        # when obj = None.
-        if not isinstance(obj, Node):
+        if isinstance(obj, Node):
+            if perm == NODE_PERMISSION.VIEW:
+                # Any registered user can view a node regardless of its state.
+                return True
+            elif perm == NODE_PERMISSION.EDIT:
+                return obj.owner == user
+            elif perm == NODE_PERMISSION.ADMIN:
+                # 'admin_node' permission is solely granted to superusers.
+                return False
+            else:
+                raise NotImplementedError(
+                    'Invalid permission check (invalid permission name: %s).' %
+                    perm)
+        elif isinstance(obj, BlockDevice):
+            node = obj.node
+            if perm == NODE_PERMISSION.VIEW:
+                # If the node is not ownered or the owner is the user then
+                # they can view the information.
+                return node.owner is None or node.owner == user
+            elif perm == NODE_PERMISSION.EDIT:
+                return node.owner == user
+            elif perm == NODE_PERMISSION.ADMIN:
+                # 'admin_node' permission is solely granted to superusers.
+                return False
+            else:
+                raise NotImplementedError(
+                    'Invalid permission check (invalid permission name: %s).' %
+                    perm)
+        else:
+            # Only Nodes and BlockDevices can be checked.
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
-
-        if perm == NODE_PERMISSION.VIEW:
-            # Any registered user can view a node regardless of its state.
-            return True
-        elif perm == NODE_PERMISSION.EDIT:
-            return obj.owner == user
-        elif perm == NODE_PERMISSION.ADMIN:
-            # 'admin_node' permission is solely granted to superusers.
-            return False
-        else:
-            raise NotImplementedError(
-                'Invalid permission check (invalid permission name: %s).' %
-                perm)
 
 
 from maasserver.dns import connect as dns_connect

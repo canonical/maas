@@ -18,6 +18,7 @@ __all__ = [
 
 from collections import Iterable
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import (
     BigIntegerField,
     CharField,
@@ -26,6 +27,7 @@ from django.db.models import (
     IntegerField,
     Manager,
 )
+from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
@@ -36,6 +38,36 @@ from maasserver.utils.orm import psql_array
 
 class BlockDeviceManager(Manager):
     """Manager for `BlockDevice` class."""
+
+    def get_block_device_or_404(self, system_id, blockdevice_id, user, perm):
+        """Fetch a `BlockDevice` by its `Node`'s system_id and its id.  Raise
+        exceptions if no `BlockDevice` with this id exist, if the `Node` with
+        system_id doesn't exist, if the `BlockDevice` doesn't exist on the
+        `Node`, or if the provided user has not the required permission on
+        this `Node` and `BlockDevice`.
+
+        :param name: The system_id.
+        :type name: string
+        :param name: The blockdevice_id.
+        :type name: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        block_device = get_object_or_404(
+            BlockDevice, id=blockdevice_id, node__system_id=system_id)
+        block_device = block_device.actual_instance
+        if user.has_perm(perm, block_device):
+            return block_device
+        else:
+            raise PermissionDenied()
 
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):
@@ -90,18 +122,39 @@ class BlockDevice(CleanSave, TimestampedModel):
         # extend from this calss.
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
-        try:
-            self.physicalblockdevice
+        actual_instance = self.actual_instance
+        if isinstance(actual_instance, PhysicalBlockDevice):
             return "physical"
+        elif isinstance(actual_instance, VirtualBlockDevice):
+            return "virtual"
+        else:
+            raise ValueError(
+                "BlockDevice is not a subclass of "
+                "PhysicalBlockDevice or VirtualBlockDevice")
+
+    @property
+    def actual_instance(self):
+        """Return the instance as its correct type.
+
+        By default all references from Django will be to `BlockDevice`, when
+        the native type `PhysicalBlockDevice` or `VirtualBlockDevice` is needed
+        use this property to get its actual instance.
+        """
+        # Circular imports, since PhysicalBlockDevice and VirtualBlockDevice
+        # extend from this calss.
+        from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+        if (isinstance(self, PhysicalBlockDevice) or
+                isinstance(self, VirtualBlockDevice)):
+            return self
+        try:
+            return self.physicalblockdevice
         except PhysicalBlockDevice.DoesNotExist:
             try:
-                self.virtualblockdevice
-                return "virtual"
+                return self.virtualblockdevice
             except VirtualBlockDevice.DoesNotExist:
                 pass
-        raise ValueError(
-            "BlockDevice is not a subclass of "
-            "PhysicalBlockDevice or VirtualBlockDevice")
+        return self
 
     def display_size(self, include_suffix=True):
         return human_readable_bytes(self.size, include_suffix=include_suffix)
