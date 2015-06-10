@@ -19,7 +19,10 @@ import json
 import uuid
 
 from django.core.urlresolvers import reverse
-from maasserver.enum import FILESYSTEM_TYPE
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -272,3 +275,66 @@ class TestBlockDeviceAPI(APITestCase):
             }, parsed_device['filesystem'])
         block_device = reload_object(block_device)
         self.assertIsNotNone(block_device.filesystem)
+
+    def test_unformat_returns_400_if_not_formatted(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual("Block device is not formatted.", response.content)
+
+    def test_unformat_returns_400_if_mounted(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device, mount_point="/mnt")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            "Filesystem is mounted and cannot be unformatted. Unmount the "
+            "filesystem before unformatting the block device.",
+            response.content)
+
+    def test_unformat_returns_400_if_in_filesystem_group(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        lvm_filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.LVM_PV)
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=[lvm_filesystem])
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            "Filesystem is part of a filesystem group, and cannot be "
+            "unformatted. Remove block device from filesystem group "
+            "before unformatting the block device.",
+            response.content)
+
+    def test_unformat_deletes_filesystem(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertFalse(
+            "filesystem" in parsed_device,
+            "Filesystem field should not be in the resulting device.")
+        block_device = reload_object(block_device)
+        self.assertIsNone(block_device.filesystem)

@@ -20,7 +20,10 @@ from maasserver.api.support import (
 )
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIValidationError,
+)
 from maasserver.forms import FormatBlockDeviceForm
 from maasserver.models import (
     BlockDevice,
@@ -149,3 +152,30 @@ class BlockDeviceHandler(OperationsHandler):
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def unformat(self, request, system_id, device_id):
+        """Unformat block device with filesystem.
+
+        Returns 400 if the block device is not formatted, currently mounted,
+            or part of a filesystem group.
+        Returns 403 when the user doesn't have the ability to unformat the
+            block device.
+        Returns 404 if the node or block device is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        filesystem = device.filesystem
+        if filesystem is None:
+            raise MAASAPIBadRequest("Block device is not formatted.")
+        if filesystem.mount_point:
+            raise MAASAPIBadRequest(
+                "Filesystem is mounted and cannot be unformatted. Unmount the "
+                "filesystem before unformatting the block device.")
+        if filesystem.filesystem_group is not None:
+            raise MAASAPIBadRequest(
+                "Filesystem is part of a filesystem group, and cannot be "
+                "unformatted. Remove block device from filesystem group "
+                "before unformatting the block device.")
+        filesystem.delete()
+        return device
