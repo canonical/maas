@@ -17,7 +17,10 @@ __all__ = []
 import uuid
 
 from maasserver.enum import FILESYSTEM_TYPE
-from maasserver.forms import FormatBlockDeviceForm
+from maasserver.forms import (
+    FormatBlockDeviceForm,
+    MountBlockDeviceForm,
+)
 from maasserver.models import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -125,3 +128,104 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
             Filesystem.objects.filter(block_device=block_device))
         self.assertIsNotNone(filesystem)
         self.assertEquals(fstype, filesystem.fstype)
+
+
+class TestMountBlockDeviceForm(MAASServerTestCase):
+
+    def test_requires_fields(self):
+        form = MountBlockDeviceForm(
+            block_device=factory.make_BlockDevice(), data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(['mount_point'], form.errors.keys())
+
+    def test_is_not_valid_if_block_device_has_no_filesystem(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        data = {
+            'mount_point': factory.make_absolute_path(),
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because block device does "
+            "not have a filesystem.")
+        self.assertEquals({
+            '__all__': [
+                "Cannot mount an unformatted block device.",
+            ]},
+            form._errors)
+
+    def test_is_not_valid_if_block_device_in_filesystem_group(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.LVM_PV)
+        factory.make_FilesystemGroup(filesystems=[filesystem])
+        data = {
+            'mount_point': factory.make_absolute_path(),
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because block device is in a filesystem group.")
+        self.assertEquals({
+            '__all__': [
+                "Filesystem is part of a filesystem group, and cannot be "
+                "mounted.",
+            ]},
+            form._errors)
+
+    def test_is_not_valid_if_invalid_absolute_path(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        factory.make_Filesystem(block_device=block_device)
+        data = {
+            'mount_point': factory.make_absolute_path()[1:],
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because its not an absolute path.")
+        self.assertEquals(
+            {'mount_point': ["Enter a valid value."]}, form._errors)
+
+    def test_is_not_valid_if_invalid_absolute_path_empty(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        factory.make_Filesystem(block_device=block_device)
+        data = {
+            'mount_point': "",
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because its not an absolute path.")
+        self.assertEquals(
+            {'mount_point': ["This field is required."]}, form._errors)
+
+    def test_is_not_valid_if_invalid_absolute_path_to_long(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path(directory_length=4096)
+        data = {
+            'mount_point': mount_point,
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because its not an absolute path.")
+        self.assertEquals({
+            'mount_point': [
+                "Ensure this value has at most 4095 characters "
+                "(it has %s)." % len(mount_point)
+                ],
+            }, form._errors)
+
+    def test_sets_mount_point_on_filesystem(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path()
+        data = {
+            'mount_point': mount_point,
+            }
+        form = MountBlockDeviceForm(block_device, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        filesystem = reload_object(filesystem)
+        self.assertEquals(mount_point, filesystem.mount_point)

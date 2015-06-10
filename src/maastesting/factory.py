@@ -125,6 +125,13 @@ class Factory:
         exc_type = self.make_exception_type(bases, **namespace)
         return exc_type() if message is None else exc_type(message)
 
+    def make_absolute_path(
+            self, directories=3, directory_length=10, path_seperator='/'):
+        return path_seperator + path_seperator.join(
+            self.make_string(size=directory_length)
+            for _ in range(directories)
+            )
+
     def pick_bool(self):
         """Return an arbitrary Boolean value (`True` or `False`)."""
         return random.choice((True, False))

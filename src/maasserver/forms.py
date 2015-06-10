@@ -2957,6 +2957,20 @@ class UUID4Field(forms.RegexField):
         super(UUID4Field, self).__init__(regex, *args, **kwargs)
 
 
+class AbsolutePathField(forms.RegexField):
+    """Validates an absolute path."""
+
+    def __init__(self, *args, **kwargs):
+        regex = r"^(?:/[^/]+)*$"
+        kwargs['min_length'] = 1
+
+        # This size comes from linux/limits.h where it defines PATH_MAX = 4096.
+        # 4096 includes the nul terminator, so the maximum string length is
+        # only 4095 since python does not count the nul terminator.
+        kwargs['max_length'] = 4095
+        super(AbsolutePathField, self).__init__(regex, *args, **kwargs)
+
+
 class FormatBlockDeviceForm(Form):
     """Form used to format a block device."""
     uuid = UUID4Field(required=False)
@@ -2994,5 +3008,42 @@ class FormatBlockDeviceForm(Form):
             block_device=self.block_device,
             fstype=self.cleaned_data['fstype'],
             uuid=self.cleaned_data.get('uuid', None))
+        filesystem.save()
+        return self.block_device
+
+
+class MountBlockDeviceForm(Form):
+    """Form used to mount a block device."""
+
+    mount_point = AbsolutePathField(required=True)
+
+    def __init__(self, block_device, *args, **kwargs):
+        super(MountBlockDeviceForm, self).__init__(*args, **kwargs)
+        self.block_device = block_device
+
+    def clean(self):
+        """Validate block device doesn't have a partition table."""
+        # Get the clean_data, check that all of the fields we need are
+        # present. If not then the form will error, so no reason to continue.
+        cleaned_data = super(MountBlockDeviceForm, self).clean()
+        if 'mount_point' not in cleaned_data:
+            return cleaned_data
+        filesystem = self.block_device.filesystem
+        if filesystem is None:
+            raise ValidationError(
+                "Cannot mount an unformatted block device.")
+        if filesystem.filesystem_group is not None:
+            raise ValidationError(
+                "Filesystem is part of a filesystem group, and cannot be "
+                "mounted.")
+        return cleaned_data
+
+    def save(self):
+        """Persist the `Filesystem` into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        filesystem = self.block_device.filesystem
+        filesystem.mount_point = self.cleaned_data['mount_point']
         filesystem.save()
         return self.block_device

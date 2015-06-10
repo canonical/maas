@@ -338,3 +338,75 @@ class TestBlockDeviceAPI(APITestCase):
             "Filesystem field should not be in the resulting device.")
         block_device = reload_object(block_device)
         self.assertIsNone(block_device.filesystem)
+
+    def test_mount_sets_mount_path_on_filesystem(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'mount', 'mount_point': mount_point})
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEquals(
+            mount_point, parsed_device['filesystem']['mount_point'])
+        self.assertEquals(
+            mount_point, reload_object(filesystem).mount_point)
+
+    def test_mount_returns_400_on_missing_mount_point(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'mount'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        parsed_error = json.loads(response.content)
+        self.assertEquals(
+            {"mount_point": ["This field is required."]},
+            parsed_error)
+
+    def test_unmount_returns_400_if_not_formatted(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Block device is not formatted.", response.content)
+
+    def test_unmount_returns_400_if_already_unmounted(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Filesystem is already unmounted.", response.content)
+
+    def test_unmount_unmounts_filesystem(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, mount_point="/mnt")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        self.assertIsNone(
+            json.loads(response.content)['filesystem']['mount_point'])
+        self.assertIsNone(
+            reload_object(filesystem).mount_point)

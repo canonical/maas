@@ -24,7 +24,10 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
 )
-from maasserver.forms import FormatBlockDeviceForm
+from maasserver.forms import (
+    FormatBlockDeviceForm,
+    MountBlockDeviceForm,
+)
 from maasserver.models import (
     BlockDevice,
     Node,
@@ -178,4 +181,43 @@ class BlockDeviceHandler(OperationsHandler):
                 "unformatted. Remove block device from filesystem group "
                 "before unformatting the block device.")
         filesystem.delete()
+        return device
+
+    @operation(idempotent=False)
+    def mount(self, request, system_id, device_id):
+        """Mount the filesystem on block device.
+
+        :param mount_point: Path on the filesystem to mount.
+
+        Returns 403 when the user doesn't have the ability to format the block
+            device.
+        Returns 404 if the node or block device is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        form = MountBlockDeviceForm(device, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def unmount(self, request, system_id, device_id):
+        """Unmount the filesystem on block device.
+
+        Returns 400 if the block device is not formatted or not currently
+            mounted.
+        Returns 403 when the user doesn't have the ability to unformat the
+            block device.
+        Returns 404 if the node or block device is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        filesystem = device.filesystem
+        if filesystem is None:
+            raise MAASAPIBadRequest("Block device is not formatted.")
+        if not filesystem.mount_point:
+            raise MAASAPIBadRequest("Filesystem is already unmounted.")
+        filesystem.mount_point = None
+        filesystem.save()
         return device
