@@ -20,6 +20,8 @@ from maasserver.api.support import (
 )
 from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import FormatBlockDeviceForm
 from maasserver.models import (
     BlockDevice,
     Node,
@@ -37,6 +39,11 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'size',
     'block_size',
     'tags',
+    ('filesystem', (
+        'fstype',
+        'uuid',
+        'mount_point',
+    )),
 )
 
 
@@ -123,3 +130,22 @@ class BlockDeviceHandler(OperationsHandler):
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
+
+    @operation(idempotent=False)
+    def format(self, request, system_id, device_id):
+        """Format block device with filesystem.
+
+        :param fstype: Type of filesystem.
+        :param uuid: UUID of the filesystem.
+
+        Returns 403 when the user doesn't have the ability to format the block
+            device.
+        Returns 404 if the node or block device is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        form = FormatBlockDeviceForm(device, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)

@@ -91,6 +91,7 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    FILESYSTEM_TYPE_CHOICES,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_STATUS,
@@ -121,6 +122,7 @@ from maasserver.models import (
     Config,
     Device,
     DownloadProgress,
+    Filesystem,
     LargeFile,
     LicenseKey,
     MACAddress,
@@ -128,6 +130,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    PartitionTable,
     SSHKey,
     SSLKey,
     Tag,
@@ -2939,3 +2942,57 @@ class ReleaseIPForm(Form):
 
     # unfortunately, we aren't consistent; some APIs just call this "ip"
     ip = forms.GenericIPAddressField(required=False)
+
+
+class UUID4Field(forms.RegexField):
+    """Validates a valid uuid version 4."""
+
+    def __init__(self, *args, **kwargs):
+        regex = (
+            r"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?4[0-9a-fA-F]{3}-?"
+            r"[89abAB][0-9a-fA-F]{3}-?[0-9a-fA-F]{12}"
+            )
+        kwargs['min_length'] = 32
+        kwargs['max_length'] = 36
+        super(UUID4Field, self).__init__(regex, *args, **kwargs)
+
+
+class FormatBlockDeviceForm(Form):
+    """Form used to format a block device."""
+    uuid = UUID4Field(required=False)
+
+    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
+
+    def __init__(self, block_device, *args, **kwargs):
+        super(FormatBlockDeviceForm, self).__init__(*args, **kwargs)
+        self.block_device = block_device
+
+    def clean(self):
+        """Validate block device doesn't have a partition table."""
+        # Get the clean_data, check that all of the fields we need are
+        # present. If not then the form will error, so no reason to continue.
+        cleaned_data = super(FormatBlockDeviceForm, self).clean()
+        if 'fstype' not in cleaned_data:
+            return cleaned_data
+        partition_table = PartitionTable.objects.filter(
+            block_device=self.block_device)
+        if partition_table.exists():
+            raise ValidationError(
+                "Cannot format block device with a partition table.")
+        return cleaned_data
+
+    def save(self):
+        """Persist the `Filesystem` into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        # Remove the previous format if one already exists.
+        Filesystem.objects.filter(block_device=self.block_device).delete()
+
+        # Create the new filesystem
+        filesystem = Filesystem(
+            block_device=self.block_device,
+            fstype=self.cleaned_data['fstype'],
+            uuid=self.cleaned_data.get('uuid', None))
+        filesystem.save()
+        return self.block_device

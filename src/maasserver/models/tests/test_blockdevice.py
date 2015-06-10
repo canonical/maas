@@ -239,6 +239,15 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertIsInstance(
             block_device.actual_instance, BlockDevice)
 
+    def test_filesystem_returns_None_when_no_filesystem(self):
+        block_device = factory.make_BlockDevice()
+        self.assertIsNone(block_device.filesystem)
+
+    def test_filesystem_returns_filesystem(self):
+        block_device = factory.make_BlockDevice()
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        self.assertEquals(filesystem, block_device.filesystem)
+
     def test_display_size(self):
         sizes = (
             (45, '45.0 bytes'),

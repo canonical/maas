@@ -156,6 +156,14 @@ class BlockDevice(CleanSave, TimestampedModel):
                 pass
         return self
 
+    @property
+    def filesystem(self):
+        """Return the filesystem that is placed on this block device."""
+        filesystems = list(self.filesystem_set.all())
+        if len(filesystems) > 0:
+            return filesystems[0]
+        return None
+
     def display_size(self, include_suffix=True):
         return human_readable_bytes(self.size, include_suffix=include_suffix)
 
