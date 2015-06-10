@@ -16,8 +16,11 @@ __all__ = [
     'Partition',
     ]
 
+from math import ceil
 from uuid import uuid4
 
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -27,7 +30,6 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -46,14 +48,16 @@ class Partition(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
 
     partition_table = ForeignKey(
-        PartitionTable, null=False, blank=False, related_name="partitions")
+        'maasserver.PartitionTable', null=False, blank=False,
+        related_name="partitions")
 
     uuid = CharField(
         max_length=36, unique=True, null=True, blank=True)
 
-    start_offset = BigIntegerField(null=False)
+    start_offset = BigIntegerField(null=False,
+                                   validators=[MinValueValidator(0)])
 
-    size = BigIntegerField(null=False)
+    size = BigIntegerField(null=False, validators=[MinValueValidator(1)])
 
     bootable = BooleanField(default=False)
 
@@ -74,3 +78,44 @@ class Partition(CleanSave, TimestampedModel):
             # partition on the created machine.
             self.uuid = uuid4()
         return super(Partition, self).save(*args, **kwargs)
+
+    def clean(self):
+        """Do additional validation and round start_offset and size to block
+        boundaries."""
+
+        # Lines start_block and size to block boundaries.
+        self.start_offset = self.start_block * self.get_block_size()
+        self.size = self.size_blocks * self.get_block_size()
+
+        # Ensure partitions never extend beyond device boundaries
+        end = self.start_offset + self.size
+        device_size = self.partition_table.block_device.size
+        if end > device_size:
+            raise ValidationError(
+                "Partition (%d-%d) extends %d bytes past the device end (%d)."
+                % (self.start_block, self.end_block, end - device_size,
+                   device_size))
+
+        # Prevents overlapping partitions.
+        for p in self.partition_table.partitions.exclude(id=self.id):
+            st, end = p.start_block, p.end_block
+            if st <= self.start_block <= end or st <= self.end_block <= end:
+                raise ValidationError(
+                    "Partition (%d-%d) overlaps with partition %s (%d-%d)." %
+                    (self.start_block, self.end_block,
+                     p.id, p.start_block, p.end_block))
+
+    @property
+    def start_block(self):
+        """Returns the first block of this partition."""
+        return int(float(self.start_offset) / self.get_block_size())
+
+    @property
+    def end_block(self):
+        """Returns the last block of this partition."""
+        return (self.start_block + self.size_blocks) - 1
+
+    @property
+    def size_blocks(self):
+        """Returns the size of the partition, in blocks."""
+        return int(ceil(float(self.size) / self.get_block_size()))
