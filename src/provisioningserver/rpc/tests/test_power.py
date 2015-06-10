@@ -41,6 +41,7 @@ from mock import (
     sentinel,
 )
 import provisioningserver
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import (
@@ -443,6 +444,129 @@ class TestChangePowerState(MAASTestCase):
             call(2, reactor),  # pause(1, reactor)
             call(power_change='query', **context),
         ))
+
+    @inlineCallbacks
+    def test___handles_power_driver_power_types(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_power_driver_available', Mock(return_value=True))
+        perform_power_driver_change = self.patch(
+            power, 'perform_power_driver_change')
+        self.patch(power, 'pause')
+        perform_power_driver_query = self.patch(
+            power, 'perform_power_driver_query',
+            Mock(return_value=power_change))
+        power_change_success = self.patch(power, 'power_change_success')
+        yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+
+        self.expectThat(
+            perform_power_driver_change, MockCalledOnceWith(
+                system_id, hostname, power_type, power_change, context))
+        self.expectThat(
+            perform_power_driver_query, MockCalledOnceWith(
+                system_id, hostname, power_type, context))
+        self.expectThat(
+            power_change_success, MockCalledOnceWith(
+                system_id, hostname, power_change))
+
+    @inlineCallbacks
+    def test__calls_power_driver_on_for_power_driver_power_types(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'on'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_power_driver_available', Mock(return_value=True))
+        get_item = self.patch(PowerDriverRegistry, 'get_item')
+        get_item.return_value = Mock(return_value='on')
+        self.patch(power, 'pause')
+        perform_power_driver_query = self.patch(
+            power, 'perform_power_driver_query',
+            Mock(return_value=power_change))
+        power_change_success = self.patch(power, 'power_change_success')
+        yield self.patch_rpc_methods()
+
+        result = yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+
+        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(
+            perform_power_driver_query, MockCalledOnceWith(
+                system_id, hostname, power_type, context))
+        self.expectThat(
+            power_change_success, MockCalledOnceWith(
+                system_id, hostname, power_change))
+        self.expectThat(result, Equals('on'))
+
+    @inlineCallbacks
+    def test__calls_power_driver_off_for_power_driver_power_types(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'off'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_power_driver_available', Mock(return_value=True))
+        get_item = self.patch(PowerDriverRegistry, 'get_item')
+        get_item.return_value = Mock(return_value='off')
+        self.patch(power, 'pause')
+        perform_power_driver_query = self.patch(
+            power, 'perform_power_driver_query',
+            Mock(return_value=power_change))
+        power_change_success = self.patch(power, 'power_change_success')
+        yield self.patch_rpc_methods()
+
+        result = yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+
+        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(
+            perform_power_driver_query, MockCalledOnceWith(
+                system_id, hostname, power_type, context))
+        self.expectThat(
+            power_change_success, MockCalledOnceWith(
+                system_id, hostname, power_change))
+        self.expectThat(result, Equals('off'))
+
+    @inlineCallbacks
+    def test__marks_the_node_broken_if_exception_for_power_driver(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'on'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_power_driver_available', Mock(return_value=True))
+        exception_message = factory.make_name('exception')
+        get_item = self.patch(PowerDriverRegistry, 'get_item')
+        get_item.side_effect = PowerActionFail(exception_message)
+        power_change_failure = self.patch(power, 'power_change_failure')
+
+        markNodeBroken = yield self.patch_rpc_methods()
+
+        with ExpectedException(PowerActionFail):
+            yield power.change_power_state(
+                system_id, hostname, power_type, power_change, context)
+
+        error_message = "Node could not be powered on: %s" % exception_message
+        self.expectThat(
+            markNodeBroken, MockCalledOnceWith(
+                ANY, system_id=system_id, error_description=error_message))
+        self.expectThat(
+            power_change_failure, MockCalledOnceWith(
+                system_id, hostname, power_change, error_message))
 
 
 class TestPowerQuery(MAASTestCase):

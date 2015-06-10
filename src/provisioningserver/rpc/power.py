@@ -20,6 +20,7 @@ __all__ = [
 from datetime import timedelta
 from functools import partial
 
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
@@ -89,6 +90,10 @@ maaslog = get_maas_logger("power")
 power_action_registry = {}
 
 
+def is_power_driver_available(power_type):
+    return PowerDriverRegistry.get_item(power_type) is not None
+
+
 @asynchronous
 @inlineCallbacks
 def power_change_failure(system_id, hostname, power_change, message):
@@ -122,6 +127,30 @@ def perform_power_change(system_id, hostname, power_type, power_change,
     action = PowerAction(power_type)
     try:
         return action.execute(power_change=power_change, **context)
+    except PowerActionFail as error:
+        message = "Node could not be powered %s: %s" % (
+            power_change, error)
+        power_change_failure(
+            system_id, hostname, power_change, message).wait(15)
+        raise
+
+
+def perform_power_driver_change(system_id, hostname, power_type, power_change,
+                                context):
+    """Execute power driver `power_change` method.
+
+    If any exception is raised during the execution of the method,
+    mark the node as broken and re-raise the exception.
+    """
+    try:
+        power_driver = PowerDriverRegistry.get_item(power_type)
+        if power_change == 'on':
+            power_driver.on(**context)
+        elif power_change == 'off':
+            power_driver.off(**context)
+        else:
+            raise PowerActionFail(
+                "Invalid power change %s" % power_change)
     except PowerActionFail as error:
         message = "Node could not be powered %s: %s" % (
             power_change, error)
@@ -254,9 +283,14 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     for waiting_time in default_waiting_policy:
         # Perform power change.
         try:
-            yield deferToThread(
-                perform_power_change, system_id, hostname, power_type,
-                power_change, context)
+            # Check if power_type has PowerDriver support.
+            if is_power_driver_available(power_type):
+                perform_power_driver_change(
+                    system_id, hostname, power_type, power_change, context)
+            else:
+                yield deferToThread(
+                    perform_power_change, system_id, hostname, power_type,
+                    power_change, context)
         except PowerActionFail:
             raise
         # If the power_type doesn't support querying the power state:
@@ -266,11 +300,20 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
         # Wait to let the node some time to change its power state.
         yield pause(waiting_time, clock)
         # Check current power state.
-        new_power_state = yield deferToThread(
-            perform_power_change, system_id, hostname, power_type,
-            'query', context)
+        if is_power_driver_available(power_type):
+            new_power_state = yield perform_power_driver_query(
+                system_id, hostname, power_type, context)
+        else:
+            new_power_state = yield deferToThread(
+                perform_power_change, system_id, hostname, power_type,
+                'query', context)
         if new_power_state == "unknown" or new_power_state == power_change:
             yield power_change_success(system_id, hostname, power_change)
+            return
+        # Retry logic is handled by power driver
+        # Once all power types have had templates converted to power drivers
+        # this method will need to be re-factored.
+        if is_power_driver_available(power_type):
             return
 
     # Failure: the power state of the node hasn't changed: mark it as
@@ -313,6 +356,15 @@ def perform_power_query(system_id, hostname, power_type, context):
     return action.execute(power_change='query', **context)
 
 
+@inlineCallbacks
+def perform_power_driver_query(system_id, hostname, power_type, context):
+    """Issue the given `power_query` command for power driver."""
+    # Get power driver for given power type
+    power_driver = PowerDriverRegistry[power_type]
+    power_state = yield power_driver.query(**context)
+    returnValue(power_state)
+
+
 @asynchronous
 @inlineCallbacks
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
@@ -336,8 +388,14 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         error = None
         # Perform power query.
         try:
-            power_state = yield deferToThread(
-                perform_power_query, system_id, hostname, power_type, context)
+            # Check if power_type has PowerDriver support.
+            if is_power_driver_available(power_type):
+                power_state = yield perform_power_driver_query(
+                    system_id, hostname, power_type, context)
+            else:
+                power_state = yield deferToThread(
+                    perform_power_query, system_id,
+                    hostname, power_type, context)
             if power_state not in ("on", "off", "unknown"):
                 # This is considered an error.
                 raise PowerActionFail(power_state)
@@ -348,6 +406,8 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
 
             # Wait before trying again.
             yield pause(waiting_time, clock)
+            if is_power_driver_available(power_type):
+                break
             continue
         yield power_state_update(system_id, power_state)
         returnValue(power_state)
