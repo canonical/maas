@@ -44,6 +44,172 @@ def make_interface(network=None):
     return interface
 
 
+def find_by_network_for_static_allocation(network):
+    network = IPNetwork(network)
+    return list(
+        NodeGroupInterface.objects
+        .find_by_network_for_static_allocation(network))
+
+
+def get_by_network_for_static_allocation(network):
+    network = IPNetwork(network)
+    return (
+        NodeGroupInterface.objects
+        .get_by_network_for_static_allocation(network))
+
+
+class TestFindingByNetwork(MAASServerTestCase):
+    """Tests for `find_by_network_for_static_allocation`, etc."""
+
+    scenarios = (
+        ("by_network_for_static_allocation",
+         {"find": find_by_network_for_static_allocation,
+          "get": get_by_network_for_static_allocation}),
+    )
+
+    def test__finds_matching_interface(self):
+        interface = make_interface()
+        self.assertSequenceEqual([interface], self.find(interface.network))
+        self.assertEqual(interface, self.get(interface.network))
+
+    def test__finds_all_matching_interfaces(self):
+        network = factory.make_ipv4_network()
+        interfaces = [make_interface(network=network) for _ in xrange(3)]
+        self.assertSequenceEqual(interfaces, self.find(network))
+        self.assertEqual(interfaces[0], self.get(network))
+
+    def test__finds_only_matching_interfaces(self):
+        network1 = factory.make_ipv4_network()
+        network1_ifs = [make_interface(network=network1) for _ in xrange(3)]
+        network2 = factory.make_ipv4_network(disjoint_from=[network1])
+        network2_ifs = [make_interface(network=network2) for _ in xrange(3)]
+        self.assertSequenceEqual(network1_ifs, self.find(network1))
+        self.assertSequenceEqual(network2_ifs, self.find(network2))
+        self.assertEqual(network1_ifs[0], self.get(network1))
+        self.assertEqual(network2_ifs[0], self.get(network2))
+
+    def test__does_not_find_non_matching_interface(self):
+        interface = make_interface()
+        network = factory.make_ipv4_network(disjoint_from=[interface.network])
+        self.assertSequenceEqual([], self.find(network))
+        self.assertIsNone(self.get(network))
+
+
+def find_by_address(address):
+    address = IPAddress(address)
+    return list(
+        NodeGroupInterface.objects
+        .find_by_address(address))
+
+
+def get_by_address(address):
+    address = IPAddress(address)
+    return (
+        NodeGroupInterface.objects
+        .get_by_address(address))
+
+
+def find_by_address_for_static_allocation(address):
+    address = IPAddress(address)
+    return list(
+        NodeGroupInterface.objects
+        .find_by_address_for_static_allocation(address))
+
+
+def get_by_address_for_static_allocation(address):
+    address = IPAddress(address)
+    return (
+        NodeGroupInterface.objects
+        .get_by_address_for_static_allocation(address))
+
+
+class TestFindingByAddress(MAASServerTestCase):
+    """Tests for `find_by_address`, etc."""
+
+    scenarios = (
+        ("by_address",
+         {"find": find_by_address,
+          "get": get_by_address}),
+        ("by_address_for_static_allocation",
+         {"find": find_by_address_for_static_allocation,
+          "get": get_by_address_for_static_allocation}),
+    )
+
+    def test__finds_matching_interface(self):
+        interface = make_interface()
+        address = factory.pick_ip_in_network(interface.network)
+        self.assertSequenceEqual([interface], self.find(address))
+        self.assertEqual(interface, self.get(address))
+
+    def test__finds_all_matching_interfaces(self):
+        network = factory.make_ipv4_network()
+        interfaces = [make_interface(network=network) for _ in xrange(3)]
+        address = factory.pick_ip_in_network(network)
+        self.assertSequenceEqual(interfaces, self.find(address))
+        self.assertEqual(interfaces[0], self.get(address))
+
+    def test__finds_only_matching_interfaces(self):
+        network1 = factory.make_ipv4_network()
+        network1_addr = factory.pick_ip_in_network(network1)
+        network1_ifs = [make_interface(network=network1) for _ in xrange(3)]
+        network2 = factory.make_ipv4_network(disjoint_from=[network1])
+        network2_addr = factory.pick_ip_in_network(network2)
+        network2_ifs = [make_interface(network=network2) for _ in xrange(3)]
+        self.assertSequenceEqual(network1_ifs, self.find(network1_addr))
+        self.assertSequenceEqual(network2_ifs, self.find(network2_addr))
+        self.assertEqual(network1_ifs[0], self.get(network1_addr))
+        self.assertEqual(network2_ifs[0], self.get(network2_addr))
+
+    def test__does_not_find_non_matching_interface(self):
+        interface = make_interface()
+        network = factory.make_ipv4_network(disjoint_from=[interface.network])
+        address = factory.pick_ip_in_network(network)
+        self.assertSequenceEqual([], self.find(address))
+        self.assertIsNone(self.get(address))
+
+
+class TestFindingByAddressForStaticAllocation(MAASServerTestCase):
+    """Tests for `{find,get}_by_address_for_static_allocation` specifically."""
+
+    def test__finds_only_interfaces_with_static_range(self):
+        network = factory.make_ipv4_network()
+        address = factory.pick_ip_in_network(network)
+        interfaces = [make_interface(network) for _ in xrange(4)]
+
+        if1, if2, if3, if4 = interfaces
+        # if1 is left alone.
+        self.assertIsNotNone(if1.static_ip_range_low)
+        self.assertIsNotNone(if1.static_ip_range_high)
+        # if2 doesn't have a lower bound on its static network range.
+        if2.static_ip_range_low = None
+        if2.save()
+        # if3 doesn't have an upper bound on its static network range.
+        if3.static_ip_range_high = None
+        if3.save()
+        # if3 doesn't have any bounds on its static network range.
+        if4.static_ip_range_low = None
+        if4.static_ip_range_high = None
+        if4.save()
+
+        # find_by_address_for_static_allocation() matches only if1.
+        self.assertSequenceEqual(
+            [if1], find_by_address_for_static_allocation(address))
+        # find_by_address() matches them all.
+        self.assertSequenceEqual(
+            interfaces, find_by_address(address))
+
+        # get_by_address_for_static_allocation() returns if1.
+        self.assertEqual(if1, get_by_address_for_static_allocation(address))
+        # get_by_address() returns if1 too.
+        self.assertEqual(if1, get_by_address(address))
+
+        if1.delete()
+        # Delete if1 and get_by_address_for_static_allocation() returns None.
+        self.assertIs(None, get_by_address_for_static_allocation(address))
+        # get_by_address() returns *if2* now.
+        self.assertEqual(if2, get_by_address(address))
+
+
 class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_network(self):

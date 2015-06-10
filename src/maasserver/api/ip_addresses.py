@@ -173,7 +173,8 @@ class IPAddressesHandler(OperationsHandler):
             try:
                 # Validate the passed address.
                 valid_address = IPAddress(requested_address)
-                ngi = NodeGroupInterface.objects.get_by_address(valid_address)
+                ngi = (NodeGroupInterface.objects
+                       .get_by_address_for_static_allocation(valid_address))
             except AddrFormatError:
                 raise MAASAPIBadRequest(
                     "Invalid requested_address parameter: %s" %
@@ -182,7 +183,8 @@ class IPAddressesHandler(OperationsHandler):
             try:
                 # Validate the passed network.
                 valid_network = IPNetwork(network)
-                ngi = NodeGroupInterface.objects.get_by_network(valid_network)
+                ngi = (NodeGroupInterface.objects
+                       .get_by_network_for_static_allocation(valid_network))
             except AddrFormatError:
                 raise MAASAPIBadRequest(
                     "Invalid network parameter: %s" % network)
@@ -190,16 +192,19 @@ class IPAddressesHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Must supply either a network or a requested_address.")
 
-        if ngi is not None:
-            sip = self.claim_ip(
-                request.user, ngi, requested_address, mac_address,
-                hostname=hostname)
-            from maasserver.dns.config import dns_update_zones
-            dns_update_zones([ngi.nodegroup])
-            return sip
-        raise MAASAPIBadRequest(
-            "No network found matching %s; you may be requesting an IP "
-            "on a network with no static IP range defined." % network)
+        if ngi is None:
+            raise MAASAPIBadRequest(
+                "No network found matching %s; you may be requesting an IP "
+                "on a network with no static IP range defined." % network)
+
+        sip = self.claim_ip(
+            request.user, ngi, requested_address, mac_address,
+            hostname=hostname)
+
+        from maasserver.dns.config import dns_update_zones
+        dns_update_zones([ngi.nodegroup])
+
+        return sip
 
     @operation(idempotent=False)
     def release(self, request):

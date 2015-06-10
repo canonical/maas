@@ -18,6 +18,7 @@ __all__ = [
 
 
 from collections import defaultdict
+from textwrap import dedent
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -42,6 +43,7 @@ from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
+    IPNetwork,
     IPRange,
 )
 from netaddr.core import AddrFormatError
@@ -66,27 +68,111 @@ if REVEAL_IPv6:
 class NodeGroupInterfaceManager(Manager):
     """Manager for NodeGroupInterface objects"""
 
-    def get_by_network(self, network):
-        """Find the NodeGroupInterface for a particular netaddr.IPNetwork"""
-        interfaces = (
-            self.filter(nodegroup__status=NODEGROUP_STATUS.ENABLED)
-                .exclude(static_ip_range_low__isnull=True)
-                .exclude(static_ip_range_high__isnull=True)
-        )
+    find_by_network_for_static_allocation_query = dedent("""\
+    SELECT ngi.*
+      FROM maasserver_nodegroup AS ng,
+           maasserver_nodegroupinterface AS ngi
+     WHERE ng.status = %s
+       AND ngi.nodegroup_id = ng.id
+       AND ngi.static_ip_range_low IS NOT NULL
+       AND ngi.static_ip_range_high IS NOT NULL
+       AND (ngi.ip & ngi.subnet_mask) = (INET %s)
+     ORDER BY ng.id, ngi.id
+    """)
+
+    def find_by_network_for_static_allocation(self, network):
+        """Find all cluster interfaces with the given network.
+
+        Furthermore, each interface must also have a static range defined.
+        """
+        assert isinstance(network, IPNetwork), (
+            "%r is not an IPNetwork" % (network,))
+        return self.raw(
+            self.find_by_network_for_static_allocation_query,
+            [NODEGROUP_STATUS.ENABLED, network.network.format()])
+
+    def get_by_network_for_static_allocation(self, network):
+        """Return the first cluster interface with the given network.
+
+        Furthermore, the interface must also have a static range defined.
+        """
+        assert isinstance(network, IPNetwork), (
+            "%r is not an IPNetwork" % (network,))
+        interfaces = self.raw(
+            self.find_by_network_for_static_allocation_query + " LIMIT 1",
+            [NODEGROUP_STATUS.ENABLED, network.network.format()])
         for interface in interfaces:
-            if network == interface.network:
-                return interface
+            return interface  # This is stable because the query is ordered.
+        else:
+            return None
+
+    find_by_address_query = dedent("""\
+    SELECT ngi.*
+      FROM maasserver_nodegroup AS ng,
+           maasserver_nodegroupinterface AS ngi
+     WHERE ng.status = %s
+       AND ngi.nodegroup_id = ng.id
+       AND (ngi.ip & ngi.subnet_mask) = (INET %s & ngi.subnet_mask)
+     ORDER BY ng.id, ngi.id
+    """)
+
+    def find_by_address(self, address):
+        """Find all cluster interfaces for a given address."""
+        assert isinstance(address, IPAddress), (
+            "%r is not an IPAddress" % (address,))
+        return self.raw(
+            self.find_by_address_query,
+            [NODEGROUP_STATUS.ENABLED, address.format()])
 
     def get_by_address(self, address):
-        """Find the NodeGroupInterface for a particular netaddr.IPAddress"""
-        interfaces = (
-            self.filter(nodegroup__status=NODEGROUP_STATUS.ENABLED)
-                .exclude(static_ip_range_low__isnull=True)
-                .exclude(static_ip_range_high__isnull=True)
-        )
+        """Return the first interface that could contain `address`."""
+        assert isinstance(address, IPAddress), (
+            "%r is not an IPAddress" % (address,))
+        interfaces = self.raw(
+            self.find_by_address_query + " LIMIT 1",
+            [NODEGROUP_STATUS.ENABLED, address.format()])
         for interface in interfaces:
-            if address in interface.network:
-                return interface
+            return interface  # This is stable because the query is ordered.
+        else:
+            return None
+
+    find_by_address_for_static_allocation_query = dedent("""\
+    SELECT ngi.*
+      FROM maasserver_nodegroup AS ng,
+           maasserver_nodegroupinterface AS ngi
+     WHERE ng.status = %s
+       AND ngi.nodegroup_id = ng.id
+       AND ngi.static_ip_range_low IS NOT NULL
+       AND ngi.static_ip_range_high IS NOT NULL
+       AND (ngi.ip & ngi.subnet_mask) = (INET %s & ngi.subnet_mask)
+     ORDER BY ng.id, ngi.id
+    """)
+
+    def find_by_address_for_static_allocation(self, address):
+        """Find all cluster interfaces for the given address.
+
+        Furthermore, each interface must also have a static range defined.
+        """
+        assert isinstance(address, IPAddress), (
+            "%r is not an IPAddress" % (address,))
+        return self.raw(
+            self.find_by_address_for_static_allocation_query,
+            [NODEGROUP_STATUS.ENABLED, address.format()])
+
+    def get_by_address_for_static_allocation(self, address):
+        """Return the first interface that could contain `address`.
+
+        Furthermore, the interface must also have a static range defined.
+        """
+        assert isinstance(address, IPAddress), (
+            "%r is not an IPAddress" % (address,))
+        interfaces = self.raw(
+            self.find_by_address_for_static_allocation_query + " LIMIT 1",
+            [NODEGROUP_STATUS.ENABLED, address.format()])
+        for interface in interfaces:
+            return interface  # This is stable because the query is ordered.
+        else:
+            return None
 
 
 class NodeGroupInterface(CleanSave, TimestampedModel):
