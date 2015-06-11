@@ -539,7 +539,7 @@ Updating copyright notices
 Use the `Bazaar Copyright Updater`_::
 
   bzr branch lp:bzr-update-copyright ~/.bazaar/plugins/update_copyright
-  bzr update-copyright --force-range
+  make copyright
 
 Then commit any changes.
 

@@ -257,6 +257,14 @@ format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities 
 format:
 	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
 
+# Update copyright dates from version history. Try to avoid updating
+# 3rd-party code by checking for "Canonical" or "MAAS" on the same line
+# as the copyright header.
+copyright:
+	@bzr ls --versioned --recursive --kind=file --null | \
+	    xargs -r0 egrep -iI 'copyright.*(canonical|maas)' -lZ | \
+	    xargs -r0 bzr update-copyright --quiet --force-range
+
 check: clean test
 
 docs/api.rst: bin/maas-region-admin src/maasserver/api/doc_handler.py syncdb
@@ -337,9 +345,10 @@ define phony_targets
   build
   check
   clean
-  clean-styles
   clean+db
+  clean-styles
   configure-buildout
+  copyright
   coverage-report
   dbharness
   distclean
