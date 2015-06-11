@@ -15,22 +15,15 @@ __metaclass__ = type
 __all__ = []
 
 import re
-from urlparse import urlparse
 
 from maastesting.factory import factory
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
-    get_main_archive_url,
     re_config_file,
     UEFIBootMethod,
 )
-from provisioningserver.rpc import region
-from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     ContainsAll,
@@ -38,10 +31,6 @@ from testtools.matchers import (
     MatchesAll,
     MatchesRegex,
     StartsWith,
-)
-from twisted.internet.defer import (
-    inlineCallbacks,
-    succeed,
 )
 
 
@@ -68,30 +57,6 @@ def compose_config_path(mac=None, arch=None, subarch=None):
         return "grub/grub.cfg-{arch}-{subarch}".format(
             arch=arch, subarch=subarch)
     return "grub/grub.cfg"
-
-
-class TestGetMainArchiveUrl(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def patch_rpc_methods(self, return_value=None):
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(region.GetArchiveMirrors)
-        protocol.GetArchiveMirrors.return_value = return_value
-        return protocol, connecting
-
-    @inlineCallbacks
-    def test_get_main_archive_url(self):
-        mirrors = {
-            'main': urlparse(factory.make_url('ports')),
-            'ports': urlparse(factory.make_url('ports')),
-        }
-        return_value = succeed(mirrors)
-        protocol, connecting = self.patch_rpc_methods(return_value)
-        self.addCleanup((yield connecting))
-        value = yield get_main_archive_url()
-        expected_url = mirrors['main'].geturl()
-        self.assertEqual(expected_url, value)
 
 
 class TestUEFIBootMethodRender(MAASTestCase):

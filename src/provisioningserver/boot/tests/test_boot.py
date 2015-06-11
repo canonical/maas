@@ -16,6 +16,7 @@ __all__ = []
 
 import errno
 import os
+from urlparse import urlparse
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
@@ -30,10 +31,17 @@ from provisioningserver.boot import (
     BootMethod,
     BytesReader,
     gen_template_filenames,
+    get_main_archive_url,
+    get_ports_archive_url,
     get_remote_mac,
 )
+from provisioningserver.rpc import region
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 import tempita
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
 from twisted.python import context
 
 
@@ -150,3 +158,40 @@ class TestBootMethod(MAASTestCase):
         self.assertRaises(
             IOError, method.get_template,
             *factory.make_names("purpose", "arch", "subarch"))
+
+
+class TestGetArchiveUrl(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def patch_rpc_methods(self, return_value=None):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(region.GetArchiveMirrors)
+        protocol.GetArchiveMirrors.return_value = return_value
+        return protocol, connecting
+
+    @inlineCallbacks
+    def test_get_main_archive_url(self):
+        mirrors = {
+            'main': urlparse(factory.make_url('ports')),
+            'ports': urlparse(factory.make_url('ports')),
+        }
+        return_value = succeed(mirrors)
+        protocol, connecting = self.patch_rpc_methods(return_value)
+        self.addCleanup((yield connecting))
+        value = yield get_main_archive_url()
+        expected_url = mirrors['main'].geturl()
+        self.assertEqual(expected_url, value)
+
+    @inlineCallbacks
+    def test_get_ports_archive_url(self):
+        mirrors = {
+            'main': urlparse(factory.make_url('ports')),
+            'ports': urlparse(factory.make_url('ports')),
+        }
+        return_value = succeed(mirrors)
+        protocol, connecting = self.patch_rpc_methods(return_value)
+        self.addCleanup((yield connecting))
+        value = yield get_ports_archive_url()
+        expected_url = mirrors['ports'].geturl()
+        self.assertEqual(expected_url, value)

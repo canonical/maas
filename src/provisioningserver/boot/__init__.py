@@ -28,15 +28,44 @@ from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import (
     locate_config,
     tftp,
 )
 from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
+from provisioningserver.utils.twisted import asynchronous
 import tempita
 from tftp.backend import IReader
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+)
 from zope.interface import implementer
+
+
+@asynchronous
+def get_archive_mirrors():
+    client = getRegionClient()
+    return client(GetArchiveMirrors)
+
+
+@asynchronous(timeout=10)
+@inlineCallbacks
+def get_main_archive_url():
+    mirrors = yield get_archive_mirrors()
+    main_url = mirrors['main'].geturl()
+    returnValue(main_url)
+
+
+@asynchronous(timeout=10)
+@inlineCallbacks
+def get_ports_archive_url():
+    mirrors = yield get_archive_mirrors()
+    ports_url = mirrors['ports'].geturl()
+    returnValue(ports_url)
 
 
 @implementer(IReader)
@@ -254,6 +283,7 @@ class BootMethodRegistry(Registry):
 # Import the supported boot methods after defining BootMethod.
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi import UEFIBootMethod
+from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
 from provisioningserver.boot.powerkvm import PowerKVMBootMethod
 from provisioningserver.boot.powernv import PowerNVBootMethod
 from provisioningserver.boot.windows import WindowsPXEBootMethod
@@ -262,6 +292,7 @@ from provisioningserver.boot.windows import WindowsPXEBootMethod
 builtin_boot_methods = [
     PXEBootMethod(),
     UEFIBootMethod(),
+    UEFIARM64BootMethod(),
     PowerKVMBootMethod(),
     PowerNVBootMethod(),
     WindowsPXEBootMethod(),

@@ -27,6 +27,7 @@ from provisioningserver.boot import (
     BootMethod,
     BootMethodInstallError,
     BytesReader,
+    get_main_archive_url,
     get_parameters,
     utils,
 )
@@ -34,15 +35,8 @@ from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
 )
-from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
 
 
 ARCHIVE_PATH = "/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"
@@ -86,20 +80,6 @@ re_config_file = r'''
 re_config_file = re_config_file.format(
     re_mac_address=re_mac_address)
 re_config_file = re.compile(re_config_file, re.VERBOSE)
-
-
-@asynchronous
-def get_archive_mirrors():
-    client = getRegionClient()
-    return client(GetArchiveMirrors)
-
-
-@asynchronous(timeout=10)
-@inlineCallbacks
-def get_main_archive_url():
-    mirrors = yield get_archive_mirrors()
-    main_url = mirrors['main'].geturl()
-    returnValue(main_url)
 
 
 def archive_grubnet_urls(main_url):
