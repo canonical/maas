@@ -17,8 +17,8 @@ __all__ = [
 
 
 from maasserver.models import Node
+from maasserver.models.signals.base import connect_to_field_change
 from maasserver.node_status import get_failed_status
-from maasserver.signals import connect_to_field_change
 
 # Useful to disconnect this in testing.
 MONITOR_CANCEL_CONNECT = True

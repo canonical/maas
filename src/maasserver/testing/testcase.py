@@ -75,21 +75,18 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     def setUp(self):
         super(MAASRegionTestCaseBase, self).setUp()
 
+        # Avoid circular imports.
+        from maasserver.models import signals
+
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         from maasserver.clusterrpc.testing import power_parameters
         self.useFixture(power_parameters.StaticPowerTypesFixture())
 
-        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
+        # XXX: allenap bug=1427628 2015-03-03: These should not be here.
         # Disconnect the monitor cancellation as it's triggered by a signal.
-        # Avoid circular imports.
-        from maasserver import monitor_connect
-        self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
-
-        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
+        self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', False)
         # Disconnect the status transition event to speed up tests.
-        # Avoid circular imports.
-        from maasserver import event_connect
-        self.patch(event_connect, 'STATE_TRANSITION_EVENT_CONNECT', False)
+        self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
 
     def client_log_in(self, as_admin=False):
         """Log `self.client` into MAAS.

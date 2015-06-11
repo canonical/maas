@@ -18,9 +18,9 @@ from datetime import timedelta
 
 from maasserver.enum import POWER_STATE
 from maasserver.models import Node
+from maasserver.models.signals.base import connect_to_field_change
 from maasserver.node_status import QUERY_TRANSITIONS
 from maasserver.rpc import getClientFor
-from maasserver.signals import connect_to_field_change
 from maasserver.utils.orm import (
     post_commit,
     transactional,

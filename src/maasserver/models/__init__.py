@@ -214,17 +214,6 @@ class MAASAuthorizationBackend(ModelBackend):
                 'Invalid permission check (invalid object type).')
 
 
-from maasserver.dns import connect as dns_connect
-ignore_unused(dns_connect)
-
-from maasserver import dhcp_connect
-ignore_unused(dhcp_connect)
-
-from maasserver import monitor_connect
-ignore_unused(monitor_connect)
-
-from maasserver import event_connect
-ignore_unused(event_connect)
-
-from maasserver import node_query
-ignore_unused(node_query)
+# Ensure that all signals modules are loaded.
+from maasserver.models import signals
+ignore_unused(signals)

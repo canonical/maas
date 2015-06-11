@@ -26,7 +26,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
 )
-from maasserver.signals import connect_to_field_change
+from maasserver.models.signals.base import connect_to_field_change
 
 
 def dhcp_post_change_NodeGroupInterface(instance, old_values, **kwargs):

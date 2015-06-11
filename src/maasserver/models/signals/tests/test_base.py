@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.signals import connect_to_field_change
+from maasserver.models.signals.base import connect_to_field_change
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import FieldChangeTestModel

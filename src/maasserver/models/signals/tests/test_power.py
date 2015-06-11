@@ -16,6 +16,7 @@ __all__ = []
 
 import random
 
+from maasserver.models.signals import power
 from maasserver.node_status import (
     get_failed_status,
     NODE_STATUS,
@@ -52,17 +53,12 @@ from testtools.matchers import (
 )
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
-from twisted.python.reflect import namedModule
-
-# This import must go last or it won't import; there's some spaghetti imports
-# deep in there that unravel if you do this one weird thing.
-node_query = namedModule("maasserver.node_query")
 
 
 class TestStatusQueryEvent(MAASServerTestCase):
 
     def test_changing_status_of_node_emits_event(self):
-        self.patch_autospec(node_query, 'update_power_state_of_node_soon')
+        self.patch_autospec(power, 'update_power_state_of_node_soon')
         old_status = NODE_STATUS.COMMISSIONING
         node = factory.make_Node(status=old_status, power_type='virsh')
         node.status = get_failed_status(old_status)
@@ -70,38 +66,38 @@ class TestStatusQueryEvent(MAASServerTestCase):
         # update_power_state_of_node_soon is registered as a post-commit task,
         # so it's not called immediately.
         self.expectThat(
-            node_query.update_power_state_of_node_soon,
+            power.update_power_state_of_node_soon,
             MockNotCalled())
         # One post-commit hooks have been fired, then it's called.
         post_commit_hooks.fire()
         self.assertThat(
-            node_query.update_power_state_of_node_soon,
+            power.update_power_state_of_node_soon,
             MockCalledOnceWith(node.system_id))
 
     def test_changing_not_tracked_status_of_node_doesnt_emit_event(self):
-        self.patch_autospec(node_query, "update_power_state_of_node_soon")
+        self.patch_autospec(power, "update_power_state_of_node_soon")
         old_status = NODE_STATUS.ALLOCATED
         node = factory.make_Node(status=old_status, power_type="virsh")
         node.status = NODE_STATUS.DEPLOYING
         node.save()
         self.assertThat(
-            node_query.update_power_state_of_node_soon,
+            power.update_power_state_of_node_soon,
             MockNotCalled())
 
 
 class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
 
     def test__calls_update_power_state_of_node_after_wait_time(self):
-        self.patch_autospec(node_query, "update_power_state_of_node")
+        self.patch_autospec(power, "update_power_state_of_node")
         node = factory.make_Node(power_type="virsh")
         clock = Clock()
-        node_query.update_power_state_of_node_soon(node.system_id, clock=clock)
+        power.update_power_state_of_node_soon(node.system_id, clock=clock)
         self.assertThat(
-            node_query.update_power_state_of_node,
+            power.update_power_state_of_node,
             MockNotCalled())
-        clock.advance(node_query.WAIT_TO_QUERY.total_seconds())
+        clock.advance(power.WAIT_TO_QUERY.total_seconds())
         self.assertThat(
-            node_query.update_power_state_of_node,
+            power.update_power_state_of_node,
             MockCalledOnceWith(node.system_id))
 
 
@@ -122,7 +118,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             node.nodegroup,
             side_effect=always_succeed_with({"state": random_state}))
         self.assertThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Equals(random_state))
         self.assertThat(
             reload_object(node).power_state,
@@ -132,7 +128,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         node = factory.make_Node(power_type="virsh")
         node.delete()
         self.assertThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
 
     def test__handles_node_being_deleted_in_the_middle(self):
@@ -147,18 +143,18 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             d.addCallback(lambda _: getClientFor(uuid))
             return d
 
-        getClientFor = self.patch_autospec(node_query, "getClientFor")
+        getClientFor = self.patch_autospec(power, "getClientFor")
         getClientFor.side_effect = delete_node_then_get_client
 
         self.assertThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
 
     def test__updates_power_state_to_unknown_on_UnknownPowerType(self):
         node = factory.make_Node(power_type="virsh")
         self.prepare_rpc(node.nodegroup, side_effect=UnknownPowerType())
         self.expectThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Equals("unknown"))
         self.expectThat(
             reload_object(node).power_state,
@@ -168,7 +164,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         node = factory.make_Node(power_type="virsh")
         self.prepare_rpc(node.nodegroup, side_effect=NotImplementedError())
         self.expectThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Equals("unknown"))
         self.expectThat(
             reload_object(node).power_state,
@@ -179,7 +175,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         self.prepare_rpc(
             node.nodegroup, side_effect=PowerActionAlreadyInProgress())
         self.expectThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
         self.expectThat(
             reload_object(node).power_state,
@@ -188,10 +184,10 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
     def test__does_nothing_on_NoConnectionsAvailable(self):
         node = factory.make_Node(power_type="virsh", power_state="off")
         self.prepare_rpc(node.nodegroup, side_effect=None)
-        getClientFor = self.patch_autospec(node_query, "getClientFor")
+        getClientFor = self.patch_autospec(power, "getClientFor")
         getClientFor.side_effect = NoConnectionsAvailable()
         self.expectThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
         self.expectThat(
             reload_object(node).power_state,
@@ -201,7 +197,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         node = factory.make_Node(power_type="virsh")
         self.prepare_rpc(node.nodegroup, side_effect=PowerActionFail())
         self.expectThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Equals("error"))
         self.expectThat(
             reload_object(node).power_state,
@@ -211,7 +207,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         node = factory.make_Node(power_type="virsh")
         self.prepare_rpc(node.nodegroup, side_effect=factory.make_exception())
         self.assertThat(
-            node_query.update_power_state_of_node(node.system_id),
+            power.update_power_state_of_node(node.system_id),
             Equals("error"))
         self.expectThat(
             reload_object(node).power_state,

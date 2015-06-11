@@ -15,9 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 
-from maasserver import node_query
 from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import Event
+from maasserver.models.signals import power as node_query
 from maasserver.node_status import (
     get_failed_status,
     NODE_STATUS,
@@ -35,8 +35,8 @@ class TestStatusTransitionEvent(MAASServerTestCase):
     def setUp(self):
         super(TestStatusTransitionEvent, self).setUp()
         # Circular imports.
-        from maasserver import event_connect
-        self.patch(event_connect, 'STATE_TRANSITION_EVENT_CONNECT', True)
+        from maasserver.models import signals
+        self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', True)
 
     def test_changing_status_of_node_emits_event(self):
         self.addCleanup(node_query.enable)

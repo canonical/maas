@@ -28,10 +28,7 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from fixtures import LoggerFixture
-from maasserver import (
-    node_query,
-    preseed as preseed_module,
-)
+from maasserver import preseed as preseed_module
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
@@ -62,6 +59,7 @@ from maasserver.models import (
     node as node_module,
 )
 from maasserver.models.node import PowerInfo
+from maasserver.models.signals import power as node_query
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (

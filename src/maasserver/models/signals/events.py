@@ -21,7 +21,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.node import NODE_STATUS
-from maasserver.signals import connect_to_field_change
+from maasserver.models.signals.base import connect_to_field_change
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,

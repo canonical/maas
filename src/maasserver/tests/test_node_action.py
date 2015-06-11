@@ -25,7 +25,10 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.models import StaticIPAddress
+from maasserver.models import (
+    signals,
+    StaticIPAddress,
+)
 from maasserver.node_action import (
     Abort,
     Acquire,
@@ -797,9 +800,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
         return action_class(node, admin)
 
     def test_Commission_handles_rpc_errors(self):
-        from maasserver import node_query
-        self.addCleanup(node_query.enable)
-        node_query.disable()
+        self.addCleanup(signals.power.enable)
+        signals.power.disable()
 
         action = self.make_action(
             Commission, NODE_STATUS.READY, POWER_STATE.OFF)

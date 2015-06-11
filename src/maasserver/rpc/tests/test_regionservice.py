@@ -32,7 +32,6 @@ from maasserver import (
     dhcp,
     eventloop,
     locks,
-    monitor_connect,
 )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
@@ -47,6 +46,7 @@ from maasserver.models import (
     EventType,
     MACAddress,
     Node,
+    signals,
 )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
@@ -625,7 +625,7 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
-        self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
+        self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', False)
 
         system_id = yield deferToThread(self.create_deploying_node)
 

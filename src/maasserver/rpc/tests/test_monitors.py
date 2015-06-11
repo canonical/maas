@@ -22,7 +22,7 @@ import random
 from random import randint
 
 import crochet
-from maasserver import node_query
+from maasserver.models.signals import power as node_query
 from maasserver.node_status import (
     get_failed_status,
     NODE_FAILURE_STATUS_TRANSITIONS,

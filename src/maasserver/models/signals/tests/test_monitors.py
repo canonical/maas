@@ -41,8 +41,8 @@ class TestCancelMonitor(MAASServerTestCase):
     def setUp(self):
         super(TestCancelMonitor, self).setUp()
         # Circular imports.
-        from maasserver import monitor_connect
-        self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', True)
+        from maasserver.models import signals
+        self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', True)
 
     def prepare_rpc(self):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -50,10 +50,6 @@ class TestCancelMonitor(MAASServerTestCase):
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
 
     def test_changing_status_of_monitored_node_cancels_related_monitor(self):
-        from maasserver import node_query  # Circular import.
-        self.addCleanup(node_query.enable)
-        node_query.disable()
-
         done = threading.Event()
         rpc_fixture = self.prepare_rpc()
         status = random.choice(MONITORED_STATUSES)
