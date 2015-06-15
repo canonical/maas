@@ -553,7 +553,7 @@ class TestNodeGroupAPIForMSCM(APITestCase):
                 'op': self.endpoint,
                 # The deprecated version of the API doesn't need the
                 # 'model' key, but it will simply be ignored.
-                'model': 'mcsm',
+                'model': 'mscm',
                 'host': host,
                 'username': username,
                 'password': password,
