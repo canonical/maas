@@ -132,6 +132,15 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker.makeService(options)
         self.assertThat(mock_simplestreams_patch, MockCalledOnceWith())
 
+    def test_makeService_patches_tftp_service(self):
+        mock_tftp_patch = (
+            self.patch(plugin_module, 'add_term_error_code_to_tftp'))
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service_maker.makeService(options)
+        self.assertThat(mock_tftp_patch, MockCalledOnceWith())
+
     def test_image_download_service(self):
         options = Options()
         options["config-file"] = self.write_config({})
