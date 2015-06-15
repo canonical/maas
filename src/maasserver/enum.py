@@ -18,6 +18,9 @@ __all__ = [
     'FILESYSTEM_GROUP_TYPE_CHOICES',
     'FILESYSTEM_TYPE',
     'FILESYSTEM_TYPE_CHOICES',
+    'INTERFACE_TYPE',
+    'INTERFACE_TYPE_CHOICES',
+    'INTERFACE_TYPE_CHOICES_DICT',
     'IPADDRESS_TYPE',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
@@ -376,3 +379,22 @@ class FILESYSTEM_GROUP_TYPE:
 FILESYSTEM_GROUP_TYPE_CHOICES = (
     (FILESYSTEM_GROUP_TYPE.LVM_VG, "LVM VG"),
     )
+
+
+class INTERFACE_TYPE:
+    """The vocabulary of possible types for `Interface`."""
+    PHYSICAL = 'physical'
+    BOND = 'bond'
+    VLAN = 'vlan'
+    ALIAS = 'alias'
+
+
+INTERFACE_TYPE_CHOICES = (
+    (INTERFACE_TYPE.PHYSICAL, "Physical interface"),
+    (INTERFACE_TYPE.BOND, "Bond"),
+    (INTERFACE_TYPE.VLAN, "VLAN interface"),
+    (INTERFACE_TYPE.ALIAS, "Alias"),
+    )
+
+
+INTERFACE_TYPE_CHOICES_DICT = OrderedDict(INTERFACE_TYPE_CHOICES)

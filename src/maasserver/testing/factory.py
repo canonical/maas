@@ -31,6 +31,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
+    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_STATUS,
@@ -84,6 +85,7 @@ from maasserver.models.bootresourceset import (
     INSTALL_SET,
     XINSTALL_TYPES,
 )
+from maasserver.models.interface import Interface
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
@@ -602,6 +604,18 @@ class Factory(maastesting.factory.Factory):
         vlan = VLAN(name=name, vid=vid, fabric=fabric)
         vlan.save()
         return vlan
+
+    def make_Interface(self, type, mac=None, vlan=None, parents=None,
+                       name=None):
+        if name is None and type != INTERFACE_TYPE.VLAN:
+            name = self.make_name('name')
+        if vlan is None:
+            vlan = self.make_VLAN()
+        interface = Interface(mac=mac, type=type, name=name, vlan=vlan)
+        interface.save()
+        if parents:
+            interface.parents.add(*parents)
+        return reload_object(interface)
 
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):

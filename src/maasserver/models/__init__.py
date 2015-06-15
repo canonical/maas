@@ -77,6 +77,7 @@ from maasserver.models.fabric import Fabric
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
+from maasserver.models.interface import Interface
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
@@ -106,12 +107,39 @@ from piston.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    BootResource, BootResourceFile, BootResourceSet, CandidateName,
-    ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
-    Fabric, FileStorage, Filesystem, FilesystemGroup, LargeFile, LicenseKey,
-    StaticIPAddress, MACAddress, MACStaticIPAddressLink, Network, NodeGroup,
-    NodeGroupInterface, Partition, PartitionTable, SSHKey, Tag, UserProfile,
-    VirtualBlockDevice, VLAN, Zone, logger)
+    BootResource,
+    BootResourceFile,
+    BootResourceSet,
+    CandidateName,
+    ComponentError,
+    Config,
+    DHCPLease,
+    DownloadProgress,
+    Event,
+    EventType,
+    Fabric,
+    FileStorage,
+    Filesystem,
+    FilesystemGroup,
+    Interface,
+    LargeFile,
+    LicenseKey,
+    logger,
+    MACAddress,
+    MACStaticIPAddressLink,
+    Network,
+    NodeGroup,
+    NodeGroupInterface,
+    Partition,
+    PartitionTable,
+    SSHKey,
+    StaticIPAddress,
+    Tag,
+    UserProfile,
+    VirtualBlockDevice,
+    VLAN,
+    Zone,
+)
 
 
 # Connect the 'create_user' method to the post save signal of User.
