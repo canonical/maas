@@ -33,6 +33,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db import connection
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -83,6 +84,7 @@ from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.interface import Interface
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import (
     MACAddress,
@@ -719,6 +721,31 @@ class Node(CleanSave, TimestampedModel):
         # We don't use self.tags.values_list here because this does not
         # take advantage of the cache.
         return [tag.name for tag in self.tags.all()]
+
+    def get_interfaces(self):
+        """Return `QuerySet` for all the interfaces of this node."""
+        RECURSIVE_INTERFACE_QUERY = """
+            WITH RECURSIVE search_interfaces(id) AS (
+                    SELECT i.id
+                    FROM maasserver_interface i, maasserver_macaddress m
+                    WHERE m.id = i.mac_id AND m.node_id = %s
+                UNION ALL
+                    SELECT link.from_interface_id
+                    FROM search_interfaces si,
+                    maasserver_interface_parents link
+                WHERE si.id = link.to_interface_id
+            )
+            SELECT * FROM maasserver_interface
+            WHERE id in (SELECT id FROM search_interfaces);
+        """
+        cursor = connection.cursor()
+        cursor.execute(RECURSIVE_INTERFACE_QUERY, [self.id])
+        results = cursor.fetchall()
+        ids = [res[0] for res in results]
+        # Materialize the list of ID (that list will have a reasonnable size)
+        # and return a QuerySet instead of using Manager.raw() that returns a
+        # (very limited) RawQuerySet.
+        return Interface.objects.filter(id__in=ids)
 
     def clean_status(self):
         """Check a node's status transition against the node-status FSM."""

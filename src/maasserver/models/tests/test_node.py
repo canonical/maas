@@ -34,6 +34,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.dns import config as dns_config
 from maasserver.enum import (
+    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_PERMISSION,
@@ -1124,6 +1125,38 @@ class TestNode(MAASServerTestCase):
             ipv6_address,
         ]
         self.assertEqual([ipv6_address], node.ip_addresses())
+
+    def test_get_interfaces_returns_all_connected_interfaces(self):
+        mac = factory.make_MACAddress_with_Node()
+        phy1 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        phy2 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        phy3 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_Interface(
+            type=INTERFACE_TYPE.VLAN, parents=[phy1])
+        bond = factory.make_Interface(
+            type=INTERFACE_TYPE.BOND, parents=[phy2, phy3])
+        vlan_bond = factory.make_Interface(
+            type=INTERFACE_TYPE.VLAN, parents=[bond])
+
+        self.assertItemsEqual(
+            [phy1, phy2, phy3, vlan, bond, vlan_bond],
+            mac.node.get_interfaces())
+
+    def test_get_interfaces_ignores_interface_on_other_nodes(self):
+        other_mac = factory.make_MACAddress_with_Node()
+        factory.make_Interface(
+            mac=other_mac, type=INTERFACE_TYPE.PHYSICAL)
+        mac = factory.make_MACAddress_with_Node()
+        phy = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_Interface(
+            type=INTERFACE_TYPE.VLAN, parents=[phy])
+
+        self.assertItemsEqual(
+            [phy, vlan], mac.node.get_interfaces())
 
     def test_get_static_ip_mappings_returns_static_ip_and_mac(self):
         node = factory.make_Node(mac=True, disable_ipv4=False)
