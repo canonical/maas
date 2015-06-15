@@ -1624,11 +1624,17 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
             power_module, "perform_power_query")
         perform_power_query.return_value = state
 
+        # During the transition from template-based power drivers to Python
+        # drivers, alias perform_power_driver_query to perform_power_query.
+        self.patch(
+            power_module, "perform_power_driver_query",
+            perform_power_query)
+
         arguments = {
-            'system_id': factory.make_name(''),
-            'hostname': factory.make_name(''),
+            'system_id': factory.make_name('system'),
+            'hostname': factory.make_name('hostname'),
             'power_type': random.choice(QUERY_POWER_TYPES),
-            'context': factory.make_name(''),
+            'context': factory.make_name('context'),
         }
         observed = yield call_responder(
             Cluster(), cluster.PowerQuery, arguments)
