@@ -21,7 +21,10 @@ import os
 import socket
 from socket import error as socket_error
 
-from provisioningserver.monkey import force_simplestreams_to_use_urllib2
+from provisioningserver.monkey import (
+    add_term_error_code_to_tftp,
+    force_simplestreams_to_use_urllib2,
+)
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -233,6 +236,7 @@ class ProvisioningServiceMaker:
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
         force_simplestreams_to_use_urllib2()
+        add_term_error_code_to_tftp()
 
         from provisioningserver import services
         from provisioningserver.config import Config
