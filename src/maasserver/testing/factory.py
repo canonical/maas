@@ -56,6 +56,7 @@ from maasserver.models import (
     DownloadProgress,
     Event,
     EventType,
+    Fabric,
     FileStorage,
     Filesystem,
     FilesystemGroup,
@@ -75,6 +76,7 @@ from maasserver.models import (
     StaticIPAddress,
     Tag,
     VirtualBlockDevice,
+    VLAN,
     Zone,
 )
 from maasserver.models.bootresourceset import (
@@ -580,6 +582,26 @@ class Factory(maastesting.factory.Factory):
         key = SSLKey(key=key_string, user=user)
         key.save()
         return key
+
+    def make_Fabric(self, name=None):
+        if name is None:
+            name = self.make_name('fabric')
+        fabric = Fabric(name=name)
+        fabric.save()
+        return fabric
+
+    def make_VLAN(self, name=None, vid=None, fabric=None):
+        assert vid != 0, "VID=0 VLANs are auto-created"
+        if name is None:
+            name = self.make_name('vlan')
+        if vid is None:
+            # Don't create the vid=0 VLAN, it's auto-created.
+            vid = random.randint(1, 4095)
+        if fabric is None:
+            fabric = self.make_Fabric()
+        vlan = VLAN(name=name, vid=vid, fabric=fabric)
+        vlan.save()
+        return vlan
 
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):

@@ -29,6 +29,7 @@ __all__ = [
     'FileStorage',
     'Filesystem',
     'FilesystemGroup',
+    'Interface',
     'LargeFile',
     'LicenseKey',
     'logger',
@@ -72,6 +73,7 @@ from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
+from maasserver.models.fabric import Fabric
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
@@ -96,6 +98,7 @@ from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
+from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
@@ -105,10 +108,10 @@ from piston.doc import HandlerDocumentation
 ignore_unused(
     BootResource, BootResourceFile, BootResourceSet, CandidateName,
     ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
-    FileStorage, Filesystem, FilesystemGroup, LargeFile, LicenseKey,
+    Fabric, FileStorage, Filesystem, FilesystemGroup, LargeFile, LicenseKey,
     StaticIPAddress, MACAddress, MACStaticIPAddressLink, Network, NodeGroup,
     NodeGroupInterface, Partition, PartitionTable, SSHKey, Tag, UserProfile,
-    VirtualBlockDevice, Zone, logger)
+    VirtualBlockDevice, VLAN, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
