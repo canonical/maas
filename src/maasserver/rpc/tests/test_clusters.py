@@ -18,33 +18,12 @@ from copy import deepcopy
 
 from django.core.exceptions import ValidationError
 from fixtures import FakeLogger
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUP_STATUS_CHOICES,
-)
-from maasserver.rpc.clusters import (
-    get_cluster_status,
-    register_cluster,
-)
+from maasserver.enum import NODEGROUP_STATUS
+from maasserver.rpc.clusters import register_cluster
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.rpc.exceptions import NoSuchCluster
 from testtools.matchers import Equals
-
-
-class TestGetClusterStatus(MAASServerTestCase):
-
-    def test_returns_empty_list_when_cluster_does_not_exist(self):
-        uuid = factory.make_UUID()
-        self.assertRaises(NoSuchCluster, get_cluster_status, uuid)
-
-    def test_returns_cluster_status(self):
-        status = factory.pick_choice(NODEGROUP_STATUS_CHOICES)
-        nodegroup = factory.make_NodeGroup(status=status)
-        self.assertEqual(
-            {b"status": status},
-            get_cluster_status(nodegroup.uuid))
 
 
 class TestRegister(MAASServerTestCase):

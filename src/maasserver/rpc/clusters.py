@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "get_cluster_status",
     "register_cluster",
 ]
 
@@ -25,27 +24,10 @@ from maasserver.forms import NodeGroupDefineForm
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
 
 
 maaslog = get_maas_logger('rpc.clusters')
-
-
-@synchronous
-@transactional
-def get_cluster_status(uuid):
-    """Return the status of the given cluster.
-
-    Return it as a structure suitable for returning in the response for
-    :py:class:`~provisioningserver.rpc.region.GetClusterStatus`.
-    """
-    try:
-        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
-    except NodeGroup.DoesNotExist:
-        raise NoSuchCluster.from_uuid(uuid)
-    else:
-        return {b"status": nodegroup.status}
 
 
 @synchronous

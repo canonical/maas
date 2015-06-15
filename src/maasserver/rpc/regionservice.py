@@ -208,11 +208,6 @@ class Region(RPCProtocol):
         d = deferToThread(configuration.get_proxies)
         return d
 
-    @region.GetClusterStatus.responder
-    def get_cluster_status(self, uuid):
-        d = deferToThread(clusters.get_cluster_status, uuid)
-        return d
-
     @region.MarkNodeFailed.responder
     def mark_node_failed(self, system_id, error_description):
         """mark_node_failed()
