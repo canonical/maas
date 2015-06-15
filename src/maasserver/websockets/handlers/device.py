@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 from maasserver.clusterrpc import dhcp
-from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -312,7 +311,7 @@ class DeviceHandler(TimestampedModelHandler):
             ip_assignment = nic["ip_assignment"]
             if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
                 sticky_ip = mac_address.set_static_ip(
-                    nic["ip_address"], self.user)
+                    nic["ip_address"], self.user, update_host_maps=False)
                 external_static_ips.append(
                     (sticky_ip, mac_address))
             elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
@@ -335,7 +334,7 @@ class DeviceHandler(TimestampedModelHandler):
                 # Claim the static ip.
                 sticky_ips = mac_address.claim_static_ips(
                     alloc_type=IPADDRESS_TYPE.STICKY,
-                    requested_address=ip_address)
+                    requested_address=ip_address, update_host_maps=False)
                 assigned_sticky_ips.extend([
                     (static_ip, mac_address)
                     for static_ip in sticky_ips
@@ -393,7 +392,8 @@ class DeviceHandler(TimestampedModelHandler):
         log_static_allocations(
             device_obj, external_static_ips, assigned_sticky_ips)
         if len(external_static_ips) > 0 or len(assigned_sticky_ips) > 0:
-            dns_update_zones([NodeGroup.objects.ensure_master()])
+            from maasserver.dns import config as dns_config
+            dns_config.dns_update_zones([NodeGroup.objects.ensure_master()])
 
         return self.full_dehydrate(device_obj)
 

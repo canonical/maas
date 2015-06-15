@@ -40,7 +40,6 @@ from maasserver.api.utils import (
     get_optional_param,
 )
 from maasserver.clusterrpc.power_parameters import get_power_types
-from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -549,12 +548,7 @@ class NodeHandler(OperationsHandler):
 
         sticky_ips = mac_address.claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            requested_address=requested_address)
-        claims = [
-            (static_ip.ip, mac_address.mac_address.get_raw())
-            for static_ip in sticky_ips]
-        node.update_host_maps(claims)
-        dns_update_zones([node.nodegroup])
+            requested_address=requested_address, update_host_maps=True)
         maaslog.info(
             "%s: Sticky IP address(es) allocated: %s", node.hostname,
             ', '.join(allocation.ip for allocation in sticky_ips))

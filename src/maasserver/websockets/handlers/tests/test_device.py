@@ -17,6 +17,7 @@ __all__ = []
 import re
 
 from maasserver.clusterrpc import dhcp as dhcp_module
+from maasserver.dns import config as dns_config
 from maasserver.exceptions import NodeActionError
 from maasserver.fields import MAC
 from maasserver.forms import (
@@ -155,7 +156,7 @@ class TestDeviceHandler(MAASServerTestCase):
             interface = factory.make_NodeGroupInterface(nodegroup)
             primary_mac.cluster_interface = interface
             primary_mac.save()
-            primary_mac.claim_static_ips()
+            primary_mac.claim_static_ips(update_host_maps=False)
         return device
 
     def make_devices(self, nodegroup, number, owner=None):
@@ -190,6 +191,7 @@ class TestDeviceHandler(MAASServerTestCase):
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_devices(self):
+        self.patch(Node, "update_host_maps")
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
         nodegroup = factory.make_NodeGroup()
@@ -211,6 +213,7 @@ class TestDeviceHandler(MAASServerTestCase):
             "Number of queries is not independent to the number of nodes.")
 
     def test_list_returns_devices_only_viewable_by_user(self):
+        self.patch(Node, "update_host_maps")
         user = factory.make_User()
         # Create another user.
         factory.make_User()
@@ -327,7 +330,7 @@ class TestDeviceHandler(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         ip_address = factory.make_ipv4_address()
         self.patch(dhcp_module, "update_host_maps").return_value = []
-        mock_dns_update_zones = self.patch(device_module, "dns_update_zones")
+        mock_dns_update_zones = self.patch(dns_config.dns_update_zones)
         handler.create({
             "hostname": hostname,
             "primary_mac": mac,
@@ -371,6 +374,7 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(0), "Created StaticIPAddress was not deleted.")
 
     def test_create_creates_device_with_static_ip_assignment_implicit(self):
+        self.patch(Node, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
@@ -400,6 +404,7 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_creates_device_with_static_ip_assignment_explicit(self):
+        self.patch(Node, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
@@ -431,14 +436,15 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_with_static_ip_calls_dns_update_zones(self):
+        self.patch(device_module.update_host_maps).return_value = []
+        # self.patch(Node.update_host_maps).return_value = []
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         nodegroup = factory.make_NodeGroup()
         nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
-        self.patch(dhcp_module, "update_host_maps").return_value = []
-        mock_dns_update_zones = self.patch(device_module, "dns_update_zones")
+        mock_dns_update_zones = self.patch(dns_config.dns_update_zones)
         handler.create({
             "hostname": hostname,
             "primary_mac": mac,
@@ -453,6 +459,8 @@ class TestDeviceHandler(MAASServerTestCase):
             MockCalledOnceWith([NodeGroup.objects.ensure_master()]))
 
     def test_create_raises_failure_static_ip_update_hostmaps_fails(self):
+        self.patch(Node, "update_host_maps")
+        mock_update_host_maps = self.patch(dhcp_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
@@ -460,7 +468,6 @@ class TestDeviceHandler(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
         ip_address = nodegroup_interface.static_ip_range_low
-        mock_update_host_maps = self.patch(dhcp_module, "update_host_maps")
         mock_update_host_maps.return_value = [
             Failure(factory.make_exception()),
             ]
@@ -485,6 +492,7 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(0), "Created StaticIPAddress was not deleted.")
 
     def test_create_creates_device_with_static_and_external_ip(self):
+        self.patch(Node, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         hostname = factory.make_name("hostname")
@@ -539,6 +547,10 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "External StaticIPAddress was not created.")
 
     def test_create_deletes_device_and_ips_when_only_one_errors(self):
+        self.patch(Node, "update_host_maps")
+        self.patch(dhcp_module, "update_host_maps").side_effect = [
+            [], [Failure(factory.make_exception())],
+        ]
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         hostname = factory.make_name("hostname")
@@ -548,9 +560,6 @@ class TestDeviceHandler(MAASServerTestCase):
         static_ip_address = nodegroup_interface.static_ip_range_low
         mac_external = factory.make_mac_address()
         external_ip_address = factory.make_ipv4_address()
-        self.patch(dhcp_module, "update_host_maps").side_effect = [
-            [], [Failure(factory.make_exception())],
-        ]
         self.assertRaises(HandlerError, handler.create, {
             "hostname": hostname,
             "primary_mac": mac_static,

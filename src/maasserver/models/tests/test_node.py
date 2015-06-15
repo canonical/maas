@@ -93,7 +93,6 @@ from maasserver.utils.orm import (
 )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
-    MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -352,7 +351,8 @@ class TestNode(MAASServerTestCase):
         primary_mac = node.get_primary_mac()
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        primary_mac.claim_static_ips(alloc_type=random_alloc_type)
+        primary_mac.claim_static_ips(
+            alloc_type=random_alloc_type, update_host_maps=False)
         node.delete()
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
@@ -363,7 +363,8 @@ class TestNode(MAASServerTestCase):
         primary_mac = node.get_primary_mac()
         static_ip_addresses = set(
             static_ip_address.ip for static_ip_address in
-            primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY))
+            primary_mac.claim_static_ips(
+                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False))
         node.delete()
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
@@ -1277,7 +1278,7 @@ class TestNode(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
-        sips = node.get_primary_mac().claim_static_ips()
+        sips = node.get_primary_mac().claim_static_ips(update_host_maps=False)
         node.deallocate_static_ip_addresses()
         expected = {sip.ip.format() for sip in sips}
         self.assertThat(
@@ -1287,14 +1288,14 @@ class TestNode(MAASServerTestCase):
     def test_deallocate_static_ip_updates_dns(self):
         # silence remove_host_maps
         self.patch_autospec(node_module, "remove_host_maps")
-        dns_update_zones = self.patch(dns_config, 'dns_update_zones')
+        dns_update_zones = self.patch(dns_config.dns_update_zones)
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             owner=factory.make_User(), power_type='ether_wake')
-        node.get_primary_mac().claim_static_ips()
+        node.get_primary_mac().claim_static_ips(update_host_maps=False)
         node.deallocate_static_ip_addresses()
         self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
@@ -2455,7 +2456,8 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
 
     def test__returns_mapping_for_iface_on_managed_network(self):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        static_mappings = node.claim_static_ip_addresses()
+        static_mappings = node.claim_static_ip_addresses(
+            update_host_maps=False)
         [static_ip] = node.static_ip_addresses()
         [mac_address] = node.macaddress_set.all()
         self.assertEqual(
@@ -2469,7 +2471,8 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         [managed_interface] = node.nodegroup.get_managed_interfaces()
         node.pxe_mac.cluster_interface = managed_interface
         node.pxe_mac.save()
-        static_mappings = node.claim_static_ip_addresses()
+        static_mappings = node.claim_static_ip_addresses(
+            update_host_maps=False)
         [static_ip] = node.static_ip_addresses()
         mac_address = node.get_pxe_mac()
         self.assertEqual(
@@ -2479,7 +2482,8 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
     def test__ignores_mac_address_with_non_auto_addresses(self):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac_address = node.macaddress_set.first()
-        mac_address.claim_static_ips(IPADDRESS_TYPE.STICKY)
+        mac_address.claim_static_ips(
+            IPADDRESS_TYPE.STICKY, update_host_maps=False)
         self.assertRaises(
             StaticIPAddressTypeClash, mac_address.claim_static_ips)
         static_mappings = node.claim_static_ip_addresses()
@@ -2497,7 +2501,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         static_range = ngi.get_static_ip_range()
 
         pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY)[0]
+            alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)[0]
 
         self.expectThat(static_range, Contains(IPAddress(pxe_ip)))
 
@@ -2522,7 +2526,8 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         first_ip = ngi.get_static_ip_range()[0]
 
         pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)[0]
+            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
+            update_host_maps=False)[0]
         mac = MACAddress.objects.get(mac_address=pxe_mac)
         ip = mac.ip_addresses.first()
         self.expectThat(IPAddress(ip.ip), Equals(first_ip))
@@ -2540,10 +2545,12 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         first_ip = ngi.get_static_ip_range()[0]
 
         node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)
+            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
+            update_host_maps=False)
         with ExpectedException(StaticIPAddressUnavailable):
             node2.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)
+                alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
+                update_host_maps=False)
 
 
 class TestAsyncDellocateStaticIPAddress(MAASTransactionServerTestCase):
@@ -2587,7 +2594,7 @@ class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):
 
         with transaction.atomic():
             pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY)[0]
+                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)[0]
 
         mac = MACAddress.objects.get(mac_address=pxe_mac)
         ip = mac.ip_addresses.all()[0]
@@ -2598,7 +2605,8 @@ class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):
         for mac in macs:
             with transaction.atomic():
                 sips.append(node.claim_static_ip_addresses(
-                    mac=mac, alloc_type=IPADDRESS_TYPE.STICKY)[0])
+                    mac=mac, alloc_type=IPADDRESS_TYPE.STICKY,
+                    update_host_maps=False)[0])
 
         # try removing just the IP on the PXE MAC first
         deallocated = node.deallocate_static_ip_addresses(
@@ -2672,7 +2680,7 @@ class TestNode_Start(MAASServerTestCase):
         user_data = factory.make_bytes()
 
         with post_commit_hooks:
-            node.start(user, user_data=user_data)
+            node.start(user, user_data=user_data, update_host_maps=False)
 
         nud = NodeUserData.objects.get(node=node)
         self.assertEqual(user_data, nud.data)
@@ -2686,7 +2694,7 @@ class TestNode_Start(MAASServerTestCase):
         NodeUserData.objects.set_user_data(node, user_data)
 
         with post_commit_hooks:
-            node.start(user, user_data=None)
+            node.start(user, user_data=None, update_host_maps=False)
 
         self.assertFalse(NodeUserData.objects.filter(node=node).exists())
 
@@ -2697,13 +2705,15 @@ class TestNode_Start(MAASServerTestCase):
         node = self.make_acquired_node_with_mac(user, nodegroup)
 
         claim_static_ip_addresses = self.patch_autospec(
-            node, "claim_static_ip_addresses", spec_set=False)
+            node, "claim_static_ip_addresses")
         claim_static_ip_addresses.return_value = {}
 
         with post_commit_hooks:
             node.start(user)
 
-        self.expectThat(node.claim_static_ip_addresses, MockAnyCall())
+        self.expectThat(
+            claim_static_ip_addresses, MockCalledOnceWith(
+                update_host_maps=True))
 
     def test__only_claims_static_addresses_when_allocated(self):
         user = factory.make_User()
@@ -2718,7 +2728,7 @@ class TestNode_Start(MAASServerTestCase):
         claim_static_ip_addresses.return_value = {}
 
         with post_commit_hooks:
-            node.start(user)
+            node.start(user, update_host_maps=False)
 
         # No calls are made to claim_static_ip_addresses, since the node
         # isn't ALLOCATED.
@@ -2767,16 +2777,17 @@ class TestNode_Start(MAASServerTestCase):
         self.assertRaises(exception_type, node.start, user)
 
     def test__updates_dns(self):
+        dns_update_zones = self.patch(dns_config.dns_update_zones)
+        self.patch(Node, "update_host_maps")
+
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
-
-        dns_update_zones = self.patch(dns_config, "dns_update_zones")
 
         with post_commit_hooks:
             node.start(user)
 
         self.assertThat(
-            dns_update_zones, MockCalledOnceWith(node.nodegroup))
+            dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
     def test__set_zone(self):
         """Verifies whether the set_zone sets the node's zone"""
@@ -2795,7 +2806,7 @@ class TestNode_Start(MAASServerTestCase):
         self.patch_autospec(node, '_start_transition_monitor_async')
 
         with post_commit_hooks:
-            node.start(user)
+            node.start(user, update_host_maps=False)
 
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
@@ -2825,13 +2836,13 @@ class TestNode_Start(MAASServerTestCase):
 
         with ExpectedException(PraiseBeToJTVException):
             with post_commit_hooks:
-                node.start(user)
+                node.start(user, update_host_maps=False)
 
     def test__marks_allocated_node_as_deploying(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
         with post_commit_hooks:
-            node.start(user)
+            node.start(user, update_host_maps=False)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -2846,7 +2857,7 @@ class TestNode_Start(MAASServerTestCase):
         power_on_node = self.patch(node_module, "power_on_node")
         power_on_node.return_value = defer.succeed(None)
         with post_commit_hooks:
-            node.start(user)
+            node.start(user, update_host_maps=False)
         self.assertEqual(
             NODE_STATUS.DEPLOYED, reload_object(node).status)
 
@@ -2862,7 +2873,7 @@ class TestNode_Start(MAASServerTestCase):
         )
         self.patch(node, 'get_effective_power_info').return_value = power_info
         power_on_node = self.patch(node_module, "power_on_node")
-        node.start(user)
+        node.start(user, update_host_maps=False)
         self.assertThat(power_on_node, MockNotCalled())
 
     def test__does_not_start_nodes_the_user_cannot_edit(self):
@@ -2871,8 +2882,9 @@ class TestNode_Start(MAASServerTestCase):
         node = self.make_acquired_node_with_mac(owner)
 
         user = factory.make_User()
-        self.assertRaises(PermissionDenied, node.start, user)
-        self.assertThat(power_on_node, MockNotCalled())
+        with ExpectedException(PermissionDenied):
+            node.start(user, update_host_maps=False)
+            self.assertThat(power_on_node, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
         power_on_node = self.patch_autospec(node_module, "power_on_node")
@@ -2881,7 +2893,7 @@ class TestNode_Start(MAASServerTestCase):
 
         admin = factory.make_admin()
         with post_commit_hooks:
-            node.start(admin)
+            node.start(admin, update_host_maps=False)
 
         self.expectThat(
             power_on_node, MockCalledOnceWith(
@@ -2903,7 +2915,7 @@ class TestNode_Start(MAASServerTestCase):
 
         with ExpectedException(exception_type):
             with post_commit_hooks:
-                node.start(user)
+                node.start(user, update_host_maps=False)
 
         self.assertThat(deallocate_ips, MockCalledOnceWith(node))
 
@@ -2913,8 +2925,8 @@ class TestNode_Start(MAASServerTestCase):
         update_host_maps.return_value = [
             Failure(exception_type("You steaming nit, you!"))
         ]
-        deallocate_ips = self.patch(
-            node_module.StaticIPAddress.objects, 'deallocate_by_node')
+        deallocate = self.patch(
+            node_module.StaticIPAddress, 'deallocate')
 
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
@@ -2923,7 +2935,8 @@ class TestNode_Start(MAASServerTestCase):
             with post_commit_hooks:
                 node.start(user)
 
-        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+        self.assertThat(
+            deallocate, MockCalledOnceWith())
 
     def test_update_host_maps_updates_given_nodegroup_list(self):
         user = factory.make_User()

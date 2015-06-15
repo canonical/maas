@@ -21,7 +21,6 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_list
-from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -37,10 +36,7 @@ from maasserver.forms import (
     DeviceWithMACsForm,
     ReleaseIPForm,
 )
-from maasserver.models import (
-    MACAddress,
-    NodeGroup,
-)
+from maasserver.models import MACAddress
 from maasserver.models.node import Device
 from piston.utils import rc
 
@@ -185,27 +181,12 @@ class DeviceHandler(OperationsHandler):
             if requested_address is None:
                 sticky_ips = mac_address.claim_static_ips(
                     alloc_type=IPADDRESS_TYPE.STICKY,
-                    requested_address=requested_address)
-                claims = [
-                    (static_ip.ip, mac_address.mac_address.get_raw())
-                    for static_ip in sticky_ips]
-                device.update_host_maps(claims)
+                    requested_address=requested_address, update_host_maps=True)
             else:
                 sticky_ip = mac_address.set_static_ip(
-                    requested_address, request.user)
+                    requested_address, request.user, update_host_maps=True)
                 sticky_ips = [sticky_ip]
-                dhcp_managed_clusters = [
-                    cluster
-                    for cluster in NodeGroup.objects.all()
-                    if cluster.manages_dhcp()
-                ]
-                device.update_host_maps(
-                    [(sticky_ip.ip, mac_address.mac_address.get_raw())],
-                    dhcp_managed_clusters)
-            # Use the master cluster DNS zone for devices.
-            # This is a temporary measure until we support setting a specific
-            # zone for each MAC.
-            dns_update_zones([NodeGroup.objects.ensure_master()])
+
             maaslog.info(
                 "%s: Sticky IP address(es) allocated: %s", device.hostname,
                 ', '.join(allocation.ip for allocation in sticky_ips))

@@ -21,7 +21,7 @@ import random
 
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from maasserver.api import devices as api_devices
+from maasserver.dns import config as dns_config
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -281,7 +281,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -299,8 +299,8 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=self.logged_in_user, nodegroup=parent.nodegroup)
-        dns_update_zones = self.patch(api_devices, 'dns_update_zones')
-        update_host_maps = self.patch(node_module, "update_host_maps")
+        dns_update_zones = self.patch(dns_config.dns_update_zones)
+        update_host_maps = self.patch(Node.update_host_maps)
         update_host_maps.return_value = []  # No failures.
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
@@ -327,7 +327,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=factory.make_User())
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -339,7 +339,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             installable=False, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         response = self.client.post(
             get_device_uri(device),
             {
@@ -364,7 +364,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             owner=self.logged_in_user)
         second_mac = factory.make_MACAddress(node=device)
         # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         response = self.client.post(
             get_device_uri(device),
             {
@@ -383,6 +383,8 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.assertItemsEqual([second_mac], given_ip.macaddress_set.all())
 
     def test_creates_host_DHCP_and_DNS_mappings_with_given_ip(self):
+        dns_update_zones = self.patch(dns_config.dns_update_zones)
+        update_host_maps = self.patch(Node.update_host_maps)
         # Create a nodegroup for which we manage DHCP.
         factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED,
@@ -394,8 +396,6 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         device = factory.make_Node(
             installable=False, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
-        dns_update_zones = self.patch(api_devices, 'dns_update_zones')
-        update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = []  # No failures.
         requested_address = factory.make_ip_address()
         response = self.client.post(
@@ -473,7 +473,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             installable=False, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         response = self.client.post(
             get_device_uri(device),
             {
@@ -494,8 +494,8 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(node_module, "update_host_maps")
-        self.patch(node_module, "remove_host_maps")
+        self.patch(Node.update_host_maps)
+        self.patch(node_module, node_module.remove_host_maps.__name__)
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -549,8 +549,8 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             installable=False, mac_count=5, network=network,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(node_module, "update_host_maps")
-        self.patch(node_module, "remove_host_maps")
+        self.patch(Node.update_host_maps)
+        self.patch(node_module, node_module.remove_host_maps.__name__)
         self.assertThat(MACAddress.objects.all(), HasLength(5))
         for mac in MACAddress.objects.all():
             with transaction.atomic():
@@ -569,8 +569,8 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             installable=False, mac_count=2, network=network,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(node_module, "update_host_maps")
-        self.patch(node_module, "remove_host_maps")
+        self.patch(Node.update_host_maps)
+        self.patch(node_module, node_module.remove_host_maps.__name__)
         self.assertThat(MACAddress.objects.all(), HasLength(2))
         ips = []
         for mac in MACAddress.objects.all():
@@ -596,7 +596,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=factory.make_User())
         # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         self.patch(node_module, "remove_host_maps")
         with transaction.atomic():
             device.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)

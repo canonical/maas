@@ -19,6 +19,7 @@ __all__ = [
 
 from contextlib import contextmanager
 import doctest
+from importlib import import_module
 import types
 import unittest
 
@@ -177,7 +178,7 @@ class MAASTestCase(
         with active_test(result, self):
             super(MAASTestCase, self).__call__(result)
 
-    def patch(self, obj, attribute, value=mock.sentinel.unset):
+    def patch(self, obj, attribute=None, value=mock.sentinel.unset):
         """Patch `obj.attribute` with `value`.
 
         If `value` is unspecified, a new `MagicMock` will be created and
@@ -188,6 +189,14 @@ class MAASTestCase(
 
         :return: The patched-in object.
         """
+
+        # If 'attribute' is None, assume 'obj' is a 'fully-qualified' object,
+        # and assume that its __module__ is what we want to patch. For more
+        # complex use cases, the two-paramerter 'patch' will still need to
+        # be used.
+        if attribute is None:
+            attribute = obj.__name__
+            obj = import_module(obj.__module__)
         if value is mock.sentinel.unset:
             value = mock.MagicMock()
         super(MAASTestCase, self).patch(obj, attribute, value)

@@ -370,12 +370,12 @@ class TestClaimStaticIPs(MAASServerTestCase):
     def test__returns_empty_if_no_cluster_interface(self):
         # If mac.cluster_interface is None, we can't allocate any IP.
         mac = factory.make_MACAddress_with_Node()
-        self.assertEquals([], mac.claim_static_ips())
+        self.assertEquals([], mac.claim_static_ips(update_host_maps=False))
 
     def test__reserves_an_ip_address(self):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
-        [claimed_ip] = mac.claim_static_ips()
+        [claimed_ip] = mac.claim_static_ips(update_host_maps=False)
         self.assertIsInstance(claimed_ip, StaticIPAddress)
         self.assertNotEqual([], list(node.static_ip_addresses()))
         self.assertEqual(
@@ -387,7 +387,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
         node = make_node_attached_to_cluster_interfaces(
             ipv4_network=ipv4_network, ipv6_network=ipv6_network)
 
-        allocation = node.get_primary_mac().claim_static_ips()
+        allocation = node.get_primary_mac().claim_static_ips(
+            update_host_maps=False)
 
         # Allocated one IPv4 address and one IPv6 address.
         self.assertThat(allocation, HasLength(2))
@@ -401,7 +402,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
     def test__sets_type_as_required(self):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
-        [claimed_ip] = mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
+        [claimed_ip] = mac.claim_static_ips(
+            alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)
         self.assertEqual(IPADDRESS_TYPE.STICKY, claimed_ip.alloc_type)
 
     def test__returns_empty_if_no_static_range_defined(self):
@@ -410,7 +412,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         mac.cluster_interface.static_ip_range_low = None
         mac.cluster_interface.static_ip_range_high = None
         mac.cluster_interface.save()
-        self.assertEqual([], mac.claim_static_ips())
+        self.assertEqual([], mac.claim_static_ips(update_host_maps=False))
 
     def test__returns_only_addresses_for_interfaces_with_static_ranges(self):
         ipv6_network = factory.make_ipv6_network()
@@ -423,7 +425,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
         ipv6_interface.static_ip_range_high = None
         ipv6_interface.save()
 
-        allocation = node.get_primary_mac().claim_static_ips()
+        allocation = node.get_primary_mac().claim_static_ips(
+            update_host_maps=False)
         self.assertThat(allocation, HasLength(1))
         [sip] = allocation
         self.assertEqual(4, IPAddress(sip.ip).version)
@@ -432,7 +435,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
         iptype, iptype2 = pick_two_allocation_types()
-        mac.claim_static_ips(alloc_type=iptype)
+        mac.claim_static_ips(alloc_type=iptype, update_host_maps=False)
         self.assertRaises(
             StaticIPAddressTypeClash,
             mac.claim_static_ips, alloc_type=iptype2)
@@ -448,7 +451,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertRaises(
             StaticIPAddressTypeClash,
@@ -467,7 +471,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertRaises(
             StaticIPAddressTypeClash,
@@ -487,9 +492,11 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
-        allocation = mac.claim_static_ips(alloc_type=iptype2)
+        allocation = mac.claim_static_ips(
+            alloc_type=iptype2, update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [sip] = allocation
@@ -507,9 +514,11 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
 
-        allocation = mac.claim_static_ips(alloc_type=iptype2)
+        allocation = mac.claim_static_ips(
+            alloc_type=iptype2, update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [sip] = allocation
@@ -524,7 +533,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
             ipv4_network=ipv4_network, ipv6_network=ipv6_network)
         mac = node.get_primary_mac()
         iptype, iptype2 = pick_two_allocation_types()
-        mac.claim_static_ips(alloc_type=iptype)
+        mac.claim_static_ips(alloc_type=iptype, update_host_maps=False)
 
         self.assertRaises(
             StaticIPAddressTypeClash,
@@ -542,15 +551,17 @@ class TestClaimStaticIPs(MAASServerTestCase):
         # Clashing IPv6 address:
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
         # Pre-existing, but non-clashing, IPv4 address:
         [ipv4_sip] = mac.claim_static_ips(
             alloc_type=iptype2,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertItemsEqual(
             [ipv4_sip],
-            mac.claim_static_ips(alloc_type=iptype2))
+            mac.claim_static_ips(alloc_type=iptype2, update_host_maps=False))
 
     def test__returns_existing_IPv6_if_IPv4_clashes(self):
         # If the MAC is attached to IPv4 and IPv6 cluster interfaces, there's
@@ -564,15 +575,17 @@ class TestClaimStaticIPs(MAASServerTestCase):
         # Clashing IPv4 address:
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
         # Pre-existing, but non-clashing, IPv6 address:
         [ipv6_sip] = mac.claim_static_ips(
             alloc_type=iptype2,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertItemsEqual(
             [ipv6_sip],
-            mac.claim_static_ips(alloc_type=iptype2))
+            mac.claim_static_ips(alloc_type=iptype2, update_host_maps=False))
 
     def test__ignores_clashing_IPv4_when_requesting_IPv6(self):
         node = make_node_attached_to_cluster_interfaces()
@@ -582,11 +595,13 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
         allocation = mac.claim_static_ips(
             alloc_type=iptype2,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [ipv6_sip] = allocation
@@ -600,11 +615,13 @@ class TestClaimStaticIPs(MAASServerTestCase):
         iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv6_interface.static_ip_range_low)
+            requested_address=ipv6_interface.static_ip_range_low,
+            update_host_maps=False)
 
         allocation = mac.claim_static_ips(
             alloc_type=iptype2,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [ipv4_sip] = allocation
@@ -615,22 +632,24 @@ class TestClaimStaticIPs(MAASServerTestCase):
         mac = node.get_primary_mac()
         iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        [ip] = mac.claim_static_ips(alloc_type=iptype)
+        [ip] = mac.claim_static_ips(alloc_type=iptype, update_host_maps=False)
         self.assertEqual(
-            [ip], mac.claim_static_ips(alloc_type=iptype))
+            [ip], mac.claim_static_ips(
+                alloc_type=iptype, update_host_maps=False))
 
     def test__combines_existing_and_new_addresses(self):
         node = make_node_attached_to_cluster_interfaces()
-        # node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         ipv4_interface = find_cluster_interface(node.nodegroup, 4)
         iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         [ipv4_sip] = mac.claim_static_ips(
             alloc_type=iptype,
-            requested_address=ipv4_interface.static_ip_range_low)
+            requested_address=ipv4_interface.static_ip_range_low,
+            update_host_maps=False)
 
-        allocation = mac.claim_static_ips(alloc_type=iptype)
+        allocation = mac.claim_static_ips(
+            alloc_type=iptype, update_host_maps=False)
 
         self.assertIn(ipv4_sip, allocation)
         self.assertThat(allocation, HasLength(2))
@@ -639,7 +658,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
         ip = node.get_primary_mac().cluster_interface.static_ip_range_high
-        [allocation] = mac.claim_static_ips(requested_address=ip)
+        [allocation] = mac.claim_static_ips(
+            requested_address=ip, update_host_maps=False)
         self.assertEqual(ip, allocation.ip)
 
     def test__allocates_only_IPv4_if_IPv4_address_requested(self):
@@ -648,7 +668,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         requested_ip = ipv4_interface.static_ip_range_low
 
         allocation = node.get_primary_mac().claim_static_ips(
-            requested_address=requested_ip)
+            requested_address=requested_ip, update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [sip] = allocation
@@ -660,7 +680,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         requested_ip = ipv6_interface.static_ip_range_low
 
         allocation = node.get_primary_mac().claim_static_ips(
-            requested_address=requested_ip)
+            requested_address=requested_ip, update_host_maps=False)
 
         self.assertThat(allocation, HasLength(1))
         [sip] = allocation
@@ -673,7 +693,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
             cluster_interface=cluster_interface)
         user = factory.make_User()
         [sip] = mac_address.claim_static_ips(
-            user=user, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            user=user, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            update_host_maps=False)
         self.assertEqual(sip.user, user)
 
 
@@ -881,7 +902,7 @@ class TestSetStaticIP(MAASServerTestCase):
         mac = factory.make_MACAddress_with_Node()
         user = factory.make_User()
         ip_address = factory.make_ip_address()
-        static_ip = mac.set_static_ip(ip_address, user)
+        static_ip = mac.set_static_ip(ip_address, user, update_host_maps=False)
 
         matcher = MatchesStructure(
             id=Not(Is(None)),  # IP persisted in the DB.
@@ -905,7 +926,7 @@ class TestSetStaticIP(MAASServerTestCase):
         static_range = IPRange(
             ngi.static_ip_range_low, ngi.static_ip_range_high)
         ip_address = factory.pick_ip_in_network(static_range)
-        static_ip = mac.set_static_ip(ip_address, user)
+        static_ip = mac.set_static_ip(ip_address, user, update_host_maps=False)
 
         matcher = MatchesStructure(
             id=Not(Is(None)),  # IP persisted in the DB.
@@ -927,7 +948,7 @@ class TestSetStaticIP(MAASServerTestCase):
         dynamic_range = IPRange(ngi.ip_range_low, ngi.ip_range_high)
         ip_address = factory.pick_ip_in_network(dynamic_range)
         with ExpectedException(StaticIPAddressForbidden):
-            mac.set_static_ip(ip_address, user)
+            mac.set_static_ip(ip_address, user, update_host_maps=False)
 
     def test_rejects_ip_if_ip_not_part_of_connected_network(self):
         node = factory.make_Node(mac=True)
@@ -945,15 +966,16 @@ class TestSetStaticIP(MAASServerTestCase):
         other_network = factory.make_ipv4_network(disjoint_from=[network])
         ip_address = factory.pick_ip_in_network(other_network)
         with ExpectedException(StaticIPAddressConflict):
-            mac.set_static_ip(ip_address, user)
+            mac.set_static_ip(ip_address, user, update_host_maps=False)
 
     def test_returns_existing_allocation_if_it_exists(self):
         mac = factory.make_MACAddress_with_Node()
         user = factory.make_User()
         ip_address = factory.make_ip_address()
-        static_ip = mac.set_static_ip(ip_address, user)
+        static_ip = mac.set_static_ip(ip_address, user, update_host_maps=False)
 
-        static_ip2 = mac.set_static_ip(ip_address, user)
+        static_ip2 = mac.set_static_ip(
+            ip_address, user, update_host_maps=False)
 
         self.assertEquals(static_ip.id, static_ip2.id)
 
@@ -961,11 +983,11 @@ class TestSetStaticIP(MAASServerTestCase):
         other_mac = factory.make_MACAddress_with_Node()
         user = factory.make_User()
         ip_address = factory.make_ip_address()
-        other_mac.set_static_ip(ip_address, user)
+        other_mac.set_static_ip(ip_address, user, update_host_maps=False)
 
         mac = factory.make_MACAddress_with_Node()
         with ExpectedException(StaticIPAddressUnavailable):
-            mac.set_static_ip(ip_address, user)
+            mac.set_static_ip(ip_address, user, update_host_maps=False)
 
     def test_rejects_ip_if_allocation_with_other_type_already_exists(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -977,7 +999,7 @@ class TestSetStaticIP(MAASServerTestCase):
         mac.cluster_interface = ngi
         mac.save()
         # Create an AUTO IP allocation.
-        static_ip = mac.claim_static_ips()[0]
+        static_ip = mac.claim_static_ips(update_host_maps=False)[0]
 
         with ExpectedException(StaticIPAddressUnavailable):
-            mac.set_static_ip(static_ip.ip, user)
+            mac.set_static_ip(static_ip.ip, user, update_host_maps=False)

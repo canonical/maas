@@ -26,10 +26,7 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
-from maasserver.clusterrpc.dhcp import (
-    remove_host_maps,
-    update_host_maps,
-)
+from maasserver.clusterrpc import dhcp
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -89,6 +86,8 @@ class IPAddressesHandler(OperationsHandler):
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=requested_address,
                 user=user, hostname=hostname)
+            from maasserver.dns import config as dns_config
+            dns_config.dns_update_zones([interface.nodegroup])
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
             # The user has requested a static IP linked to a MAC
@@ -116,10 +115,11 @@ class IPAddressesHandler(OperationsHandler):
                     sip.ip: mac_address.mac_address,
                 }
             }
+
             # Commit the DB changes before we do RPC calls.
             commit_within_atomic_block()
             update_host_maps_failures = list(
-                update_host_maps(host_map_updates))
+                dhcp.update_host_maps(host_map_updates))
             if len(update_host_maps_failures) > 0:
                 # Deallocate the static IPs and delete the MAC address
                 # if it doesn't have a Node attached.
@@ -130,6 +130,7 @@ class IPAddressesHandler(OperationsHandler):
 
                 # There will only ever be one error, so raise that.
                 raise update_host_maps_failures[0].value
+
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
                 user.username, sip.ip, mac_address.mac_address)
@@ -201,9 +202,6 @@ class IPAddressesHandler(OperationsHandler):
             request.user, ngi, requested_address, mac_address,
             hostname=hostname)
 
-        from maasserver.dns.config import dns_update_zones
-        dns_update_zones([ngi.nodegroup])
-
         return sip
 
     @operation(idempotent=False)
@@ -235,7 +233,7 @@ class IPAddressesHandler(OperationsHandler):
             for interface in linked_mac_address_interfaces
             }
         remove_host_maps_failures = list(
-            remove_host_maps(host_maps_to_remove))
+            dhcp.remove_host_maps(host_maps_to_remove))
         if len(remove_host_maps_failures) > 0:
             # There's only going to be one failure, so raise that.
             raise remove_host_maps_failures[0].value

@@ -33,6 +33,8 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 class MACStaticIPAddressLink(CleanSave, TimestampedModel):
 
+    # XXX:fabric IP addresses are unique within each fabric, so this
+    # code needs to be updated.
     class Meta(DefaultMeta):
         unique_together = ('ip_address', 'mac_address')
 

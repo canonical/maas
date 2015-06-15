@@ -81,8 +81,8 @@ connect_to_field_change(
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
     try:
-        from maasserver.dns.config import dns_update_zones
-        dns_update_zones(instance.nodegroup)
+        from maasserver.dns import config as dns_config
+        dns_config.dns_update_zones(instance.nodegroup)
     except NodeGroup.DoesNotExist:
         # If this Node is being deleted because the whole NodeGroup
         # has been deleted, no need to update the zone file because
@@ -92,29 +92,29 @@ def dns_post_delete_Node(sender, instance, **kwargs):
 
 def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
-    from maasserver.dns.config import dns_update_zones
-    dns_update_zones(instance.nodegroup)
+    from maasserver.dns import config as dns_config
+    dns_config.dns_update_zones(instance.nodegroup)
 
 
 connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
-    from maasserver.dns.config import dns_update_all_zones
-    dns_update_all_zones()
+    from maasserver.dns import config as dns_config
+    dns_config.dns_update_all_zones()
 
 
 @receiver(post_save, sender=Network)
 def dns_post_save_Network(sender, instance, **kwargs):
     """When a network is added/changed, put it in the DNS trusted networks."""
-    from maasserver.dns.config import dns_update_all_zones
-    dns_update_all_zones()
+    from maasserver.dns import config as dns_config
+    dns_config.dns_update_all_zones()
 
 
 @receiver(post_delete, sender=Network)
 def dns_post_delete_Network(sender, instance, **kwargs):
-    from maasserver.dns.config import dns_update_all_zones
-    dns_update_all_zones()
+    from maasserver.dns import config as dns_config
+    dns_config.dns_update_all_zones()
 
 
 Config.objects.config_changed_connect("upstream_dns", dns_setting_changed)

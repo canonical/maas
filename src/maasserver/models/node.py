@@ -1769,7 +1769,7 @@ class Node(CleanSave, TimestampedModel):
 
     def claim_static_ip_addresses(
             self, mac=None, alloc_type=IPADDRESS_TYPE.AUTO,
-            requested_address=None):
+            requested_address=None, update_host_maps=True):
         """Assign static IPs to a node's MAC.
         If no MAC is specified, defaults to its PXE MAC.
 
@@ -1786,7 +1786,6 @@ class Node(CleanSave, TimestampedModel):
         :raises: `StaticIPAddressUnavailable` if the supplied
         requested_address is already in use.
         """
-
         if mac is None:
             mac = self.get_pxe_mac()
             if mac is None:
@@ -1794,7 +1793,8 @@ class Node(CleanSave, TimestampedModel):
 
         try:
             static_ips = mac.claim_static_ips(
-                alloc_type=alloc_type, requested_address=requested_address)
+                alloc_type=alloc_type, requested_address=requested_address,
+                update_host_maps=update_host_maps)
         except StaticIPAddressTypeClash:
             # There's already a non-AUTO IP.
             return []
@@ -1803,30 +1803,48 @@ class Node(CleanSave, TimestampedModel):
         # because it's all-or-nothing (hence the atomic context).
         return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
-    def update_host_maps(self, claims, nodegroups=None):
+    @staticmethod
+    def update_nodegroup_host_maps(nodegroups, claims):
         """Update host maps for the given MAC->IP mappings.
 
         If a nodegroup list is given, update all of them.  If not, only
         update the nodegroup of the node.
         """
         static_mappings = defaultdict(dict)
-        if nodegroups is None:
-            static_mappings[self.nodegroup].update(claims)
-        else:
-            for nodegroup in nodegroups:
-                static_mappings[nodegroup].update(claims)
+        for nodegroup in nodegroups:
+            static_mappings[nodegroup].update(claims)
         update_host_maps_failures = list(
             update_host_maps(static_mappings))
-        if len(update_host_maps_failures) != 0:
+        num_failures = len(update_host_maps_failures)
+        if num_failures != 0:
             # We've hit an error, so release any IPs we've claimed
             # and then raise the error for the call site to
             # handle.
-            StaticIPAddress.objects.deallocate_by_node(self)
+            # StaticIPAddress.objects.deallocate_by_node(self)
+            # StaticIPAddress.objects.deallocate_by_node()
+            for claim in claims:
+                StaticIPAddress.objects.get(ip=claim[0]).deallocate()
+
             # We know there's only one error because we only
             # sent one mapping to update_host_maps(), so we
             # extract the exception from the Failure and raise
             # it.
             raise update_host_maps_failures[0].raiseException()
+
+    def update_host_maps(self, claims, nodegroups=None):
+        """Update host maps for the given MAC->IP mappings.
+
+        If a nodegroup list is given, update all of them.  If not, only
+        update the nodegroup of the node.
+        """
+
+        # For some reason, we can call this method on a Node, but the intent
+        # is to update nodegroups not on this node. That's why it's not
+        # an "append" here.
+        if nodegroups is None:
+            nodegroups = [self.nodegroup]
+
+        self.update_nodegroup_host_maps(nodegroups, claims)
 
     def deallocate_static_ip_addresses(
             self, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
@@ -1840,9 +1858,10 @@ class Node(CleanSave, TimestampedModel):
             self, alloc_type=alloc_type, ip=ip)
 
         if len(deallocated_ips) > 0:
+            # Prevent circular imports
+            from maasserver.dns import config as dns_config
             self.delete_host_maps(deallocated_ips)
-            from maasserver.dns.config import dns_update_zones
-            dns_update_zones([self.nodegroup])
+            dns_config.dns_update_zones([self.nodegroup])
 
         return deallocated_ips
 
@@ -1943,7 +1962,7 @@ class Node(CleanSave, TimestampedModel):
         return False
 
     @transactional
-    def start(self, by_user, user_data=None):
+    def start(self, by_user, user_data=None, update_host_maps=True):
         """Request on given user's behalf that the node be started up.
 
         :param by_user: Requesting user.
@@ -1954,7 +1973,7 @@ class Node(CleanSave, TimestampedModel):
         :type user_data: unicode
 
         :raise StaticIPAddressExhaustion: if there are not enough IP addresses
-            left in the static range for this node toget all the addresses it
+            left in the static range for this node to get all the addresses it
             needs.
         :raise PermissionDenied: If `by_user` does not have permission to
             start this node.
@@ -1968,7 +1987,6 @@ class Node(CleanSave, TimestampedModel):
         """
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
-        from maasserver.dns.config import dns_update_zones
 
         if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't start a node you don't own unless you're an admin.
@@ -1981,11 +1999,13 @@ class Node(CleanSave, TimestampedModel):
 
         # Claim static IP addresses for the node if it's ALLOCATED.
         if self.status == NODE_STATUS.ALLOCATED:
-            claims = self.claim_static_ip_addresses()
-            # If the PXE mac is on a managed interface then we can ask
-            # the cluster to generate the DHCP host map(s).
-            if self.is_pxe_mac_on_managed_interface():
-                self.update_host_maps(claims)
+
+            # Don't update host maps if we're not on a managed interface.
+            if not self.is_pxe_mac_on_managed_interface() and update_host_maps:
+                update_host_maps = False
+
+            self.claim_static_ip_addresses(
+                update_host_maps=update_host_maps)
 
         if self.status == NODE_STATUS.ALLOCATED:
             transition_monitor = (
@@ -1995,9 +2015,6 @@ class Node(CleanSave, TimestampedModel):
             self.start_deployment()
         else:
             transition_monitor = None
-
-        # Update the DNS zone with the new static IP info as necessary.
-        dns_update_zones(self.nodegroup)
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_started:

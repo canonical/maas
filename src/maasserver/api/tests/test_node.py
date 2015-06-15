@@ -24,7 +24,7 @@ import bson
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
-from maasserver.api import nodes as api_nodes
+from maasserver.dns import config as dns_config
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_BOOT,
@@ -1195,9 +1195,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.become_admin()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
+        self.patch(Node.update_host_maps)
         [existing_ip] = node.get_primary_mac().claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.STICKY)
+            alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -1214,7 +1214,8 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE,
             but_not=[IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED])
-        node.get_primary_mac().claim_static_ips(alloc_type=random_alloc_type)
+        node.get_primary_mac().claim_static_ips(
+            alloc_type=random_alloc_type, update_host_maps=False)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
@@ -1265,7 +1266,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
         self.become_admin()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        dns_update_zones = self.patch(api_nodes, 'dns_update_zones')
+        dns_update_zones = self.patch(dns_config.dns_update_zones)
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = []  # No failures.
         response = self.client.post(
@@ -1371,7 +1372,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         requested_address = IPAddress(ngi.static_ip_range_low) + 1
         requested_address = requested_address.format()
         other_node.get_primary_mac().claim_static_ips(
-            requested_address=requested_address)
+            requested_address=requested_address, update_host_maps=False)
 
         # Use the API to try to duplicate the same IP on the other node.
         response = self.client.post(
