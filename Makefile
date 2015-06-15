@@ -63,7 +63,7 @@ build: \
 
 all: build doc
 
-release_codename := $(shell lsb_release -c -s)
+release_codename = $(shell lsb_release -c -s)
 
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
@@ -244,7 +244,7 @@ lint-rst: bin/rst-lint
 	    -printf 'Linting %p...\n' \
 	    -exec bin/rst-lint --encoding=utf8 {} \;
 
-# JavaScript lint is checked in parallel for speed.  The -n20 -P4 seetting
+# JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
 # worked well on a multicore SSD machine with the files cached, roughly
 # doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
@@ -277,7 +277,7 @@ doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
 doc-with-versions: bin/sphinx docs/api.rst
-	cd docs/_build; make SPHINXOPTS="-A add_version_switcher=true" html
+	$(MAKE) -C docs/_build SPHINXOPTS="-A add_version_switcher=true" html
 
 man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
 
@@ -287,7 +287,7 @@ man/%: docs/man/%.rst | bin/sphinx-build
 enums: $(js_enums)
 
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
-	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
+	 bin/py -m maasserver/utils/jsenums $(py_enums) > $@
 
 styles: bin/sass clean-styles $(scss_output)
 
@@ -310,6 +310,7 @@ clean: stop
 	$(RM) -r man/.doctrees
 	$(RM) coverage.data coverage.xml
 	$(RM) -r coverage
+	$(RM) -r .hypothesis
 	$(RM) -r bin include lib local
 	$(RM) -r eggs develop-eggs
 	$(RM) -r build dist logs/* parts
@@ -319,6 +320,7 @@ clean: stop
 
 clean+db: clean
 	$(RM) -r db
+	$(RM) .db.lock
 
 distclean: clean
 	$(warning 'distclean' is deprecated; use 'clean')
@@ -336,7 +338,7 @@ syncdb: bin/maas-region-admin bin/database
 
 # (Re)write the baseline schema.
 schema/baseline.sql: bin/database
-	$(dbrun) pg_dump -h $(PWD)/db/ -d maas --no-owner --no-privileges -f $@
+	$(dbrun) pg_dump -h $(CURDIR)/db -d maas --no-owner --no-privileges -f $@
 
 # Synchronise the database, and update the baseline schema.
 baseline-schema: syncdb schema/baseline.sql
@@ -364,12 +366,7 @@ define phony_targets
   lint-py
   lint-rst
   man
-  package
-  package-clean
-  package-dev
-  package-dev-clean
   sampledata
-  source_package
   styles
   syncdb
   test
@@ -478,51 +475,104 @@ services/regiond2/@deps: bin/maas-region-admin
 #
 # Package building
 #
+
 # This ought to be as simple as using bzr builddeb --export-upstream but it
 # has a bug and always considers apt-source tarballs before the specified
-# branch.  So instead, export to a local tarball which is always found.
-# Make sure debhelper and dh-apport packages are installed before using this.
-PACKAGING := $(CURDIR)/../packaging.trunk
+# branch. Instead, export to a local tarball which is always found. Make sure
+# the packages listed in `required-packages/build` are installed before using
+# this.
+
+# Old names.
+PACKAGING := $(abspath ../packaging.trunk)
 PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
 
-package_branch:
-	@echo Downloading/refreshing packaging branch...
-	@if [ ! -d $(PACKAGING) ]; then \
-		bzr branch $(PACKAGING_BRANCH) $(PACKAGING); \
-		else bzr pull -d $(PACKAGING); fi
+packaging-tree = $(PACKAGING)
+packaging-branch = $(PACKAGING_BRANCH)
 
-# Make sure an orig tarball generated from the current branch is placed in the
-# build area.
-# If you want to build a .deb from uncommitted changes, you can do:
-#     export MAAS_PACKAGE_EXPORT_EXTRA=--uncommitted
-package_export: VER = $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
-package_export: TARBALL = maas_$(VER).orig.tar.gz
-package_export: package_branch
-	@$(RM) -f ../build-area/$(TARBALL)
-	@mkdir -p ../build-area
-	@bzr export $(MAAS_PACKAGE_EXPORT_EXTRA) --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
+packaging-build-area := $(abspath ../build-area)
+packaging-version = $(shell \
+   dpkg-parsechangelog -l$(packaging-tree)/debian/changelog \
+       | sed -rne 's,^Version: ([^-]+).*,\1,p')
 
-package-clean:
-	@$(RM) -f ../build-area/*
+$(packaging-build-area):
+	mkdir -p $(packaging-build-area)
 
-package: package_export
-	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -uc -us
-	@echo Binary packages built, see ../build-area/ directory.
+-packaging-fetch:
+	bzr branch $(packaging-branch) $(packaging-tree)
 
-package-dev: MAAS_PACKAGE_EXPORT_EXTRA = --uncommitted
+-packaging-pull:
+	bzr pull -d $(packaging-tree)
+
+-packaging-refresh: -packaging-$(shell \
+    test -d $(packaging-tree) && echo "pull" || echo "fetch")
+
+-packaging-export-orig: $(packaging-build-area)
+	bzr export $(packaging-export-extra) --root=maas-$(packaging-version).orig \
+	    $(packaging-build-area)/maas_$(packaging-version).orig.tar.gz
+
+# To build binary packages from uncommitted changes:
+#     make package-export-extra=--uncommitted package
+package: -packaging-refresh -packaging-export-orig
+	bzr bd --merge $(packaging-tree) --result-dir=$(packaging-build-area) -- -uc -us
+	@echo Binary packages built, see $(packaging-build-area).
+
+# ... or use the `package-dev` target.
+package-dev: packaging-export-extra = --uncommitted
 package-dev: package
 
-package-dev-clean: package-clean package-dev
+# To build a source package from uncommitted changes:
+#     make package-export-extra=--uncommitted source-package
+source-package: -packaging-refresh -packaging-export-orig
+	bzr bd --merge $(packaging-tree) --result-dir=$(packaging-build-area) -- -S -uc -us
+	@echo Source package built, see $(packaging-build-area).
 
-source_package: package_export
-	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -S -uc -us
-	@echo Source package built, see ../build-area/ directory.
+# ... or use the `source-package-dev` target.
+source-package-dev: packaging-export-extra = --uncommitted
+source-package-dev: source-package
+
+# To rebuild packages (i.e. from a clean slate):
+package-rebuild: package-clean package
+
+package-dev-rebuild: package-clean package-dev
+
+source-package-rebuild: source-package-clean source-package
+
+source-package-dev-rebuild: source-package-clean source-package-dev
+
+# To clean built packages away:
+package-clean: patterns := *.deb *.dsc *.build *.changes
+package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
+package-clean:
+	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
+
+source-package-clean: patterns := *.dsc *.build *.changes
+source-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
+source-package-clean:
+	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
+
+define phony_package_targets
+  -packaging-export-orig
+  -packaging-fetch
+  -packaging-pull
+  -packaging-refresh
+  package
+  package-clean
+  package-dev
+  package-dev-rebuild
+  package-rebuild
+  source-package
+  source-package-clean
+  source-package-dev
+  source-package-dev-rebuild
+  source-package-rebuild
+endef
 
 #
 # Phony stuff.
 #
 
 define phony
+  $(phony_package_targets)
   $(phony_services_targets)
   $(phony_targets)
 endef
