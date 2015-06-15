@@ -499,7 +499,7 @@ class NodeGroupHandler(OperationsHandler):
                 prefix_filter=prefix_filter, accept_all=accept_all)
         elif model == 'ucsm':
             self.do_probe_and_enlist_ucsm(nodegroup, request, user)
-        elif model == 'mcsm':
+        elif model == 'mscm':
             self.do_probe_and_enlist_mscm(nodegroup, request, user)
         elif model == 'msftocs':
             self.do_probe_and_enlist_msftocs(nodegroup, request, user)
