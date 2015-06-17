@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 from django.core.exceptions import ValidationError
+from maasserver.models.partition import Partition
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -107,48 +108,28 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEqual(partition.start_block, 0)
         self.assertEqual(partition.size_blocks, 6)
 
-    def test_add_partition_movable_offset(self):
-        """Tests whether a new partition added without specifying start is
-        fitted in the lowest available space"""
-        block_size = 4096
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3,
-                                          block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        # A partition that spans blocks 10, 11, 12, 13, 14 and 15 leaving 0-9
-        # and 16-end unallocated.
-        partition0 = partition_table.add_partition(
-            start_offset=10 * block_size,
-            size=6 * block_size)
-
-        # A partition of 10 blocks should be placed at block 0
-        partition1 = partition_table.add_partition(
-            size=10 * block_size)
-        self.assertEqual(partition1.start_block, 0)
-        self.assertEqual(partition1.size_blocks, partition0.start_block)
-
     def test_add_partition_no_offset(self):
         """Tests whether a new partition added without specifying start is
-        fitted in the lowest available space"""
+        placed either at block 0 if the drive has no partitions, or at the
+        first free block after the last partition."""
         block_size = 4096
         device = factory.make_BlockDevice(size=10 * 1000 ** 3,
                                           block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
-        # A partition that spans blocks 10, 11, 12, 13, 14 and 15 leaving 0-9
-        # and 16-end unallocated.
-        partition0 = partition_table.add_partition(
-            start_offset=10 * block_size,
-            size=6 * block_size)
-        # A partition of 15 blocks should fail to be allocated.
-        self.assertRaises(ValidationError, partition_table.add_partition,
-                          **{'size': 15 * block_size})
-        # A partition of 10 blocks should be placed at block 0.
-        partition1 = partition_table.add_partition(
-            size=10 * block_size)
-        self.assertEqual(partition1.start_block, 0)
-        self.assertEqual(partition1.size_blocks, partition0.start_block)
+
+        # A partition of 6 blocks spanning blocks 0 to 5.
+        partition0 = partition_table.add_partition(size=6 * block_size)
+        self.assertEqual(partition0.start_block, 0)
+        self.assertEqual(partition0.end_block, 5)
+        self.assertEqual(partition0.size_blocks, 6)
+
+        # A partition of 10 blocks should start on block 6
+        partition1 = partition_table.add_partition(size=10 * block_size)
+        self.assertEqual(partition1.start_block, 6)
+        self.assertEqual(partition1.size_blocks, 10)
 
     def test_add_partition_no_size(self):
-        """Tests whether a partition with no speciefied size stretches to the
+        """Tests whether a partition with no specified size stretches to the
         end of the device"""
         block_size = 4096
         device = factory.make_BlockDevice(size=10000 * block_size,
@@ -161,3 +142,50 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEqual(partition.start_block, 10)
         self.assertEqual(partition.size_blocks,
                          device.size / block_size - partition.start_block)
+
+    def test_add_first_partition_no_size(self):
+        """Tests whether a partition with no specified offset or size starts
+        from block 0 of an empty drive and fills the device."""
+        block_size = 4096
+        device = factory.make_BlockDevice(size=10000 * block_size,
+                                          block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+
+        # A partition that spans the whole device.
+        partition = partition_table.add_partition()
+        self.assertEqual(partition.start_block, 0)
+        self.assertEqual(partition.size_blocks, device.size / block_size)
+
+    def test_add_second_partition_no_size(self):
+        """Tests whether a second partition with no specified size starts from
+        the end of the previous partition and stretches to the end of the
+        device."""
+        block_size = 4096
+        device = factory.make_BlockDevice(size=10000 * block_size,
+                                          block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+
+        # A partition that spans from block 0 through 9
+        partition = partition_table.add_partition(size=10 * block_size)
+
+        # A partition that spans from block 10 until the end of the device.
+        partition = partition_table.add_partition()
+        self.assertEqual(partition.start_block, 10)
+        self.assertEqual(partition.size_blocks,
+                         device.size / block_size - partition.start_block)
+
+    def test_add_partition_to_full_device(self):
+        """Tests whether we fail to add a partition to an already full device.
+        """
+        block_size = 4096
+        device = factory.make_BlockDevice(size=10000 * block_size,
+                                          block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+
+        # A partition that spans the whole device.
+        partition = partition_table.add_partition()
+
+        self.assertIsInstance(partition, Partition)
+        self.assertRaises(ValidationError, partition_table.add_partition,
+                          **{'start_offset': 6 * block_size,
+                             'size': 3 * block_size})

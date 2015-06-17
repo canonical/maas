@@ -18,6 +18,7 @@ from textwrap import dedent
 
 from maasserver.utils.converters import (
     human_readable_bytes,
+    machine_readable_bytes,
     XMLToYAML,
 )
 from maastesting.testcase import MAASTestCase
@@ -87,3 +88,18 @@ class TestHumanReadableBytes(MAASTestCase):
         self.assertEqual(
             self.output,
             human_readable_bytes(self.size, include_suffix=False))
+
+
+class TestMachineReadableBytes(MAASTestCase):
+    """Testing the human->machine byte count converter"""
+
+    def test_suffixes(self):
+        self.assertEqual(machine_readable_bytes('987'), 987)
+        self.assertEqual(machine_readable_bytes('987K'), 987000)
+        self.assertEqual(machine_readable_bytes('987M'), 987000000)
+        self.assertEqual(machine_readable_bytes('987G'), 987000000000)
+        self.assertEqual(machine_readable_bytes('987T'), 987000000000000)
+        self.assertEqual(machine_readable_bytes('987P'), 987000000000000000)
+        self.assertEqual(machine_readable_bytes('987E'), 987000000000000000000)
+
+        self.assertRaises(ValueError, machine_readable_bytes, '987Z')

@@ -84,7 +84,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         starting in the beginning of the block (done in the Partition model).
 
         If start_offset is not specified, the partition will be created
-        starting on the lowest block possible.
+        starting on the first block after the last partition.
 
         If size is omitted, the partition will extend to the end of the device.
 
@@ -94,11 +94,20 @@ class PartitionTable(CleanSave, TimestampedModel):
         If the provided values conflict with existing partitions, a ValueError
         will be raised.
         """
-        if start_offset is None and size is not None:
-            # Place the partition starting at block 0 and fail if there is not
-            # enough free space for the size speficied.
-            start_offset = 0
-        elif start_offset is not None and size is None:
+        if start_offset is None:
+            # Place the partition starting at the first available block after
+            # the last partition already allocated. If no partition is found,
+            # start at block 0.
+            try:
+                start_offset = self.get_block_size() * \
+                    (max([p.end_block for p in self.partitions.all()]) + 1)
+
+            except ValueError:
+                # calling max on an empty sequence (no other partitions) causes
+                # a ValueError, so we can allocate this one on block 0
+                start_offset = 0
+
+        if size is None:
             # Try to extend the partition until the end of the block
             # device. Fail if there is a collision.
             size = self.block_device.size - start_offset

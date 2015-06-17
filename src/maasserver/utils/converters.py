@@ -71,3 +71,30 @@ def human_readable_bytes(num_bytes, include_suffix=True):
             else:
                 return "%3.1f" % num_bytes
         num_bytes /= 1000.0
+
+
+def machine_readable_bytes(humanized):
+    """Return the integer for a number of bytes in text form. (SI units)
+
+    Accepts 'K', 'M', 'G', 'T', 'P' and 'E'
+
+    NOT AN EXACT COUNTERPART TO human_readable_bytes!
+
+    :param humanized: string be converted.
+    """
+    if humanized == '' or humanized is None:
+        return None
+    elif humanized.endswith('K'):
+        return int(humanized[:-1]) * 1000
+    elif humanized.endswith('M'):
+        return int(humanized[:-1]) * 1000000
+    elif humanized.endswith('G'):
+        return int(humanized[:-1]) * 1000000000
+    elif humanized.endswith('T'):
+        return int(humanized[:-1]) * 1000000000000
+    elif humanized.endswith('P'):
+        return int(humanized[:-1]) * 1000000000000000
+    elif humanized.endswith('E'):
+        return int(humanized[:-1]) * 1000000000000000000
+    else:
+        return int(humanized)
