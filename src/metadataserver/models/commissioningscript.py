@@ -46,6 +46,7 @@ from maasserver.fields import MAC
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
+from maasserver.utils.iplink import parse_ip_link
 from metadataserver import DefaultMeta
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import (
@@ -161,14 +162,17 @@ def update_node_network_information(node, output, exit_status):
         return
 
     # Get the MAC addresses of all connected interfaces.
-    hw_macaddresses = {
-        MAC(line.split()[1]) for line in output.splitlines()
-        if line.strip().startswith('link/ether')
-    }
+    ip_link_info = parse_ip_link(output)
+
+    hw_macaddresses = filter(
+        None, [
+            interface.get('mac')
+            for interface
+            in ip_link_info.values()
+        ])
 
     # Important notice: hw_addresses contains MAC objects while
     # node.macaddress_set.all() contains MACAddress objects.
-
     # MAC addresses found in the hardware node but not on the db will be
     # created or reassigned.
     for address in hw_macaddresses:
