@@ -41,8 +41,10 @@ from maasserver.models import (
     NodeGroup,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
+    CIDRTestModel,
     JSONFieldModel,
     LargeObjectFieldModel,
     MAASIPAddressFieldModel,
@@ -50,6 +52,7 @@ from maasserver.tests.models import (
 )
 from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import MockCalledOnceWith
+from netaddr import IPNetwork
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 
@@ -518,3 +521,24 @@ class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
         field = LargeObjectField()
         self.assertRaises(
             AssertionError, field.to_python, factory.make_string())
+
+
+class TestCIDRField(TestModelMixin, MAASServerTestCase):
+
+    app = 'maasserver.tests'
+
+    def test_stores_cidr(self):
+        cidr = '192.0.2.0/24'
+        instance = CIDRTestModel.objects.create(cidr=cidr)
+        self.assertEqual(reload_object(instance).cidr, IPNetwork(cidr))
+
+    def test_validates_cidr(self):
+        cidr = 'invalid-cidr'
+        error = self.assertRaises(
+            ValidationError, CIDRTestModel.objects.create, cidr=cidr)
+        self.assertEqual("invalid IPNetwork %s" % cidr, error.message)
+
+    def test_stores_cidr_with_bit_set_in_host_part(self):
+        cidr = '192.0.2.1/24'
+        instance = CIDRTestModel.objects.create(cidr=cidr)
+        self.assertEqual(reload_object(instance).cidr, IPNetwork(cidr))

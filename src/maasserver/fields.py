@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CIDRField",
     "EditableBinaryField",
     "MAASIPAddressField",
     "MAC",
@@ -48,6 +49,10 @@ from django.utils.encoding import force_text
 from maasserver.utils.orm import (
     get_one,
     validate_in_transaction,
+)
+from netaddr import (
+    AddrFormatError,
+    IPNetwork,
 )
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
@@ -532,3 +537,41 @@ class LargeObjectField(IntegerField):
         raise AssertionError(
             "Invalid LargeObjectField value (expected integer): '%s'"
             % repr(value))
+
+
+def parse_cidr(value):
+    try:
+        return IPNetwork(value)
+    except AddrFormatError as e:
+        raise ValidationError(e.message)
+
+
+class CIDRField(Field):
+    description = "PostgreSQL CIDR field"
+
+    __metaclass__ = SubfieldBase
+
+    def db_type(self, connection):
+        return 'cidr'
+
+    def get_prep_value(self, value):
+        return unicode(value.cidr)
+
+    def from_db_value(self, value, expression, connection, context):
+        if value is None:
+            return value
+        return parse_cidr(value)
+
+    def to_python(self, value):
+        if isinstance(value, IPNetwork):
+            return value
+        if not value:
+            return value
+        return parse_cidr(value)
+
+    def formfield(self, **kwargs):
+        defaults = {
+            'form_class': CharField,
+        }
+        defaults.update(kwargs)
+        return super(CIDRField, self).formfield(**defaults)

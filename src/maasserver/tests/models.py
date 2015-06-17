@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'BulkManagerParentTestModel',
     'BulkManagerTestModel',
+    'CIDRTestModel',
     'FieldChangeTestModel',
     'GenericTestModel',
     'JSONFieldModel',
@@ -31,6 +32,7 @@ from django.db.models import (
     Model,
 )
 from maasserver.fields import (
+    CIDRField,
     JSONObjectField,
     LargeObjectField,
     MAASIPAddressField,
@@ -91,3 +93,7 @@ class MAASIPAddressFieldModel(Model):
 class LargeObjectFieldModel(Model):
     name = CharField(max_length=255, unique=False)
     large_object = LargeObjectField(block_size=10)
+
+
+class CIDRTestModel(Model):
+    cidr = CIDRField()
