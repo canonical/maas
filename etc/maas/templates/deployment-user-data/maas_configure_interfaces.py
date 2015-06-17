@@ -26,7 +26,10 @@ str = None
 __metaclass__ = type
 
 from argparse import ArgumentParser
-from errno import ENOENT
+from errno import (
+    ENOENT,
+    ENOTDIR,
+)
 from logging import getLogger
 from os import (
     listdir,
@@ -120,9 +123,9 @@ def map_interfaces_by_mac():
             mac = read_file(
                 os.path.join('/sys/class/net', interface, 'address'))
         except IOError as e:
-            # Tolerate file-not-found errors, to absorb any variability in
-            # the /sys/class/net API that doesn't concern us.
-            if e.errno != ENOENT:
+            # Tolerate file or directory not found errors, to absorb any
+            # variability in the /sys/class/net API that doesn't concern us.
+            if e.errno != ENOENT and e.errno != ENOTDIR:
                 raise
         else:
             mac = normalise_mac(mac)
