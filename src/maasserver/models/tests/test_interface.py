@@ -16,6 +16,7 @@ __all__ = []
 
 
 from maasserver.enum import INTERFACE_TYPE
+from maasserver.models import MACAddress
 from maasserver.models.interface import (
     BondInterface,
     PhysicalInterface,
@@ -44,6 +45,14 @@ class InterfaceTest(MAASServerTestCase):
         self.assertIn(mac.mac_address.get_raw(), unicode(interface))
         self.assertIn(name, unicode(interface))
 
+    def test_removed_if_underlying_mac_gets_removed(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        mac.delete()
+        self.assertItemsEqual(
+            [], PhysicalInterface.objects.filter(id=interface.id))
+
 
 class PhysicalInterfaceTest(MAASServerTestCase):
 
@@ -62,6 +71,14 @@ class PhysicalInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         self.assertEqual(mac.node, interface.get_node())
+
+    def test_leaves_underlying_mac_intact_when_removed(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        interface.delete()
+        self.assertItemsEqual(
+            [mac], MACAddress.objects.filter(id=mac.id))
 
 
 class VLANInterfaceTest(MAASServerTestCase):
@@ -108,6 +125,17 @@ class VLANInterfaceTest(MAASServerTestCase):
             vlan=vlan, type=INTERFACE_TYPE.VLAN, parents=[parent])
         self.assertEqual(mac.node, interface.get_node())
 
+    def test_removed_if_underlying_interface_gets_removed(self):
+        mac = factory.make_MACAddress_with_Node()
+        parent = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            vlan=vlan, type=INTERFACE_TYPE.VLAN, parents=[parent])
+        mac.delete()
+        self.assertItemsEqual(
+            [], VLANInterface.objects.filter(id=interface.id))
+
 
 class BondInterfaceTest(MAASServerTestCase):
 
@@ -135,3 +163,16 @@ class BondInterfaceTest(MAASServerTestCase):
         self.assertItemsEqual(
             [interface], BondInterface.objects.all())
         self.assertEqual(mac1.node, interface.get_node())
+
+    def test_removed_if_underlying_interface_gets_removed(self):
+        mac1 = factory.make_MACAddress_with_Node()
+        mac2 = factory.make_MACAddress_with_Node(node=mac1.node)
+        parent1 = factory.make_Interface(
+            mac=mac1, type=INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            mac=mac2, type=INTERFACE_TYPE.PHYSICAL)
+        interface = factory.make_Interface(
+            type=INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        mac1.delete()
+        self.assertItemsEqual(
+            [], BondInterface.objects.filter(id=interface.id))

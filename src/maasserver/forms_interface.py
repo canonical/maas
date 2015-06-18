@@ -19,6 +19,7 @@ __all__ = [
     "VLANInterfaceForm",
 ]
 
+from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import (
@@ -29,6 +30,7 @@ from maasserver.models.interface import (
     BondInterface,
     build_vlan_interface_name,
     Interface,
+    InterfaceRelationship,
     PhysicalInterface,
     VLANInterface,
 )
@@ -43,6 +45,9 @@ class InterfaceForm(MAASModelForm):
 
     type = None
 
+    parents = forms.ModelMultipleChoiceField(
+        queryset=Interface.objects.all(), required=False)
+
     @staticmethod
     def get_interface_form(type):
         try:
@@ -55,25 +60,47 @@ class InterfaceForm(MAASModelForm):
         model = Interface
 
         fields = (
-            'parents',
             'vlan',
             'ipv4_params',
             'ipv6_params',
             'params',
             )
 
+    def __init__(self, *args, **kwargs):
+        super(InterfaceForm, self).__init__(*args, **kwargs)
+        instance = kwargs.get('instance')
+        if instance is not None:
+            self.parents = instance.parents
+
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
-        interface = super(InterfaceForm, self).save(commit=False)
-        if kwargs.get('commit', True):
-            interface.save(*args, **kwargs)
-            self.save_m2m()  # Save many to many relations.
+        interface = super(InterfaceForm, self).save(commit=True)
+        if 'parents' in self.data:
+            parents = self.cleaned_data.get('parents')
+            existing_parents = set(interface.parents.all())
+            if parents:
+                parents = set(parents)
+                for parent_to_add in parents.difference(existing_parents):
+                    rel = InterfaceRelationship(
+                        child=interface, parent=parent_to_add)
+                    rel.save()
+                for parent_to_del in existing_parents.difference(parents):
+                    rel = interface.parent_relationships.filter(
+                        parent=parent_to_del)
+                    rel.delete()
         return interface
 
     def fields_ok(self, field_list):
         """Return True if none of the fields is in error thus far."""
         return all(
             field not in self.errors for field in field_list)
+
+    def get_clean_parents(self):
+        if 'parents' in self.data or self.instance.id is None:
+            parents = self.cleaned_data.get('parents')
+        else:
+            parents = self.instance.parents.all()
+        return parents
 
     def clean_interface_name_uniqueness(self, name, node):
         node_interfaces = node.get_interfaces().filter(name=name)
@@ -109,7 +136,7 @@ class PhysicalInterfaceForm(InterfaceForm):
         )
 
     def clean_parents(self):
-        parents = self.cleaned_data.get('parents')
+        parents = self.get_clean_parents()
         if parents is None:
             return
         if len(parents) > 0:
@@ -138,7 +165,7 @@ class VLANInterfaceForm(InterfaceForm):
         fields = InterfaceForm.Meta.fields
 
     def clean_parents(self):
-        parents = self.cleaned_data.get('parents')
+        parents = self.get_clean_parents()
         if parents is None:
             return
         if len(parents) != 1:
@@ -174,7 +201,7 @@ class BondInterfaceForm(InterfaceForm):
         )
 
     def clean_parents(self):
-        parents = self.cleaned_data.get('parents')
+        parents = self.get_clean_parents()
         if parents is None:
             return
         if len(parents) < 2:

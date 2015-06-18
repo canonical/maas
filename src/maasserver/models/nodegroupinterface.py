@@ -26,6 +26,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
+    PROTECT,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -175,6 +176,11 @@ class NodeGroupInterfaceManager(Manager):
             return None
 
 
+def get_default_vlan():
+    from maasserver.models.vlan import VLAN
+    return VLAN.objects.get_default_vlan()
+
+
 class NodeGroupInterface(CleanSave, TimestampedModel):
     """Cluster interface.
 
@@ -202,6 +208,10 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     # The `NodeGroup` this interface belongs to.
     nodegroup = ForeignKey(
         'maasserver.NodeGroup', editable=True, null=False, blank=False)
+
+    vlan = ForeignKey(
+        'VLAN', default=get_default_vlan, editable=True, blank=False,
+        null=False, on_delete=PROTECT)
 
     # Name for this interface.  It must be unique within the cluster.
     # The code ensures that this is never an empty string, but we do allow

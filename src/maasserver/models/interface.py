@@ -21,11 +21,13 @@ __all__ = [
     ]
 
 
+from django.db import models
 from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
     ManyToManyField,
+    PROTECT,
 )
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
@@ -43,6 +45,11 @@ from maasserver.models.timestampedmodel import TimestampedModel
 # This is only last-resort validation, more specialized validation
 # will happen at the form level based on the interface type.
 INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
+
+
+def get_default_vlan():
+    from maasserver.models.vlan import VLAN
+    return VLAN.objects.get_default_vlan()
 
 
 class Interface(CleanSave, TimestampedModel):
@@ -77,9 +84,12 @@ class Interface(CleanSave, TimestampedModel):
         blank=False)
 
     parents = ManyToManyField(
-        'maasserver.Interface', blank=True, null=True, editable=True)
+        'self', blank=True, null=True, editable=True,
+        through='InterfaceRelationship', symmetrical=False)
 
-    vlan = ForeignKey('VLAN', editable=True, blank=False)
+    vlan = ForeignKey(
+        'VLAN', default=get_default_vlan, editable=True, blank=False,
+        null=False, on_delete=PROTECT)
 
     mac = ForeignKey('MACAddress', editable=True, blank=True, null=True)
 
@@ -98,6 +108,20 @@ class Interface(CleanSave, TimestampedModel):
 
     def get_node(self):
         return self.mac.node
+
+
+class InterfaceRelationship(CleanSave, TimestampedModel):
+    child = ForeignKey(Interface, related_name="parent_relationships")
+    parent = ForeignKey(Interface, related_name="children_relationships")
+
+
+def delete_children_interface_handler(sender, instance, **kwargs):
+    """Remove children interface when the parent gets removed."""
+    if type(instance) in ALL_INTERFACE_TYPES:
+        [rel.child.delete() for rel in instance.children_relationships.all()]
+
+
+models.signals.pre_delete.connect(delete_children_interface_handler)
 
 
 class InterfaceManager(Manager):
@@ -174,3 +198,5 @@ INTERFACE_TYPE_MAPPING = {
         VLANInterface,
     ]
 }
+
+ALL_INTERFACE_TYPES = set(INTERFACE_TYPE_MAPPING.values())

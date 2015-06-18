@@ -16,6 +16,7 @@ __all__ = []
 
 
 from django.core.exceptions import ValidationError
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.fabric import (
     DEFAULT_FABRIC_NAME,
     Fabric,
@@ -23,11 +24,11 @@ from maasserver.models.fabric import (
 from maasserver.models.vlan import (
     DEFAULT_VID,
     DEFAULT_VLAN_NAME,
+    VLAN,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesStructure
-from testtools.testcase import ExpectedException
 
 
 class FabricTest(MAASServerTestCase):
@@ -36,9 +37,9 @@ class FabricTest(MAASServerTestCase):
         name = factory.make_name('name')
         fabric = factory.make_Fabric(name=name)
         self.assertEqual(name, fabric.name)
-        default_vlan = fabric.default_vlan
+        default_vlan = fabric.get_default_vlan()
         self.assertThat(default_vlan, MatchesStructure.byEquality(
-            vid=DEFAULT_VID, name=DEFAULT_VLAN_NAME))
+            vid=DEFAULT_VID, name=DEFAULT_VLAN_NAME, fabric=fabric))
 
     def test_get_default_fabric_creates_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
@@ -59,23 +60,56 @@ class FabricTest(MAASServerTestCase):
         fabric = factory.make_Fabric(name=name)
         self.assertFalse(fabric.is_default())
 
+    def test_get_default_vlan_returns_default_vlan(self):
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(fabric=fabric)
+        factory.make_VLAN(fabric=fabric)
+        default_vlan = (
+            VLAN.objects.filter(fabric=fabric).order_by('id').first())
+        first_id = sorted(
+            VLAN.objects.filter(fabric=fabric).values_list('id', flat=True))[0]
+        self.assertEqual(first_id, default_vlan.id)
+
+    def test_can_delete_nonconnected_fabric(self):
+        fabric = factory.make_Fabric()
+        fabric.delete()
+        self.assertItemsEqual([], Fabric.objects.filter(id=fabric.id))
+
+    def test_cant_delete_fabric_if_connected_to_interfaces(self):
+        fabric = factory.make_Fabric()
+        factory.make_Interface(
+            vlan=fabric.get_default_vlan(), type=INTERFACE_TYPE.PHYSICAL)
+        error = self.assertRaises(ValidationError, fabric.delete)
+        self.assertEqual(
+            "Can't delete fabric: interfaces are connected to VLANs from this "
+            "fabric.",
+            error.message)
+
+    def test_cant_delete_fabric_if_connected_to_cluster_interfaces(self):
+        fabric = factory.make_Fabric()
+        nodegroup = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(
+            nodegroup=nodegroup, vlan=fabric.get_default_vlan())
+        error = self.assertRaises(ValidationError, fabric.delete)
+        self.assertEqual(
+            "Can't delete fabric: cluster interfaces are connected to "
+            "VLANs from this fabric.",
+            error.message)
+
     def test_cant_delete_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
-        with ExpectedException(ValidationError):
-            default_fabric.delete()
+        error = self.assertRaises(
+            ValidationError, default_fabric.delete)
+        self.assertEqual(
+            "This fabric is the default fabric, it cannot be deleted.",
+            error.message)
 
     def test_can_delete_non_default_fabric(self):
         name = factory.make_name('name')
         fabric = factory.make_Fabric(name=name)
+        fabric.vlan_set.all().delete()
         fabric.delete()
-        self.assertItemsEqual([], Fabric.objects.all())
-
-    def test_save_rejects_default_vlan_not_in_fabric(self):
-        vlan = factory.make_VLAN()
-        fabric = factory.make_Fabric()
-        fabric.default_vlan = vlan
-        with ExpectedException(ValidationError):
-            fabric.save()
+        self.assertItemsEqual([], Fabric.objects.filter(id=fabric.id))
 
     def test_save_accepts_default_vlan_in_fabric(self):
         fabric = factory.make_Fabric()

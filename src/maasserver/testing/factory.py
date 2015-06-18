@@ -85,7 +85,10 @@ from maasserver.models.bootresourceset import (
     INSTALL_SET,
     XINSTALL_TYPES,
 )
-from maasserver.models.interface import Interface
+from maasserver.models.interface import (
+    Interface,
+    InterfaceRelationship,
+)
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
@@ -614,7 +617,8 @@ class Factory(maastesting.factory.Factory):
         interface = Interface(mac=mac, type=type, name=name, vlan=vlan)
         interface.save()
         if parents:
-            interface.parents.add(*parents)
+            for parent in parents:
+                InterfaceRelationship(child=interface, parent=parent).save()
         return reload_object(interface)
 
     def make_Tag(self, name=None, definition=None, comment='',

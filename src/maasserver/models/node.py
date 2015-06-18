@@ -730,10 +730,10 @@ class Node(CleanSave, TimestampedModel):
                     FROM maasserver_interface i, maasserver_macaddress m
                     WHERE m.id = i.mac_id AND m.node_id = %s
                 UNION ALL
-                    SELECT link.from_interface_id
+                    SELECT link.child_id
                     FROM search_interfaces si,
-                    maasserver_interface_parents link
-                WHERE si.id = link.to_interface_id
+                    maasserver_interfacerelationship link
+                WHERE si.id = link.parent_id
             )
             SELECT * FROM maasserver_interface
             WHERE id in (SELECT id FROM search_interfaces);

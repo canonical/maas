@@ -330,3 +330,30 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 vlan=new_vlan, type=INTERFACE_TYPE.BOND))
         self.assertItemsEqual(
             [parent1, parent2, new_parent], interface.parents.all())
+
+    def test__edits_interface_removes_parents(self):
+        mac = factory.make_MACAddress_with_Node()
+        parent1 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent3 = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        interface = factory.make_Interface(
+            name=factory.make_name('name'), type=INTERFACE_TYPE.BOND,
+            parents=[parent1, parent2, parent3])
+        new_name = factory.make_name()
+        form = BondInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'parents': [parent1.id, parent2.id],
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                mac=None, name=new_name, type=INTERFACE_TYPE.BOND))
+        self.assertItemsEqual(
+            [parent1, parent2], interface.parents.all())

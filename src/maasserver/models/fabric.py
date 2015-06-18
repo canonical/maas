@@ -24,11 +24,11 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
-    ForeignKey,
     Manager,
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -44,7 +44,7 @@ class FabricManager(Manager):
     def get_default_fabric(self):
         """Return the default fabric."""
         now = datetime.datetime.now()
-        fabric, _ = self.get_or_create(
+        fabric, created = self.get_or_create(
             id=0,
             defaults={
                 'id': 0,
@@ -53,6 +53,8 @@ class FabricManager(Manager):
                 'updated': now,
             }
         )
+        if created:
+            fabric._create_default_vlan()
         return fabric
 
 
@@ -74,9 +76,6 @@ class Fabric(CleanSave, TimestampedModel):
         max_length=256, unique=True, editable=True,
         validators=[FABRIC_NAME_VALIDATOR])
 
-    default_vlan = ForeignKey(
-        'VLAN', blank=True, null=True, editable=True, related_name='+')
-
     def __unicode__(self):
         return "name=%s" % self.name
 
@@ -84,30 +83,36 @@ class Fabric(CleanSave, TimestampedModel):
         """Is this the default fabric?"""
         return self.id == 0
 
-    def clean(self, *args, **kwargs):
-        wrong_fabric = (
-            self.default_vlan_id is not None and
-            self.default_vlan.fabric != self)
-        if wrong_fabric:
-            raise ValidationError(
-                {'default_vlan':
-                    ["Can't set a default VLAN that's not in this fabric."]})
-        super(Fabric, self).clean(*args, **kwargs)
+    def get_default_vlan(self):
+        return self.vlan_set.all().order_by('id').first()
 
     def delete(self):
         if self.is_default():
             raise ValidationError(
                 "This fabric is the default fabric, it cannot be deleted.")
+        # Circular imports.
+        if Interface.objects.filter(vlan__fabric=self).exists():
+            raise ValidationError(
+                "Can't delete fabric: interfaces are connected to VLANs from "
+                "this fabric.")
+        # Circular imports.
+        from maasserver.models.nodegroupinterface import NodeGroupInterface
+        if NodeGroupInterface.objects.filter(vlan__fabric=self).exists():
+            raise ValidationError(
+                "Can't delete fabric: cluster interfaces are connected to "
+                "VLANs from this fabric.")
         super(Fabric, self).delete()
+
+    def _create_default_vlan(self):
+        # Circular imports.
+        from maasserver.models.vlan import (
+            VLAN, DEFAULT_VLAN_NAME, DEFAULT_VID)
+        VLAN.objects.create(
+            name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self)
 
     def save(self, *args, **kwargs):
         created = self.id is None
         super(Fabric, self).save(*args, **kwargs)
         # Create default VLAN if this is a fabric creation.
         if created:
-            from maasserver.models.vlan import (
-                VLAN, DEFAULT_VLAN_NAME, DEFAULT_VID)
-            default_vlan = VLAN.objects.create(
-                name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self)
-            self.default_vlan = default_vlan
-            self.save()
+            self._create_default_vlan()
