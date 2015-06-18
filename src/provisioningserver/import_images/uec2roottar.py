@@ -144,25 +144,38 @@ def loop_mount(image, mountpoint):
         unmount(mountpoint)
 
 
+def tar_supports_xattr_opts():
+    """Returns True if the system's tar supports the 'xattrs' options."""
+    out = check_output(['tar', '--help'])
+    return b"xattr" in out
+
+
 def extract_image(image, output):
     """Loop-mount `image`, and tar its contents into `output`."""
+
+    xattr_opts = []
+    if tar_supports_xattr_opts():
+        # Only add the xattrs options if tar supports it.
+        # For insance tar on 12.04 does *not* support xattrs.
+        xattr_opts = ['--xattrs', '--xattrs-include=*']
     with tempdir() as mountpoint:
+        cmd = ['tar'] + xattr_opts + [
+            # Work from mountpoint as the current directory.
+            '-C', mountpoint,
+            # Options:
+            #    -c: Create tarfile.
+            #    -p: Preserve permissions.
+            #    -S: Handle sparse files efficiently (images have those).
+            #    -z: Compress using gzip.
+            #    -f: Work on given tar file.
+            '-cpSzf', output,
+            '--numeric-owner',
+            # Tar up the "current directory": the mountpoint.
+            '.',
+            ]
+
         with loop_mount(image, mountpoint):
-            check_call([
-                'tar',
-                # Work from mountpoint as the current directory.
-                '-C', mountpoint,
-                # Options:
-                #    -c: Create tarfile.
-                #    -p: Preserve permissions.
-                #    -S: Handle sparse files efficiently (images have those).
-                #    -z: Compress using gzip.
-                #    -f: Work on given tar file.
-                '-cpSzf', output,
-                '--numeric-owner',
-                # Tar up the "current directory": the mountpoint.
-                '.',
-                ])
+            check_call(cmd)
 
 
 def set_ownership(path, user=None):

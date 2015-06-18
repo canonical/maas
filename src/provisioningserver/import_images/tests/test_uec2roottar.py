@@ -123,6 +123,7 @@ class TestExtractImageFromTarball(MAASTestCase):
     def test__extracts_image(self):
         tarball = make_tarball_name()
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'check_output')
         # Cheat: patch away extraction of the tarball, but pass a temporary
         # directory with an image already in it.  The function will think it
         # just extracted the image from the tarball.
@@ -145,6 +146,7 @@ class TestExtractImageFromTarball(MAASTestCase):
     def test__ignores_other_files(self):
         tarball = make_tarball_name()
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'check_output')
         # Make the function think that it found two files in the tarball: an
         # image and some other file.
         image = make_image(self)
@@ -160,6 +162,7 @@ class TestExtractImageFromTarball(MAASTestCase):
     def test__fails_if_no_image_found(self):
         tarball = make_tarball_name()
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'check_output')
         empty_dir = self.make_dir()
         error = self.assertRaises(
             uec2roottar.ImageFileError,
@@ -171,6 +174,7 @@ class TestExtractImageFromTarball(MAASTestCase):
     def test__fails_if_multiple_images_found(self):
         tarball = make_tarball_name()
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'check_output')
         working_dir = self.make_dir()
         files = sorted(
             factory.make_file(working_dir, name=make_image_name())
@@ -278,6 +282,22 @@ class TestLoopMount(MAASTestCase):
             uec2roottar.check_call, MockAnyCall(['umount', mountpoint]))
 
 
+class TestTarSupportsXattrOpts(MAASTestCase):
+    """Tests for `tar_supports_xattr_opts`."""
+
+    def test__returns_True_if_help_contains_ref_to_xattr(self):
+        mock_check_call = self.patch(uec2roottar, 'check_output')
+        mock_check_call.return_value = 'xattr'
+        self.assertTrue(uec2roottar.tar_supports_xattr_opts())
+        self.assertThat(mock_check_call, MockCalledOnceWith(['tar', '--help']))
+
+    def test__returns_False_if_help_doesnt_contain_ref_to_xattr(self):
+        mock_check_call = self.patch(uec2roottar, 'check_output')
+        mock_check_call.return_value = 'nothing'
+        self.assertFalse(uec2roottar.tar_supports_xattr_opts())
+        self.assertThat(mock_check_call, MockCalledOnceWith(['tar', '--help']))
+
+
 class TestExtractImage(MAASTestCase):
     """Tests for `extract_image`."""
 
@@ -287,16 +307,31 @@ class TestExtractImage(MAASTestCase):
         [command] = args
         return command
 
-    def test__extracts_image(self):
+    def test__extracts_image_if_tar_supports_xattr(self):
         image = make_image_name()
         output = make_tarball_name()
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'tar_supports_xattr_opts').return_value = False
         uec2roottar.extract_image(image, output)
         self.assertThat(uec2roottar.check_call.mock_calls, HasLength(3))
         [mount_call, tar_call, umount_call] = uec2roottar.check_call.mock_calls
         self.assertEqual('mount', self.extract_command_line(mount_call)[0])
         tar_command = self.extract_command_line(tar_call)
         self.assertEqual(['tar', '-C'], tar_command[:2])
+        self.assertEqual('umount', self.extract_command_line(umount_call)[0])
+
+    def test__extracts_image_if_tar_doesnt_supports_xattr(self):
+        image = make_image_name()
+        output = make_tarball_name()
+        self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'tar_supports_xattr_opts').return_value = True
+        uec2roottar.extract_image(image, output)
+        self.assertThat(uec2roottar.check_call.mock_calls, HasLength(3))
+        [mount_call, tar_call, umount_call] = uec2roottar.check_call.mock_calls
+        self.assertEqual('mount', self.extract_command_line(mount_call)[0])
+        tar_command = self.extract_command_line(tar_call)
+        self.assertEqual(
+            ['tar', '--xattrs', '--xattrs-include=*', '-C'], tar_command[:4])
         self.assertEqual('umount', self.extract_command_line(umount_call)[0])
 
 
@@ -335,6 +370,7 @@ class TestUEC2RootTar(MAASTestCase):
         output = os.path.join(self.make_dir(), output_name)
         args = self.make_args(image=image, output=output)
         self.patch(uec2roottar, 'check_call')
+        self.patch(uec2roottar, 'check_output')
         patch_is_filesystem_file(self, True)
 
         uec2roottar.main(args)
