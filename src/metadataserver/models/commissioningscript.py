@@ -42,7 +42,13 @@ from django.db.models import (
     Model,
 )
 from lxml import etree
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import MAC
+from maasserver.models import (
+    Fabric,
+    Interface,
+)
+from maasserver.models.interface import PhysicalInterface
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
@@ -147,6 +153,37 @@ _xpath_memory_bytes = """\
 """
 
 
+def _create_or_update_physical_interface(node, ifname, mac):
+    """Assigns the specified interface+MAC to the specified Node.
+
+    After assigning to the MAC to the specified Node, saves the MAC and creates
+    or updates a PhysicalInterface that corresponds to the given MAC.
+
+    :param node: Node model object
+    :param ifname: the interface name (for example, 'eth0')
+    :param mac: the MACAddress to update and associate
+    """
+    # XXX:fabric - we might reassign a MAC in a different Fabric here.
+    if mac.node != node:
+        mac.node = node
+        mac.save()
+
+    try:
+        # XXX:fabric - this MAC might exist on a different Fabric
+        interface = PhysicalInterface.objects.get(mac=mac, mac__node=node)
+        interface.name = ifname
+    except PhysicalInterface.DoesNotExist:
+        interface = PhysicalInterface.objects.create(mac=mac, name=ifname)
+
+    # XXX:fabric - for now we use the default fabric, but we need to be smarter
+    # about determining which fabric the node is in. (perhaps the cluster
+    # interface the node is linked to has an associated fabric, for example)
+    fabric = Fabric.objects.get_default_fabric()
+
+    interface.vlan = fabric.get_default_vlan()
+    interface.save()
+
+
 def update_node_network_information(node, output, exit_status):
     """Updates the network interfaces from the results of `IPLINK_SCRIPT`.
 
@@ -163,33 +200,79 @@ def update_node_network_information(node, output, exit_status):
 
     # Get the MAC addresses of all connected interfaces.
     ip_link_info = parse_ip_link(output)
+    current_macs = set()
 
-    hw_macaddresses = filter(
-        None, [
-            interface.get('mac')
-            for interface
-            in ip_link_info.values()
-        ])
+    for link in ip_link_info.values():
+        link_mac = link.get('mac')
+        # Ignore loopback interfaces.
+        if link_mac is None:
+            continue
+        else:
+            mac, _ = MACAddress.objects.get_or_create(
+                mac_address=link_mac)
+            current_macs.add(mac)
+            # These 2 cases are covered today:
+            # (1) The MAC does not [yet] have a node
+            # (2) The MAC was assigned to a different node (either a duplicate
+            #     MAC or a NIC changed machines; either way an event that
+            #     should be logged)
+            # Currently unhandled: (XXX:fabric)
+            # (3) MAC exists, but is on a different Fabric
+            if mac.node is None or mac.node == node:
+                _create_or_update_physical_interface(node, link['name'], mac)
+            elif mac.node != node:
+                logger.warning(
+                    "MAC %s moved from node %s to %s" %
+                    (mac, mac.node.fqdn, node.fqdn))
+                # XXX:fabric - this MAC might exist on a different Fabric.
+                PhysicalInterface.objects.filter(
+                    mac=mac, mac__node=mac.node).delete()
+                mac.node = node
+                mac.save()
+                _create_or_update_physical_interface(node, link['name'], mac)
 
-    # Important notice: hw_addresses contains MAC objects while
-    # node.macaddress_set.all() contains MACAddress objects.
-    # MAC addresses found in the hardware node but not on the db will be
-    # created or reassigned.
-    for address in hw_macaddresses:
-        if address not in [MAC(m.mac_address)
-                           for m in node.macaddress_set.all()]:
-            try:
-                mac_address = MACAddress.objects.get(mac_address=address)
-                mac_address.node = node
-                mac_address.save()
-            except MACAddress.DoesNotExist:
-                MACAddress(mac_address=address, node=node).save()
-
-    # MAC addresses found in the db but not on the hardware node will be
-    # deleted.
+    # Go through the set of MACs and ensure they all correspond to physical
+    # interfaces which still exist on the Node.
     for mac_address in node.macaddress_set.all():
-        if MAC(mac_address.mac_address) not in hw_macaddresses:
-            mac_address.delete()
+        # There are several possibilities:
+        # (1) MACs with no linked interface (from legacy MAAS versions)
+        # (2) MACs linked to a PhysicalInterface
+        # (3) MACs linked to any other type of interface
+        # (4) MACs linked to a PhysicalInterface *and* a virtual interface
+        #
+        # For (1) and (2), and (4) we just need to remove the MAC.
+        # (In the (2) and (4) case, the related interface(s) will
+        # automatically be deleted. In the (4) case, it's true that we
+        # will be deleting more than just the PhysicalInterface, but we
+        # shouldn't leave around virtual interfaces that use the hardware
+        # MAC.)
+        # For (3), we can skip deleting the (MAC, Interface) tuple.
+        #
+        # Note: the filter by mac__node is not strictly needed right now,
+        # but in the future (if we support the edge case of duplicate MACs,
+        # which has an increased likelihood of occurring once we support
+        # fabrics) we may wish to prevent the deletion of MACs belonging to
+        # unrelated nodes.
+        node_mac_interfaces_filter = Interface.objects.filter(
+            mac=mac_address, mac__node=node)
+        physical_interface_count = node_mac_interfaces_filter.filter(
+            type=INTERFACE_TYPE.PHYSICAL).count()
+        virtual_interface_count = node_mac_interfaces_filter.exclude(
+            type=INTERFACE_TYPE.PHYSICAL).count()
+
+        # This is case (1), a legacy MAAS interface.
+        if physical_interface_count == 0 and virtual_interface_count == 0:
+            # Note: mac_address here should *never* be in current_macs,
+            # otherwise we would have created an interface for it.
+            if mac_address not in current_macs:
+                mac_address.delete()
+        # This is case (2) and case (4).
+        elif physical_interface_count > 0:
+            if mac_address not in current_macs:
+                mac_address.delete()
+        # What remains is case (3).
+        else:  # physical_interface_count == 0 and virtual_interface_count > 0
+            pass
 
 
 def update_hardware_details(node, output, exit_status):

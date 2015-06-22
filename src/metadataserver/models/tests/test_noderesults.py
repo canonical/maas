@@ -37,7 +37,9 @@ from textwrap import dedent
 import time
 
 from fixtures import FakeLogger
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import MAC
+from maasserver.models import Interface
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
@@ -85,6 +87,7 @@ from testtools.matchers import (
     Contains,
     ContainsAll,
     DocTestMatches,
+    Equals,
     MatchesStructure,
     Not,
 )
@@ -1117,16 +1120,42 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from the
     ip_link_results.txt file to simulate `ip link`'s output.
 
-    The file records 6 different MAC addresses coming from different kinds of
-    interfaces:
-
-    38:b1:db:cd:f0:ab
-    52:54:00:03:53:aa
-    52:54:00:67:f5:3a
-    ec:f4:bb:f9:17:8e
-    fe:54:00:02:36:19
-    fe:54:00:b4:f1:61
+    The EXPECTED_MACS dictionary below must match the contents of the file,
+    which should specify a list of physical interfaces (such as what would
+    be expected to be found during commissioning).
     """
+
+    EXPECTED_INTERFACES = {
+        'eth0': MAC("00:00:00:00:00:01"),
+        'eth1': MAC("00:00:00:00:00:02"),
+        'eth2': MAC("00:00:00:00:00:03"),
+    }
+
+    IP_LINK_OUTPUT = None
+
+    def setUp(self):
+        self.IP_LINK_OUTPUT = open(
+            os.path.dirname(__file__) + '/ip_link_results.txt').read()
+        super(TestUpdateNodeNetworkInformation, self).setUp()
+
+    def assert_expected_interfaces_and_macs_exist(
+            self, node_interfaces, additional_interfaces={}):
+        """Asserts to ensure that the type, name, and MAC address are
+        appropriate, given Node's interfaces. (and an optional list of
+        additional interfaces which must exist)
+        """
+        expected_interfaces = self.EXPECTED_INTERFACES.copy()
+        expected_interfaces.update(additional_interfaces)
+
+        self.assertThat(len(node_interfaces), Equals(len(expected_interfaces)))
+
+        for interface in node_interfaces:
+            if interface.name.startswith('eth'):
+                self.assertThat(
+                    interface.type, Equals(INTERFACE_TYPE.PHYSICAL))
+            self.assertIn(interface.name, expected_interfaces)
+            self.assertThat(interface.mac.mac_address, Equals(
+                expected_interfaces[interface.name]))
 
     def test__add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
@@ -1137,21 +1166,14 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # this node.
         MACAddress.objects.filter(node_id=node.id).delete()
 
-        output = open(
-            os.path.dirname(__file__) + '/ip_link_results.txt').read()
-        update_node_network_information(node, output, 0)
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
 
         # Makes sure all the test dataset MAC addresses were added to the node.
-        node_macaddresses = [m.mac_address for m in node.macaddress_set.all()]
-        self.assertIn(MAC("38:b1:db:cd:f0:ab"), node_macaddresses)
-        self.assertIn(MAC("52:54:00:03:53:aa"), node_macaddresses)
-        self.assertIn(MAC("52:54:00:67:f5:3a"), node_macaddresses)
-        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), node_macaddresses)
-        self.assertIn(MAC("fe:54:00:02:36:19"), node_macaddresses)
-        self.assertIn(MAC("fe:54:00:b4:f1:61"), node_macaddresses)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
 
     def test__one_mac_missing(self):
-        """Test whether we correcly detach a NIC that no longer appears to be
+        """Test whether we correctly detach a NIC that no longer appears to be
         connected to the node.
         """
         node = factory.make_Node()
@@ -1161,18 +1183,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         mac_to_be_detached.mac_address = "01:23:45:67:89:ab"
         mac_to_be_detached.save()
 
-        output = open(
-            os.path.dirname(__file__) + '/ip_link_results.txt').read()
-        update_node_network_information(node, output, 0)
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
         db_macaddresses = [m.mac_address for m in node.macaddress_set.all()]
 
         # These should have been added to the node.
-        self.assertIn(MAC("38:b1:db:cd:f0:ab"), db_macaddresses)
-        self.assertIn(MAC("52:54:00:03:53:aa"), db_macaddresses)
-        self.assertIn(MAC("52:54:00:67:f5:3a"), db_macaddresses)
-        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), db_macaddresses)
-        self.assertIn(MAC("fe:54:00:02:36:19"), db_macaddresses)
-        self.assertIn(MAC("fe:54:00:b4:f1:61"), db_macaddresses)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
 
         # This one should have been removed because it no longer shows on the
         # `ip link` output.
@@ -1185,39 +1201,202 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Create a MAC address that we know IS in the test dataset.
         mac_to_be_reassigned = factory.make_MACAddress(node=node1)
-        mac_to_be_reassigned.mac_address = MAC('38:b1:db:cd:f0:ab')
+        mac_to_be_reassigned.mac_address = MAC('00:00:00:00:00:01')
         mac_to_be_reassigned.save()
 
         node2 = factory.make_Node()
-        output = open(
-            os.path.dirname(__file__) + '/ip_link_results.txt').read()
-        update_node_network_information(node2, output, 0)
+        update_node_network_information(node2, self.IP_LINK_OUTPUT, 0)
 
-        node2_db_macaddresses = [m.mac_address
-                                 for m in node2.macaddress_set.all()]
-        self.assertIn(MAC("38:b1:db:cd:f0:ab"), node2_db_macaddresses)
-        self.assertIn(MAC("52:54:00:03:53:aa"), node2_db_macaddresses)
-        self.assertIn(MAC("52:54:00:67:f5:3a"), node2_db_macaddresses)
-        self.assertIn(MAC("ec:f4:bb:f9:17:8e"), node2_db_macaddresses)
-        self.assertIn(MAC("fe:54:00:02:36:19"), node2_db_macaddresses)
-        self.assertIn(MAC("fe:54:00:b4:f1:61"), node2_db_macaddresses)
+        node2_interfaces = Interface.objects.filter(mac__node=node2)
+        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
 
-    def test__mac_ids_are_preserved(self):
+        # Ensure the MAC object moved over to node2.
+        self.assertItemsEqual([], Interface.objects.filter(mac__node=node1))
+        self.assertItemsEqual([], MACAddress.objects.filter(node=node1))
+
+    def test__reassign_interfaces(self):
+        """Test whether we can assign interfaces previously connected to a
+        different node to the current one"""
+        node1 = factory.make_Node()
+        update_node_network_information(node1, self.IP_LINK_OUTPUT, 0)
+
+        # First make sure the first node has all the expected interfaces.
+        node2_interfaces = Interface.objects.filter(mac__node=node1)
+        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
+
+        # Grab the id from one of the created interfaces.
+        interface_id = Interface.objects.filter(mac__node=node1).first().id
+
+        # Now make sure the second node has them all.
+        node2 = factory.make_Node()
+        update_node_network_information(node2, self.IP_LINK_OUTPUT, 0)
+
+        node2_interfaces = Interface.objects.filter(mac__node=node2)
+        self.assert_expected_interfaces_and_macs_exist(node2_interfaces)
+
+        # Now make sure all the objects moved to the second node.
+        self.assertItemsEqual([], Interface.objects.filter(mac__node=node1))
+        self.assertItemsEqual([], MACAddress.objects.filter(node=node1))
+
+        # ... and ensure that the interface was deleted.
+        self.assertItemsEqual([], Interface.objects.filter(id=interface_id))
+
+    def test__does_not_delete_virtual_interfaces_with_shared_mac(self):
+        # Note: since this VLANInterface will be linked to the default VLAN
+        # ("vid 0", which is actually invalid) the VLANInterface will
+        # automatically get the name "vlan0".
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
+        BOND_NAME = 'bond0'
+        vlan_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        node = vlan_mac.node
+        bond_mac = factory.make_MACAddress_with_Node(
+            address=ETH1_MAC, node=node)
+        phy1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0", mac=vlan_mac)
+        phy2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth1", mac=bond_mac)
+        vlanif = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, mac=vlan_mac, parents=[phy1])
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, name=BOND_NAME, mac=bond_mac, parents=[phy2])
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(
+            node_interfaces, {vlanif.name: ETH0_MAC, BOND_NAME: ETH1_MAC})
+
+    def test__interface_names_changed(self):
+        # Note: the MACs here are swapped compared to their expected values.
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
+        ETH1_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        node = eth0_mac.node
+        eth1_mac = factory.make_MACAddress_with_Node(
+            node=node, address=ETH1_MAC)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0", mac=eth0_mac)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth1", mac=eth1_mac)
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        # This will ensure that the interfaces were renamed appropriately.
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+
+    def test__mac_id_is_preserved(self):
         """Test whether MAC address entities are preserved and not recreated"""
-        node = factory.make_Node(hostname='testmacidsarepreserved')
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        mac_to_be_preserved = factory.make_MACAddress_with_Node(
+            address=ETH0_MAC)
+        node = mac_to_be_preserved.node
 
-        # Create a MAC address that we know IS in the test dataset.
-        mac_to_be_preserved = factory.make_MACAddress(node=node)
-        mac_to_be_preserved.mac_address = MAC('38:b1:db:cd:f0:ab')
-        mac_to_be_preserved.save()
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
 
-        id_to_be_verified = mac_to_be_preserved.id
+        self.assertIsNotNone(reload_object(mac_to_be_preserved))
 
-        output = open(
-            os.path.dirname(__file__) + '/ip_link_results.txt').read()
-        update_node_network_information(node, output, 0)
+    def test__legacy_model_upgrade_preserves_macs(self):
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
+        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        node = eth0_mac.node
+        eth1_mac = factory.make_MACAddress_with_Node(
+            node=node, address=ETH1_MAC)
 
-        post_update_mac_id = MACAddress.objects.get(
-            mac_address=MAC('38:b1:db:cd:f0:ab')).id
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
 
-        self.assertEqual(id_to_be_verified, post_update_mac_id)
+        self.assertEqual(eth0_mac, MACAddress.objects.get(id=eth0_mac.id))
+        self.assertEqual(eth1_mac, MACAddress.objects.get(id=eth1_mac.id))
+
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+
+    def test__legacy_model_with_extra_mac(self):
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
+        ETH2_MAC = self.EXPECTED_INTERFACES['eth2'].get_raw()
+        ETH3_MAC = '00:00:00:00:01:04'
+        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        node = eth0_mac.node
+        eth1_mac = factory.make_MACAddress_with_Node(
+            node=node, address=ETH1_MAC)
+        eth2_mac = factory.make_MACAddress_with_Node(
+            node=node, address=ETH2_MAC)
+        eth3_mac = factory.make_MACAddress_with_Node(
+            node=node, address=ETH3_MAC)
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+
+        # Make sure we re-used the existing MACs in the database.
+        self.assertIsNotNone(reload_object(eth0_mac))
+        self.assertIsNotNone(reload_object(eth1_mac))
+        self.assertIsNotNone(reload_object(eth2_mac))
+
+        # Make sure the interface that no longer exists has been removed.
+        self.assertIsNone(reload_object(eth3_mac))
+
+    def test__does_not_delete_virtual_interfaces_with_unique_mac(self):
+        ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
+        ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
+        VLAN_MAC = '00:00:00:00:01:01'
+        BOND_MAC = '00:00:00:00:01:02'
+        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        node = eth0_mac.node
+        eth1_mac = factory.make_MACAddress_with_Node(
+            address=ETH1_MAC, node=node)
+        vlan_mac = factory.make_MACAddress_with_Node(
+            address=VLAN_MAC, node=node)
+        bond_mac = factory.make_MACAddress_with_Node(
+            address=BOND_MAC, node=node)
+        phy1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', mac=eth0_mac)
+        phy2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth1', mac=eth1_mac)
+        vlanif = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, mac=vlan_mac, parents=[phy1])
+        bondif = factory.make_Interface(
+            INTERFACE_TYPE.BOND, mac=bond_mac, parents=[phy2])
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(
+            node_interfaces, {vlanif.name: VLAN_MAC, bondif.name: BOND_MAC})
+
+    def test__deletes_virtual_interfaces_linked_to_removed_macs(self):
+        VLAN_MAC = '00:00:00:00:01:01'
+        BOND_MAC = '00:00:00:00:01:02'
+        vlan_mac = factory.make_MACAddress_with_Node(address=VLAN_MAC)
+        node = vlan_mac.node
+        bond_mac = factory.make_MACAddress_with_Node(
+            address=BOND_MAC, node=node)
+        phy1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0', mac=vlan_mac)
+        phy2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth1', mac=bond_mac)
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN, mac=vlan_mac, parents=[phy1])
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, mac=bond_mac, parents=[phy2])
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+
+    def test__preserves_unrelated_virtual_interfaces(self):
+        VLAN_MAC = '00:00:00:00:01:01'
+        BOND_MAC = '00:00:00:00:01:02'
+        vlan_mac = factory.make_MACAddress_with_Node(address=VLAN_MAC)
+        node = vlan_mac.node
+        bond_mac = factory.make_MACAddress_with_Node(
+            node=node, address=BOND_MAC)
+        vlanif = factory.make_Interface(INTERFACE_TYPE.VLAN, mac=vlan_mac)
+        bondif = factory.make_Interface(INTERFACE_TYPE.BOND, mac=bond_mac)
+
+        update_node_network_information(node, self.IP_LINK_OUTPUT, 0)
+        node_interfaces = Interface.objects.filter(mac__node=node)
+        self.assert_expected_interfaces_and_macs_exist(
+            node_interfaces, {vlanif.name: VLAN_MAC, bondif.name: BOND_MAC})
