@@ -41,8 +41,10 @@ __all__ = [
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
+    'Space',
     'SSHKey',
     'SSLKey',
+    'Subnet',
     'Tag',
     'UserProfile',
     'VirtualBlockDevice',
@@ -92,9 +94,11 @@ from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile

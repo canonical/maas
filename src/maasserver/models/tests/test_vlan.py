@@ -26,6 +26,7 @@ from maasserver.models.interface import (
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
@@ -114,6 +115,14 @@ class VLANTest(MAASServerTestCase):
         reconnected_interface = reconnected_interfaces[0]
         self.assertEqual(
             reconnected_interface.vlan, fabric.get_default_vlan())
+
+    def test_subnets_are_reconnected_when_vlan_is_deleted(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        subnet = factory.make_Subnet(vlan=vlan)
+        vlan.delete()
+        self.assertEqual(
+            reload_object(subnet).vlan, fabric.get_default_vlan())
 
 
 class VLANVidValidationTest(MAASServerTestCase):

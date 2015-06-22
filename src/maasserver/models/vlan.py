@@ -112,6 +112,12 @@ class VLAN(CleanSave, TimestampedModel):
             ngi.vlan = self.fabric.get_default_vlan()
             ngi.save()
 
+    def manage_connected_subnets(self):
+        """Reconnect subnets the default VLAN of the fabric."""
+        for subnet in self.subnet_set.all():
+            subnet.vlan = self.fabric.get_default_vlan()
+            subnet.save()
+
     def delete(self):
         if self.is_fabric_default():
             raise ValidationError(
@@ -119,4 +125,5 @@ class VLAN(CleanSave, TimestampedModel):
                 "it cannot be deleted.")
         self.manage_connected_interfaces()
         self.manage_connected_cluster_interfaces()
+        self.manage_connected_subnets()
         super(VLAN, self).delete()

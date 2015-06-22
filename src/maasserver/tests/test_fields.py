@@ -52,7 +52,6 @@ from maasserver.tests.models import (
 )
 from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPNetwork
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 
@@ -530,7 +529,7 @@ class TestCIDRField(TestModelMixin, MAASServerTestCase):
     def test_stores_cidr(self):
         cidr = '192.0.2.0/24'
         instance = CIDRTestModel.objects.create(cidr=cidr)
-        self.assertEqual(reload_object(instance).cidr, IPNetwork(cidr))
+        self.assertEqual(cidr, reload_object(instance).cidr)
 
     def test_validates_cidr(self):
         cidr = 'invalid-cidr'
@@ -540,5 +539,6 @@ class TestCIDRField(TestModelMixin, MAASServerTestCase):
 
     def test_stores_cidr_with_bit_set_in_host_part(self):
         cidr = '192.0.2.1/24'
+        normalized_cidr = '192.0.2.0/24'
         instance = CIDRTestModel.objects.create(cidr=cidr)
-        self.assertEqual(reload_object(instance).cidr, IPNetwork(cidr))
+        self.assertEqual(normalized_cidr, reload_object(instance).cidr)

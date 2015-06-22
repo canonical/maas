@@ -104,6 +104,7 @@ add_introspection_rules(
         "^maasserver\.fields\.EditableBinaryField",
         "^maasserver\.fields\.MAASIPAddressField",
         "^maasserver\.fields\.LargeObjectField",
+        "^maasserver\.fields\.CIDRField",
     ])
 
 
@@ -541,7 +542,7 @@ class LargeObjectField(IntegerField):
 
 def parse_cidr(value):
     try:
-        return IPNetwork(value)
+        return unicode(IPNetwork(value).cidr)
     except AddrFormatError as e:
         raise ValidationError(e.message)
 
@@ -555,7 +556,7 @@ class CIDRField(Field):
         return 'cidr'
 
     def get_prep_value(self, value):
-        return unicode(value.cidr)
+        return parse_cidr(value)
 
     def from_db_value(self, value, expression, connection, context):
         if value is None:
@@ -564,7 +565,7 @@ class CIDRField(Field):
 
     def to_python(self, value):
         if isinstance(value, IPNetwork):
-            return value
+            return unicode(value)
         if not value:
             return value
         return parse_cidr(value)

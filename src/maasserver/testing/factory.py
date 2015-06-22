@@ -72,9 +72,11 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    Space,
     SSHKey,
     SSLKey,
     StaticIPAddress,
+    Subnet,
     Tag,
     VirtualBlockDevice,
     VLAN,
@@ -102,6 +104,7 @@ from metadataserver.models import (
 )
 from netaddr import (
     IPAddress,
+    IPNetwork,
     IPRange,
 )
 from provisioningserver.utils.enum import map_enum
@@ -587,6 +590,35 @@ class Factory(maastesting.factory.Factory):
         key = SSLKey(key=key_string, user=user)
         key.save()
         return key
+
+    def make_Space(self, name=None):
+        if name is None:
+            name = self.make_name('space')
+        space = Space(name=name)
+        space.save()
+        return space
+
+    def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
+                    gateway_ip=None, dns_servers=None):
+        if name is None:
+            name = factory.make_name('name')
+        if vlan is None:
+            vlan = factory.make_VLAN()
+        if space is None:
+            space = factory.make_Space()
+        if cidr is None:
+            network = factory.make_ip4_or_6_network()
+            cidr = unicode(network.cidr)
+        if gateway_ip is None:
+            gateway_ip = factory.pick_ip_in_network(IPNetwork(cidr))
+        if dns_servers is None:
+            dns_servers = [
+                self.make_ip_address() for _ in range(random.randint(1, 3))]
+        subnet = Subnet(
+            name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
+            space=space, dns_servers=dns_servers)
+        subnet.save()
+        return subnet
 
     def make_Fabric(self, name=None):
         if name is None:
