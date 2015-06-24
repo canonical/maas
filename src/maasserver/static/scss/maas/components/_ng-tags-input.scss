@@ -44,6 +44,10 @@ tags-input {
       height: 30px;
       line-height: 30px;
 
+      &:hover {
+        color: $ubuntu-orange;
+      }
+
       &:after {
         content: ',';
         color: #999;
@@ -66,6 +70,10 @@ tags-input {
         font-family: Ubuntu,Arial,"libra sans",sans-serif;
         font-size: 1em;
         font-weight: 300;
+
+        &:hover {
+          text-decoration: none;
+        }
 
         &:active {
         }

@@ -8,17 +8,15 @@
 <div class="ng-hide" data-ng-show="loaded">
     <header class="page-header margin-bottom">
         <div class="inner-wrapper">
-            <nav class="page-header__nav">
-                <a href="#/node/{$ node.system_id $}">&lsaquo;&nbsp;Back to machine details</a>
-            </nav>
             <h1 class="page-header__title eight-col">
                 {$ node.fqdn $}
                 <span class="page-header__title--identicator">
                     {$ events.length $} machine events in the past {$ days $} days
+                    <a href="" class="page-header__title-loadmore" data-ng-click="loadMore()">load 30 more days</a>
                 </span>
             </h1>
             <div class="page-header__actions four-col last-col">
-                <a href="" class="right link-cta-ubuntu text-button" data-ng-click="loadMore()">load 30 more days</a>
+                <a class="right link-cta-ubuntu text-button" href="#/node/{$ node.system_id $}">&lsaquo;&nbsp;Back to machine details</a>
             </div>
         </div>
     </header>

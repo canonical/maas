@@ -15,6 +15,7 @@ table {
     margin-bottom: 40px;
     border-collapse: separate;
     border-spacing: 0;
+    font-size: 13px;
 
     th,
     td {
@@ -27,7 +28,7 @@ table {
 
         th {
             background: transparent;
-            color: #B2B2B2;
+            color: #888;
             border: none;
             border-bottom: 1px solid #B2B2B2;
         }
@@ -96,14 +97,14 @@ table {
 
     .table-listing__header {
         background: transparent;
-        color: #B2B2B2;
+        color: #888;
         border: none;
         border-bottom: 1px solid #B2B2B2;
 
         .table-listing__header-link {
             background-repeat: no-repeat;
             background-position: top 8px right 0;
-            color: #B2B2B2;
+            color: #888;
 
             &:hover {
                 color: #333;
