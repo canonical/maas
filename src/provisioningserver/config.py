@@ -435,7 +435,11 @@ class BootSources(ConfigBase, ForEach):
 ###############################################################################
 
 
-def touch(path, mode=0o600):
+# Permit reads by members of the same group.
+default_file_mode = 0o640
+
+
+def touch(path, mode=default_file_mode):
     """Ensure that `path` exists."""
     os.close(os.open(path, os.O_CREAT | os.O_APPEND, mode))
 
@@ -558,8 +562,16 @@ class ConfigurationFile:
 
     def save(self):
         """Save the configuration."""
-        atomic_write(yaml.safe_dump(self.config, default_flow_style=False),
-                     self.path)
+        try:
+            stat = os.stat(self.path)
+        except OSError:
+            mode = default_file_mode
+        else:
+            mode = stat.st_mode
+        # Write, retaining the file's mode.
+        atomic_write(
+            yaml.safe_dump(self.config, default_flow_style=False),
+            self.path, mode=mode)
         self.dirty = False
 
     @classmethod

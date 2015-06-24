@@ -899,7 +899,7 @@ class TestConfigurationDatabase(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         with ConfigurationDatabase.open(config_file):
             perms = FilePath(config_file).getPermissions()
-            self.assertEqual("rw-------", perms.shorthand())
+            self.assertEqual("rw-r-----", perms.shorthand())
 
     def test_open_permissions_existing_database(self):
         # ConfigurationDatabase.open() leaves the file permissions of existing
@@ -1017,17 +1017,45 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         with ConfigurationFile.open(config_file):
             perms = FilePath(config_file).getPermissions()
-            self.assertEqual("rw-------", perms.shorthand())
+            self.assertEqual("rw-r-----", perms.shorthand())
 
-    def test_open_permissions_existing_database(self):
+    def test_unmodified_database_retains_permissions(self):
         # ConfigurationFile.open() leaves the file permissions of existing
-        # configuration databases.
+        # configuration databases if they're not modified.
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
         os.chmod(config_file, 0o644)  # u=rw,go=r
         with ConfigurationFile.open(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
+        perms = FilePath(config_file).getPermissions()
+        self.assertEqual("rw-r--r--", perms.shorthand())
+
+    def test_modified_database_retains_permissions(self):
+        # ConfigurationFile.open() leaves the file permissions of existing
+        # configuration databases if they're modified.
+        config_file = os.path.join(self.make_dir(), "config")
+        open(config_file, "wb").close()  # touch.
+        os.chmod(config_file, 0o644)  # u=rw,go=r
+        with ConfigurationFile.open(config_file) as config:
+            perms = FilePath(config_file).getPermissions()
+            self.assertEqual("rw-r--r--", perms.shorthand())
+            config["foobar"] = "I am a modification"
+        perms = FilePath(config_file).getPermissions()
+        self.assertEqual("rw-r--r--", perms.shorthand())
+
+    def test_modified_database_uses_safe_permissions_if_file_missing(self):
+        # ConfigurationFile.open() uses a sensible u=rw,g=r file mode when
+        # saving if the database file has been inexplicably removed. This is
+        # the same mode as used when opening a new database.
+        config_file = os.path.join(self.make_dir(), "config")
+        open(config_file, "wb").close()  # touch.
+        os.chmod(config_file, 0o644)  # u=rw,go=r
+        with ConfigurationFile.open(config_file) as config:
+            config["foobar"] = "I am a modification"
+            os.unlink(config_file)
+        perms = FilePath(config_file).getPermissions()
+        self.assertEqual("rw-r-----", perms.shorthand())
 
     def test_opened_configuration_file_saves_on_exit(self):
         # ConfigurationFile.open() returns a context manager that will save an
