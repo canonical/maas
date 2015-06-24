@@ -17,6 +17,8 @@ __all__ = [
     'MAASTwistedRunTest',
     ]
 
+import abc
+from collections import Sequence
 from contextlib import contextmanager
 import doctest
 from importlib import import_module
@@ -59,6 +61,37 @@ def active_test(result, test):
         yield
 
 
+class MAASTestType(abc.ABCMeta):
+    """Base type for MAAS's test cases.
+
+    Its only task at present is to ensure that `scenarios` is defined as a
+    sequence. If not, for example it might be defined using a generator, it is
+    coerced into a sequence.
+
+    No attempt is made to suppress exceptions arising from this coercion, so
+    failures are early and loud.
+
+    Coercing generators is valuable because the use of these for scenarios can
+    result in strange behaviour that doesn't obviously point to the cause.
+
+    An alternative might be to reject non-sequences, but it seems we can
+    safely handle them here just as well. Now that the issue is known, and a
+    mechanism is in place to deal with it, we can easily change the policy
+    later on.
+
+    """
+
+    def __new__(cls, name, bases, attrs):
+        scenarios = attrs.get("scenarios")
+        if scenarios is not None:
+            if not isinstance(scenarios, Sequence):
+                scenarios = attrs["scenarios"] = tuple(scenarios)
+            if len(scenarios) == 0:
+                scenarios = attrs["scenarios"] = None
+        return super(MAASTestType, cls).__new__(
+            cls, name, bases, attrs)
+
+
 class MAASTestCase(
         WithScenarios,
         EventualResultCatchingMixin,
@@ -74,6 +107,8 @@ class MAASTestCase(
     .. _fixtures: https://launchpad.net/python-fixtures
 
     """
+
+    __metaclass__ = MAASTestType
 
     # Allow testtools to generate longer diffs when tests fail.
     maxDiff = testtools.TestCase.maxDiff * 3
