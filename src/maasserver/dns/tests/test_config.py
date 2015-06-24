@@ -21,6 +21,7 @@ import random
 from django.conf import settings
 from django.core.management import call_command
 from maasserver import locks
+from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
     consolidator,
@@ -46,6 +47,7 @@ from maasserver.models import (
     Config,
     node as node_module,
 )
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
@@ -175,6 +177,10 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
 
 class TestConsolidatingChanges(MAASServerTestCase):
     """Tests for `Changes` and `ChangeConsolidator`."""
+
+    def setUp(self):
+        super(TestConsolidatingChanges, self).setUp()
+        self.useFixture(RegionConfigurationFixture())
 
     def make_managed_nodegroup(self):
         return factory.make_NodeGroup(
@@ -331,6 +337,8 @@ class TestDNSServer(MAASServerTestCase):
 
     def setUp(self):
         super(TestDNSServer, self).setUp()
+        # Allow test-local changes to configuration.
+        self.useFixture(RegionConfigurationFixture())
         # Immediately make DNS changes as they're needed.
         self.patch(dns_config_module, "DNS_DEFER_UPDATES", False)
         # Create a DNS server.
@@ -527,7 +535,8 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_dns_config_has_NS_record(self):
         ip = factory.make_ipv4_address()
-        self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
+        with RegionConfiguration.open() as config:
+            config.maas_url = 'http://%s/' % ip
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
@@ -679,6 +688,10 @@ class TestGetUpstreamDNS(MAASServerTestCase):
 
 class TestGetTrustedNetworks(MAASServerTestCase):
     """Test for maasserver/dns/config.py:get_trusted_networks()"""
+
+    def setUp(self):
+        super(TestGetTrustedNetworks, self).setUp()
+        self.useFixture(RegionConfigurationFixture())
 
     def test__returns_empty_string_if_no_networks(self):
         self.assertEqual([], get_trusted_networks())

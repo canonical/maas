@@ -101,9 +101,9 @@ class DNSException(MAASException):
 WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
-    "MAAS's DNS features or if you don't rely on this information.  "
-    "Be sure to configure the DEFAULT_MAAS_URL setting in MAAS's "
-    "/etc/maas/maas_local_settings.py.")
+    "MAAS's DNS features or if you don't rely on this information. "
+    "Consult the 'maas-region-admin config --default-url' command for details "
+    "on how to set the maas url.")
 
 
 def warn_loopback(ip):
@@ -115,7 +115,9 @@ def warn_loopback(ip):
 def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
     """Return the DNS server's IP address.
 
-    That address is derived from DEFAULT_MAAS_URL or nodegroup.maas_url.
+    That address is derived from the config maas_url or nodegroup.maas_url.
+    Consult the 'maas-region-admin config --default-url' command for details
+    on how to set the maas url.
 
     :param nodegroup: Optional cluster to which the DNS server should be
         accessible.  If given, the server address will be taken from the
@@ -130,8 +132,10 @@ def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
         raise DNSException(
             "Unable to find MAAS server IP address: %s.  "
             "MAAS's DNS server requires this IP address for the NS records "
-            "in its zone files.  Make sure that the DEFAULT_MAAS_URL setting "
+            "in its zone files.  Make sure that the config maas_url setting "
             "has the correct hostname."
+            "Consult the 'maas-region-admin config --default-url' command "
+            "for details on how to set the maas url."
             % e.strerror)
 
     warn_loopback(ip)

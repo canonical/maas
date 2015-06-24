@@ -36,6 +36,7 @@ from urlparse import (
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.config import RegionConfiguration
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.utils.orm import get_one
@@ -70,7 +71,10 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
-    the configured DEFAULT_MAAS_URL.
+    the configured maas url.
+
+    Consult the 'maas-region-admin config --default-url' command for details
+    on how to set the maas url.
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.
@@ -78,12 +82,13 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
         urllib.urlencode.  The result of that call will be appended to the
         resulting url.
     :param base_url: Optional url used as base.  If None is provided, then
-        settings.DEFAULT_MAAS_URL will be used.
+        configured maas url will be used.
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
     """
     if not base_url:
-        base_url = settings.DEFAULT_MAAS_URL
+        with RegionConfiguration.open() as config:
+            base_url = config.maas_url
     url = urljoin(base_url, reverse(view_name, *args, **kwargs))
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
@@ -105,7 +110,8 @@ def absolute_url_reverse(view_name, query=None, *args, **kwargs):
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
     """
-    abs_path = urlparse(settings.DEFAULT_MAAS_URL).path
+    with RegionConfiguration.open() as config:
+        abs_path = urlparse(config.maas_url).path
     if not abs_path.endswith('/'):
         # Add trailing '/' to get urljoin to behave.
         abs_path = abs_path + '/'

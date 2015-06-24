@@ -17,10 +17,10 @@ __all__ = []
 from collections import defaultdict
 from random import randint
 
-from django.conf import settings
 from maasserver import server_address
 from maasserver.exceptions import UnresolvableHost
 from maasserver.server_address import get_maas_facing_server_address
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPAddress
@@ -32,26 +32,20 @@ def make_hostname():
 
 class TestGetMAASFacingServerHost(MAASServerTestCase):
 
-    def set_DEFAULT_MAAS_URL(self, hostname=None, with_port=False):
-        """Patch DEFAULT_MAAS_URL to be a (partly) random URL."""
-        if hostname is None:
-            hostname = make_hostname()
-        if with_port:
-            location = "%s:%d" % (hostname, factory.pick_port())
-        else:
-            location = hostname
-        url = 'http://%s/%s' % (location, factory.make_name("path"))
-        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+    def set_maas_url(self, hostname, with_port=False):
+        """Set configured maas URL to be a (partly) random URL."""
+        url = factory.make_simple_http_url(netloc=hostname, port=with_port)
+        self.useFixture(RegionConfigurationFixture(maas_url=url))
 
     def test_get_maas_facing_server_host_returns_host_name(self):
         hostname = make_hostname()
-        self.set_DEFAULT_MAAS_URL(hostname)
+        self.set_maas_url(hostname)
         self.assertEqual(
             hostname, server_address.get_maas_facing_server_host())
 
     def test_get_maas_facing_server_host_returns_ip_if_ip_configured(self):
         ip = factory.make_ipv4_address()
-        self.set_DEFAULT_MAAS_URL(ip)
+        self.set_maas_url(ip)
         self.assertEqual(ip, server_address.get_maas_facing_server_host())
 
     def test_get_maas_facing_server_host_returns_nodegroup_maas_url(self):
@@ -63,13 +57,13 @@ class TestGetMAASFacingServerHost(MAASServerTestCase):
 
     def test_get_maas_facing_server_host_strips_out_port(self):
         hostname = make_hostname()
-        self.set_DEFAULT_MAAS_URL(hostname, with_port=True)
+        self.set_maas_url(hostname, with_port=True)
         self.assertEqual(
             hostname, server_address.get_maas_facing_server_host())
 
     def test_get_maas_facing_server_host_parses_IPv6_address_in_URL(self):
         ip = factory.make_ipv6_address()
-        self.set_DEFAULT_MAAS_URL('[%s]' % ip)
+        self.set_maas_url('[%s]' % ip)
         self.assertEqual(
             unicode(ip), server_address.get_maas_facing_server_host())
 

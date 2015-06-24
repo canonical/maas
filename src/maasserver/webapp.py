@@ -17,11 +17,10 @@ __all__ = [
 ]
 
 from httplib import SERVICE_UNAVAILABLE
-import os
 import re
 
-from django.conf import settings
 from lxml import html
+from maasserver.config import RegionConfiguration
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
 from maasserver.websockets.websockets import (
@@ -47,24 +46,7 @@ from twisted.web.util import Redirect
 from twisted.web.wsgi import WSGIResource
 
 
-def get_path_to_static_root():
-    """Return the static root path.
-
-    In production the STATIC_ROOT setting is set to the path where the static
-    files are located on the filesystem. E.g. "/usr/share/maas/web/static".
-
-    In the development environment the STATIC_ROOT setting is not set, so
-    return the relative path to the static files from this files location.
-    """
-    if settings.STATIC_ROOT:
-        return settings.STATIC_ROOT
-    else:
-        return os.path.join(
-            os.path.dirname(__file__), 'static')
-
-
 class StartPage(ErrorPage, object):
-
     def __init__(self):
         super(StartPage, self).__init__(
             status=SERVICE_UNAVAILABLE, brief="MAAS is starting",
@@ -175,6 +157,8 @@ class WebApplicationService(StreamServerEndpointService):
         front-end configuration (i.e. Apache) so that there's no need to force
         script names.
         """
+        with RegionConfiguration.open() as config:
+            static_root = File(config.static_root)
 
         root = Resource()
         webapp = ResourceOverlay(
@@ -183,7 +167,7 @@ class WebApplicationService(StreamServerEndpointService):
         root.putChild("MAAS", webapp)
         webapp.putChild(
             'ws', WebSocketsResource(lookupProtocolForFactory(self.websocket)))
-        webapp.putChild('static', File(get_path_to_static_root()))
+        webapp.putChild('static', static_root)
         self.site.resource = root
 
     def installFailed(self, failure):

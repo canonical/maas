@@ -20,7 +20,7 @@ __all__ = [
 
 from urlparse import urlparse
 
-from django.conf import settings
+from maasserver.config import RegionConfiguration
 from maasserver.exceptions import UnresolvableHost
 from netaddr import (
     valid_ipv4,
@@ -34,11 +34,12 @@ def get_maas_facing_server_host(nodegroup=None):
 
     :param nodegroup: The nodegroup from the point of view of which the
         server host should be computed.
-    :return: Hostname or IP address, as configured in the DEFAULT_MAAS_URL
+    :return: Hostname or IP address, as configured in the maas url config
         setting or as configured on nodegroup.maas_url.
     """
     if nodegroup is None or not nodegroup.maas_url:
-        maas_url = settings.DEFAULT_MAAS_URL
+        with RegionConfiguration.open() as config:
+            maas_url = config.maas_url
     else:
         maas_url = nodegroup.maas_url
     return urlparse(maas_url).hostname
@@ -47,7 +48,10 @@ def get_maas_facing_server_host(nodegroup=None):
 def get_maas_facing_server_address(nodegroup=None, ipv4=True, ipv6=True):
     """Return address where nodes and workers can reach the MAAS server.
 
-    The address is taken from `DEFAULT_MAAS_URL` or `nodegroup.maas_url`.
+    The address is taken from the configured maas url or `nodegroup.maas_url`.
+    Consult the 'maas-region-admin config' command for details on how to
+    set the maas url.
+
     If there is more than one IP address for the host, the addresses
     will be sorted and the first IP address in the sorted set will be
     returned.  IPv4 addresses will be sorted before IPv6 addresses, so

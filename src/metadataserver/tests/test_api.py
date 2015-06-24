@@ -43,6 +43,7 @@ from maasserver.models import (
 )
 from maasserver.models.node import Node
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
@@ -1137,8 +1138,8 @@ class TestEnlistViews(DjangoTestCase):
 
     def test_get_userdata_detects_request_origin(self):
         nodegroup_url = 'http://%s' % factory.make_name('host')
-        maas_url = 'http://%s' % factory.make_hostname()
-        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        maas_url = factory.make_simple_http_url()
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
         factory.make_NodeGroup(

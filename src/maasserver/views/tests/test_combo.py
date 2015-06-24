@@ -21,13 +21,16 @@ import os
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
+from maasserver import config
 from maasserver.testing import extract_redirect
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.combo import (
     get_absolute_location,
     get_combo_view,
 )
+from maastesting.fixtures import ImportErrorFixture
 
 
 class TestUtilities(MAASServerTestCase):
@@ -37,17 +40,18 @@ class TestUtilities(MAASServerTestCase):
         self.assertEqual(
             abs_location, get_absolute_location(location=abs_location))
 
-    def test_get_abs_location_returns_rel_loc_if_static_root_not_none(self):
+    def test_get_abs_location_returns_rel_loc_if_not_in_dev_environment(self):
+        self.useFixture(RegionConfigurationFixture())
+        self.useFixture(ImportErrorFixture('maastesting', 'root'))
         static_root = factory.make_string()
-        self.patch(settings, 'STATIC_ROOT', static_root)
+        self.patch(config.RegionConfiguration, 'static_root', static_root)
         rel_location = os.path.join(
             factory.make_string(), factory.make_string())
         expected_location = os.path.join(static_root, rel_location)
-        self.assertEqual(
-            expected_location, get_absolute_location(location=rel_location))
+        observed = get_absolute_location(location=rel_location)
+        self.assertEqual(expected_location, observed)
 
-    def test_get_abs_location_returns_rel_loc_if_static_root_is_none(self):
-        self.patch(settings, 'STATIC_ROOT', None)
+    def test_get_abs_location_returns_rel_loc_if_in_dev_environment(self):
         rel_location = os.path.join(
             factory.make_string(), factory.make_string())
         rel_location_base = os.path.join(

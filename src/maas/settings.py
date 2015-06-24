@@ -17,18 +17,14 @@ import os
 from sys import stdout
 
 import django.template
-from maas import (
-    fix_up_databases,
-    import_local_settings,
-)
+from maas import fix_up_databases
 from maas.monkey import patch_get_script_prefix
-from metadataserver.address import guess_server_host
+from maasserver.config import RegionConfiguration
 from provisioningserver.logger import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_LEVEL,
 )
-from provisioningserver.utils.url import compose_URL
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
@@ -36,11 +32,6 @@ django.template.add_to_builtins('django.templatetags.future')
 
 # Production mode.
 DEBUG = False
-
-# Allow the user to override settings in maas_local_settings. Later settings
-# depend on the values of DEBUG, so we must import local settings now in case
-# those settings have been overridden.
-import_local_settings()
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -65,11 +56,6 @@ DHCP_CONNECT = True
 
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas-region-admin'
-
-# Default URL specifying protocol, host, and (if necessary) port where
-# systems in this MAAS can find the MAAS server.  Configuration can, and
-# probably should, override this.
-DEFAULT_MAAS_URL = compose_URL("http:///:5240", guess_server_host())
 
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
@@ -110,19 +96,18 @@ AUTHENTICATION_BACKENDS = (
     'maasserver.models.MAASAuthorizationBackend',
     )
 
-DATABASES = {
-    'default': {
-        # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'maas',
-        'USER': '',
-        'PASSWORD': '',
-        # For PostgreSQL, a "hostname" starting with a slash indicates a
-        # Unix socket directory.
-        'HOST': '',
-        'PORT': '',
-    },
-}
+# Database access configuration.
+with RegionConfiguration.open() as config:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': config.database_name,
+            'USER': config.database_user,
+            'PASSWORD': config.database_pass,
+            'HOST': config.database_host,
+            'PORT': '',
+        }
+    }
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -155,12 +140,6 @@ MEDIA_ROOT = ''
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_URL = ''
-
-# Absolute path to the directory static files should be collected to.
-# Don't put anything in this directory yourself; store your static files
-# in apps' "static/" subdirectories and in STATICFILES_DIRS.
-# Example: "/home/media/media.lawrence.com/static/"
-STATIC_ROOT = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
@@ -326,9 +305,6 @@ ALLOWED_HOSTS = ['*']
 SERIALIZATION_MODULES = {
     'maasjson': 'maasserver.json',
 }
-
-# Allow the user to override settings in maas_local_settings.
-import_local_settings()
 
 # Patch the get_script_prefix method to allow twisted to work with django.
 patch_get_script_prefix()

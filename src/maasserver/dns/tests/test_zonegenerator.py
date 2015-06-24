@@ -15,8 +15,8 @@ __metaclass__ = type
 __all__ = []
 
 import socket
+from urlparse import urlparse
 
-from django.conf import settings
 from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
@@ -34,8 +34,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import Config
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockAnyCall,
@@ -69,17 +71,14 @@ from testtools.matchers import (
 
 class TestGetDNSServerAddress(MAASServerTestCase):
 
-    def patch_DEFAULT_MAAS_URL(self, hostname=None):
-        """Replace `DEFAULT_MAAS_URL` with a randomised URL."""
-        self.patch(
-            settings, 'DEFAULT_MAAS_URL', factory.make_url(netloc=hostname))
-
     def test_get_dns_server_address_resolves_hostname(self):
+        url = maastesting_factory.make_simple_http_url()
+        self.useFixture(RegionConfigurationFixture(maas_url=url))
         ip = factory.make_ipv4_address()
         resolver = self.patch(server_address, 'resolve_hostname')
         resolver.return_value = {ip}
-        hostname = factory.make_hostname()
-        self.patch_DEFAULT_MAAS_URL(hostname=hostname)
+
+        hostname = urlparse(url).hostname
         result = get_dns_server_address()
         self.assertEqual(ip, result)
         self.expectThat(resolver, MockAnyCall(hostname, 4))
@@ -96,10 +95,11 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         self.assertThat(patch, MockCalledOnceWith(ANY, ipv4=ipv4, ipv6=ipv6))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
+        url = maastesting_factory.make_simple_http_url()
+        self.useFixture(RegionConfigurationFixture(maas_url=url))
         self.patch(
             zonegenerator, 'get_maas_facing_server_address',
             FakeMethod(failure=socket.error))
-        self.patch_DEFAULT_MAAS_URL()
         self.assertRaises(DNSException, get_dns_server_address)
 
     def test_get_dns_server_address_logs_warning_if_ip_is_localhost(self):
@@ -455,9 +455,11 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertItemsEqual([srv], ZoneGenerator._get_srv_mappings())
 
     def test_with_no_nodegroups_yields_nothing(self):
+        self.useFixture(RegionConfigurationFixture())
         self.assertEqual([], ZoneGenerator((), Mock()).as_list())
 
     def test_with_one_nodegroup_yields_forward_and_reverse_zone(self):
+        self.useFixture(RegionConfigurationFixture())
         nodegroup = self.make_node_group(
             name="henry", network=IPNetwork("10/32"))
         zones = ZoneGenerator(nodegroup, Mock()).as_list()
@@ -467,6 +469,7 @@ class TestZoneGenerator(MAASServerTestCase):
                 reverse_zone("henry", "10/32")))
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
+        self.useFixture(RegionConfigurationFixture())
         nodegroup = self.make_node_group()
         factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
@@ -484,6 +487,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_with_many_nodegroups_yields_many_zones(self):
         # This demonstrates ZoneGenerator in all-singing all-dancing mode.
+        self.useFixture(RegionConfigurationFixture())
         nodegroups = [
             self.make_node_group(name="one", network=IPNetwork("10/32")),
             self.make_node_group(name="one", network=IPNetwork("11/32")),

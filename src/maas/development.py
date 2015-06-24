@@ -18,14 +18,10 @@ from os.path import abspath
 
 from maas import (
     fix_up_databases,
-    import_local_settings,
     import_settings,
     settings,
 )
 from maas.customise_test_db import patch_db_creation
-from metadataserver.address import guess_server_host
-import provisioningserver.config
-from provisioningserver.utils.url import compose_URL
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
@@ -34,9 +30,6 @@ LOGGING = None
 
 # Extend base settings.
 import_settings(settings)
-
-# In development, django can be accessed directly on port 5240.
-DEFAULT_MAAS_URL = compose_URL("http://:5240/MAAS/", guess_server_host())
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
@@ -103,6 +96,7 @@ PRESEED_TEMPLATE_LOCATIONS = (
 patch_db_creation(abspath('db'), abspath('schema/baseline.sql'))
 
 # Override the default provisioning config filename.
+import provisioningserver.config
 provisioningserver.config.Config.DEFAULT_FILENAME = abspath(
     "etc/maas/pserv.yaml")
 
@@ -117,9 +111,6 @@ PASSWORD_HASHERS = (
 NOSE_PLUGINS = [
     "maastesting.noseplug.Select",
 ]
-
-# Allow the user to override settings in maas_local_settings.
-import_local_settings()
 
 # Fix crooked settings.
 fix_up_databases(DATABASES)

@@ -24,6 +24,7 @@
 ./docs/_autosummary
 ./docs/_build
 ./docs/api.rst
+./etc/maas/regiond.conf
 ./eggs
 ./include
 ./lib

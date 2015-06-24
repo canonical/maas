@@ -18,10 +18,7 @@ __all__ = []
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
-from maasserver.config import (
-    REGION_CONFIG,
-    set_region_variable,
-)
+from maasserver.config import RegionConfiguration
 
 
 class Command(BaseCommand):
@@ -51,17 +48,14 @@ class Command(BaseCommand):
         dbname = options.get('dbname', None)
         dbhost = options.get('dbhost', None)
 
-        if url is not None:
-            set_region_variable(REGION_CONFIG.DB_maas_url, url)
-
-        if dbuser is not None:
-            set_region_variable(REGION_CONFIG.DB_username, dbuser)
-
-        if dbpassword is not None:
-            set_region_variable(REGION_CONFIG.DB_password, dbpassword)
-
-        if dbname is not None:
-            set_region_variable(REGION_CONFIG.DB_name, dbname)
-
-        if dbhost is not None:
-            set_region_variable(REGION_CONFIG.DB_host, dbhost)
+        with RegionConfiguration.open() as config:
+            if url is not None:
+                config.maas_url = url
+            if dbuser is not None:
+                config.database_user = dbuser
+            if dbpassword is not None:
+                config.database_pass = dbpassword
+            if dbname is not None:
+                config.database_name = dbname
+            if dbhost is not None:
+                config.database_host = dbhost

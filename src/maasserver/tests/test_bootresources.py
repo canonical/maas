@@ -34,10 +34,7 @@ from fixtures import (
     FakeLogger,
     Fixture,
 )
-from maasserver import (
-    bootresources,
-    utils as utils_module,
-)
+from maasserver import bootresources
 from maasserver.bootresources import (
     BootResourceStore,
     download_all_boot_resources,
@@ -62,6 +59,7 @@ from maasserver.models import (
     Config,
     LargeFile,
 )
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -1364,10 +1362,16 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         self.expectThat(args, Equals((service.check_boot_images,)))
         self.expectThat(kwargs, Equals({}))
 
-    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+    def set_mass_url_with_two_level_path(self):
         abs_path = "/%s/%s/" % (factory.make_string(), factory.make_string())
-        self.patch(
-            utils_module.settings, 'DEFAULT_MAAS_URL', 'http://%s' % abs_path)
+        maas_url = factory.make_simple_http_url(path=abs_path)
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
+        return abs_path
+
+    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+        self.useFixture(RegionConfigurationFixture())
+        abs_path = self.set_mass_url_with_two_level_path()
+
         list_boot_images = self.patch(bootresources, "list_boot_images")
         list_boot_images.return_value = [make_rpc_boot_image()]
 
@@ -1387,9 +1391,8 @@ class TestImportResourcesProgressService(MAASServerTestCase):
             error_observed)
 
     def test__adds_warning_if_boot_image_import_not_started(self):
-        abs_path = "/%s/%s/" % (factory.make_string(), factory.make_string())
-        self.patch(
-            utils_module.settings, 'DEFAULT_MAAS_URL', 'http://%s' % abs_path)
+        self.useFixture(RegionConfigurationFixture())
+        abs_path = self.set_mass_url_with_two_level_path()
 
         list_boot_images = self.patch(bootresources, "list_boot_images")
         list_boot_images.return_value = []

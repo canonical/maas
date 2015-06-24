@@ -23,31 +23,23 @@ from convoy.combo import (
     combine_files,
     parse_qs,
 )
-from django.conf import settings as django_settings
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseNotFound,
     HttpResponseRedirect,
 )
-
-# Static root computed from this very file.
-LOCAL_STATIC_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), 'static')
+from maasserver.config import RegionConfiguration
 
 
 def get_absolute_location(location=''):
     """Return the absolute location of a static resource.
 
-    This utility exist to deal with the various places where MAAS can
-    find static resources.
+    This utility exist to deal with the various places where MAAS can find
+    static resources.
 
-    If the given location is an absolute location, return it.
-    If not, treat the location as a relative location.
-    If the STATIC_ROOT setting is not null, meaning that this is a production
-    setup, use it as the root for the given relative location.
-    Otherwise, use LOCAL_STATIC_ROOT as the root for the given relative
-    location (this means that it's a development setup).
+    If the given location is an absolute location, return it. If not, treat
+    the location as a relative location.
 
     :param location: An optional absolute or relative location.
     :type location: unicode
@@ -56,11 +48,9 @@ def get_absolute_location(location=''):
     """
     if location.startswith(os.path.sep):
         return location
-    elif django_settings.STATIC_ROOT:
-        return os.path.join(
-            django_settings.STATIC_ROOT, location)
     else:
-        return os.path.join(LOCAL_STATIC_ROOT, location)
+        with RegionConfiguration.open() as config:
+            return os.path.join(config.static_root, location)
 
 
 def get_combo_view(location='', default_redirect=None):

@@ -17,7 +17,6 @@ __all__ = []
 from inspect import getdoc
 import new
 
-from django.conf import settings
 from django.conf.urls import (
     include,
     patterns,
@@ -43,6 +42,7 @@ from maasserver.api.support import (
     OperationsHandler,
     OperationsResource,
 )
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
@@ -261,8 +261,9 @@ class TestDescribingAPI(MAASServerTestCase):
 
     def setUp(self):
         super(TestDescribingAPI, self).setUp()
-        # Override DEFAULT_MAAS_URL so that it's stable for testing.
-        self.patch(settings, "DEFAULT_MAAS_URL", "http://example.com/")
+        # Override config maas url so that it's stable for testing.
+        self.useFixture(
+            RegionConfigurationFixture(maas_url="http://example.com/"))
 
     def test_describe_handler(self):
         # describe_handler() returns a description of a handler that can be

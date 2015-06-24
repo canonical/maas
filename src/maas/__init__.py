@@ -14,10 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     "fix_up_databases",
-    "import_local_settings",
     "import_settings",
-    "import_local_settings",
-    ]
+]
 
 import sys
 import warnings
@@ -47,21 +45,6 @@ def import_settings(whence):
     source = find_settings(whence)
     target = sys._getframe(1).f_globals
     target.update(source)
-
-
-def import_local_settings():
-    """Import local settings into the caller's global scope.
-
-    Local settings means settings defined in a `maas_local_settings` module.
-    """
-    try:
-        import maas_local_settings as whence
-    except ImportError:
-        pass
-    else:
-        source = find_settings(whence)
-        target = sys._getframe(1).f_globals
-        target.update(source)
 
 
 def fix_up_databases(databases):

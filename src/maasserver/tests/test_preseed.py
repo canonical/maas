@@ -69,6 +69,7 @@ from maasserver.preseed import (
 )
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.architecture import make_usable_architecture
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
@@ -643,11 +644,11 @@ class TestRenderPreseed(
         ng_url = 'http://%s' % factory.make_hostname()
         self.rpc_nodegroup.maas_url = ng_url
         self.rpc_nodegroup.save()
-        maas_url = 'http://%s' % factory.make_hostname()
+        maas_url = factory.make_simple_http_url()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
         self.configure_get_boot_images_for_node(node, 'install')
-        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         preseed = render_preseed(node, self.preseed, "precise")
         self.assertThat(
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
@@ -676,8 +677,8 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
 
     def test_get_preseed_uses_nodegroup_maas_url(self):
         ng_url = 'http://%s' % factory.make_hostname()
-        maas_url = 'http://%s' % factory.make_hostname()
-        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        maas_url = factory.make_simple_http_url()
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         nodegroup = factory.make_NodeGroup(maas_url=ng_url)
         preseed = render_enlistment_preseed(
             self.preseed, "precise", nodegroup=nodegroup)
@@ -1359,10 +1360,10 @@ class TestPreseedProxy(
         PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
 
     def test_preseed_uses_default_proxy(self):
-        server_host = factory.make_hostname()
-        url = 'http://%s:%d/%s' % (
-            server_host, factory.pick_port(), factory.make_string())
-        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+        server_host = "%s.example.com" % factory.make_hostname()
+        url = factory.make_simple_http_url(netloc=server_host)
+        self.useFixture(RegionConfigurationFixture(maas_url=url))
+
         expected_proxy_statement = (
             "mirror/http/proxy string http://%s:8000" % server_host)
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)
@@ -1438,10 +1439,20 @@ class TestPreseedURLs(
             (response.status_code, response.content))
 
     def test_compose_enlistment_preseed_url_returns_absolute_link(self):
-        url = 'http://%s' % factory.make_name('host')
-        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+        maas_url = factory.make_simple_http_url(path='')
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
+
         self.assertThat(
-            compose_enlistment_preseed_url(), StartsWith(url))
+            compose_enlistment_preseed_url(), StartsWith(maas_url))
+
+    def test_compose_enlistment_preseed_url_returns_abs_link_wth_nodegrp(self):
+        maas_url = factory.make_simple_http_url(path='')
+        self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
+        nodegroup = factory.make_NodeGroup(maas_url)
+
+        self.assertThat(
+            compose_enlistment_preseed_url(nodegroup=nodegroup),
+            StartsWith(maas_url))
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)

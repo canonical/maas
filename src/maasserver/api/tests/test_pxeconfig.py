@@ -47,6 +47,7 @@ from maasserver.preseed import (
     compose_preseed_url,
 )
 from maasserver.testing.architecture import make_usable_architecture
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -136,6 +137,9 @@ class TestGetBootImage(MAASServerTestCase):
 
 
 class TestPXEConfigAPI(MAASServerTestCase):
+    def setUp(self):
+        super(TestPXEConfigAPI, self).setUp()
+        self.useFixture(RegionConfigurationFixture())
 
     def get_default_params(self, nodegroup=None):
         if nodegroup is None:

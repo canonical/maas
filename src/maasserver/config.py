@@ -14,12 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = [
     "RegionConfiguration",
-    'is_dev_environment',
-    'get_region_variable',
-    'set_region_variable',
-    'REGIOND_DB_STATIC_ROUTE',
-    'REGION_CONFIG',
 ]
+
+from os import path
 
 from formencode.validators import UnicodeString
 from provisioningserver.config import (
@@ -29,19 +26,6 @@ from provisioningserver.config import (
     ConfigurationOption,
     ExtendedURL,
 )
-
-# Other constants not in the config file
-REGIOND_DB_STATIC_ROUTE = '/usr/share/maas/web/static/'
-
-# List of configuration keys
-
-
-class REGION_CONFIG:
-    DB_maas_url = 'maas_url'
-    DB_password = 'database_pass'
-    DB_username = 'database_user'
-    DB_name = 'database_name'
-    DB_host = 'database_host'
 
 
 class RegionConfiguration(Configuration):
@@ -53,9 +37,8 @@ class RegionConfiguration(Configuration):
         backend = ConfigurationFile
 
     maas_url = ConfigurationOption(
-        "maas_url", "The HTTP URL for the MAAS region.",
-        ExtendedURL(require_tld=False,
-                    if_missing="http://localhost:5240/MAAS"))
+        "maas_url", "The HTTP URL for the MAAS region.", ExtendedURL(
+            require_tld=False, if_missing="http://localhost:5240/MAAS"))
 
     # Database options.
     database_host = ConfigurationOption(
@@ -71,29 +54,28 @@ class RegionConfiguration(Configuration):
         "database_pass", "The password for the PostgreSQL user.",
         UnicodeString(if_missing="", accept_python=False))
 
-"""
-This module is responsible for interaction with the region
-controller's RegionConfiguration store
+    @property
+    def static_root(self):
+        """Return the static root path.
 
-"""
+        In production this setting is set to the path where the static files
+        are located on the filesystem.
+
+        In the development environment the STATIC_ROOT setting is not set, so
+        return the relative path to the static files from this files location.
+
+        """
+        if is_dev_environment():
+            return path.join(path.dirname(__file__), "static")
+        else:
+            return "/usr/share/maas/web/static"
 
 
 def is_dev_environment():
+    """Is this the development environment, or production?"""
     try:
         from maastesting import root  # noqa
     except:
         return False
-
-    return True
-
-
-def get_region_variable(var):
-    """Obtain the given environment variable from regiond.db"""
-    with RegionConfiguration.open() as config:
-        return getattr(config, var)
-
-
-def set_region_variable(var, value):
-    """ Set the given environment variable in regiond.db"""
-    with RegionConfiguration.open() as config:
-        setattr(config, var, value)
+    else:
+        return True
