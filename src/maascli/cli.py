@@ -67,19 +67,20 @@ class cmd_login(Command):
         parser.set_defaults(credentials=None)
 
     def __call__(self, options):
-        # Check for bogus apikey
-        if options.credentials is not None:
-            try:
-                if not check_valid_apikey(options):
-                    print("MAAS server rejected your API key.")
-                    return
-            except UnexpectedResponse as e:
-                print("%s" % e)
-                return
-
         # Try and obtain credentials interactively if they're not given, or
         # read them from stdin if they're specified as "-".
         credentials = obtain_credentials(options.credentials)
+        # Check for bogus credentials. Do this early so that the user is not
+        # surprised when next invoking the MAAS CLI.
+        if credentials is not None:
+            try:
+                valid_apikey = check_valid_apikey(
+                    options.url, credentials, options.insecure)
+            except UnexpectedResponse as e:
+                raise SystemExit("%s" % e)
+            else:
+                if not valid_apikey:
+                    raise SystemExit("The MAAS server rejected your API key.")
         # Get description of remote API.
         description = fetch_api_description(options.url, options.insecure)
         # Save the config.

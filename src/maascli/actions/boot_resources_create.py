@@ -25,6 +25,7 @@ from apiclient.multipart import (
     build_multipart_message,
     encode_multipart_message,
 )
+from maascli import utils
 from maascli.api import (
     Action,
     http_request,
@@ -92,8 +93,8 @@ class BootResourcesCreateAction(Action):
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
             if options.debug:
-                self.print_debug(response)
-            self.print_response(response, content)
+                utils.dump_response_summary(response)
+            utils.print_response_content(response, content)
             raise CommandError(2)
         return content
 
@@ -166,7 +167,7 @@ class BootResourcesCreateAction(Action):
             upload_uri, 'PUT', body=data, headers=headers,
             insecure=insecure)
         if response.status != 200:
-            self.print_response(response, content)
+            utils.print_response_content(response, content)
             raise CommandError(2)
 
     def upload_content(self, upload_uri, content, insecure=False):

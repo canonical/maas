@@ -18,7 +18,6 @@ __all__ = [
 
 import argparse
 from collections import defaultdict
-from email.message import Message
 from functools import partial
 import httplib
 import json
@@ -45,6 +44,7 @@ from apiclient.utils import (
     urlencode,
 )
 import httplib2
+from maascli import utils
 from maascli.command import (
     Command,
     CommandError,
@@ -83,51 +83,6 @@ def fetch_api_description(url, insecure=False):
         raise CommandError(
             "Expected application/json, got: %(content-type)s" % response)
     return json.loads(content)
-
-
-def get_response_content_type(response):
-    """Returns the response's content-type, without parameters.
-
-    If the content-type was not set in the response, returns `None`.
-
-    :type response: :class:`httplib2.Response`
-    """
-    try:
-        content_type = response["content-type"]
-    except KeyError:
-        return None
-    else:
-        # It seems odd to create a Message instance here, but at the time of
-        # writing it's the only place that has the smarts to correctly deal
-        # with a Content-Type that contains a charset (or other parameters).
-        message = Message()
-        message.set_type(content_type)
-        return message.get_content_type()
-
-
-def is_response_textual(response):
-    """Is the response body text?"""
-    content_type = get_response_content_type(response)
-    return (
-        content_type.endswith("/json") or
-        content_type.startswith("text/"))
-
-
-def print_headers(headers, file=sys.stdout):
-    """Show an HTTP response in a human-friendly way.
-
-    :type headers: :class:`httplib2.Response`, or :class:`dict`
-    """
-    # Function to change headers like "transfer-encoding" into
-    # "Transfer-Encoding".
-    cap = lambda header: "-".join(
-        part.capitalize() for part in header.split("-"))
-    # Format string to prettify reporting of response headers.
-    form = "%%%ds: %%s" % (
-        max(len(header) for header in headers) + 2)
-    # Print the response.
-    for header in sorted(headers):
-        print(form % (cap(header), headers[header]), file=file)
 
 
 class Action(Command):
@@ -194,8 +149,8 @@ class Action(Command):
 
         # Output.
         if options.debug:
-            self.print_debug(response)
-        self.print_response(response, content)
+            utils.dump_response_summary(response)
+        utils.print_response_content(response, content)
 
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
@@ -293,32 +248,6 @@ class Action(Command):
         """Sign the URI and headers."""
         auth = MAASOAuth(*credentials)
         auth.sign_request(uri, headers)
-
-    @staticmethod
-    def print_debug(response):
-        """Dump the response line and headers to stderr."""
-        print(response.status, response.reason, file=sys.stderr)
-        print(file=sys.stderr)
-        print_headers(response, file=sys.stderr)
-        print(file=sys.stderr)
-
-    @classmethod
-    def print_response(cls, response, content, file=sys.stdout):
-        """Write the response's content to stdout.
-
-        If the response is textual, a trailing \n is appended.
-        """
-        if file.isatty():
-            if is_response_textual(response) and response.status // 100 == 2:
-                file.write("Success.\n")
-                file.write("Machine-readable output follows:\n")
-
-            file.write(content)
-
-            if is_response_textual(response):
-                file.write("\n")
-        else:
-            file.write(content)
 
 
 class ActionHelp(argparse.Action):

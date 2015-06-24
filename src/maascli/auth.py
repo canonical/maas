@@ -58,17 +58,21 @@ def obtain_credentials(credentials):
         return None
 
 
-def check_valid_apikey(options):
-    """Check for valid apikey."""
-    url_nodegroups = urljoin(options.url, "nodegroups/")
+def check_valid_apikey(url, credentials, insecure=False):
+    """Check for valid apikey.
+
+    :param credentials: A 3-tuple of credentials.
+    """
+    url_nodegroups = urljoin(url, "nodegroups/")
     uri, body, headers = Action.prepare_payload(
         op="list", method="GET", uri=url_nodegroups, data=[])
 
+    # Headers are returned as a list, but they must be a dict for
+    # the signing machinery.
     headers = dict(headers)
-    credentials = options.credentials.split(':')
+
     Action.sign(uri, headers, credentials)
 
-    insecure = options.insecure
     response, content = http_request(
         uri, method="GET", body=body, headers=headers,
         insecure=insecure)
@@ -76,9 +80,8 @@ def check_valid_apikey(options):
     status = int(response['status'])
     if status == httplib.UNAUTHORIZED:
         return False
-    elif status != httplib.OK:
-        if options.debug:
-            print("%s" % response.body)
+    elif status == httplib.OK:
+        return True
+    else:
         raise UnexpectedResponse(
-            "MAAS server gave an unexpected response: %s" % status)
-    return True
+            "The MAAS server gave an unexpected response: %s" % status)

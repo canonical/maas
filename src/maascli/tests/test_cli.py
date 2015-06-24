@@ -19,7 +19,9 @@ import doctest
 import sys
 from textwrap import dedent
 
+from apiclient.creds import convert_string_to_tuple
 from maascli import cli
+from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_options
 from maastesting.factory import factory
@@ -47,18 +49,30 @@ class TestRegisterCLICommands(MAASTestCase):
 
 class TestLogin(MAASTestCase):
 
-    def test_cmd_login_calls_check_valid_apikey(self):
+    def test_cmd_login_ensures_valid_apikey(self):
         parser = ArgumentParser()
         options = make_options()
         check_key = self.patch(cli, "check_valid_apikey")
         check_key.return_value = False
-        stdout = self.patch(sys, "stdout", StringIO())
-        expected = "MAAS server rejected your API key.\n"
         login = cli.cmd_login(parser)
-        login(options)
-        observed = stdout.getvalue()
-        self.assertThat(check_key, MockCalledOnceWith(options))
-        self.assertEqual(expected, observed)
+        error = self.assertRaises(SystemExit, login, options)
+        self.assertEqual(
+            "The MAAS server rejected your API key.",
+            unicode(error))
+        self.assertThat(check_key, MockCalledOnceWith(
+            options.url, convert_string_to_tuple(options.credentials),
+            options.insecure))
+
+    def test_cmd_login_raises_unexpected_error_when_validating_apikey(self):
+        parser = ArgumentParser()
+        options = make_options()
+        check_key = self.patch(cli, "check_valid_apikey")
+        check_key_error_message = factory.make_name("error")
+        check_key_error = UnexpectedResponse(check_key_error_message)
+        check_key.side_effect = check_key_error
+        login = cli.cmd_login(parser)
+        error = self.assertRaises(SystemExit, login, options)
+        self.assertEqual(check_key_error_message, unicode(error))
 
     def test_print_whats_next(self):
         profile = {

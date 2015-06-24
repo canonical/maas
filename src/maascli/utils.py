@@ -13,12 +13,18 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "dump_response_summary",
     "ensure_trailing_slash",
+    "get_response_content_type",
     "handler_command_name",
+    "is_response_textual",
     "parse_docstring",
+    "print_response_content",
+    "print_response_headers",
     "safe_name",
-    ]
+]
 
+from email.message import Message
 from functools import partial
 from inspect import (
     cleandoc,
@@ -122,3 +128,80 @@ def try_import_module(import_str, default=None):
         return import_module(import_str)
     except ImportError:
         return default
+
+
+def get_response_content_type(response):
+    """Returns the response's content-type, without parameters.
+
+    If the content-type was not set in the response, returns `None`.
+
+    :type response: :class:`httplib2.Response`
+    """
+    try:
+        content_type = response["content-type"]
+    except KeyError:
+        return None
+    else:
+        # It seems odd to create a Message instance here, but at the time of
+        # writing it's the only place that has the smarts to correctly deal
+        # with a Content-Type that contains a charset (or other parameters).
+        message = Message()
+        message.set_type(content_type)
+        return message.get_content_type()
+
+
+def is_response_textual(response):
+    """Is the response body text?"""
+    content_type = get_response_content_type(response)
+    return (
+        content_type.endswith("/json") or
+        content_type.startswith("text/"))
+
+
+def print_response_headers(headers, file=None):
+    """Write the response's headers to stdout in a human-friendly way.
+
+    :type headers: :class:`httplib2.Response`, or :class:`dict`
+    """
+    file = sys.stdout if file is None else file
+    # Function to change headers like "transfer-encoding" into
+    # "Transfer-Encoding".
+    cap = lambda header: "-".join(
+        part.capitalize() for part in header.split("-"))
+    # Format string to prettify reporting of response headers.
+    form = "%%%ds: %%s" % (
+        max(len(header) for header in headers) + 2)
+    # Print the response.
+    for header in sorted(headers):
+        print(form % (cap(header), headers[header]), file=file)
+
+
+def print_response_content(response, content, file=None):
+    """Write the response's content to stdout.
+
+    If the response is textual, a trailing \n is appended.
+    """
+    file = sys.stdout if file is None else file
+    if file.isatty():
+        if is_response_textual(response) and response.status // 100 == 2:
+            file.write("Success.\n")
+            file.write("Machine-readable output follows:\n")
+
+        file.write(content)
+
+        if is_response_textual(response):
+            file.write("\n")
+    else:
+        file.write(content)
+
+
+def dump_response_summary(response, file=None):
+    """Dump the response line and headers to stderr.
+
+    Intended for debugging.
+    """
+    file = sys.stderr if file is None else file
+    print(response.status, response.reason, file=file)
+    print(file=file)
+    print_response_headers(response, file=file)
+    print(file=file)

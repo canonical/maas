@@ -29,7 +29,10 @@ from maascli.actions.boot_resources_create import (
 )
 from maascli.command import CommandError
 from maastesting.factory import factory
-from maastesting.fixtures import TempDirectory
+from maastesting.fixtures import (
+    CaptureStandardIO,
+    TempDirectory,
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
@@ -43,12 +46,13 @@ class TestBootResourcesCreateAction(MAASTestCase):
     """Tests for `BootResourcesCreateAction`."""
 
     def configure_http_request(self, status, content):
-        response = httplib2.Response({'status': status})
-        self.patch(
-            boot_resources_create,
-            'http_request').return_value = (response, content)
+        response = httplib2.Response(
+            {'status': status, 'content-type': 'text/plain'})
+        http_request = self.patch(boot_resources_create, 'http_request')
+        http_request.return_value = (response, content)
 
     def make_boot_resources_create_action(self):
+        self.stdio = self.useFixture(CaptureStandardIO())
         action_name = "create".encode("ascii")
         action_bases = (BootResourcesCreateAction,)
         action_ns = {
@@ -58,8 +62,6 @@ class TestBootResourcesCreateAction(MAASTestCase):
             }
         action_class = type(action_name, action_bases, action_ns)
         action = action_class(Mock())
-        self.patch(action, 'print_debug')
-        self.patch(action, 'print_response')
         return action
 
     def make_content(self, size=None):

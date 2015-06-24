@@ -19,7 +19,10 @@ import httplib
 import json
 import sys
 
-from apiclient.creds import convert_tuple_to_string
+from apiclient.creds import (
+    convert_string_to_tuple,
+    convert_tuple_to_string,
+)
 import httplib2
 from maascli import auth
 from maastesting.factory import factory
@@ -44,7 +47,7 @@ def make_options():
     url = u'http://example.com/api/1.0/'
     options = Namespace(
         credentials=credentials, execute=None, insecure=False,
-        profile_name='test', url=url, debug=False)
+        profile_name='test', url=url)
     return options
 
 
@@ -96,7 +99,9 @@ class TestAuth(MAASTestCase):
         response = httplib2.Response({})
         response['status'] = httplib.OK
         mock_request.return_value = response, json.dumps(content)
-        self.assertTrue(auth.check_valid_apikey(options))
+        self.assertTrue(auth.check_valid_apikey(
+            options.url, convert_string_to_tuple(options.credentials),
+            options.insecure))
 
     def test_check_valid_apikey_catches_invalid_key(self):
         options = make_options()
@@ -105,7 +110,9 @@ class TestAuth(MAASTestCase):
         response = httplib2.Response({})
         response['status'] = httplib.UNAUTHORIZED
         mock_request.return_value = response, json.dumps(content)
-        self.assertFalse(auth.check_valid_apikey(options))
+        self.assertFalse(auth.check_valid_apikey(
+            options.url, convert_string_to_tuple(options.credentials),
+            options.insecure))
 
     def test_check_valid_apikey_raises_if_unexpected_response(self):
         options = make_options()
@@ -115,4 +122,6 @@ class TestAuth(MAASTestCase):
         response['status'] = httplib.GONE
         mock_request.return_value = response, json.dumps(content)
         self.assertRaises(
-            auth.UnexpectedResponse, auth.check_valid_apikey, options)
+            auth.UnexpectedResponse, auth.check_valid_apikey,
+            options.url, convert_string_to_tuple(options.credentials),
+            options.insecure)

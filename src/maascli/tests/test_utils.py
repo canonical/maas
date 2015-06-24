@@ -14,8 +14,17 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import collections
+import httplib
+import io
+import random
+
+import httplib2
 from maascli import utils
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -187,3 +196,132 @@ class TestFunctions(MAASTestCase):
             for url_out in urls_out
             ]
         self.assertThat(urls, MatchesListwise(expected))
+
+
+class TestGetResponseContentType(MAASTestCase):
+    """Tests for `get_response_content_type`."""
+
+    def test_get_response_content_type_returns_content_type_header(self):
+        response = httplib2.Response(
+            {"content-type": "application/json"})
+        self.assertEqual(
+            "application/json",
+            utils.get_response_content_type(response))
+
+    def test_get_response_content_type_omits_parameters(self):
+        response = httplib2.Response(
+            {"content-type": "application/json; charset=utf-8"})
+        self.assertEqual(
+            "application/json",
+            utils.get_response_content_type(response))
+
+    def test_get_response_content_type_return_None_when_type_not_found(self):
+        response = httplib2.Response({})
+        self.assertIsNone(utils.get_response_content_type(response))
+
+
+class TestIsResponseTextual(MAASTestCase):
+    """Tests for `is_response_textual`."""
+
+    content_types_textual_map = {
+        "text/plain": True,
+        "text/yaml": True,
+        "text/foobar": True,
+        "application/json": True,
+        "image/png": False,
+        "video/webm": False,
+        }
+
+    scenarios = sorted(
+        (ctype, {"content_type": ctype, "is_textual": is_textual})
+        for ctype, is_textual in content_types_textual_map.items()
+        )
+
+    def test_type(self):
+        grct = self.patch(utils, "get_response_content_type")
+        grct.return_value = self.content_type
+        self.assertEqual(
+            self.is_textual,
+            utils.is_response_textual(sentinel.response))
+        self.assertThat(grct, MockCalledOnceWith(sentinel.response))
+
+
+class TestPrintResponseHeaders(MAASTestCase):
+    """Tests for `print_response_headers`."""
+
+    def test__prints_http_headers_in_order(self):
+        # print_response_headers() prints the given headers, in order, with
+        # each hyphen-delimited part of the header name capitalised, to the
+        # given file, with the names right aligned, and with a 2 space left
+        # margin.
+        headers = collections.OrderedDict()
+        headers["two-two"] = factory.make_name("two")
+        headers["one"] = factory.make_name("one")
+        buf = io.StringIO()
+        utils.print_response_headers(headers, buf)
+        self.assertEqual(
+            ("      One: %(one)s\n"
+             "  Two-Two: %(two-two)s\n") % headers,
+            buf.getvalue())
+
+
+class TestPrintResponseContent(MAASTestCase):
+    """Tests for `print_response_content`."""
+
+    def test__prints_textual_response_with_newline(self):
+        # If the response content is textual and sys.stdout is connected to a
+        # TTY, print_response_content() prints the response with a trailing
+        # newline.
+        response = httplib2.Response({
+            'status': httplib.NOT_FOUND,
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        utils.print_response_content(response, response['content'], buf)
+        self.assertEqual(response['content'] + "\n", buf.getvalue())
+
+    def test__prints_textual_response_when_redirected(self):
+        # If the response content is textual and sys.stdout is not connected
+        # to a TTY, print_response_content() prints the response without a
+        # trailing newline.
+        response = httplib2.Response({
+            'status': httplib.FOUND,
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        utils.print_response_content(response, response['content'], buf)
+        self.assertEqual(response['content'], buf.getvalue())
+
+    def test__writes_binary_response(self):
+        # Non-textual response content is written to the output stream
+        # using write(), so it carries no trailing newline, even if
+        # stdout is connected to a tty
+        response = httplib2.Response({
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'image/jpeg',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        utils.print_response_content(response, response['content'], buf)
+        self.assertEqual(response['content'], buf.getvalue())
+
+    def test__prints_textual_response_with_success_msg(self):
+        # When the response has a status code of 2XX, and the response body is
+        # textual print_response_content() will print a success message to the
+        # TTY.
+        status_code = random.randrange(200, 300)
+        response = httplib2.Response({
+            'status': status_code,
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        utils.print_response_content(response, response['content'], buf)
+        self.assertEqual(
+            "Success.\n"
+            "Machine-readable output follows:\n" +
+            response['content'] + "\n", buf.getvalue())
