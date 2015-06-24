@@ -54,11 +54,11 @@ things. First, turn on SSL support in Apache::
   $ sudo a2enmod ssl
 
 Ensure that the Apache config file from ``etc/maas/maas-http.conf`` is
-included in ``/etc/apache2/conf.d/``, then edit
-``/etc/maas/maas_local_settings.py`` and change the config maas_url using the
-maas-region-admin command to use https instead of http, i.e.:
+included in ``/etc/apache2/conf.d/``, then set the default URL using the
+``maas-region-admin`` command to use ``https`` instead of ``http``::
 
-    $ maas-region-admin config --default-url="https://localhost:5240/MAAS"
+  $ maas-region-admin local_config_set \
+  >   --maas-url="https://localhost:5240/MAAS"
 
 Now, restart Apache::
 

@@ -102,8 +102,8 @@ WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
     "MAAS's DNS features or if you don't rely on this information. "
-    "Consult the 'maas-region-admin config --default-url' command for details "
-    "on how to set the maas url.")
+    "Consult the 'maas-region-admin local_config_set --maas-url' command "
+    "for details on how to set the MAAS URL.")
 
 
 def warn_loopback(ip):
@@ -116,26 +116,26 @@ def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
     """Return the DNS server's IP address.
 
     That address is derived from the config maas_url or nodegroup.maas_url.
-    Consult the 'maas-region-admin config --default-url' command for details
-    on how to set the maas url.
+    Consult the 'maas-region-admin local_config_set --maas-url' command for
+    details on how to set the MAAS URL.
 
     :param nodegroup: Optional cluster to which the DNS server should be
         accessible.  If given, the server address will be taken from the
         cluster's `maas_url` setting.  Otherwise, it will be taken from the
-        globally configured default maas URL.
+        globally configured default MAAS URL.
     :param ipv4: Include IPv4 server addresses?
     :param ipv6: Include IPv6 server addresses?
+
     """
     try:
         ip = get_maas_facing_server_address(nodegroup, ipv4=ipv4, ipv6=ipv6)
     except socket.error as e:
         raise DNSException(
-            "Unable to find MAAS server IP address: %s.  "
-            "MAAS's DNS server requires this IP address for the NS records "
-            "in its zone files.  Make sure that the config maas_url setting "
-            "has the correct hostname."
-            "Consult the 'maas-region-admin config --default-url' command "
-            "for details on how to set the maas url."
+            "Unable to find MAAS server IP address: %s. MAAS's DNS server "
+            "requires this IP address for the NS records in its zone files. "
+            "Make sure that the configuration setting for the MAAS URL has "
+            "the correct hostname. Consult the 'maas-region-admin "
+            "local_config_set --maas-url' command."
             % e.strerror)
 
     warn_loopback(ip)

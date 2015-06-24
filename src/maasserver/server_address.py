@@ -34,7 +34,7 @@ def get_maas_facing_server_host(nodegroup=None):
 
     :param nodegroup: The nodegroup from the point of view of which the
         server host should be computed.
-    :return: Hostname or IP address, as configured in the maas url config
+    :return: Hostname or IP address, as configured in the MAAS URL config
         setting or as configured on nodegroup.maas_url.
     """
     if nodegroup is None or not nodegroup.maas_url:
@@ -48,9 +48,9 @@ def get_maas_facing_server_host(nodegroup=None):
 def get_maas_facing_server_address(nodegroup=None, ipv4=True, ipv6=True):
     """Return address where nodes and workers can reach the MAAS server.
 
-    The address is taken from the configured maas url or `nodegroup.maas_url`.
-    Consult the 'maas-region-admin config' command for details on how to
-    set the maas url.
+    The address is taken from the configured MAAS URL or `nodegroup.maas_url`.
+    Consult the 'maas-region-admin local_config_set' command for details on
+    how to set the MAAS URL.
 
     If there is more than one IP address for the host, the addresses
     will be sorted and the first IP address in the sorted set will be
@@ -67,6 +67,7 @@ def get_maas_facing_server_address(nodegroup=None, ipv4=True, ipv6=True):
         uses a hostname, this function will resolve that hostname.
     :raise UnresolvableHost: if no IP addresses could be found for
         the hostname.
+
     """
     hostname = get_maas_facing_server_host(nodegroup)
     addresses = set()

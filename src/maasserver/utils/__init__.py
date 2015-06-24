@@ -71,10 +71,10 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
-    the configured maas url.
+    the configured MAAS URL.
 
-    Consult the 'maas-region-admin config --default-url' command for details
-    on how to set the maas url.
+    Consult the 'maas-region-admin local_config_set --default-url' command for
+    details on how to set the MAAS URL.
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.
@@ -82,9 +82,10 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
         urllib.urlencode.  The result of that call will be appended to the
         resulting url.
     :param base_url: Optional url used as base.  If None is provided, then
-        configured maas url will be used.
+        configured MAAS URL will be used.
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
+
     """
     if not base_url:
         with RegionConfiguration.open() as config:

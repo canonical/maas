@@ -22,19 +22,12 @@ import django
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from maasserver.config import RegionConfiguration
 from maasserver.management.commands import createadmin
 from maasserver.models.user import get_creds_tuple
-from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
 from testtools.matchers import StartsWith
-
-
-def get_region_config_setting(name):
-    with RegionConfiguration.open() as config:
-        return getattr(config, name)
 
 
 def assertCommandErrors(runner, command, *args, **kwargs):
@@ -67,11 +60,6 @@ class TestCommands(DjangoTestCase):
     Detailed testing does not belong here.  If there's any complexity at all
     in a command's code, it should be extracted and unit-tested separately.
     """
-
-    def call_config(self, **kwargs):
-        output = BytesIO()
-        call_command('config', stdout=output, stderr=output, **kwargs)
-        return output.getvalue().strip()
 
     def test_generate_api_doc(self):
         out = BytesIO()
@@ -192,96 +180,6 @@ class TestCommands(DjangoTestCase):
         self.assertRaises(
             createadmin.EmptyEmail,
             createadmin.prompt_for_email)
-
-    def test_config_default_url_sets_default_url(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = factory.make_simple_http_url()
-        output = self.call_config(url=expected)
-        observed = get_region_config_setting("maas_url")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_default_url_without_value_does_nothing(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = get_region_config_setting("maas_url")
-        output = self.call_config(url=None)
-        observed = get_region_config_setting("maas_url")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbpassword_sets_dbpassword(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = factory.make_name('dbpassword')
-        output = self.call_config(dbpassword=expected)
-        observed = get_region_config_setting("database_pass")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbpassword_without_value_does_nothing(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = get_region_config_setting("database_pass")
-        output = self.call_config(dbpassword=None)
-        observed = get_region_config_setting("database_pass")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbusername_sets_dbusername(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = factory.make_name('dbuser')
-        output = self.call_config(dbuser=expected)
-        observed = get_region_config_setting("database_user")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbusername_without_value_does_nothing(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = get_region_config_setting("database_user")
-        output = self.call_config(dbuser=None)
-        observed = get_region_config_setting("database_user")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbname_sets_dbname(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = factory.make_name('dbname')
-        output = self.call_config(dbname=expected)
-        observed = get_region_config_setting("database_name")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbname_without_value_does_nothing(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = get_region_config_setting("database_name")
-        output = self.call_config(dbname=None)
-        observed = get_region_config_setting("database_name")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbhost_sets_dbhost(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = factory.make_name('dbhost')
-        output = self.call_config(dbhost=expected)
-        observed = get_region_config_setting("database_host")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
-
-    def test_config_dbhost_without_value_does_nothing(self):
-        self.useFixture(RegionConfigurationFixture())
-        expected = get_region_config_setting("database_host")
-        output = self.call_config(dbhost=expected)
-        observed = get_region_config_setting("database_host")
-
-        self.assertEquals('', output)
-        self.assertEqual(expected, observed)
 
 
 class TestApikeyCommand(DjangoTestCase):
