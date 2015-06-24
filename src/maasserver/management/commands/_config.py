@@ -19,10 +19,12 @@ __all__ = [
 ]
 
 from itertools import chain
+import json
 from optparse import make_option
 import sys
 
 from django.core.management.base import BaseCommand
+from maascli.utils import parse_docstring
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import ConfigurationOption
 import yaml
@@ -59,6 +61,12 @@ def gen_mutable_configuration_options():
             yield name, option
 
 
+def option_doc(option):
+    """Return only the 'title' line from the option's docstring."""
+    title, body = parse_docstring(option.__doc__)
+    return title
+
+
 def gen_configuration_options_for_getting():
     """Generate region configuration options that can be read.
 
@@ -68,7 +76,7 @@ def gen_configuration_options_for_getting():
     for name, option in sorted(gen_configuration_options()):
         yield make_option(
             "--" + name.replace("_", "-"), action="store_true", dest=name,
-            default=False, help=option.__doc__)
+            default=False, help=option_doc(option))
 
 
 def gen_configuration_options_for_resetting():
@@ -80,7 +88,7 @@ def gen_configuration_options_for_resetting():
     for name, option in sorted(gen_mutable_configuration_options()):
         yield make_option(
             "--" + name.replace("_", "-"), action="store_true", dest=name,
-            default=False, help=option.__doc__)
+            default=False, help=option_doc(option))
 
 
 def gen_configuration_options_for_setting():
@@ -92,14 +100,78 @@ def gen_configuration_options_for_setting():
     for name, option in sorted(gen_mutable_configuration_options()):
         yield make_option(
             "--" + name.replace("_", "-"), action="store", dest=name,
-            default=None, help=option.__doc__)
+            default=None, help=option_doc(option))
 
 
-class GetCommand(BaseCommand):
+def dump_plain(output):
+    """Dump `output`'s value as plain strings to stdout.
+
+    :type output: dict
+    """
+    for value in output.viewvalues():
+        print(value)
+
+
+def dump_json(output):
+    """Dump `output` as JSON to stdout.
+
+    :type output: dict
+    """
+    json.dump(output, sys.stdout)
+    # json.dump() does not append a trailing newline.
+    print(file=sys.stdout)
+
+
+def dump_yaml(output):
+    """Dump `output` as YAML to stdout.
+
+    :type output: dict
+    """
+    yaml.safe_dump(output, sys.stdout, default_flow_style=False)
+
+
+class LocalConfigCommand(BaseCommand):
+    """A command class for working with local configuration.
+
+    This must prevent use of the database because the database may not be
+    ready for use when this is run, or a user may be providing credentials for
+    the database.
+    """
+
+    can_import_settings = False
+    requires_model_validation = False
+    leave_locale_alone = True
+
+
+class GetCommand(LocalConfigCommand):
+
+    # Do NOT dump to self.stdout; Django does some odd things wrapping stdout,
+    # like automatically injecting line breaks, and these break the YAML/JSON
+    # output.
+
+    option_list_for_output = (
+        make_option(
+            "--json", action="store_const", const=dump_json, dest="dump",
+            default=dump_yaml, help="Output as JSON."
+        ),
+        make_option(
+            "--yaml", action="store_const", const=dump_yaml, dest="dump",
+            default=dump_yaml, help="Output as YAML (default)."
+        ),
+        make_option(
+            "--plain", action="store_const", const=dump_plain, dest="dump",
+            default=dump_yaml, help=(
+                "Output as plain strings. The names of the configuration "
+                "settings will not be printed and the order is not defined "
+                "so this is really only useful when obtaining a single "
+                "configuration setting.")
+        ),
+    )
 
     option_list = tuple(chain(
-        BaseCommand.option_list,
+        LocalConfigCommand.option_list,
         gen_configuration_options_for_getting(),
+        option_list_for_output,
     ))
 
     help = "Get local configuration for the MAAS region controller."
@@ -111,16 +183,14 @@ class GetCommand(BaseCommand):
                 for name, option in gen_configuration_options()
                 if options.get(name)
             }
-        # Do NOT dump to self.stdout; Django does some odd things wrapping
-        # stdout, like automatically injecting line breaks, and these break
-        # the YAML output.
-        yaml.safe_dump(output, stream=sys.stdout, default_flow_style=False)
+        dump = options["dump"]
+        dump(output)
 
 
-class ResetCommand(BaseCommand):
+class ResetCommand(LocalConfigCommand):
 
     option_list = tuple(chain(
-        BaseCommand.option_list,
+        LocalConfigCommand.option_list,
         gen_configuration_options_for_resetting(),
     ))
 
@@ -133,10 +203,10 @@ class ResetCommand(BaseCommand):
                     delattr(config, name)
 
 
-class SetCommand(BaseCommand):
+class SetCommand(LocalConfigCommand):
 
     option_list = tuple(chain(
-        BaseCommand.option_list,
+        LocalConfigCommand.option_list,
         gen_configuration_options_for_setting(),
     ))
 

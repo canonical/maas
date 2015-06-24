@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from functools import partial
+import json
 
 from django.core.management import call_command
 from maasserver.config import RegionConfiguration
@@ -25,11 +26,14 @@ from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import ConfigurationOption
 from testtools.matchers import (
+    AfterPreprocessing,
     AllMatch,
     Contains,
     Equals,
+    HasLength,
     Is,
     IsInstance,
+    MatchesAll,
     MatchesListwise,
     MatchesStructure,
     Not,
@@ -55,20 +59,38 @@ call_set = partial(call_nnn, "local_config_set")
 
 class TestConfigurationGet(MAASTestCase):
 
-    scenarios = (
+    scenarios = tuple(
         (option.dest, {"option": option})
         for option in config.gen_configuration_options_for_getting()
     )
 
-    def test__dumps_yaml_to_stdout(self):
+    def test__dumps_yaml_to_stdout_by_default(self):
         stdio = call_get(**{self.option.dest: True})
         settings = yaml.safe_load(stdio.getOutput())
         self.assertThat(settings, Contains(self.option.dest))
 
+    def test__dumps_yaml_to_stdout(self):
+        stdio = call_get(**{self.option.dest: True, "dump": config.dump_yaml})
+        settings = yaml.safe_load(stdio.getOutput())
+        self.assertThat(settings, Contains(self.option.dest))
+
+    def test__dumps_json_to_stdout(self):
+        stdio = call_get(**{self.option.dest: True, "dump": config.dump_json})
+        settings = json.loads(stdio.getOutput())
+        self.assertThat(settings, Contains(self.option.dest))
+
+    def test__dumps_plain_string_to_stdout(self):
+        stdio = call_get(**{self.option.dest: True, "dump": config.dump_plain})
+        settings = stdio.getOutput()
+        self.assertThat(settings, Not(Contains(self.option.dest)))
+        with RegionConfiguration.open() as configuration:
+            self.assertThat(settings, Contains(
+                getattr(configuration, self.option.dest)))
+
 
 class TestConfigurationReset(MAASTestCase):
 
-    scenarios = (
+    scenarios = tuple(
         (option.dest, {"option": option})
         for option in config.gen_configuration_options_for_resetting()
     )
@@ -91,7 +113,7 @@ class TestConfigurationReset(MAASTestCase):
 
 class TestConfigurationSet(MAASTestCase):
 
-    scenarios = (
+    scenarios = tuple(
         (option.dest, {"option": option})
         for option in config.gen_configuration_options_for_setting()
     )
@@ -114,6 +136,10 @@ class TestConfigurationSet(MAASTestCase):
 
 
 class TestConfigurationCommon(MAASTestCase):
+
+    is_string = IsInstance(unicode)
+    is_single_line = AfterPreprocessing(unicode.splitlines, HasLength(1))
+    is_help_string = MatchesAll(is_string, is_single_line, first_only=True)
 
     def test_gen_configuration_options(self):
         self.assertThat(
@@ -145,7 +171,7 @@ class TestConfigurationCommon(MAASTestCase):
                     action=Equals("store_true"),
                     default=Is(False),
                     dest=IsInstance(unicode, bytes),
-                    help=IsInstance(unicode),
+                    help=self.is_help_string,
                 ),
             ))
 
@@ -159,7 +185,7 @@ class TestConfigurationCommon(MAASTestCase):
                     action=Equals("store_true"),
                     default=Is(False),
                     dest=IsInstance(unicode, bytes),
-                    help=IsInstance(unicode),
+                    help=self.is_help_string,
                 ),
             ))
 
@@ -173,6 +199,6 @@ class TestConfigurationCommon(MAASTestCase):
                     action=Equals("store"),
                     default=Is(None),
                     dest=IsInstance(unicode, bytes),
-                    help=IsInstance(unicode),
+                    help=self.is_help_string,
                 ),
             ))

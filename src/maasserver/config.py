@@ -56,14 +56,13 @@ class RegionConfiguration(Configuration):
 
     @property
     def static_root(self):
-        """Return the static root path.
+        """The filesystem path for static content.
 
         In production this setting is set to the path where the static files
         are located on the filesystem.
 
         In the development environment the STATIC_ROOT setting is not set, so
         return the relative path to the static files from this files location.
-
         """
         if is_dev_environment():
             return path.join(path.dirname(__file__), "static")
