@@ -207,7 +207,7 @@ urlpatterns = patterns(
     url(r'doc/$', api_doc, name='api-doc'),
     url(r'describe/$', describe, name='describe'),
     url(r'pxeconfig/$', pxeconfig, name='pxeconfig'),
-    url(r'version/$', version_handler, name='version'),
+    url(r'version/$', version_handler, name='version_handler'),
 )
 
 

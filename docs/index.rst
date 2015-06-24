@@ -88,7 +88,7 @@ API / CLI Documentation
    api
    api_authentication
    maascli
-   capabilities
+   version
 
 
 ***************

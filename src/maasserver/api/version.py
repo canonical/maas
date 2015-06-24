@@ -40,17 +40,19 @@ class VersionHandler(AnonymousOperationsHandler):
     """Information about this MAAS instance.
 
     This returns a JSON dictionary with information about this
-    MAAS instance.
-    {
-        'version': '1.8.0',
-        'subversion': 'alpha10+bzr3750',
-        'capabilities': ['capability1', 'capability2', ...]
-    }
+    MAAS instance::
+
+        {
+            'version': '1.8.0',
+            'subversion': 'alpha10+bzr3750',
+            'capabilities': ['capability1', 'capability2', ...]
+        }
     """
     api_doc_section_name = "MAAS version"
     create = update = delete = None
 
     def read(self, request):
+        """Version and capabilities of this MAAS instance."""
         version, subversion = get_maas_version_subversion()
         version_info = {
             'capabilities': API_CAPABILITIES_LIST,
@@ -61,3 +63,7 @@ class VersionHandler(AnonymousOperationsHandler):
         return HttpResponse(
             version_info, mimetype='application/json; charset=utf-8',
             status=httplib.OK)
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('version_handler', [])

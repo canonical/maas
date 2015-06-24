@@ -2,13 +2,23 @@
 
 .. _capabilities:
 
-Capabilities
-============
+Version
+=======
 
-MAAS publishes a special view at ``.../api/1.0/version/`` that returns a
-list of the server's capabilities. It's transferred as a JSON document::
+MAAS publishes a special view at ``.../api/1.0/version/`` that returns the
+version of the MAAS server and the list of the server's capabilities.
+When programmatically probing a MAAS installation, use only the
+``capabilities`` list. Avoid using ``version`` and ``subversion`` for anything
+other than informational purposes. It's transferred as a JSON document::
 
-    {"capabilities": ["name-of-capability", ...]}
+    {
+      "subversion": "bzr4001",
+      "version": "1.8.0",
+      "capabilities": [
+          "name-of-capability-1",
+          "name-of-capability-2"
+      ]
+    }
 
 
 List of capabilities

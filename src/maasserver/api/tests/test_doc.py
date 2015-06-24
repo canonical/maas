@@ -374,7 +374,7 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_api_returns_description_document(self):
         is_list = IsInstance(list)
         is_tuple = IsInstance(tuple)
-        is_text = MatchesAll(IsInstance((unicode, bytes), Not(HasLength(0))))
+        is_text = MatchesAll(IsInstance((unicode, bytes)), Not(HasLength(0)))
         is_bool = IsInstance(bool)
 
         is_operation = MatchesAny(Is(None), is_text)
@@ -402,7 +402,7 @@ class TestDescribingAPI(MAASServerTestCase):
 
         is_resource = MatchesDict({
             "anon": MatchesAny(Is(None), is_handler),
-            "auth": is_handler,
+            "auth": MatchesAny(Is(None), is_handler),
             "name": is_text,
         })
 

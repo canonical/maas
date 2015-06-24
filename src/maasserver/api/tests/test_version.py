@@ -29,14 +29,14 @@ class TestFindingResources(MAASServerTestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/version/', reverse('version'))
+            '/api/1.0/version/', reverse('version_handler'))
 
     def test_GET_returns_details(self):
         mock_apt = self.patch(version_module, "get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
         self.patch(version_module, "_cache", {})
 
-        response = self.client.get(reverse('version'))
+        response = self.client.get(reverse('version_handler'))
         self.assertEqual(httplib.OK, response.status_code)
 
         parsed_result = json.loads(response.content)
