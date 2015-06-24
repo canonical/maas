@@ -324,9 +324,11 @@ class PowerDriverRegistry(Registry):
 
 
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
+from provisioningserver.drivers.power.virsh import VirshPowerDriver
 
 builtin_power_drivers = [
     MSCMPowerDriver(),
+    VirshPowerDriver(),
 ]
 for driver in builtin_power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
