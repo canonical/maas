@@ -30,61 +30,12 @@ from provisioningserver.utils.debug import (
 )
 from twisted.application.internet import TCPServer
 from twisted.application.service import IServiceMaker
-from twisted.cred.checkers import ICredentialsChecker
-from twisted.cred.credentials import IUsernamePassword
-from twisted.cred.error import UnauthorizedLogin
-from twisted.cred.portal import IRealm
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
 from twisted.plugin import IPlugin
 from twisted.python import usage
-from twisted.web.resource import (
-    IResource,
-    Resource,
-)
+from twisted.web.resource import Resource
 from twisted.web.server import Site
 from zope.interface import implementer
-
-
-@implementer(ICredentialsChecker)
-class SingleUsernamePasswordChecker:
-    """An `ICredentialsChecker` for a single username and password."""
-
-    credentialInterfaces = [IUsernamePassword]
-
-    def __init__(self, username, password):
-        super(SingleUsernamePasswordChecker, self).__init__()
-        self.username = username
-        self.password = password
-
-    @inlineCallbacks
-    def requestAvatarId(self, credentials):
-        """See `ICredentialsChecker`."""
-        if credentials.username == self.username:
-            matched = yield credentials.checkPassword(self.password)
-            if matched:
-                returnValue(credentials.username)
-        raise UnauthorizedLogin(credentials.username)
-
-
-@implementer(IRealm)
-class ProvisioningRealm:
-    """The `IRealm` for the Provisioning API."""
-
-    noop = staticmethod(lambda: None)
-
-    def __init__(self, resource):
-        super(ProvisioningRealm, self).__init__()
-        self.resource = resource
-
-    def requestAvatar(self, avatarId, mind, *interfaces):
-        """See `IRealm`."""
-        if IResource in interfaces:
-            return (IResource, self.resource, self.noop)
-        raise NotImplementedError()
 
 
 def serverFromString(description):

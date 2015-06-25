@@ -27,9 +27,7 @@ import provisioningserver
 from provisioningserver import plugin as plugin_module
 from provisioningserver.plugin import (
     Options,
-    ProvisioningRealm,
     ProvisioningServiceMaker,
-    SingleUsernamePasswordChecker,
 )
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,
@@ -48,7 +46,6 @@ from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
 )
-from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -57,10 +54,6 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from twisted.application.service import MultiService
-from twisted.cred.credentials import UsernamePassword
-from twisted.cred.error import UnauthorizedLogin
-from twisted.internet.defer import inlineCallbacks
-from twisted.web.resource import IResource
 import yaml
 
 
@@ -225,42 +218,3 @@ class TestProvisioningServiceMaker(MAASTestCase):
             config.BOOT_RESOURCES_STORAGE, "current")
 
         self.assertEqual(resource_root, root.path)
-
-
-class TestSingleUsernamePasswordChecker(MAASTestCase):
-    """Tests for `SingleUsernamePasswordChecker`."""
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    @inlineCallbacks
-    def test_requestAvatarId_okay(self):
-        credentials = UsernamePassword("frank", "zappa")
-        checker = SingleUsernamePasswordChecker("frank", "zappa")
-        avatar = yield checker.requestAvatarId(credentials)
-        self.assertEqual("frank", avatar)
-
-    def test_requestAvatarId_bad(self):
-        credentials = UsernamePassword("frank", "zappa")
-        checker = SingleUsernamePasswordChecker("zap", "franka")
-        d = checker.requestAvatarId(credentials)
-        return assert_fails_with(d, UnauthorizedLogin)
-
-
-class TestProvisioningRealm(MAASTestCase):
-    """Tests for `ProvisioningRealm`."""
-
-    def test_requestAvatar_okay(self):
-        resource = object()
-        realm = ProvisioningRealm(resource)
-        avatar = realm.requestAvatar(
-            "irrelevant", "also irrelevant", IResource)
-        self.assertEqual((IResource, resource, realm.noop), avatar)
-
-    def test_requestAvatar_bad(self):
-        # If IResource is not amongst the interfaces passed to requestAvatar,
-        # NotImplementedError is raised.
-        resource = object()
-        realm = ProvisioningRealm(resource)
-        self.assertRaises(
-            NotImplementedError, realm.requestAvatar,
-            "irrelevant", "also irrelevant")
