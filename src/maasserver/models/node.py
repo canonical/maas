@@ -84,12 +84,15 @@ from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import (
     MACAddress,
     update_mac_cluster_interfaces,
 )
+from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
@@ -798,6 +801,17 @@ class Node(CleanSave, TimestampedModel):
         it only adds blockdevice_set.
         """
         return PhysicalBlockDevice.objects.filter(node=self)
+
+    @property
+    def virtualblockdevice_set(self):
+        """Return `QuerySet` for all `VirtualBlockDevice` assigned to node.
+
+        This is need as Django doesn't add this attribute to the `Node` model,
+        it only adds blockdevice_set.
+        """
+        # Avoid circular imports
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+        return VirtualBlockDevice.objects.filter(node=self)
 
     @property
     def storage(self):
@@ -1660,6 +1674,9 @@ class Node(CleanSave, TimestampedModel):
         if deallocate_ip_address:
             self._async_deallocate_static_ip_addresses()
 
+        # Clear the nodes storage configuration.
+        self._clear_storage_configuration()
+
         # If this node has non-installable children, remove them.
         self.children.all().delete()
 
@@ -2093,6 +2110,26 @@ class Node(CleanSave, TimestampedModel):
         node = cls.objects.get(system_id=system_id)
         node.status = status
         node.save()
+
+    def _clear_storage_configuration(self):
+        """Clear's the current storage configuration for this node.
+
+        This will remove all related models to `PhysicalBlockDevice`'s on
+        this node and all `VirtualBlockDevice`'s.
+        """
+        physical_block_devices = self.physicalblockdevice_set.all()
+        PartitionTable.objects.filter(
+            block_device__in=physical_block_devices).delete()
+        Filesystem.objects.filter(
+            block_device__in=physical_block_devices).delete()
+        for block_device in self.virtualblockdevice_set.all():
+            try:
+                block_device.filesystem_group.delete()
+            except FilesystemGroup.DoesNotExist:
+                # When a filesystem group has multiple virtual block devices
+                # it is possible that accessing `filesystem_group` will
+                # result in it already being deleted.
+                pass
 
 
 # Piston serializes objects based on the object class.
