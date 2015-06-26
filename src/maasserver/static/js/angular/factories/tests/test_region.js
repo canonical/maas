@@ -309,11 +309,26 @@ describe("RegionConnection", function() {
         });
     });
 
+    describe("_getProtocol", function() {
+        it("returns window protocol", function() {
+            expect(RegionConnection._getProtocol()).toBe(
+                $window.location.protocol);
+        });
+    });
+
     describe("_buildUrl", function() {
 
         it("returns url from $window.location", function() {
             expect(RegionConnection._buildUrl()).toBe(
                 "ws://" + $window.location.hostname + ":" +
+                $window.location.port + $window.location.pathname + "/ws");
+        });
+
+        it("uses wss connection if https protocol", function() {
+            spyOn(RegionConnection, "_getProtocol").and.returnValue("https:");
+            $window.location.protocol = 'https:';
+            expect(RegionConnection._buildUrl()).toBe(
+                "wss://" + $window.location.hostname + ":" +
                 $window.location.port + $window.location.pathname + "/ws");
         });
 

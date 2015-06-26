@@ -158,12 +158,20 @@ angular.module('MAAS').factory(
             this.websocket = null;
         };
 
+        RegionConnection.prototype._getProtocol = function() {
+            return $window.location.protocol;
+        };
+
         // Return connection url to websocket from current location and
         // html options.
         RegionConnection.prototype._buildUrl = function() {
             var host = $window.location.hostname;
             var port = $window.location.port;
             var path = $window.location.pathname;
+            var proto = 'ws';
+            if (this._getProtocol() === 'https:') {
+                proto = 'wss';
+            }
 
             // Port can be overridden by data-websocket-port in the base
             // element.
@@ -180,7 +188,7 @@ angular.module('MAAS').factory(
                 path += '/';
             }
 
-            url = "ws://" + host + ":" + port + path + "ws";
+            url = proto + "://" + host + ":" + port + path + "ws";
 
             // Include the csrftoken in the URL if it's defined.
             csrftoken = $cookies.csrftoken;
