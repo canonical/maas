@@ -66,10 +66,10 @@ class Filesystem(CleanSave, TimestampedModel):
         default=FILESYSTEM_TYPE.EXT4)
 
     partition = ForeignKey(
-        Partition, null=True, blank=True)
+        Partition, unique=True, null=True, blank=True)
 
     block_device = ForeignKey(
-        BlockDevice, null=True, blank=True)
+        BlockDevice, unique=True, null=True, blank=True)
 
     filesystem_group = ForeignKey(
         FilesystemGroup, null=True, blank=True, related_name='filesystems')
