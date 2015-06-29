@@ -170,3 +170,24 @@ class TestPartition(MAASServerTestCase):
                                            start_offset=0,
                                            size=device.size)
         self.assertEqual(partition.size, device.size)
+
+    def test_get_filesystem_returns_filesystem(self):
+        """Checks that the get_filesystem method returns the filesystem that's
+        on the partition"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+        fs = factory.make_Filesystem(partition=partition)
+
+        self.assertEqual(partition.filesystem.id, fs.id)
+
+    def test_get_filesystem_returns_none(self):
+        """Checks that the get_filesystem method returns none when there is no
+        filesystem on the partition"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+
+        self.assertIsNone(partition.filesystem)

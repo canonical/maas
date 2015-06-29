@@ -110,12 +110,13 @@ class TestPartitions(APITestCase):
                                                  device.id,
                                                  partition.id])
         response = self.client.get(uri)
-        partition = json.loads(response.content)
+        parsed_partition = json.loads(response.content)
 
-        self.assertTrue(partition['bootable'])
-        self.assertEqual(partition['id'], 6)
-        self.assertEqual(partition['size'], 16777216)
-        self.assertEqual(partition['start_offset'], 40960)
+        self.assertTrue(parsed_partition['bootable'])
+        self.assertEqual(parsed_partition['id'], partition.id)
+        self.assertEqual(parsed_partition['size'], partition.size)
+        self.assertEqual(parsed_partition['start_offset'],
+                         partition.start_offset)
 
     def test_delete_partition(self):
         """Tests deleting a partition

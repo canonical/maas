@@ -31,6 +31,7 @@ from maasserver.forms import (
 from maasserver.models import (
     BlockDevice,
     Node,
+    PartitionTable,
     PhysicalBlockDevice,
 )
 from piston.utils import rc
@@ -50,7 +51,29 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
         'uuid',
         'mount_point',
     )),
+    'partition_table_type',
+    'partitions',
 )
+
+
+def _partition_info(partition):
+    """Returns the partition information dictionary used in the partition data
+    output"""
+    partition_dict = {'id': partition.id,
+                      'bootable': partition.bootable,
+                      'size': partition.size,
+                      'start_offset': partition.start_offset,
+                      'start_block': partition.start_block,
+                      'end_block': partition.end_block,
+                      'uuid': partition.uuid}
+    fs = partition.filesystem
+    if fs is not None:
+        partition_dict['filesystem'] = {
+            'fstype': fs.fstype,
+            'uuid': fs.uuid,
+            'mount_point': fs.mount_point
+        }
+    return partition_dict
 
 
 class BlockDevicesHandler(OperationsHandler):
@@ -67,7 +90,19 @@ class BlockDevicesHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return node.blockdevice_set.all()
+        devices = node.blockdevice_set.all()
+        for device in devices:
+            try:
+                partition_table = device.partitiontable_set.get()
+            except PartitionTable.DoesNotExist:
+                # If we don't find the partition table, we don't need
+                # to add the data to the deve object
+                pass
+            else:
+                device.partition_table_type = partition_table.table_type
+                device.partitions = [_partition_info(p)
+                                     for p in partition_table.partitions.all()]
+        return devices
 
 
 class BlockDeviceHandler(OperationsHandler):
@@ -82,8 +117,20 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 404 if the node or block device is not found.
         """
-        return BlockDevice.objects.get_block_device_or_404(
+        device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.VIEW)
+        try:
+            partition_table = device.partitiontable_set.get()
+        except PartitionTable.DoesNotExist:
+            # If we don't find the partition table, we don't need to
+            # add the data to the deve object
+            pass
+        else:
+            device.partition_table_type = partition_table.table_type
+            device.partitions = [_partition_info(p)
+                                 for p in partition_table.partitions.all()]
+
+        return device
 
     def delete(self, request, system_id, device_id):
         """Delete block device on node.

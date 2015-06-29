@@ -79,6 +79,81 @@ class TestBlockDevices(APITestCase):
             "mount_point": filesystem.mount_point,
             }, parsed_devices[0]['filesystem'])
 
+    def test_read_returns_partition_type(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type='GPT')
+
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_devices = json.loads(response.content)
+
+        self.assertEqual(parsed_devices[0]['partition_table_type'],
+                         partition_table.table_type)
+
+    def test_read_returns_partitions(self):
+        node = factory.make_Node()
+        block_size = 1024
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=1000000 * block_size)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type='MBR')
+        # Use PartitionTable methods that auto-size and position partitions
+        partition1 = partition_table.add_partition(size=50000 * block_size)
+        partition2 = partition_table.add_partition()
+
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_devices = json.loads(response.content)
+
+        self.assertEqual(parsed_devices[0]['partition_table_type'], 'MBR')
+        self.assertEqual(len(parsed_devices[0]['partitions']), 2)
+
+        # We should have one device
+        self.assertEqual(len(parsed_devices), 1)
+        [parsed_device] = parsed_devices
+        # Verify the two partitions created above have the expected sizes
+        self.assertIn(partition1.size,
+                      [p['size'] for p in parsed_device['partitions']])
+        self.assertIn(partition2.size,
+                      [p['size'] for p in parsed_device['partitions']])
+
+    def test_read_returns_filesystems_on_partitions(self):
+        node = factory.make_Node()
+        block_size = 1024
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=1000000 * block_size)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type='MBR')
+        # Use PartitionTable methods that auto-size and position partitions
+        partition1 = partition_table.add_partition(size=50000 * block_size)
+        partition2 = partition_table.add_partition()
+        filesystem1 = factory.make_Filesystem(partition=partition1)
+        filesystem2 = factory.make_Filesystem(partition=partition2)
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_devices = json.loads(response.content)
+
+        # We should have one device
+        self.assertEqual(len(parsed_devices), 1)
+        [parsed_device] = parsed_devices
+        # Check whether the filesystems are what we expect them to be
+        self.assertEqual(
+            parsed_device['partitions'][0]['filesystem']['uuid'],
+            filesystem1.uuid)
+        self.assertEqual(
+            parsed_device['partitions'][1]['filesystem']['uuid'],
+            filesystem2.uuid)
+
 
 class TestBlockDeviceAPI(APITestCase):
 
@@ -104,6 +179,72 @@ class TestBlockDeviceAPI(APITestCase):
             "uuid": filesystem.uuid,
             "mount_point": filesystem.mount_point,
             }, parsed_device['filesystem'])
+
+    def test_read_returns_partitions(self):
+        node = factory.make_Node()
+        block_size = 1024
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=1000000 * block_size)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type='MBR')
+        # Use PartitionTable methods that auto-size and position partitions
+        partition1 = partition_table.add_partition(size=50000 * block_size)
+        partition2 = partition_table.add_partition()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(uri)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+
+        self.assertEqual({u'bootable': partition1.bootable,
+                          u'end_block': partition1.end_block,
+                          u'id': partition1.id,
+                          u'size': partition1.size,
+                          u'start_block': partition1.start_block,
+                          u'start_offset': partition1.start_offset,
+                          u'uuid': partition1.uuid},
+                         parsed_device['partitions'][0])
+
+        self.assertEqual({u'bootable': partition2.bootable,
+                          u'end_block': partition2.end_block,
+                          u'id': partition2.id,
+                          u'size': partition2.size,
+                          u'start_block': partition2.start_block,
+                          u'start_offset': partition2.start_offset,
+                          u'uuid': partition2.uuid},
+                         parsed_device['partitions'][1])
+
+    def test_read_returns_filesytems_on_partitions(self):
+        node = factory.make_Node()
+        block_size = 1024
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=1000000 * block_size)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type='MBR')
+        # Use PartitionTable methods that auto-size and position partitions
+        partition1 = partition_table.add_partition(size=50000 * block_size)
+        partition2 = partition_table.add_partition()
+        filesystem1 = factory.make_Filesystem(partition=partition1,
+                                              fstype='ext4')
+        filesystem2 = factory.make_Filesystem(partition=partition2,
+                                              fstype='ext3')
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(uri)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+
+        self.assertEquals({
+            "fstype": filesystem1.fstype,
+            "uuid": filesystem1.uuid,
+            "mount_point": filesystem1.mount_point,
+            }, parsed_device['partitions'][0]['filesystem'])
+
+        self.assertEquals({
+            "fstype": filesystem2.fstype,
+            "uuid": filesystem2.uuid,
+            "mount_point": filesystem2.mount_point,
+            }, parsed_device['partitions'][1]['filesystem'])
 
     def test_delete_returns_404_when_system_id_doesnt_match(self):
         self.become_admin()

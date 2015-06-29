@@ -31,6 +31,7 @@ from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import get_one
 
 
 class Partition(CleanSave, TimestampedModel):
@@ -119,3 +120,8 @@ class Partition(CleanSave, TimestampedModel):
     def size_blocks(self):
         """Returns the size of the partition, in blocks."""
         return int(ceil(float(self.size) / self.get_block_size()))
+
+    @property
+    def filesystem(self):
+        """Returns the filesystem that's using this partition"""
+        return get_one(self.filesystem_set.all())
