@@ -347,15 +347,20 @@ header.banner {
             height: auto;
             max-height: 36px;
 
+            .cta-group {
+                float: right;
+            }
+
             // Feedback container for the cta, will contain positive or
             // negative feedback
             .page-header__cta-feedback {
                 display: inline-block;
                 position: relative;
                 line-height: 36px;
-                float: left;
                 text-align: right;
                 color: $ubuntu-orange;
+                margin-right: 20px;
+                cursor: pointer;
             }
         }
     }

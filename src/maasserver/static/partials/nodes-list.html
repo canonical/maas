@@ -19,24 +19,20 @@
         </h1>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div data-ng-show="currentpage === 'nodes'">
-            <div class="page-header__actions four-col last-col">
-                <div class="page-header__cta two-col no-margin-bottom last-col" data-ng-hide="tabs.nodes.selectedItems.length">
-                    <div class="two-col no-margin-bottom last-col">
-                        <div data-maas-cta="addHardwareOptions"
-                            data-ng-model="addHardwareOption"
-                            data-ng-change="addHardwareOptionChanged()" data-default-title="Add Hardware">
-                        </div>
+            <div class="page-header__actions">
+                <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedItems.length">
+                    <div class="right" data-maas-cta="addHardwareOptions"
+                        data-ng-model="addHardwareOption"
+                        data-ng-change="addHardwareOptionChanged()" data-default-title="Add Hardware">
                     </div>
                 </div>
-                <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.nodes.selectedItems.length">
-                    <span class="page-header__cta-feedback two-col no-margin-bottom" data-ng-click="showSelected('nodes')">
+                <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedItems.length">
+                    <span class="page-header__cta-feedback" data-ng-click="showSelected('nodes')">
                         {$ tabs.nodes.selectedItems.length $} Selected
                     </span>
-                    <div class="two-col no-margin-bottom last-col">
-                        <div data-maas-cta="tabs.nodes.takeActionOptions"
-                            data-ng-model="tabs.nodes.actionOption"
-                            data-ng-change="actionOptionSelected('nodes')">
-                        </div>
+                    <div data-maas-cta="tabs.nodes.takeActionOptions"
+                        data-ng-model="tabs.nodes.actionOption"
+                        data-ng-change="actionOptionSelected('nodes')">
                     </div>
                 </div>
             </div>
@@ -207,16 +203,14 @@
         </div>
         <!-- XXX blake_r 2015-03-31 - Need to add e2e test. -->
         <div data-ng-show="currentpage === 'devices'">
-            <div class="page-header__actions four-col last-col">
-                <div class="page-header__cta two-col no-margin-bottom last-col" data-ng-hide="tabs.devices.selectedItems.length">
-                    <div class="two-col no-margin-bottom last-col">
-                        <button class="two-col cta-ubuntu"
-                            data-ng-click="addDevice()"
-                            data-ng-hide="addDeviceScope.viewable">Add Device</button>
-                        <button class="two-col cta-ubuntu secondary ng-hide"
-                            data-ng-click="cancelAddDevice()"
-                            data-ng-show="addDeviceScope.viewable">Cancel add device</button>
-                    </div>
+            <div class="page-header__actions">
+                <div class="page-header__cta" data-ng-hide="tabs.devices.selectedItems.length">
+                    <button class="cta-ubuntu"
+                        data-ng-click="addDevice()"
+                        data-ng-hide="addDeviceScope.viewable">Add Device</button>
+                    <button class="cta-ubuntu secondary ng-hide"
+                        data-ng-click="cancelAddDevice()"
+                        data-ng-show="addDeviceScope.viewable">Cancel add device</button>
                 </div>
                 <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.devices.selectedItems.length">
                     <span class="page-header__cta-feedback two-col no-margin-bottom" data-ng-click="showSelected('devices')">
