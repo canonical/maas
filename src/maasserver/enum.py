@@ -234,6 +234,9 @@ class IPADDRESS_TYPE:
     # leases file.
     USER_RESERVED = 4
 
+    # Assigned by a MAAS-managed DHCP server.
+    DHCP = 5
+
 
 class POWER_STATE:
 

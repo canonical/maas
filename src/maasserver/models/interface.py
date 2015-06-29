@@ -91,6 +91,9 @@ class Interface(CleanSave, TimestampedModel):
         'VLAN', default=get_default_vlan, editable=True, blank=False,
         null=False, on_delete=PROTECT)
 
+    ip_addresses = ManyToManyField(
+        'StaticIPAddress', editable=True, blank=True, null=True)
+
     mac = ForeignKey('MACAddress', editable=True, blank=True, null=True)
 
     ipv4_params = JSONObjectField(blank=True, default="")

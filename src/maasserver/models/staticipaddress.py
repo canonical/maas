@@ -328,9 +328,12 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
 
+    # IP can be none when a DHCP lease has expired: in this case the entry
+    # in the StaticIPAddress only materializes the connection between an
+    # interface and a subnet.
     ip = MAASIPAddressField(
-        unique=True, null=False, editable=False, blank=False,
-        verbose_name='IP')
+        unique=True, null=True, editable=False, blank=True,
+        default=None, verbose_name='IP')
 
     # The MACStaticIPAddressLink table is used to link StaticIPAddress to
     # MACAddress.  See MACAddress.ip_addresses, and the reverse relation
@@ -339,6 +342,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     alloc_type = IntegerField(
         editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
+
+    # Subnet is only null for IP addresses allocate before the new networking
+    # model.
+    subnet = ForeignKey('Subnet', editable=True, blank=True, null=True)
 
     # XXX: removing the null=True here causes dozens of tests to fail with
     # NOT NULL constraint violations. (an empty string an NULL should mean
