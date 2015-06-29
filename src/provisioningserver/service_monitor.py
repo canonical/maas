@@ -269,6 +269,20 @@ class ServiceMonitor:
         if exit_code != 0:
             raise UnknownServiceError("'%s' is unknown to upstart." % (
                 service_name))
+        for line in output.splitlines():
+            if not line.startswith('sudo:'):
+                active_state, process_state = self._parse_upstart_status_line(
+                    line, service_name)
+                break
+        active_state_enum = self.UPSTART_TO_STATE.get(active_state)
+        if active_state_enum is None:
+            raise ServiceParsingError(
+                "Unable to parse the active state from upstart for "
+                "service '%s', active state reported as '%s'." % (
+                    service_name, active_state))
+        return active_state_enum, process_state
+
+    def _parse_upstart_status_line(self, output, service_name):
         # output looks like:
         #    tgt start/running, process 29993
         # split to get the active_state/process_state
@@ -279,13 +293,7 @@ class ServiceMonitor:
             raise ServiceParsingError(
                 "Unable to parse the output from upstart for service '%s'." % (
                     service_name))
-        active_state_enum = self.UPSTART_TO_STATE.get(active_state)
-        if active_state_enum is None:
-            raise ServiceParsingError(
-                "Unable to parse the active state from upstart for "
-                "service '%s', active state reported as '%s'." % (
-                    service_name, active_state))
-        return active_state_enum, process_state
+        return active_state, process_state
 
     def _get_expected_process_state(self, active_state):
         """Return the expected process state for the `active_state` based

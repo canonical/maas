@@ -436,6 +436,24 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEquals(SERVICE_STATE.ON, active_state)
         self.assertEquals("running", process_state)
 
+    def test__get_systemd_service_status_ignores_sudo_output(self):
+        systemd_status_output = dedent("""\
+            sudo: unable to resolve host sub-etha-sens-o-matic
+            tgt.service - LSB: iscsi target daemon
+                Loaded: loaded (/etc/init.d/tgt)
+                Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
+                Docs: man:systemd-sysv-generator(8)
+            """)
+
+        service_monitor = ServiceMonitor()
+        mock_exec_service_action = self.patch(
+            service_monitor, "_exec_service_action")
+        mock_exec_service_action.return_value = (0, systemd_status_output)
+        active_state, process_state = (
+            service_monitor._get_systemd_service_status("tgt"))
+        self.assertEquals(SERVICE_STATE.ON, active_state)
+        self.assertEquals("running", process_state)
+
     def test__get_systemd_service_status_raise_error_for_invalid_active(self):
         systemd_status_output = dedent("""\
             tgt.service - LSB: iscsi target daemon
@@ -489,6 +507,18 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "_exec_service_action")
         mock_exec_service_action.return_value = (
             0, "tgt start/running, process 23239")
+        active_state, process_state = (
+            service_monitor._get_upstart_service_status("tgt"))
+        self.assertEquals(SERVICE_STATE.ON, active_state)
+        self.assertEquals("running", process_state)
+
+    def test__get_upstart_service_status_parsing_ignores_sudo_output(self):
+        service_monitor = ServiceMonitor()
+        mock_exec_service_action = self.patch(
+            service_monitor, "_exec_service_action")
+        mock_exec_service_action.return_value = (0, dedent("""\
+                sudo: unable to resolve host infinite-improbability
+                tgt start/running, process 23239"""))
         active_state, process_state = (
             service_monitor._get_upstart_service_status("tgt"))
         self.assertEquals(SERVICE_STATE.ON, active_state)
