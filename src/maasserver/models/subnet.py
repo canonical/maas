@@ -85,6 +85,8 @@ class Subnet(CleanSave, TimestampedModel):
             self.name, self.vlan.vid, self.cidr)
 
     def validate_gateway_ip(self):
+        if self.gateway_ip is None or self.gateway_ip == '':
+            return
         gateway_addr = IPAddress(self.gateway_ip)
         if gateway_addr not in self.get_cidr():
             message = "Gateway IP must be within CIDR range."

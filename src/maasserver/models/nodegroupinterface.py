@@ -213,6 +213,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         'VLAN', default=get_default_vlan, editable=True, blank=False,
         null=False, on_delete=PROTECT)
 
+    # Note: adding null=True temporarily; will be adjusted after a data
+    # migration occurs to create each subnet link.
+    subnet = ForeignKey(
+        'Subnet', editable=True, blank=True, null=True, on_delete=PROTECT)
+
     # Name for this interface.  It must be unique within the cluster.
     # The code ensures that this is never an empty string, but we do allow
     # an empty string on the form.  The field defaults to a unique name based
