@@ -245,6 +245,12 @@ class NodeGroup(TimestampedModel):
             if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
             ]
 
+    def get_fabric(self):
+        """The Fabric this cluster belongs to."""
+        for ngi in self.get_managed_interfaces():
+            return ngi.vlan.fabric
+        return None
+
     def manages_dns(self):
         """Does this `NodeGroup` manage DNS on any interfaces?
 

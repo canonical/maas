@@ -386,6 +386,20 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertEqual([], nodegroup.get_managed_interfaces())
 
+    def test_get_fabric_returns_fabric_of_managed_interface(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        nodegroup = factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            vlan=vlan)
+        self.assertEqual(fabric, nodegroup.get_fabric())
+
+    def test_get_fabric_returns_none_if_no_managed_interface(self):
+        nodegroup = factory.make_NodeGroup()
+        self.assertIsNone(nodegroup.get_fabric())
+
     def test_accept_node_changes_status(self):
         nodegroup = factory.make_NodeGroup(
             status=factory.pick_enum(NODEGROUP_STATUS))
