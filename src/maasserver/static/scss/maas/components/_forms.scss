@@ -269,6 +269,10 @@ form {
         }
     }
 
+    &:last-of-type {
+        margin-bottom: 0;
+    }
+
     label {
         display: inline-block;
         float: none;
@@ -323,7 +327,6 @@ form {
          * Required to fix the inline block invisible margin
          */
         font-size: 16px;
-        margin-top: 10px;
     }
 
     .icon {

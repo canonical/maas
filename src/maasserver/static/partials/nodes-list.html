@@ -107,7 +107,7 @@
                     </p>
                 </div>
                 <form class="twelve-col ng-hide"  data-ng-show="showMachine()">
-                    <fieldset class="six-col no-padding">
+                    <fieldset class="six-col no-padding no-margin-bottom">
                         <div class="inline">
                             <label for="cluser" class="two-col">Cluster</label>
                             <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
@@ -127,6 +127,13 @@
                                 data-ng-options="arch for arch in architectures">
                             </select>
                         </div>
+                        <div class="inline">
+                            <label for="zone" class="two-col">Zone</label>
+                            <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
+                                data-ng-model="machine.zone"
+                                data-ng-options="zone as zone.name for zone in zones">
+                            </select>
+                        </div>
                         <div class="inline five-col" data-ng-repeat="mac in machine.macs">
                             {$ mac $}
                             <label for="mac-address" class="two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
@@ -139,15 +146,8 @@
                         <div class="inline five-col">
                             <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
                         </div>
-                        <div class="inline">
-                            <label for="zone" class="two-col">Zone</label>
-                            <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
-                                data-ng-model="machine.zone"
-                                data-ng-options="zone as zone.name for zone in zones">
-                            </select>
-                        </div>
                     </fieldset>
-                    <fieldset class="six-col last-col no-padding"
+                    <fieldset class="six-col last-col no-padding no-margin-bottom"
                         data-maas-power-parameters="machine.cluster.power_types"
                         data-ng-model="machine.power">
                     </fieldset>
@@ -174,7 +174,7 @@
                         </span>
                         <div class="right align-right">
                             <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
-                            <button class="cta-ubuntu secondary"
+                            <button class="cta-ubuntu secondary margin-right--ten"
                                 data-ng-class="{ disabled: machineHasError() }"
                                 data-ng-click="saveMachine(true)">Save and add another</button>
                             <button class="cta-ubuntu"
@@ -190,7 +190,7 @@
                         </span>
                         <div class="right align-right">
                             <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
-                            <button class="cta-ubuntu secondary"
+                            <button class="cta-ubuntu secondary margin-right--ten"
                                 data-ng-class="{ disabled: chassisHasErrors() }"
                                 data-ng-click="saveChassis(true)">Save and add another</button>
                             <button class="cta-ubuntu"
