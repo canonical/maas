@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test parser for 'ip link show'."""
+"""Test parser for 'ip addr show'."""
 
 from __future__ import (
     absolute_import,
@@ -19,11 +19,11 @@ __all__ = []
 
 from textwrap import dedent
 
-from maasserver.utils.iplink import (
+from maasserver.utils.ipaddr import (
     _get_settings_dict,
     _add_additional_interface_properties,
     _parse_interface_definition,
-    parse_ip_link,
+    parse_ip_addr,
 )
 
 from maastesting.testcase import MAASTestCase
@@ -98,7 +98,7 @@ class TestHelperFunctions(MAASTestCase):
             _parse_interface_definition("2: eth0: ")
 
 
-class TestParseIPLink(MAASTestCase):
+class TestParseIPAddr(MAASTestCase):
 
     def test_ignores_whitespace_lines(self):
         testdata = dedent("""
@@ -109,13 +109,19 @@ mode DEFAULT group default
 
             link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 
+            inet 127.0.0.1/8 scope host lo
+                valid_lft forever preferred_lft forever
+
+            inet6 ::1/128 scope host
+                valid_lft forever preferred_lft forever
+
         2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
 state UP mode DEFAULT group default qlen 1000
 
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
 
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         # Sanity check to ensure some data exists
         self.assertIsNotNone(ip_link.get('lo'))
         self.assertIsNotNone(ip_link.get('eth0'))
@@ -127,7 +133,7 @@ state UP mode DEFAULT group default qlen 1000
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         self.assertEquals(2, ip_link['eth0']['index'])
 
     def test_parses_name(self):
@@ -136,7 +142,7 @@ state UP mode DEFAULT group default qlen 1000
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         self.assertEquals('eth0', ip_link['eth0']['name'])
 
     def test_parses_mac(self):
@@ -145,7 +151,7 @@ state UP mode DEFAULT group default qlen 1000
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         self.assertEquals('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
 
     def test_parses_flags(self):
@@ -154,7 +160,7 @@ state UP mode DEFAULT group default qlen 1000
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         flags = ip_link['eth0'].get('flags')
         self.assertIsNotNone(flags)
         self.assertThat(flags, Equals({
@@ -167,7 +173,7 @@ state UP mode DEFAULT group default qlen 1000
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         settings = ip_link['eth0'].get('settings')
         self.assertIsNotNone(settings)
         self.assertThat(settings, Equals({
@@ -177,20 +183,80 @@ state UP mode DEFAULT group default qlen 1000
             'mode': 'DEFAULT',
             'group': 'default',
             'qlen': '1000',
-
         }))
+
+    def test_parses_inet(self):
+        testdata = dedent("""
+        2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
+state UP mode DEFAULT group default qlen 1000
+            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.3/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
+        """)
+        ip_link = parse_ip_addr(testdata)
+        inet = ip_link['eth0'].get('inet')
+        self.assertEqual(['192.168.0.3/24'], inet)
+
+    def test_parses_multiple_inet(self):
+        testdata = dedent("""
+        2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
+state UP mode DEFAULT group default qlen 1000
+            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.3/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet 192.168.0.4/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
+        """)
+        ip_link = parse_ip_addr(testdata)
+        inet = ip_link['eth0'].get('inet')
+        self.assertEqual(['192.168.0.3/24', '192.168.0.4/24'], inet)
+
+    def test_parses_inet6(self):
+        testdata = dedent("""
+        2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
+state UP mode DEFAULT group default qlen 1000
+            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.3/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
+        """)
+        ip_link = parse_ip_addr(testdata)
+        inet = ip_link['eth0'].get('inet6')
+        self.assertEqual(['fe80::3e97:eff:fe0e:56dc/64'], inet)
 
     def test_parses_multiple_interfaces(self):
         testdata = dedent("""
         2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.3/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
         3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP \
 mode DORMANT group default qlen 1000
             link/ether 48:51:bb:7a:d5:e2 brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.5/24 brd 192.168.0.255 scope global eth1
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:de0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
+            inet6 2620:1:260::1/64 scope global
+                valid_lft forever preferred_lft forever
         """)
-        ip_link = parse_ip_link(testdata)
+        ip_link = parse_ip_addr(testdata)
         self.assertEquals(2, ip_link['eth0']['index'])
         self.assertEquals('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
+        self.assertEquals(['192.168.0.3/24'], ip_link['eth0']['inet'])
+        self.assertEquals(
+            ['fe80::3e97:eff:fe0e:56dc/64'], ip_link['eth0']['inet6'])
         self.assertEquals(3, ip_link['eth1']['index'])
         self.assertEquals('48:51:bb:7a:d5:e2', ip_link['eth1']['mac'])
+        self.assertEquals(['192.168.0.5/24'], ip_link['eth1']['inet'])
+        self.assertEquals(
+            ['fe80::3e97:eff:de0e:56dc/64', '2620:1:260::1/64'],
+            ip_link['eth1']['inet6'])

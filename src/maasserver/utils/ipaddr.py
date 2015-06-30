@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Utility to parse 'ip link [show]'.
+"""Utility to parse 'ip addr [show]'.
 
 Example dictionary returned by parse_ip_link():
 
@@ -9,6 +9,8 @@ Example dictionary returned by parse_ip_link():
            u'index': 2,
            u'mac': u'80:fa:5c:0d:43:5e',
            u'name': u'eth0',
+           u'inet': [u'192.168.0.3/24', '172.16.43.1/24'],
+           u'inet6': [u'fe80::3e97:eff:fe0e:56dc/64'],
            u'settings': {u'group': u'default',
                          u'mode': u'DEFAULT',
                          u'mtu': u'1500',
@@ -18,6 +20,8 @@ Example dictionary returned by parse_ip_link():
  u'lo': {u'flags': set([u'LOOPBACK', u'LOWER_UP', u'UP']),
          u'index': 1,
          u'name': u'lo',
+         u'inet': u'127.0.0.1/8',
+         u'inet6': u'::1/128',
          u'settings': {u'group': u'default',
                        u'mode': u'DEFAULT',
                        u'mtu': u'65536',
@@ -29,9 +33,19 @@ The dictionary above is generated given the following input:
         1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN \
 mode DEFAULT group default
             link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+            inet 127.0.0.1/8 scope host lo
+                valid_lft forever preferred_lft forever
+            inet6 ::1/128 scope host
+                valid_lft forever preferred_lft forever
         2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
 state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet 192.168.0.3/24 brd 192.168.0.255 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet 172.16.43.1/24 scope global eth0
+                valid_lft forever preferred_lft forever
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
 """
 
 from __future__ import (
@@ -46,7 +60,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'parse_ip_link',
+    'parse_ip_addr',
 ]
 
 import re
@@ -61,8 +75,11 @@ def _get_settings_dict(settings_line):
     :return: dict
     """
     settings = settings_line.strip().split()
+    if len(settings) > 0 and settings[0] == "inet":
+        settings = settings[:-1]
     num_tokens = len(settings)
-    assert num_tokens % 2 == 0
+    assert num_tokens % 2 == 0, \
+        "Unexpected number of params in '%s'" % settings_line
     return {
         settings[2 * i]: settings[2 * i + 1] for i in range(num_tokens / 2)
         }
@@ -98,7 +115,7 @@ def _parse_interface_definition(line):
         interface['flags'] = set(flags)
         interface['settings'] = _get_settings_dict(matches.group(2))
     else:
-        raise ValueError("Malformed 'ip link' line (%s)" % line)
+        raise ValueError("Malformed 'ip addr' line (%s)" % line)
     return interface
 
 
@@ -111,15 +128,20 @@ def _add_additional_interface_properties(interface, line):
     :param line: unicode
     """
     settings = _get_settings_dict(line)
-    # We only care about the MAC address for Ethernet interfaces.
     mac = settings.get('link/ether')
     if mac is not None:
         interface['mac'] = mac
+    cumul_settings = ['inet', 'inet6']
+    for name in cumul_settings:
+        value = settings.get(name)
+        if value is not None:
+            group = interface.setdefault(name, [])
+            group.append(value)
 
 
-def parse_ip_link(output):
+def parse_ip_addr(output):
     """
-    Given the full output from 'ip link [show]', parses it and returns a
+    Given the full output from 'ip addr [show]', parses it and returns a
     dictionary mapping each interface name to its settings.
     :param output: string or unicode
     :return: dict

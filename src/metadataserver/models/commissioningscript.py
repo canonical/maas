@@ -52,7 +52,7 @@ from maasserver.models.interface import PhysicalInterface
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
-from maasserver.utils.iplink import parse_ip_link
+from maasserver.utils.ipaddr import parse_ip_addr
 from metadataserver import DefaultMeta
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import (
@@ -126,10 +126,10 @@ LSHW_SCRIPT = dedent("""\
     lshw -xml
     """)
 
-# Built-in script to run `ip link`
-IPLINK_SCRIPT = dedent("""\
+# Built-in script to run `ip addr`
+IPADDR_SCRIPT = dedent("""\
     #!/bin/sh
-    ip link
+    ip addr
     """)
 
 # Count the processors which do not declare their number of 'threads'
@@ -185,7 +185,7 @@ def _create_or_update_physical_interface(node, ifname, mac):
 
 
 def update_node_network_information(node, output, exit_status):
-    """Updates the network interfaces from the results of `IPLINK_SCRIPT`.
+    """Updates the network interfaces from the results of `IPADDR_SCRIPT`.
 
     Creates and deletes MACAddresses according to what we currently know about
     this node's hardware.
@@ -199,10 +199,10 @@ def update_node_network_information(node, output, exit_status):
         return
 
     # Get the MAC addresses of all connected interfaces.
-    ip_link_info = parse_ip_link(output)
+    ip_addr_info = parse_ip_addr(output)
     current_macs = set()
 
-    for link in ip_link_info.values():
+    for link in ip_addr_info.values():
         link_mac = link.get('mac')
         # Ignore loopback interfaces.
         if link_mac is None:
@@ -675,7 +675,7 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'hook': null_hook,
     },
     '00-maas-05-network-interfaces.out': {
-        'content': IPLINK_SCRIPT.encode('ascii'),
+        'content': IPADDR_SCRIPT.encode('ascii'),
         'hook': update_node_network_information,
     },
     '00-maas-06-dhcp-unconfigured-ifaces': {
