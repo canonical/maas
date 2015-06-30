@@ -327,7 +327,8 @@
                                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                                     <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'model'" data-ng-class="{active: storage.column === 'model'}">
                                         Model
-                                    </a> |
+                                    </a>
+                                    <span class="divide"></span>
                                     <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'serial'" data-ng-class="{active: storage.column === 'serial'}">
                                         Serial
                                     </a>
@@ -379,7 +380,7 @@
                     <thead>
                         <tr class="table-listing__row">
                             <th class="t75" colspan="2">Event</th>
-                            <th class="t24">Time</th>
+                            <th class="t24 align-right">Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -389,7 +390,7 @@
                                 <span class="icon {$ event.type.level $}"></span>
                             </td>
                             <td class="t75">{$ getEventText(event) $}</td>
-                            <td class="t24">{$ event.created $}</td>
+                            <td class="t24 align-right">{$ event.created $}</td>
                         </tr>
                     </tbody>
                 </table>
