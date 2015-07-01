@@ -361,6 +361,18 @@ class FILESYSTEM_TYPE:
     #: LVM Physical Volume.
     LVM_PV = 'lvm-pv'
 
+    #: RAID.
+    RAID = 'raid'
+
+    #: RAID spare.
+    RAID_SPARE = 'raid-spare'
+
+    #: Bcache cache.
+    BCACHE_CACHE = 'bcache-cache'
+
+    #: Bcache backing.
+    BCACHE_BACKING = 'bcache-backing'
+
 
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation).
@@ -368,6 +380,10 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.EXT3, "ext3"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
     (FILESYSTEM_TYPE.LVM_PV, "lvm"),
+    (FILESYSTEM_TYPE.RAID, "raid"),
+    (FILESYSTEM_TYPE.RAID_SPARE, "raid-spare"),
+    (FILESYSTEM_TYPE.BCACHE_CACHE, "bcache-cache"),
+    (FILESYSTEM_TYPE.BCACHE_BACKING, "bcache-backing"),
     )
 
 
@@ -376,11 +392,44 @@ class FILESYSTEM_GROUP_TYPE:
     #: LVM volume group.
     LVM_VG = 'lvm-vg'
 
+    #: RAID level 0
+    RAID_0 = 'raid-0'
+
+    #: RAID level 1
+    RAID_1 = 'raid-1'
+
+    #: RAID level 4
+    RAID_4 = 'raid-4'
+
+    #: RAID level 5
+    RAID_5 = 'raid-5'
+
+    #: RAID level 6
+    RAID_6 = 'raid-6'
+
+    #: Bcache
+    BCACHE = 'bcache'
+
+
+FILESYSTEM_GROUP_RAID_TYPES = [
+    FILESYSTEM_GROUP_TYPE.RAID_0,
+    FILESYSTEM_GROUP_TYPE.RAID_1,
+    FILESYSTEM_GROUP_TYPE.RAID_4,
+    FILESYSTEM_GROUP_TYPE.RAID_5,
+    FILESYSTEM_GROUP_TYPE.RAID_6,
+    ]
+
 
 # Django choices for FILESYSTEM_GROUP_TYPE: sequence of tuples (key, UI
 # representation).
 FILESYSTEM_GROUP_TYPE_CHOICES = (
     (FILESYSTEM_GROUP_TYPE.LVM_VG, "LVM VG"),
+    (FILESYSTEM_GROUP_TYPE.RAID_0, "RAID 0"),
+    (FILESYSTEM_GROUP_TYPE.RAID_1, "RAID 1"),
+    (FILESYSTEM_GROUP_TYPE.RAID_4, "RAID 4"),
+    (FILESYSTEM_GROUP_TYPE.RAID_5, "RAID 5"),
+    (FILESYSTEM_GROUP_TYPE.RAID_6, "RAID 6"),
+    (FILESYSTEM_GROUP_TYPE.BCACHE, "Bcache"),
     )
 
 

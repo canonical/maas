@@ -78,7 +78,7 @@ _cache = {}
 def simple_cache(fun):
     def wrapped(*args, **kwargs):
         key = hash(repr(fun) + repr(args) + repr(kwargs))
-        if not key in _cache:
+        if key not in _cache:
             _cache[key] = fun(*args, **kwargs)
         return _cache[key]
 

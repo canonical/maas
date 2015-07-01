@@ -37,6 +37,10 @@ from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
 
 
+MIN_BLOCK_DEVICE_SIZE = 143360  # The size of an Apple II disk
+MIN_BLOCK_DEVICE_BLOCK_SIZE = 512  # A ProDOS block
+
+
 class BlockDeviceManager(Manager):
     """Manager for `BlockDevice` class."""
 
@@ -108,12 +112,12 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     size = BigIntegerField(
         blank=False, null=False,
-        validators=[MinValueValidator(143360)],  # The size of an Apple II disk
+        validators=[MinValueValidator(MIN_BLOCK_DEVICE_SIZE)],
         help_text="Size of block device in bytes.")
 
     block_size = IntegerField(
         blank=False, null=False,
-        validators=[MinValueValidator(512)],  # A ProDOS block
+        validators=[MinValueValidator(MIN_BLOCK_DEVICE_BLOCK_SIZE)],
         help_text="Size of a block on the device in bytes.")
 
     tags = ArrayField(

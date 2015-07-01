@@ -73,12 +73,15 @@ class VirtualBlockDevice(BlockDevice):
                     "Node must be the same node as the filesystem_group.")
 
         # Check if the size of this is not larger than the free size of
-        # its filesystem group.
-        if self.size > self.filesystem_group.get_lvm_free_space():
+        # its filesystem group if its lvm.
+        if (self.filesystem_group.is_lvm() and
+                self.size > self.filesystem_group.get_lvm_free_space()):
             raise ValidationError(
                 "There is not enough free space (%s) "
-                "on filesystem_group %s." % (human_readable_bytes(self.size),
-                                             self.filesystem_group.name))
+                "on volume group %s." % (
+                    human_readable_bytes(self.size),
+                    self.filesystem_group.name,
+                    ))
 
     def save(self, *args, **kwargs):
         if not self.uuid:

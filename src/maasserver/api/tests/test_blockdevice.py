@@ -63,6 +63,7 @@ class TestBlockDevices(APITestCase):
         # Make a filesystem_group (analogous to a volume group) on top of our
         # two lvm-pm filesystems.
         filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=lvm_pv_filesystems)
 
         # Make a VirtualBlockDevice on top of the filesystem group we just
@@ -715,7 +716,7 @@ class TestBlockDeviceAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_update_virtual_block_device_as_normal_user(self):
-        """Check update block device with a virtual one fails for normal user.
+        """Check update block device with a virtual one.
         """
         node = factory.make_Node(owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node,

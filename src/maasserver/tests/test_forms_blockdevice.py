@@ -16,7 +16,10 @@ __all__ = []
 
 import uuid
 
-from maasserver.enum import FILESYSTEM_TYPE
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+)
 from maasserver.forms import (
     FormatBlockDeviceForm,
     MountBlockDeviceForm,
@@ -158,7 +161,9 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         filesystem = factory.make_Filesystem(
             block_device=block_device, fstype=FILESYSTEM_TYPE.LVM_PV)
-        factory.make_FilesystemGroup(filesystems=[filesystem])
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=[filesystem])
         data = {
             'mount_point': factory.make_absolute_path(),
             }

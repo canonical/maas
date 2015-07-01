@@ -678,11 +678,13 @@ class TestServiceMonitor(MAASTestCase):
             with FakeLogger(
                     "maas.service_monitor", level=logging.INFO) as maaslog:
                 service_monitor._ensure_service(service)
-        self.assertDocTestMatches(
-            """\
+        lint_sucks = (
+            service.service_name,
+            service.service_name,
+            SERVICE_STATE.OFF,
+            "waiting",
+        )
+        self.assertDocTestMatches("""\
             Service '%s' is not on, it will be started.
             Service '%s' failed to start. Its current state is '%s' and '%s'.
-            """ % (
-            service.service_name, service.service_name,
-            SERVICE_STATE.OFF, "waiting"),
-            maaslog.output)
+            """ % lint_sucks, maaslog.output)

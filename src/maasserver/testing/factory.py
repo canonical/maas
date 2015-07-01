@@ -29,6 +29,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -1236,14 +1237,16 @@ class Factory(maastesting.factory.Factory):
     def make_FilesystemGroup(
             self, uuid=None, group_type=None, name=None, create_params=None,
             filesystems=None, node=None, block_device_size=None,
-            num_devices=4):
+            num_lvm_devices=4):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
-        if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
-            fstype = FILESYSTEM_TYPE.LVM_PV
         if name is None:
             if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 name = self.make_name("vg")
+            elif group_type in FILESYSTEM_GROUP_RAID_TYPES:
+                name = self.make_name("raid")
+            elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
+                name = self.make_name("bcache")
         group = FilesystemGroup(
             uuid=uuid, group_type=group_type, name=name,
             create_params=create_params)
@@ -1251,12 +1254,64 @@ class Factory(maastesting.factory.Factory):
         if filesystems is None:
             if node is None:
                 node = self.make_Node()
-            for _ in range(num_devices):
-                block_device = self.make_PhysicalBlockDevice(
-                    node, size=block_device_size)
-                filesystem = self.make_Filesystem(
-                    fstype=fstype, block_device=block_device)
-                group.filesystems.add(filesystem)
+            if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
+                for _ in range(num_lvm_devices):
+                    block_device = self.make_PhysicalBlockDevice(
+                        node, size=block_device_size)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.LVM_PV,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
+                for _ in range(2):
+                    block_device = self.make_PhysicalBlockDevice(node)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.RAID,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
+                for _ in range(2):
+                    block_device = self.make_PhysicalBlockDevice(node)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.RAID,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+            elif (group_type == FILESYSTEM_GROUP_TYPE.RAID_4 or
+                    group_type == FILESYSTEM_GROUP_TYPE.RAID_5):
+                for _ in range(3):
+                    block_device = self.make_PhysicalBlockDevice(node)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.RAID,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_filesystem = self.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=spare_block_device)
+                group.filesystems.add(spare_filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
+                for _ in range(4):
+                    block_device = self.make_PhysicalBlockDevice(node)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.RAID,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_filesystem = self.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=spare_block_device)
+                group.filesystems.add(spare_filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
+                cache_block_device = self.make_PhysicalBlockDevice(node)
+                cache_filesystem = self.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+                    block_device=cache_block_device)
+                group.filesystems.add(cache_filesystem)
+                backing_block_device = self.make_PhysicalBlockDevice(node)
+                backing_filesystem = self.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+                    block_device=backing_block_device)
+                group.filesystems.add(backing_filesystem)
         else:
             for filesystem in filesystems:
                 group.filesystems.add(filesystem)
@@ -1278,10 +1333,19 @@ class Factory(maastesting.factory.Factory):
             tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:
             filesystem_group = self.make_FilesystemGroup(
-                node=node, block_device_size=size, num_devices=2)
+                node=node,
+                group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+                block_device_size=size,
+                num_lvm_devices=2)
+        elif not filesystem_group.is_lvm():
+            raise RuntimeError(
+                "make_VirtualBlockDevice should only be used with "
+                "filesystem_group that has a group_type of LVM_VG.  "
+                "If you need a VirtualBlockDevice that is for another type "
+                "use make_FilesystemGroup which will create a "
+                "VirtualBlockDevice automatically.")
         if name is None:
-            if filesystem_group.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
-                name = self.make_name("lv")
+            name = self.make_name("device")
         if path is None:
             path = "/dev/mapper/%s-%s" % (filesystem_group.name, name)
 

@@ -590,10 +590,10 @@ class TestEventsAPI(APITestCase):
                 # Calculate the expected values for limit
                 # and start event id
                 limit = events_module.DEFAULT_EVENT_LOG_LIMIT \
-                    if not 'limit' in expected_params \
+                    if 'limit' not in expected_params \
                     else int(expected_params['limit'])
 
-                start_id = 0 if not 'after' in expected_params \
+                start_id = 0 if 'after' not in expected_params \
                     else int(expected_params['after'])
 
                 expected_params['after'] = unicode(start_id + limit)
