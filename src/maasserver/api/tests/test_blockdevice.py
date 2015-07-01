@@ -49,7 +49,7 @@ class TestBlockDevices(APITestCase):
 
         # Add three physical block devices
         physical_block_devices = [
-            factory.make_PhysicalBlockDevice(node=node)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
             for _ in range(3)
             ]
 
@@ -68,7 +68,7 @@ class TestBlockDevices(APITestCase):
         # Make a VirtualBlockDevice on top of the filesystem group we just
         # made.
         virtual_block_device = factory.make_VirtualBlockDevice(
-            filesystem_group=filesystem_group)
+            filesystem_group=filesystem_group, size=10 * 1000 ** 3)
 
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
