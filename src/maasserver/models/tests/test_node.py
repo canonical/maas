@@ -1563,7 +1563,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(expected_hostname, node.fqdn)
 
     def test_boot_type_has_fastpath_set_by_default(self):
-        node = factory.make_Node()
+        node = Node()
         self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
 
     def test_split_arch_returns_arch_as_tuple(self):
