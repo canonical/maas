@@ -251,6 +251,11 @@
                 color: #888;
                 text-decoration: none;
                 margin-left: 5px;
+
+                &:hover {
+                    border-bottom: 0 !important;
+                    text-decoration: underline !important;
+                }
             }
         }
     }
