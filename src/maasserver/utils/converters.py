@@ -60,7 +60,7 @@ class XMLToYAML:
 def human_readable_bytes(num_bytes, include_suffix=True):
     """Return the human readable text for bytes. (SI units)
 
-    :param num_bytes: Bytes to be converted.
+    :param num_bytes: Bytes to be converted. Can't be None
     :param include_suffix: Whether to include the computed suffix in the
         output.
     """

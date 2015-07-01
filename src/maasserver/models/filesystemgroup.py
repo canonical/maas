@@ -71,6 +71,21 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             for filesystem in self.filesystems.all()
             )
 
+    def get_lvm_allocated_size(self):
+        """Returns the space already allocated to virtual block devices.
+
+        Calculated from the total size of all virtual block devices in this
+        group.
+        """
+        return sum(
+            logical_volume.size
+            for logical_volume in self.virtual_devices.all()
+        )
+
+    def get_lvm_free_space(self):
+        """Returns the total unallocated space on this FilesystemGroup"""
+        return self.get_size() - self.get_lvm_allocated_size()
+
     def clean(self, *args, **kwargs):
         super(FilesystemGroup, self).clean(*args, **kwargs)
 

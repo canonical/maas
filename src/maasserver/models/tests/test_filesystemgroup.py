@@ -19,10 +19,14 @@ import re
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import FILESYSTEM_GROUP_TYPE
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+)
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import machine_readable_bytes
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -48,7 +52,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         total_size = 0
         filesystems = []
         for _ in range(3):
-            size = random.randint(1000, 10 ** 5)
+            size = random.randint(143360, 10 ** 6)
             total_size += size
             block_device = factory.make_PhysicalBlockDevice(
                 node=node, size=size)
@@ -99,3 +103,29 @@ class TestFilesystemGroup(MAASServerTestCase):
         uuid = uuid4()
         fsgroup = factory.make_FilesystemGroup(uuid=uuid)
         self.assertEquals('%s' % uuid, fsgroup.uuid)
+
+    def test_get_lvm_allocated_size_and_get_lvm_free_space(self):
+        """Check get_lvm_allocated_size and get_lvm_free_space methods."""
+        backing_volume_size = machine_readable_bytes('10G')
+        node = factory.make_Node()
+        fsgroup = FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            name=factory.make_name("vg"))
+        fsgroup.save()
+        for i in range(5):
+            block_device = factory.make_BlockDevice(node=node,
+                                                    size=backing_volume_size)
+            factory.make_Filesystem(filesystem_group=fsgroup,
+                                    fstype=FILESYSTEM_TYPE.LVM_PV,
+                                    block_device=block_device)
+        # Total space should be 50 GB.
+        self.assertEqual(fsgroup.get_size(), 50 * 1000 ** 3)
+
+        # Allocate two VirtualBlockDevice's
+        factory.make_VirtualBlockDevice(filesystem_group=fsgroup,
+                                        size=35 * 1000 ** 3)
+        factory.make_VirtualBlockDevice(filesystem_group=fsgroup,
+                                        size=5 * 1000 ** 3)
+
+        self.assertEqual(fsgroup.get_lvm_allocated_size(), 40 * 1000 ** 3)
+        self.assertEqual(fsgroup.get_lvm_free_space(), 10 * 1000 ** 3)

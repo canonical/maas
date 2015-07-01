@@ -15,6 +15,7 @@ __metaclass__ = type
 
 from django.core.exceptions import PermissionDenied
 from maasserver.api.support import (
+    admin_method,
     operation,
     OperationsHandler,
 )
@@ -27,6 +28,8 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     FormatBlockDeviceForm,
     MountBlockDeviceForm,
+    PhysicalBlockDeviceForm,
+    VirtualBlockDeviceForm,
 )
 from maasserver.models import (
     BlockDevice,
@@ -79,7 +82,7 @@ def _partition_info(partition):
 class BlockDevicesHandler(OperationsHandler):
     """Manage block devices on a node."""
     api_doc_section_name = "Block devices"
-    create = replace = update = delete = None
+    replace = update = delete = None
     model = BlockDevice
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
@@ -104,11 +107,22 @@ class BlockDevicesHandler(OperationsHandler):
                                      for p in partition_table.partitions.all()]
         return devices
 
+    @admin_method
+    def create(self, request, system_id):
+        """Creates a PhysicalBlockDevice"""
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.ADMIN)
+        form = PhysicalBlockDeviceForm(node, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
 
 class BlockDeviceHandler(OperationsHandler):
     """Manage a block device on a node."""
     api_doc_section_name = "Block device"
-    create = replace = update = None
+    create = replace = None
     model = BlockDevice
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
@@ -136,6 +150,7 @@ class BlockDeviceHandler(OperationsHandler):
         """Delete block device on node.
 
         Returns 404 if the node or block device is not found.
+        Returns 403 if the user is not allowed to delete the block device.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
@@ -147,6 +162,27 @@ class BlockDeviceHandler(OperationsHandler):
             raise PermissionDenied()
         device.delete()
         return rc.DELETED
+
+    def update(self, request, system_id, device_id):
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+
+        if device.type == 'physical':
+            if not request.user.is_superuser:
+                raise PermissionDenied()
+            form = PhysicalBlockDeviceForm(device.node,
+                                           instance=device,
+                                           data=request.data)
+        elif device.type == 'virtual':
+            form = VirtualBlockDeviceForm(instance=device, data=request.data)
+        else:
+            raise ValueError(
+                'Cannot update block device of type %s' % device.type)
+
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=True)
     def add_tag(self, request, system_id, device_id):

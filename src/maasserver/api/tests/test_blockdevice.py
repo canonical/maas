@@ -46,22 +46,50 @@ class TestBlockDevices(APITestCase):
 
     def test_read(self):
         node = factory.make_Node()
-        block_devices = [
+
+        # Add three physical block devices
+        physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
             ]
+
+        # Partition and add a LVM_PV filesystem to the last two physical block
+        # devices. Leave the first partition alone.
+        lvm_pv_filesystems = [
+            factory.make_Filesystem(block_device=device,
+                                    fstype=FILESYSTEM_TYPE.LVM_PV)
+            for device in physical_block_devices[1:]]
+
+        # Make a filesystem_group (analogous to a volume group) on top of our
+        # two lvm-pm filesystems.
+        filesystem_group = factory.make_FilesystemGroup(
+            filesystems=lvm_pv_filesystems)
+
+        # Make a VirtualBlockDevice on top of the filesystem group we just
+        # made.
+        virtual_block_device = factory.make_VirtualBlockDevice(
+            filesystem_group=filesystem_group)
+
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
         self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        devices = json.loads(response.content)
+
+        # We should have four devices, three physical, one virtual.
+        self.assertEqual(len(devices), 4)
+        self.assertEqual(
+            len([d for d in devices if d['type'] == 'physical']), 3)
+        self.assertEqual(
+            len([d for d in devices if d['type'] == 'virtual']), 1)
+
+        # The IDs we expect and the IDs we got through the API should match.
         expected_device_ids = [
-            device.id
-            for device in block_devices
-            ]
-        result_device_ids = [
-            device["id"]
-            for device in json.loads(response.content)
-            ]
+            d.id
+            for d in physical_block_devices + [virtual_block_device]
+        ]
+        result_device_ids = [d["id"] for d in devices]
         self.assertItemsEqual(expected_device_ids, result_device_ids)
 
     def test_read_returns_filesystem(self):
@@ -154,10 +182,66 @@ class TestBlockDevices(APITestCase):
             parsed_device['partitions'][1]['filesystem']['uuid'],
             filesystem2.uuid)
 
+    def test_create_physicalblockdevice_as_normal_user(self):
+        """Physical block device creation should fail for normal user"""
+        node = factory.make_Node()
+        uri = get_blockdevices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'sda',
+            'block_size': 1024,
+            'size': 140 * 1024,
+            'path': '/dev/sda',
+            'model': 'A2M0003',
+            'serial': '42',
+        })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code,
+                         response.content)
+
+    def test_create_physicalblockdevice_as_admin(self):
+        """Checks it's possible to add a physical block device using the POST
+        method"""
+        self.become_admin()
+        node = factory.make_Node()
+        uri = get_blockdevices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'sda',
+            'block_size': 1024,
+            'size': 140 * 1024,
+            'path': '/dev/sda',
+            'model': 'A2M0003',
+            'serial': '42',
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        reload_object(node)
+        pbd = node.physicalblockdevice_set.first()
+        self.assertEqual(pbd.node_id, node.id)
+        self.assertEqual(pbd.name, 'sda')
+        self.assertEqual(pbd.block_size, 1024)
+        self.assertEqual(pbd.size, 140 * 1024)
+        self.assertEqual(pbd.path, '/dev/sda')
+        self.assertEqual(pbd.model, 'A2M0003')
+        self.assertEqual(pbd.serial, '42')
+
+    def test_create_physicalblockdevice_with_invalid_params(self):
+        """Checks whether an invalid parameter results in a BAD_REQUEST"""
+        self.become_admin()
+        node = factory.make_Node()
+        uri = get_blockdevices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'sda',
+            'block_size': 1024,
+            'size': 100 * 1024,
+            'path': '/dev/sda',
+            'model': 'A2M0003',
+            'serial': '42',
+        })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+                         response.content)
+
 
 class TestBlockDeviceAPI(APITestCase):
 
-    def test_read(self):
+    def test_read_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
@@ -166,6 +250,17 @@ class TestBlockDeviceAPI(APITestCase):
         parsed_device = json.loads(response.content)
         self.assertEquals(block_device.id, parsed_device["id"])
         self.assertEquals(block_device.type, parsed_device["type"])
+
+    def test_read_virtual_block_device(self):
+        block_device = factory.make_VirtualBlockDevice()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEquals(block_device.id, parsed_device["id"])
+        self.assertEquals(block_device.type, parsed_device["type"])
+        self.assertEqual(parsed_device["type"], 'virtual')
 
     def test_read_returns_filesystem(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -551,3 +646,91 @@ class TestBlockDeviceAPI(APITestCase):
             json.loads(response.content)['filesystem']['mount_point'])
         self.assertIsNone(
             reload_object(filesystem).mount_point)
+
+    def test_update_physical_block_device_as_admin(self):
+        """Check update block device with a physical one.
+
+        PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
+        """
+        self.become_admin()
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            name='myblockdevice',
+            size=140 * 1024,
+            block_size=1024)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': 'mynewname',
+            'block_size': 4096
+        })
+        block_device = reload_object(block_device)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(parsed_device['id'], block_device.id)
+        self.assertEqual('mynewname', parsed_device['name'])
+        self.assertEqual(4096, parsed_device['block_size'])
+
+    def test_update_virtual_block_device_as_admin(self):
+        """Check update block device with a virtual one.
+
+        PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
+        """
+        self.become_admin()
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node,
+                                                       name='myblockdevice',
+                                                       size=140 * 1024,
+                                                       block_size=1024)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': 'mynewname',
+            'block_size': 4096
+        })
+        block_device = reload_object(block_device)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(parsed_device['id'], block_device.id)
+        self.assertEqual('mynewname', parsed_device['name'])
+        self.assertEqual(4096, parsed_device['block_size'])
+
+    def test_update_physical_block_device_as_normal_user(self):
+        """Check update block device with a physical one fails for a normal
+        user."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            name='myblockdevice',
+            size=140 * 1024,
+            block_size=1024)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': 'mynewname',
+            'block_size': 4096
+        })
+        block_device = reload_object(block_device)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_virtual_block_device_as_normal_user(self):
+        """Check update block device with a virtual one fails for normal user.
+        """
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node,
+                                                       name='myblockdevice',
+                                                       size=140 * 1024,
+                                                       block_size=1024)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': 'mynewname',
+            'block_size': 4096
+        })
+        block_device = reload_object(block_device)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(parsed_device['id'], block_device.id)
+        self.assertEqual('mynewname', parsed_device['name'])
+        self.assertEqual(4096, parsed_device['block_size'])

@@ -39,6 +39,7 @@ __all__ = [
     "NodeGroupInterfaceForm",
     "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
+    "PhysicalBlockDeviceForm",
     "ReleaseIPForm",
     "SSHKeyForm",
     "SSLKeyForm",
@@ -131,9 +132,11 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     PartitionTable,
+    PhysicalBlockDevice,
     SSHKey,
     SSLKey,
     Tag,
+    VirtualBlockDevice,
     Zone,
 )
 from maasserver.models.node import (
@@ -3047,3 +3050,31 @@ class MountBlockDeviceForm(Form):
         filesystem.mount_point = self.cleaned_data['mount_point']
         filesystem.save()
         return self.block_device
+
+
+class PhysicalBlockDeviceForm(MAASModelForm):
+    """For validating and saving physical block devices"""
+
+    path = AbsolutePathField(required=False)
+
+    class Meta:
+        model = PhysicalBlockDevice
+
+    def __init__(self, node, *args, **kwargs):
+        super(PhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
+        self.node = node
+
+    def save(self):
+        block_device = super(PhysicalBlockDeviceForm, self).save(commit=False)
+        block_device.node = self.node
+        block_device.save()
+        return block_device
+
+
+class VirtualBlockDeviceForm(MAASModelForm):
+    """For validating and saving virtual block devices"""
+
+    path = AbsolutePathField(required=False)
+
+    class Meta:
+        model = VirtualBlockDevice

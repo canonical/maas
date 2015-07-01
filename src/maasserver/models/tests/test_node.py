@@ -2065,7 +2065,7 @@ class TestNode(MAASServerTestCase):
     def test__clear_storage_configuration_removes_all_related_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
-            factory.make_PhysicalBlockDevice(node=node)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
             for _ in range(3)
             ]
         filesystem = factory.make_Filesystem(
@@ -2079,16 +2079,16 @@ class TestNode(MAASServerTestCase):
         vgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[fslvm])
         vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup)
+            filesystem_group=vgroup, size=2 * 1000 ** 3)
         vbd2 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup)
+            filesystem_group=vgroup, size=3 * 1000 ** 3)
         filesystem_on_vbd1 = factory.make_Filesystem(
             block_device=vbd1, fstype=FILESYSTEM_TYPE.LVM_PV)
         vgroup_on_vgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=[filesystem_on_vbd1])
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup_on_vgroup)
+            filesystem_group=vgroup_on_vgroup, size=2 * 1000 ** 3)
         partition_table_on_vbd2 = factory.make_PartitionTable(
             block_device=vbd2)
         partition_on_vbd2 = factory.make_Partition(

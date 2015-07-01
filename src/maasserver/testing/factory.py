@@ -1159,10 +1159,10 @@ class Factory(maastesting.factory.Factory):
             path = '/dev/%s' % name
         if id_path is None:
             id_path = '/dev/disk/by-id/id_%s' % name
-        if size is None:
-            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
+        if size is None:
+            size = random.randint(1000 * block_size, 1000 * 1000 * block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         return BlockDevice.objects.create(
@@ -1178,10 +1178,10 @@ class Factory(maastesting.factory.Factory):
             name = self.make_name('name')
         if path is None:
             path = '/dev/%s' % name
-        if size is None:
-            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
+        if size is None:
+            size = random.randint(1000 * block_size, 1000 * 1000 * block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         if model is None:
@@ -1218,14 +1218,15 @@ class Factory(maastesting.factory.Factory):
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
             filesystem_group=None, create_params=None, mount_point=None,
-            mount_params=None):
+            mount_params=None, block_device_size=None):
         if fstype is None:
             fstype = self.pick_enum(FILESYSTEM_TYPE)
         if partition is None and block_device is None:
             if self.pick_bool():
                 partition = self.make_Partition()
             else:
-                block_device = self.make_PhysicalBlockDevice()
+                block_device = self.make_PhysicalBlockDevice(
+                    size=block_device_size)
         return Filesystem.objects.create(
             uuid=uuid, fstype=fstype, partition=partition,
             block_device=block_device, filesystem_group=filesystem_group,
@@ -1234,7 +1235,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_FilesystemGroup(
             self, uuid=None, group_type=None, name=None, create_params=None,
-            filesystems=None, node=None):
+            filesystems=None, node=None, block_device_size=None,
+            num_devices=4):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
         if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
@@ -1249,8 +1251,9 @@ class Factory(maastesting.factory.Factory):
         if filesystems is None:
             if node is None:
                 node = self.make_Node()
-            for _ in range(3):
-                block_device = self.make_PhysicalBlockDevice(node)
+            for _ in range(num_devices):
+                block_device = self.make_PhysicalBlockDevice(
+                    node, size=block_device_size)
                 filesystem = self.make_Filesystem(
                     fstype=fstype, block_device=block_device)
                 group.filesystems.add(filesystem)
@@ -1264,19 +1267,24 @@ class Factory(maastesting.factory.Factory):
     def make_VirtualBlockDevice(
             self, name=None, path=None, size=None, block_size=None,
             tags=None, uuid=None, filesystem_group=None, node=None):
+        if node is None:
+            node = factory.make_Node()
+        if block_size is None:
+            block_size = random.choice([512, 1024, 4096])
+        if size is None:
+            size = random.randint(280 * block_size,
+                                  1000 * 1000 * block_size)
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:
-            filesystem_group = self.make_FilesystemGroup(node=node)
+            filesystem_group = self.make_FilesystemGroup(
+                node=node, block_device_size=size, num_devices=2)
         if name is None:
             if filesystem_group.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 name = self.make_name("lv")
         if path is None:
             path = "/dev/mapper/%s-%s" % (filesystem_group.name, name)
-        if size is None:
-            size = random.randint(1, filesystem_group.get_size())
-        if block_size is None:
-            block_size = random.choice([512, 1024, 4096])
+
         return VirtualBlockDevice.objects.create(
             name=name, path=path, size=size, block_size=block_size,
             tags=tags, uuid=uuid, filesystem_group=filesystem_group)

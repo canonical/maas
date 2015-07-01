@@ -19,6 +19,7 @@ __all__ = [
 from collections import Iterable
 
 from django.core.exceptions import PermissionDenied
+from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
     CharField,
@@ -107,10 +108,12 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     size = BigIntegerField(
         blank=False, null=False,
+        validators=[MinValueValidator(143360)],  # The size of an Apple II disk
         help_text="Size of block device in bytes.")
 
     block_size = IntegerField(
         blank=False, null=False,
+        validators=[MinValueValidator(512)],  # A ProDOS block
         help_text="Size of a block on the device in bytes.")
 
     tags = ArrayField(

@@ -17,6 +17,7 @@ __all__ = [
     ]
 
 
+from django.core.exceptions import ValidationError
 from django.db.models import CharField
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import (
@@ -53,6 +54,12 @@ class PhysicalBlockDevice(BlockDevice):
     serial = CharField(
         max_length=255, blank=True, null=False,
         help_text="Serial number of block device.")
+
+    def clean(self):
+        if not self.id_path and not (self.model and self.serial):
+            raise ValidationError(
+                "serial/model are required if id_path is not provided.")
+        super(PhysicalBlockDevice, self).clean()
 
     def __unicode__(self):
         return '{model} S/N {serial} {size} attached to {node}'.format(
