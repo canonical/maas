@@ -1,7 +1,7 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""PowerKVM Boot Method"""
+"""PowerKVM and PowerVM Boot Method"""
 
 from __future__ import (
     absolute_import,
@@ -57,7 +57,7 @@ class PowerKVMBootMethod(BootMethod):
         return None
 
     def install_bootloader(self, destination):
-        """Installs the required files for PowerKVM booting into the
+        """Installs the required files for PowerKVM/PowerVM booting into the
         tftproot.
         """
         with tempdir() as tmp:
