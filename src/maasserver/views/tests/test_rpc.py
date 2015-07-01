@@ -30,8 +30,8 @@ from testtools.matchers import (
     KeysEqual,
     LessThan,
     MatchesAll,
-    MatchesDict,
     MatchesListwise,
+    MatchesSetwise,
     )
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -83,14 +83,15 @@ class RPCViewTest(MAASServerTestCase):
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)
         self.assertThat(info, KeysEqual("eventloops"))
-        self.assertThat(info["eventloops"], MatchesDict({
+        self.assertThat(info["eventloops"], KeysEqual(eventloop.loop.name))
+        self.assertThat(
+            info["eventloops"][eventloop.loop.name],
             # Each entry in the endpoints dict is a mapping from an
             # event loop to a list of (host, port) tuples. Each tuple is
             # a potential endpoint for connecting into that event loop.
-            eventloop.loop.name: MatchesListwise([
+            MatchesSetwise(*[
                 MatchesListwise((Equals(addr), is_valid_port))
                 for addr in get_all_interface_addresses()
                 if not IPAddress(addr).is_link_local()
                 and IPAddress(addr).version == 4
-            ]),
-        }))
+            ]))
