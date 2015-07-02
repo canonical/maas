@@ -260,10 +260,29 @@ def get_macs(api, server):
     return macs
 
 
+def probe_lan_boot_options(api, server):
+    """Probe for LAN boot options available on a server."""
+    service_profile = get_service_profile(api, server)
+    boot_profile_dn = service_profile.get('operBootPolicyName')
+    response = api.config_resolve_children(boot_profile_dn)
+    return response.xpath('//outConfigs/lsbootLan')
+
+
 def probe_servers(api):
     """Retrieve the UUID and MAC addresses for servers from the UCS Manager."""
     servers = get_servers(api)
-    server_list = [(s, get_macs(api, s)) for s in servers]
+
+    server_list = []
+    for s in servers:
+        # If the server does not have any MAC, then we don't add it.
+        if not get_macs(api, s):
+            continue
+        # If the server does not have LAN boot option (can't boot from LAN),
+        # then we don't add it.
+        if not probe_lan_boot_options(api, s):
+            continue
+        server_list.append((s, get_macs(api, s)))
+
     return server_list
 
 

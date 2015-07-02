@@ -38,6 +38,7 @@ from mock import (
     ANY,
     call,
     Mock,
+    sentinel,
 )
 from provisioningserver.drivers.hardware import ucsm
 from provisioningserver.drivers.hardware.ucsm import (
@@ -55,6 +56,7 @@ from provisioningserver.drivers.hardware.ucsm import (
     power_control_ucsm,
     power_state_ucsm,
     probe_and_enlist_ucsm,
+    probe_lan_boot_options,
     probe_servers,
     RO_KEYS,
     set_lan_boot_default,
@@ -334,6 +336,30 @@ class TestGetServers(MAASTestCase):
         self.assertThat(mock, MockCalledOnceWith('computeItem', ANY))
 
 
+class TestProbeLanBootOptions(MAASTestCase):
+    """Tests for ``probe_lan_boot_options``."""
+
+    def test_returns_result(self):
+        api = make_api()
+        server = sentinel.server
+        mock_service_profile = Mock()
+        mock_get_service_profile = self.patch(ucsm, 'get_service_profile')
+        mock_get_service_profile.return_value = mock_service_profile
+        mock_service_profile.get.return_value = sentinel.profile_get
+        fake_result = make_fake_result('tag', 'lsbootLan')
+        mock_config_resolve_children = self.patch(
+            api, 'config_resolve_children')
+        mock_config_resolve_children.return_value = fake_result
+        self.assertEqual(1, len(probe_lan_boot_options(api, server)))
+        self.assertThat(
+            mock_config_resolve_children,
+            MockCalledOnceWith(sentinel.profile_get))
+        self.assertThat(
+            mock_service_profile.get, MockCalledOnceWith('operBootPolicyName'))
+        self.assertThat(
+            mock_get_service_profile, MockCalledOnceWith(api, server))
+
+
 class TestGetChildren(MAASTestCase):
     """Tests for ``get_children``."""
 
@@ -397,8 +423,28 @@ class TestProbeServers(MAASTestCase):
         api = make_api()
         self.patch(ucsm, 'get_servers').return_value = servers
         self.patch(ucsm, 'get_macs').return_value = [mac]
+        self.patch(ucsm, 'probe_lan_boot_options').return_value = ['option']
         server_list = probe_servers(api)
         self.assertEqual([(servers[0], [mac])], server_list)
+
+    def test_no_results_with_no_server_macs(self):
+        servers = [{'uuid': factory.make_UUID()}]
+        api = make_api()
+        self.patch(ucsm, 'get_servers').return_value = servers
+        self.patch(ucsm, 'get_macs').return_value = []
+        self.patch(ucsm, 'probe_lan_boot_options').return_value = ['option']
+        server_list = probe_servers(api)
+        self.assertEqual([], server_list)
+
+    def test_no_results_with_no_boot_options(self):
+        servers = [{'uuid': factory.make_UUID()}]
+        mac = 'mac'
+        api = make_api()
+        self.patch(ucsm, 'get_servers').return_value = servers
+        self.patch(ucsm, 'get_macs').return_value = mac
+        self.patch(ucsm, 'probe_lan_boot_options').return_value = []
+        server_list = probe_servers(api)
+        self.assertEqual([], server_list)
 
 
 class TestGetServerPowerControl(MAASTestCase):
