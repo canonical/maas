@@ -21,11 +21,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.http import Http404
-from maasserver.enum import (
-    FILESYSTEM_GROUP_TYPE,
-    FILESYSTEM_TYPE,
-    NODE_PERMISSION,
-)
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models import (
     BlockDevice,
     FilesystemGroup,
@@ -34,7 +30,8 @@ from maasserver.models import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.converters import machine_readable_bytes
+from maastesting.matchers import MockCalledWith
+from mock import MagicMock
 from testtools import ExpectedException
 from testtools.matchers import Equals
 
@@ -324,59 +321,21 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertRaises(ValidationError, blockdevice.save)
 
 
-class TestPhysicalBlockDevice(MAASServerTestCase):
-    def test_model_serial_and_no_id_path_requirements_should_save(self):
-        node = factory.make_Node()
-        blockdevice = PhysicalBlockDevice(node=node, name='sda',
-                                          path='/dev/sda', block_size=512,
-                                          size=143360, model='A2M0003',
-                                          serial='001')
-        # Should work without issue
-        blockdevice.save()
+class TestBlockDevicePostSave(MAASServerTestCase):
+    """Tests for the `BlockDevice` post_save signal."""
 
-    def test_id_path_and_no_model_serial_requirements_should_save(self):
-        node = factory.make_Node()
-        blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, id_path='/dev/disk/by-id/A2M0003-001')
-        # Should work without issue
-        blockdevice.save()
+    scenarios = [
+        ("BlockDevice", {"factory": factory.make_BlockDevice}),
+        ("PhysicalBlockDevice", {"factory": factory.make_PhysicalBlockDevice}),
+        ("VirtualBlockDevice", {"factory": factory.make_VirtualBlockDevice}),
+        ]
 
-    def test_no_id_path_and_no_serial(self):
-        node = factory.make_Node()
-        blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, model='A2M0003')
-        self.assertRaises(ValidationError, blockdevice.save)
-
-    def test_no_id_path_and_no_model(self):
-        node = factory.make_Node()
-        blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, serial='001')
-        self.assertRaises(ValidationError, blockdevice.save)
-
-
-class TestVirtualBlockDevice(MAASServerTestCase):
-    def test_resize_virtualblockdevice_too_large(self):
-        backing_volume_size = machine_readable_bytes('10G')
-        node = factory.make_Node()
-        fsgroup = FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
-            name=factory.make_name("vg"))
-        fsgroup.save()
-        # Add 5 10 GB devices for the LVM VG
-        for i in range(5):
-            block_device = factory.make_BlockDevice(node=node,
-                                                    size=backing_volume_size)
-            factory.make_Filesystem(filesystem_group=fsgroup,
-                                    fstype=FILESYSTEM_TYPE.LVM_PV,
-                                    block_device=block_device)
-        # Allocate a VirtualBlockDevice
-        vbd = factory.make_VirtualBlockDevice(filesystem_group=fsgroup,
-                                              size=40 * 1000 ** 3)
-        self.assertEqual(fsgroup.get_lvm_allocated_size(), 40 * 1000 ** 3)
-
-        # Try to resize it to 60 GB - should fail
-        vbd.size = 60 * 1000 ** 3
-        self.assertRaises(ValidationError, vbd.save)
+    def test__calls_save_on_related_filesystem_groups(self):
+        mock_get_filesystem_groups_for = self.patch(
+            FilesystemGroup.objects, "get_filesystem_groups_for")
+        mock_filesystem_group = MagicMock()
+        mock_get_filesystem_groups_for.return_value = [
+            mock_filesystem_group,
+        ]
+        self.factory()
+        self.assertThat(mock_filesystem_group.save, MockCalledWith())

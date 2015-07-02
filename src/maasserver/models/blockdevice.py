@@ -28,10 +28,13 @@ from django.db.models import (
     IntegerField,
     Manager,
 )
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
@@ -188,3 +191,17 @@ class BlockDevice(CleanSave, TimestampedModel):
         return '{size} attached to {node}'.format(
             size=human_readable_bytes(self.size),
             node=self.node)
+
+
+@receiver(post_save)
+def update_filesystem_group(sender, instance, **kwargs):
+    """Call save on `FilesystemGroup` when this block device is part of that
+    filesystem group.
+    """
+    if isinstance(instance, BlockDevice):
+        groups = FilesystemGroup.objects.get_filesystem_groups_for(instance)
+        for group in groups:
+            # Re-save the group so the VirtualBlockDevice is updated. This will
+            # fix the size of the VirtualBlockDevice if the size of this block
+            # device has changed.
+            group.save()

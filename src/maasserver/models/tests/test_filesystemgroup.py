@@ -26,9 +26,14 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import FilesystemGroup
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import machine_readable_bytes
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -37,8 +42,84 @@ from testtools.matchers import (
 )
 
 
+class TestFilesystemGroupManager(MAASServerTestCase):
+    """Tests for the `FilesystemGroup` manager."""
+
+    def test_get_filesystem_groups_for_on_block_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
+                block_device)
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test_get_filesystem_groups_for_on_partition(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
+                block_device)
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test_get_filesystem_groups_for_on_two_partitions(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=[filesystem_one, filesystem_two])
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
+                block_device)
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+
 class TestFilesystemGroup(MAASServerTestCase):
     """Tests for the `FilesystemGroup` model."""
+
+    def test_virtual_device_raises_AttributeError_for_lvm(self):
+        fsgroup = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        with ExpectedException(AttributeError):
+            fsgroup.virtual_device
+
+    def test_virtual_device_returns_VirtualBlockDevice_for_group(self):
+        fsgroup = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        self.assertEquals(
+            VirtualBlockDevice.objects.get(filesystem_group=fsgroup),
+            fsgroup.virtual_device)
 
     def test_get_node_returns_first_filesystem_node(self):
         fsgroup = factory.make_FilesystemGroup()
@@ -670,6 +751,33 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(uuid=uuid)
         self.assertEquals('%s' % uuid, fsgroup.uuid)
 
+    def test_save_doesnt_allow_changing_group_type(self):
+        fsgroup = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
+        fsgroup.save()
+        fsgroup.group_type = FILESYSTEM_GROUP_TYPE.RAID_1
+        error = self.assertRaises(ValidationError, fsgroup.save)
+        self.assertEquals(
+            "Cannot change the group_type of a FilesystemGroup.",
+            error.message)
+
+    def test_save_calls_create_or_update_for_when_filesystems_linked(self):
+        mock_create_or_update_for = self.patch(
+            VirtualBlockDevice.objects, "create_or_update_for")
+        filesystem_group = factory.make_FilesystemGroup()
+        self.assertThat(
+            mock_create_or_update_for, MockCalledOnceWith(filesystem_group))
+
+    def test_save_doesnt_call_create_or_update_for_when_no_filesystems(self):
+        mock_create_or_update_for = self.patch(
+            VirtualBlockDevice.objects, "create_or_update_for")
+        filesystem_group = FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            name=factory.make_name("vg"))
+        filesystem_group.save()
+        self.assertThat(
+            mock_create_or_update_for, MockNotCalled())
+
     def test_get_lvm_allocated_size_and_get_lvm_free_space(self):
         """Check get_lvm_allocated_size and get_lvm_free_space methods."""
         backing_volume_size = machine_readable_bytes('10G')
@@ -695,3 +803,94 @@ class TestFilesystemGroup(MAASServerTestCase):
 
         self.assertEqual(fsgroup.get_lvm_allocated_size(), 40 * 1000 ** 3)
         self.assertEqual(fsgroup.get_lvm_free_space(), 10 * 1000 ** 3)
+
+    def test_get_virtual_block_device_block_size_returns_backing_for_bc(self):
+        # This test is not included in the scenario below
+        # `TestFilesystemGroupGetVirtualBlockDeviceBlockSize` because it has
+        # different logic that doesn't fit in the scenario.
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        filesystem = filesystem_group.get_bcache_backing_filesystem()
+        self.assertEquals(
+            filesystem.get_block_size(),
+            filesystem_group.get_virtual_block_device_block_size())
+
+
+class TestFilesystemGroupGetVirtualBlockDevicePrefix(MAASServerTestCase):
+
+    scenarios = [
+        (FILESYSTEM_GROUP_TYPE.LVM_VG, {
+            "group_type": FILESYSTEM_GROUP_TYPE.LVM_VG,
+            "prefix": "lv",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_0, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_0,
+            "prefix": "md",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_1, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
+            "prefix": "md",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_4, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
+            "prefix": "md",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_5, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_5,
+            "prefix": "md",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
+            "prefix": "md",
+            }),
+        (FILESYSTEM_GROUP_TYPE.BCACHE, {
+            "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
+            "prefix": "bcache",
+            }),
+    ]
+
+    def test__returns_prefix(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=self.group_type)
+        self.assertEquals(
+            self.prefix, filesystem_group.get_virtual_block_device_prefix())
+
+
+class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
+
+    scenarios = [
+        (FILESYSTEM_GROUP_TYPE.LVM_VG, {
+            "group_type": FILESYSTEM_GROUP_TYPE.LVM_VG,
+            "block_size": 4096,
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_0, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_0,
+            "block_size": 512,
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_1, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
+            "block_size": 512,
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_4, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
+            "block_size": 512,
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_5, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_5,
+            "block_size": 512,
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
+            "block_size": 512,
+            }),
+        # For BCACHE see
+        # `test_get_virtual_block_device_block_size_returns_backing_for_bc`
+        # above.
+    ]
+
+    def test__returns_block_size(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=self.group_type)
+        self.assertEquals(
+            self.block_size,
+            filesystem_group.get_virtual_block_device_block_size())

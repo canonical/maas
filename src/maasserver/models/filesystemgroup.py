@@ -21,7 +21,11 @@ from collections import Counter
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from django.db.models import CharField
+from django.db.models import (
+    CharField,
+    Manager,
+    Q,
+)
 from maasserver import DefaultMeta
 from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPES,
@@ -33,18 +37,34 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
+class FilesystemGroupManager(Manager):
+    """Manager for `FilesystemGroup` class."""
+
+    def get_filesystem_groups_for(self, block_device):
+        """Return all the `FilesystemGroup`s that are related to
+        block_device."""
+        partition_query = Q(
+            filesystems__partition__partition_table__block_device=block_device)
+        return self.filter(
+            Q(filesystems__block_device=block_device) |
+            partition_query).distinct()
+
+
 class FilesystemGroup(CleanSave, TimestampedModel):
     """A filesystem group. Contains a set of filesystems that create
     a virtual block device. E.g. LVM Volume Group.
 
     :ivar uuid: UUID of the filesystem group.
     :ivar group_type: Type of filesystem group.
+    :ivar name: Name of the filesytem group.
     :ivar create_params: Parameters that can be passed during the create
         command when the filesystem group is created.
     """
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
+    objects = FilesystemGroupManager()
 
     uuid = CharField(
         max_length=36, unique=True, null=False, blank=False, editable=False)
@@ -58,6 +78,24 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     create_params = CharField(
         max_length=255, null=True, blank=True)
+
+    @property
+    def virtual_device(self):
+        """Return the linked `VirtualBlockDevice`.
+
+        This should never be called when the group_type is LVM_VG.
+        `virtual_devices` should be used in that case, since LVM_VG
+        supports multiple `VirtualBlockDevice`s.
+        """
+        if self.is_lvm():
+            raise AttributeError(
+                "virtual_device should not be called when "
+                "group_type = LVM_VG.")
+        else:
+            # Return the first `VirtualBlockDevice` since it is the only one.
+            # Using 'all()' instead of 'first()' so that if it was precached
+            # that cache will be used.
+            return self.virtual_devices.all()[0]
 
     def get_node(self):
         """`Node` this filesystem group belongs to."""
@@ -319,6 +357,49 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 "Bcache must contain one cache and one backing device.")
 
     def save(self, *args, **kwargs):
+        # Prevent the group_type from changing. This is not supported and will
+        # break the linked filesystems and the created virtual block device(s).
+        if self.pk is not None:
+            orig = FilesystemGroup.objects.get(pk=self.pk)
+            if orig.group_type != self.group_type:
+                raise ValidationError(
+                    "Cannot change the group_type of a FilesystemGroup.")
+
         if not self.uuid:
             self.uuid = uuid4()
         super(FilesystemGroup, self).save(*args, **kwargs)
+
+        # Update or create the virtual block device when the filesystem group
+        # is saved. Does nothing if group_type is LVM_VG. Virtual block device
+        # is not created until filesystems are linked because the filesystems
+        # contain the node that this filesystem group belongs to.
+        if self.filesystems.count() > 0:
+            from maasserver.models.virtualblockdevice import VirtualBlockDevice
+            VirtualBlockDevice.objects.create_or_update_for(self)
+
+    def get_virtual_block_device_prefix(self):
+        """Return the prefix that should be used when creating a linked virtual
+        block device."""
+        if self.is_lvm():
+            return "lv"
+        elif self.is_raid():
+            return "md"
+        elif self.is_bcache():
+            return "bcache"
+        else:
+            raise ValueError("Unknown group_type.")
+
+    def get_virtual_block_device_block_size(self):
+        """Return the block size that should be used on a created
+        `VirtualBlockDevice` for this filesystem group."""
+        if self.is_lvm():
+            # Default for logical volume in LVM is 4096.
+            return 4096
+        elif self.is_raid():
+            # mdadm by default creates raid devices with 512 block size.
+            return 512
+        elif self.is_bcache():
+            # Bcache uses the block_size of the backing device.
+            return self.get_bcache_backing_filesystem().get_block_size()
+        else:
+            raise ValueError("Unknown group_type.")
