@@ -1,7 +1,7 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Custom model fields."""
+"""Custom model and form fields."""
 
 from __future__ import (
     absolute_import,
@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "CIDRField",
     "EditableBinaryField",
+    "IPListFormField",
     "MAASIPAddressField",
     "MAC",
     "MACAddressField",
@@ -576,3 +577,26 @@ class CIDRField(Field):
         }
         defaults.update(kwargs)
         return super(CIDRField, self).formfield(**defaults)
+
+
+class IPListFormField(CharField):
+    """Accepts a Space/comma separated list of IP addresses.
+
+    This field normalizes the list to a space-separated list.
+    """
+    separators = re.compile('[,\ ]')
+
+    def clean(self, value):
+        if value is None:
+            return None
+        else:
+            ips = re.split(self.separators, value)
+            ips = [ip.strip() for ip in ips if ip.strip() != '']
+            for ip in ips:
+                try:
+                    GenericIPAddressField().clean(ip, model_instance=None)
+                except ValidationError:
+                    raise ValidationError(
+                        "Invalid IP address: %s; Provide a list of "
+                        "space-separated IP addresses" % ip)
+            return ' '.join(ips)

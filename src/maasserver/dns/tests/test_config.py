@@ -676,12 +676,13 @@ class TestGetUpstreamDNS(MAASServerTestCase):
         self.assertEqual([], get_upstream_dns())
 
     def test__returns_list_of_one_address_if_set(self):
-        address = factory.make_ipv4_address()
+        address = factory.make_ip_address()
         Config.objects.set_config("upstream_dns", address)
         self.assertEqual([address], get_upstream_dns())
 
-    def test__returns_list_of_many_address_if_set(self):
-        addresses = [factory.make_ipv4_address(), factory.make_ipv4_address()]
+    def test__returns_list_if_space_separated_ips(self):
+        addresses = [
+            factory.make_ip_address() for _ in range(3)]
         Config.objects.set_config("upstream_dns", " ".join(addresses))
         self.assertEqual(addresses, get_upstream_dns())
 
