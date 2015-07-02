@@ -211,21 +211,17 @@
                             </dd>
                     </dl>
                 </div>
-                <div class="controls two-col last-col" data-ng-hide="summary.editing">
-                    <a href="" class="link-cta-ubuntu secondary full"
+                <div class="controls" data-ng-hide="summary.editing">
+                    <a href="" class="link-cta-ubuntu secondary"
                         data-ng-show="canEdit()"
                         data-ng-click="editSummary()">Edit</a>
                 </div>
-                <div class="controls four-col last-col ng-hide" data-ng-show="summary.editing">
-                    <div class="two-col no-margin-bottom">
-                        <a href="" class="link-cta-ubuntu clear right"
+                <div class="controls ng-hide" data-ng-show="summary.editing">
+                        <a href="" class="link-cta-ubuntu clear"
                            data-ng-click="cancelEditSummary()">Cancel</a>
-                    </div>
-                    <div class="two-col last-col right no-margin-bottom">
-                        <button class="cta-ubuntu full"
+                        <button class="cta-ubuntu right"
                             data-ng-class="{ secondary: invalidArchitecture() }"
                             data-ng-click="saveEditSummary()">Save changes</button>
-                    </div>
                 </div>
             </form>
         </div>
@@ -241,21 +237,17 @@
                     data-maas-power-parameters="power.types"
                     data-ng-model="power">
                 </fieldset>
-                <div class="controls two-col last-col" data-ng-hide="power.editing">
-                    <a href="" class="link-cta-ubuntu secondary full"
+                <div class="controls" data-ng-hide="power.editing">
+                    <a href="" class="link-cta-ubuntu secondary"
                         data-ng-show="canEdit()"
                         data-ng-click="editPower()">Edit</a>
                 </div>
-                <div class="controls four-col last-col ng-hide" data-ng-show="power.editing">
-                    <div class="two-col no-margin-bottom">
-                        <a href="" class="link-cta-ubuntu clear right"
-                            data-ng-click="cancelEditPower()">Cancel</a>
-                    </div>
-                    <div class="two-col last-col no-margin-bottom">
-                        <button class="cta-ubuntu full"
-                            data-ng-class="{ secondary: invalidPowerType() }"
-                            data-ng-click="saveEditPower()">Save changes</button>
-                    </div>
+                <div class="controls ng-hide" data-ng-show="power.editing">
+                    <a href="" class="link-cta-ubuntu clear"
+                        data-ng-click="cancelEditPower()">Cancel</a>
+                    <button class="cta-ubuntu right"
+                        data-ng-class="{ secondary: invalidPowerType() }"
+                        data-ng-click="saveEditPower()">Save changes</button>
                 </div>
             </form>
         </div>
@@ -303,13 +295,11 @@
                                 data-ng-show="nic.errormsg">{$ nic.errormsg $}</span>
                         </div>
                     </div>
-                    <div class="four-col last-col right">
-                        <div class="two-col no-margin-bottom">
-                            <a href="" class="link-cta-ubuntu clear right"
+                    <div class="six-col last-col">
+                        <div class="right">
+                            <a href="" class="link-cta-ubuntu clear"
                                data-ng-click="cancelAddInterface()">Cancel</a>
-                        </div>
-                        <div class="two-col last-col no-margin-bottom">
-                            <button class="cta-ubuntu full"
+                            <button class="cta-ubuntu"
                                     data-ng-click="saveAddInterface()">Add</button>
                         </div>
                     </div>
@@ -364,20 +354,16 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="controls two-col last-col" data-ng-show="storage.physicalDisks.length && !storage.editing">
-                    <a href="" class="link-cta-ubuntu secondary full"
+                <div class="controls" data-ng-show="storage.physicalDisks.length && !storage.editing">
+                    <a href="" class="link-cta-ubuntu secondary"
                         data-ng-show="canEdit()"
                         data-ng-click="editStorage()">Edit</a>
                 </div>
-                <div class="controls four-col last-col ng-hide" data-ng-show="storage.editing">
-                    <div class="two-col no-margin-bottom">
-                        <a href="" class="link-cta-ubuntu clear right"
-                            data-ng-click="cancelEditStorage()">Cancel</a>
-                    </div>
-                    <div class="two-col last-col no-margin-bottom">
-                        <button class="cta-ubuntu full"
-                            data-ng-click="saveEditStorage()">Save changes</button>
-                    </div>
+                <div class="controls ng-hide" data-ng-show="storage.editing">
+                    <a href="" class="link-cta-ubuntu clear"
+                        data-ng-click="cancelEditStorage()">Cancel</a>
+                    <button class="cta-ubuntu"
+                        data-ng-click="saveEditStorage()">Save changes</button>
                 </div>
             </form>
         </div>
@@ -467,15 +453,10 @@
                     <code>{$ getInstallationData() $}</code>
                 </pre>
             </div>
-            <div class="controls five-col last-col">
-                <div class="two-col no-margin-bottom">
-                    <a href="" class="link-cta-ubuntu clear right"></a>
-                </div>
-                <div class="three-col no-margin-bottom last-col">
-                    <div data-maas-cta="machine_output.views"
-                        data-ng-model="machine_output.selectedView"
-                        data-ng-change="machineOutputViewChanged()">
-                    </div>
+            <div class="controls">
+                <div data-maas-cta="machine_output.views"
+                    data-ng-model="machine_output.selectedView"
+                    data-ng-change="machineOutputViewChanged()">
                 </div>
             </div>
         </div>
