@@ -81,7 +81,7 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         proposed_name = "%s%s" % (prefix, current_idx - 1)
         self.assertThat(
             filesystem_group.virtual_device, MatchesStructure.byEquality(
-                name=proposed_name, path="/dev/%s" % proposed_name,
+                name=proposed_name,
                 size=filesystem_group.get_size(),
                 block_size=(
                     filesystem_group.get_virtual_block_device_block_size())))
@@ -97,7 +97,7 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         proposed_name = "%s%s" % (prefix, current_idx - 1)
         self.assertThat(
             filesystem_group.virtual_device, MatchesStructure.byEquality(
-                name=proposed_name, path="/dev/%s" % proposed_name,
+                name=proposed_name,
                 size=filesystem_group.get_size(),
                 block_size=(
                     filesystem_group.get_virtual_block_device_block_size())))

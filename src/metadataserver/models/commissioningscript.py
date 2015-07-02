@@ -621,7 +621,6 @@ def update_node_physical_block_devices(node, output, exit_status):
         PhysicalBlockDevice.objects.create(
             node=node,
             name=block_info["NAME"],
-            path=block_info["PATH"],
             id_path=block_info.get("ID_PATH"),
             size=long(block_info["SIZE"]),
             block_size=int(block_info["BLOCK_SIZE"]),

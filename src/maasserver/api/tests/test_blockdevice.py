@@ -191,7 +191,6 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 140 * 1024,
-            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })
@@ -208,7 +207,6 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 140 * 1024,
-            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })
@@ -219,7 +217,6 @@ class TestBlockDevices(APITestCase):
         self.assertEqual(pbd.name, 'sda')
         self.assertEqual(pbd.block_size, 1024)
         self.assertEqual(pbd.size, 140 * 1024)
-        self.assertEqual(pbd.path, '/dev/sda')
         self.assertEqual(pbd.model, 'A2M0003')
         self.assertEqual(pbd.serial, '42')
 
@@ -232,7 +229,6 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 100 * 1024,
-            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })

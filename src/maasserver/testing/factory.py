@@ -1150,14 +1150,12 @@ class Factory(maastesting.factory.Factory):
         return resource
 
     def make_BlockDevice(
-            self, node=None, name=None, path=None, id_path=None, size=None,
+            self, node=None, name=None, id_path=None, size=None,
             block_size=None, tags=None):
         if node is None:
             node = self.make_Node()
         if name is None:
             name = self.make_name('name')
-        if path is None:
-            path = '/dev/%s' % name
         if id_path is None:
             id_path = '/dev/disk/by-id/id_%s' % name
         if block_size is None:
@@ -1167,18 +1165,18 @@ class Factory(maastesting.factory.Factory):
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         return BlockDevice.objects.create(
-            node=node, name=name, path=path, size=size, block_size=block_size,
+            node=node, name=name, size=size, block_size=block_size,
             tags=tags)
 
     def make_PhysicalBlockDevice(
-            self, node=None, name=None, path=None, size=None, block_size=None,
+            self, node=None, name=None, size=None, block_size=None,
             tags=None, model=None, serial=None):
         if node is None:
             node = self.make_Node()
         if name is None:
             name = self.make_name('name')
-        if path is None:
-            path = '/dev/%s' % name
+        if size is None:
+            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
@@ -1190,7 +1188,7 @@ class Factory(maastesting.factory.Factory):
         if serial is None:
             serial = self.make_name('serial')
         return PhysicalBlockDevice.objects.create(
-            node=node, name=name, path=path, size=size, block_size=block_size,
+            node=node, name=name, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial)
 
     def make_PartitionTable(self, table_type=None, block_device=None):
@@ -1320,7 +1318,7 @@ class Factory(maastesting.factory.Factory):
         return group
 
     def make_VirtualBlockDevice(
-            self, name=None, path=None, size=None, block_size=None,
+            self, name=None, size=None, block_size=None,
             tags=None, uuid=None, filesystem_group=None, node=None):
         if node is None:
             node = factory.make_Node()
@@ -1346,11 +1344,12 @@ class Factory(maastesting.factory.Factory):
                 "VirtualBlockDevice automatically.")
         if name is None:
             name = self.make_name("device")
-        if path is None:
-            path = "/dev/mapper/%s-%s" % (filesystem_group.name, name)
-
+        if size is None:
+            size = random.randint(1, filesystem_group.get_size())
+        if block_size is None:
+            block_size = random.choice([512, 1024, 4096])
         return VirtualBlockDevice.objects.create(
-            name=name, path=path, size=size, block_size=block_size,
+            name=name, size=size, block_size=block_size,
             tags=tags, uuid=uuid, filesystem_group=filesystem_group)
 
 

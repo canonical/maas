@@ -1015,14 +1015,13 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device(self):
         name = factory.make_name('name')
-        path = '/dev/%s' % name
         id_path = '/dev/disk/by-id/deviceid'
         size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
         device = self.make_block_device(
-            name=name, path=path, size=size, block_size=block_size,
+            name=name, size=size, block_size=block_size,
             model=model, serial=serial)
         node = factory.make_Node()
         json_output = json.dumps([device]).encode('utf-8')
@@ -1030,7 +1029,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
-                name=name, path=path, id_path=id_path, size=size,
+                name=name, id_path=id_path, size=size,
                 block_size=block_size, model=model, serial=serial))
 
     def test__creates_physical_block_device_only_for_node(self):

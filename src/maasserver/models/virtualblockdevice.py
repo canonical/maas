@@ -73,8 +73,7 @@ class VirtualBlockDeviceManager(BlockDeviceManager):
                 name = self.get_available_name_for(filesystem_group)
                 block_device = VirtualBlockDevice(
                     node=filesystem_group.get_node(),
-                    name=name, path="/dev/%s" % name,
-                    filesystem_group=filesystem_group)
+                    name=name, filesystem_group=filesystem_group)
             block_device.size = filesystem_group.get_size()
             block_device.block_size = (
                 filesystem_group.get_virtual_block_device_block_size())

@@ -215,6 +215,12 @@ class TestBlockDeviceManager(MAASServerTestCase):
 class TestBlockDevice(MAASServerTestCase):
     """Tests for the `BlockDevice` model."""
 
+    def test_path(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        self.assertEquals(
+            "/dev/disk/by-dname/%s" % block_device.name,
+            block_device.path)
+
     def test_type_physical(self):
         block_device = factory.make_PhysicalBlockDevice()
         self.assertEquals("physical", block_device.type)

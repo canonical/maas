@@ -94,7 +94,7 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-        unique_together = ("node", "path")
+        unique_together = ("node", "name")
         ordering = ["id"]
 
     objects = BlockDeviceManager()
@@ -104,10 +104,6 @@ class BlockDevice(CleanSave, TimestampedModel):
     name = CharField(
         max_length=255, blank=False,
         help_text="Name of block device. (e.g. sda)")
-
-    path = FilePathField(
-        blank=False,
-        help_text="Path of block device. (e.g. /dev/sda)")
 
     id_path = FilePathField(
         blank=True, null=True,
@@ -125,6 +121,11 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     tags = ArrayField(
         dbtype="text", blank=True, null=False, default=[])
+
+    @property
+    def path(self):
+        # Path is persistent and set by curtin on deploy.
+        return "/dev/disk/by-dname/%s" % self.name
 
     @property
     def type(self):
