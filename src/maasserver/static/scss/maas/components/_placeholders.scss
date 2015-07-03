@@ -112,7 +112,11 @@
 
 %margin-rght,
 .margin-right {
-    margin-right: 20px;
+    margin-right: 20px !important;
+
+    &--ten {
+        margin-right: 10px !important;
+    }
 }
 
 %margin-bottom,
