@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: Edit the named.conf.options file so that it includes
@@ -28,9 +28,9 @@ from django.core.management.base import (
     BaseCommand,
     CommandError,
     )
-from iscpy import (
-    MakeISC,
-    ParseISCString,
+from maasserver.utils.isc import (
+    make_isc_string,
+    parse_isc_string,
     )
 from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 
@@ -60,12 +60,12 @@ class Command(BaseCommand):
         return options_file
 
     def parse_file(self, config_path, options_file):
-        """Read the named.conf.options file and parse it with iscpy.
+        """Read the named.conf.options file and parse it.
 
-        We also use iscpy to insert the include statement that we need.
+        Then insert the include statement that we need.
         """
         try:
-            config_dict = ParseISCString(options_file)
+            config_dict = parse_isc_string(options_file)
         except Exception as e:
             # Yes, it throws bare exceptions :(
             raise CommandError("Failed to parse %s: %s" % (
@@ -80,7 +80,7 @@ class Command(BaseCommand):
         return config_dict
 
     def set_up_include_statement(self, options_block, config_path):
-        """Insert the 'include' directive into the iscpy-parsed options."""
+        """Insert the 'include' directive into the parsed options."""
         dir = os.path.join(os.path.dirname(config_path), "maas")
         options_block['include'] = '"%s%s%s"' % (
             dir, os.path.sep, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
@@ -116,7 +116,7 @@ class Command(BaseCommand):
         # Modify the config.
         self.set_up_include_statement(options_block, config_path)
         self.remove_forwarders(options_block)
-        new_content = MakeISC(config_dict)
+        new_content = make_isc_string(config_dict)
 
         # Back up and write new file.
         self.back_up_existing_file(config_path)
