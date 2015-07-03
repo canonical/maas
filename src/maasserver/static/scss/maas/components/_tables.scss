@@ -22,6 +22,10 @@ table {
         background: transparent;
         text-align: left;
         padding: 13px 10px;
+
+        .checkbox + .checkbox-label::before {
+            top: -2px;
+        }
     }
 
     thead {
@@ -124,6 +128,15 @@ table {
             &.sort {
                 text-decoration: underline;
             }
+        }
+
+        .divide {
+            width: 1px;
+            display: inline-block;
+            background: #D2D2D2 none repeat scroll 0% 0%;
+            height: 10px;
+            padding: 0px;
+            margin: 0px 5px;
         }
     }
 
