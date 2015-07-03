@@ -40,14 +40,19 @@ from maastesting.utils import age_file
 import mock
 from mock import call
 from provisioningserver.boot import BootMethodRegistry
-import provisioningserver.config
-from provisioningserver.config import BootSources
+from provisioningserver.config import (
+    BootSources,
+    ClusterConfiguration,
+)
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
 from provisioningserver.import_images.testing.factory import make_image_spec
-from provisioningserver.testing.config import BootSourcesFixture
+from provisioningserver.testing.config import (
+    BootSourcesFixture,
+    ClusterConfigurationFixture,
+)
 from provisioningserver.utils.fs import write_text_file
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
@@ -196,9 +201,13 @@ class TestMain(MAASTestCase):
 
     def setUp(self):
         super(TestMain, self).setUp()
+        self.useFixture(ClusterConfigurationFixture())
         self.storage = self.make_dir()
-        self.patch(
-            provisioningserver.config, 'BOOT_RESOURCES_STORAGE', self.storage)
+        current_dir = os.path.join(self.storage, 'current') + os.sep
+        os.makedirs(current_dir)
+        with ClusterConfiguration.open() as config:
+            config.tftp_root = current_dir
+        os.rmdir(current_dir)
         # Forcing arch to amd64 causes pxelinux.0 to be installed, giving more
         # test coverage.
         self.image = make_image_spec(arch='amd64')

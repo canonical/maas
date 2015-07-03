@@ -19,7 +19,7 @@ __all__ = [
 import os
 import re
 
-from provisioningserver.config import Config
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -51,7 +51,8 @@ class WindowsOS(OperatingSystem):
         # is available the node will boot correctly, even if fast-path
         # installer is not selected.
         purposes = []
-        resources = Config.load_from_cache()['tftp']['resource_root']
+        with ClusterConfiguration.open() as config:
+            resources = config.tftp_root
         path = os.path.join(
             resources, 'windows', arch, subarch, release, label)
         if os.path.exists(os.path.join(path, 'root-dd')):

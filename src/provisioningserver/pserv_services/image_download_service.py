@@ -45,22 +45,24 @@ maaslog = get_maas_logger("boot_image_download_service")
 
 
 class ImageDownloadService(TimerService, object):
-    """Twisted service to periodically refresh ephemeral images.
-
-    :param client_service: A `ClusterClientService` instance for talking
-        to the region controller.
-    :param reactor: An `IReactor` instance.
-    """
+    """Twisted service to periodically refresh ephemeral images."""
 
     check_interval = timedelta(minutes=5).total_seconds()
 
-    def __init__(self, client_service, reactor, cluster_uuid):
-        # Call self.check() every self.check_interval.
+    def __init__(self, client_service, cluster_uuid, tftp_root, reactor):
+        """Twisted service to periodically refresh ephemeral images.
+
+        :param client_service: A `ClusterClientService` instance.
+        :param cluster_uuid: The UUID for this cluster, as a string.
+        :param tftp_root: The path to the TFTP root directory.
+        :param reactor: An `IReactor` instance.
+        """
         super(ImageDownloadService, self).__init__(
             self.check_interval, self.try_download)
-        self.clock = reactor
         self.client_service = client_service
         self.uuid = cluster_uuid
+        self.tftp_root = tftp_root
+        self.clock = reactor
 
     def try_download(self):
         """Wrap download attempts in something that catches Failures.
@@ -125,11 +127,10 @@ class ImageDownloadService(TimerService, object):
         """Check the time the last image refresh happened and initiate a new
         one if older than 15 minutes.
         """
-        last_modified = tftppath.maas_meta_last_modified()
+        last_modified = tftppath.maas_meta_last_modified(self.tftp_root)
         if last_modified is None:
             yield self._start_download()
-            return
-
-        age_in_seconds = self.clock.seconds() - last_modified
-        if age_in_seconds >= timedelta(minutes=15).total_seconds():
-            yield self._start_download()
+        else:
+            age_in_seconds = self.clock.seconds() - last_modified
+            if age_in_seconds >= timedelta(minutes=15).total_seconds():
+                yield self._start_download()

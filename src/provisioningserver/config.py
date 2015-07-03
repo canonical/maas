@@ -1,44 +1,104 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MAAS Provisioning Configuration.
+"""Configuration for the MAAS cluster.
 
-Configuration for most elements of a Cluster Controller can be obtained
-through this module's `Config` validator class. At the time of writing the
-exceptions are the `CLUSTER_UUID` and `MAAS_URL` environment variables (see
-`provisioningserver.cluster_config`).
+This module also contains the common library code that's used for
+configuration in both the region and the cluster.
 
-It's pretty simple. Typical usage is::
+There are two styles of configuration object, one older and deprecated, and
+one new.
 
-  >>> config = Config.load_from_cache()
+
+The Old Way
+-----------
+
+Configuration can be obtained through subclassing this module's `ConfigBase`
+validator class. It's pretty simple. Typical usage is::
+
+  >>> config = MyConfig.load_from_cache()
   {...}
 
-This reads in a configuration file from `Config.DEFAULT_FILENAME` (see a note
+This reads in a configuration file from `MyConfig.DEFAULT_FILENAME` (see a note
 about that later). The configuration file is parsed as YAML, and a plain `dict`
 is returned with configuration nested within it. The configuration is validated
 at load time using `formencode`. The policy for validation is laid out in this
 module; see the various `formencode.Schema` subclasses.
 
-All configuration is optional, and a sensible default is provided in every
-instance. When adding or changing settings bear this policy in mind, and also
-that the defaults should be geared towards a system in production, and not a
-development environment. The defaults can be obtained by calling
-`Config.get_defaults()`.
+Configuration should be optional, and a sensible default should be provided in
+every instance. The defaults can be obtained from `MyConfig.get_defaults()`.
 
-An alternative to `Config.load_from_cache()` is `Config.load()`, which loads
-and validates a configuration file while bypassing the cache.  See `Config` for
-other useful functions.
+An alternative to `MyConfig.load_from_cache()` is `MyConfig.load()`, which
+loads and validates a configuration file while bypassing the cache. See
+`ConfigBase` for other useful functions.
 
-`Config.DEFAULT_FILENAME` is a class property, so does not need to be
-referenced via an instance of `Config`. It refers to the
-``MAAS_PROVISIONING_SETTINGS`` environment variable in the first instance, but
-has a sensible default too. You can write to this property and it will update
-the environment so that child processes will also use the same configuration
-filename. To revert to the default - i.e. erase the environment variable - you
-can `del Config.DEFAULT_FILENAME`.
+`MyConfig.DEFAULT_FILENAME` is a class property, so does not need to be
+referenced via an instance of `MyConfig`. It refers to an environment variable
+named by `MyConfig.envvar` in the first instance, but should have a sensible
+default too. You can write to this property and it will update the environment
+so that child processes will also use the same configuration filename. To
+revert to the default - i.e. erase the environment variable - you can `del
+MyConfig.DEFAULT_FILENAME`.
 
-When testing, see `provisioningserver.testing.config.ConfigFixture` to
+When testing, see `provisioningserver.testing.config.ConfigFixtureBase` to
 temporarily use a different configuration.
+
+
+The New Way
+-----------
+
+There are two subclasses of this module's `Configuration` class, one for the
+region (`RegionConfiguration`) and for the cluster (`ClusterConfiguration`).
+Each defines a set of attributes which are the configuration variables:
+
+* If an attribute is declared as a `ConfigurationOption` then it's a
+  read-write configuration option, and should have a sensible default if
+  possible.
+
+* If an attribute is declared as a standard Python `property` then it's a
+  read-only configuration option.
+
+A metaclass is also defined, which must inherit from `ConfigurationMeta`, to
+define a few other important options:
+
+* ``default`` is the default filename for the configuration database.
+
+* ``envvar`` is the name of an environment variable that, if defined, provides
+  the filename for the configuration database. This is used in preference to
+  ``default``.
+
+* ``backend`` is a factory that provides the storage mechanism. Currently you
+  can choose from `ConfigurationFile` or `ConfigurationDatabase`. The latter
+  is strongly recommended in preference to the former.
+
+An example::
+
+  class MyConfiguration(Configuration):
+
+      class __metaclass__(ConfigurationMeta):
+          envvar = "CONFIG_FILE"
+          default = "/etc/myapp.conf"
+          backend = ConfigurationDatabase
+
+      images_dir = ConfigurationOption(
+          "images_dir", "The directory in which to store images.",
+          Directory(if_missing="/var/lib/myapp/images"))
+
+      @property
+      def png_dir(self):
+          "The directory in which to store PNGs."
+          return os.path.join(self.images_dir, "png")
+
+      @property
+      def gif_dir(self):
+          "The directory in which to store GIFs."
+          return os.path.join(self.images_dir, "gif")
+
+It can be used like so::
+
+  with MyConfiguration.open() as config:
+      config.images_dir = "/var/www/example.com/images"
+      print(config.png_dir, config.gif_dir)
 
 """
 
@@ -52,11 +112,12 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "BOOT_RESOURCES_STORAGE",
     "BootSources",
-    "Config",
+    "ClusterConfiguration",
     "ConfigBase",
     "ConfigMeta",
+    "is_dev_environment",
+    "UUID_NOT_SET",
 ]
 
 from contextlib import (
@@ -64,7 +125,6 @@ from contextlib import (
     contextmanager,
 )
 from copy import deepcopy
-from getpass import getuser
 import json
 import os
 from os import environ
@@ -82,11 +142,9 @@ from formencode import (
 from formencode.api import NoDefault
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
-    Int,
     Invalid,
     is_validator,
     Number,
-    RequireIfPresent,
     Set,
     String,
     UnicodeString,
@@ -99,11 +157,6 @@ from provisioningserver.utils.fs import (
     FileLockProxy,
 )
 import yaml
-
-# Path to the directory on the cluster controller where boot resources are
-# stored.  This used to be configurable in bootresources.yaml, and may become
-# configurable again in the future.
-BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
 
 # Default result for cluster UUID if not set
 UUID_NOT_SET = '** UUID NOT SET **'
@@ -168,93 +221,6 @@ class ExtendedURL(URL):
         (?P<path>/[a-z0-9\-\._~:/\?#\[\]@!%\$&\'\(\)\*\+,;=]*)?
         $
     ''', re.I | re.VERBOSE)
-
-
-class ConfigOops(Schema):
-    """Configuration validator for OOPS options.
-
-    Deprecated: MAAS no longer records OOPS reports. This remains here to
-    avoid validation failures when using old versions of the cluster's
-    configuration file.
-    """
-
-    if_key_missing = None
-
-    directory = String(if_missing=b"")
-    reporter = String(if_missing=b"")
-
-    chained_validators = (
-        RequireIfPresent("reporter", present="directory"),
-    )
-
-
-class ConfigBroker(Schema):
-    """Configuration validator for message broker options.
-
-    Deprecated: MAAS no longer uses a message broker. This remains here to
-    avoid validation failures when using old versions of the cluster's
-    configuration file.
-    """
-
-    if_key_missing = None
-
-    host = String(if_missing=b"localhost")
-    port = Int(min=1, max=65535, if_missing=5673)
-    username = String(if_missing=getuser())
-    password = String(if_missing=b"test")
-    vhost = String(if_missing="/")
-
-
-class ConfigTFTP(Schema):
-    """Configuration validator for the TFTP service."""
-
-    if_key_missing = None
-
-    # Obsolete: old TFTP root directory.  This is retained for the purpose of
-    # deriving new, Simplestreams-based import configuration from previously
-    # imported boot images.
-    # The last time this is needed is for upgrading an older cluster
-    # controller to the Ubuntu 14.04 version of MAAS.  After installation of
-    # the 14.04 version, this setting is never used.
-    root = String(if_missing="/var/lib/maas/tftp")
-
-    # TFTP root directory, managed by the Simplestreams-based import script.
-    # The import script maintains "current" as a symlink pointing to the most
-    # recent images.
-    # XXX jtv 2014-05-22: Redundant with BOOT_RESOURCES_STORAGE.
-    resource_root = String(
-        if_missing=os.path.join(BOOT_RESOURCES_STORAGE, 'current/'))
-
-    port = Int(min=1, max=65535, if_missing=69)
-    generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
-
-
-class ConfigLegacyEphemeral(Schema):
-    """Legacy `ephemeral` section in `pserv.yaml` prior to MAAS 1.5.
-
-    This has been superseded by boot sources.
-    It is still accepted in `pserv.yaml`, but not used.
-    """
-    if_key_missing = None
-    images_directory = String(if_missing=None)
-    releases = Set(if_missing=None)
-
-
-class ConfigLegacyBoot(Schema):
-    """Legacy `boot` section in `pserv.yaml` prior to MAAS 1.5.
-
-    This has been superseded by boot sources.
-    It is still accepted in `pserv.yaml`, but not used.
-    """
-    if_key_missing = None
-    architectures = Set(if_missing=None)
-    ephemeral = ConfigLegacyEphemeral
-
-
-class ConfigRPC(Schema):
-    """Configuration validator for the RPC service."""
-
-    if_key_missing = None
 
 
 class BootSourceSelection(Schema):
@@ -401,23 +367,6 @@ class ConfigMeta(DeclarativeMeta):
         _delete_default_filename, doc=(
             "The default config file to load. Refers to "
             "`cls.envvar` in the environment."))
-
-
-class Config(ConfigBase, Schema):
-    """Configuration for the provisioning server."""
-
-    class __metaclass__(ConfigMeta):
-        envvar = "MAAS_PROVISIONING_SETTINGS"
-        default = "pserv.yaml"
-
-    if_key_missing = None
-
-    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
-    oops = ConfigOops
-    broker = ConfigBroker
-    tftp = ConfigTFTP
-    rpc = ConfigRPC
-    boot = ConfigLegacyBoot
 
 
 class BootSources(ConfigBase, ForEach):
@@ -760,20 +709,42 @@ class ClusterConfiguration(Configuration):
         default = "/etc/maas/clusterd.conf"
         backend = ConfigurationFile
 
-    # MAAS URL options
     maas_url = ConfigurationOption(
-        "maas_url", "The HTTP URL for the MAAS region.",
-        ExtendedURL(require_tld=False,
-                    if_missing="http://localhost:5240/MAAS"))
+        "maas_url", "The HTTP URL for the MAAS region.", ExtendedURL(
+            require_tld=False, if_missing="http://localhost:5240/MAAS"))
+
     # TFTP options.
     tftp_port = ConfigurationOption(
         "tftp_port", "The UDP port on which to listen for TFTP requests.",
         Number(min=0, max=(2 ** 16) - 1, if_missing=69))
     tftp_root = ConfigurationOption(
         "tftp_root", "The root directory for TFTP resources.",
-        Directory(if_missing="/var/lib/maas/boot-resources/current/"))
+        Directory(if_missing=get_tentative_path(
+            "/var/lib/maas/boot-resources/current")))
+
+    @property
+    def tftp_generator_url(self):
+        """The URL at which to obtain the TFTP options for a node."""
+        return "%s/api/1.0/pxeconfig/" % self.maas_url.rstrip("/")
+
+    # GRUB options.
+
+    @property
+    def grub_root(self):
+        "The root directory for GRUB resources."
+        return os.path.join(self.tftp_root, "grub")
 
     # Cluster UUID Option
     cluster_uuid = ConfigurationOption(
         "cluster_uuid", "The UUID for this cluster controller",
-        UUID(if_missing=unicode(UUID_NOT_SET)))
+        UUID(if_missing=UUID_NOT_SET))
+
+
+def is_dev_environment():
+    """Is this the development environment, or production?"""
+    try:
+        from maastesting import root  # noqa
+    except:
+        return False
+    else:
+        return True

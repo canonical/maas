@@ -34,7 +34,7 @@ from provisioningserver.boot.pxe import (
     re_config_file,
 )
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     Contains,
@@ -72,7 +72,7 @@ class TestPXEBootMethod(MAASTestCase):
     def make_tftp_root(self):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(tftproot))
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tftproot))
         return tftproot
 
     def make_dummy_bootloader_sources(self, destination, loader_names):

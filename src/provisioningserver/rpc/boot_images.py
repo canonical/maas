@@ -18,13 +18,12 @@ __all__ = [
     "is_import_boot_images_running",
     ]
 
-import os
 from urlparse import urlparse
 
 from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
-from provisioningserver.config import BOOT_RESOURCES_STORAGE
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
@@ -41,10 +40,11 @@ def list_boot_images():
     of IO, as this function is called often. To update the cache call
     `reload_boot_images`.
     """
+
     global CACHED_BOOT_IMAGES
     if CACHED_BOOT_IMAGES is None:
-        CACHED_BOOT_IMAGES = tftppath.list_boot_images(
-            os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
+        with ClusterConfiguration.open() as config:
+            CACHED_BOOT_IMAGES = tftppath.list_boot_images(config.tftp_root)
     return CACHED_BOOT_IMAGES
 
 
@@ -52,8 +52,8 @@ def reload_boot_images():
     """Update the cached boot images so `list_boot_images` returns the
     most up-to-date boot images list."""
     global CACHED_BOOT_IMAGES
-    CACHED_BOOT_IMAGES = tftppath.list_boot_images(
-        os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
+    with ClusterConfiguration.open() as config:
+        CACHED_BOOT_IMAGES = tftppath.list_boot_images(config.tftp_root)
 
 
 def get_hosts_from_sources(sources):

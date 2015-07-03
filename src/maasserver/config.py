@@ -25,6 +25,7 @@ from provisioningserver.config import (
     ConfigurationMeta,
     ConfigurationOption,
     ExtendedURL,
+    is_dev_environment,
 )
 
 
@@ -68,13 +69,3 @@ class RegionConfiguration(Configuration):
             return path.join(path.dirname(__file__), "static")
         else:
             return "/usr/share/maas/web/static"
-
-
-def is_dev_environment():
-    """Is this the development environment, or production?"""
-    try:
-        from maastesting import root  # noqa
-    except:
-        return False
-    else:
-        return True

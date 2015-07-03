@@ -37,6 +37,7 @@ from mock import (
     sentinel,
 )
 from provisioningserver import tags
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     DocTestMatches,
@@ -484,7 +485,7 @@ class TestTagUpdating(PservTestCase):
         self.useFixture(FakeLogger())
 
     def fake_client(self):
-        return MAASClient(None, None, self.make_maas_url())
+        return MAASClient(None, None, factory.make_simple_http_url())
 
     def fake_cached_knowledge(self):
         nodegroup_uuid = factory.make_name('nodegroupuuid')
@@ -592,7 +593,8 @@ class TestTagUpdating(PservTestCase):
             tags.classify(xpath, node_details))
 
     def test_process_node_tags_integration(self):
-        self.set_maas_url()
+        self.useFixture(ClusterConfigurationFixture(
+            maas_url=factory.make_simple_http_url()))
         get_nodes = FakeMethod(
             result=factory.make_response(
                 httplib.OK,

@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `MAAS_URL` configuration update code."""
+"""Tests for configuration update code."""
 
 from __future__ import (
     absolute_import,
@@ -28,12 +28,10 @@ from mock import (
     patch,
 )
 from provisioningserver import cluster_config_command
-from provisioningserver.cluster_config import (
-    CLUSTER_CONFIG,
-    get_config_cluster_variable,
-    set_config_cluster_variable,
+from provisioningserver.config import (
+    ClusterConfiguration,
+    UUID_NOT_SET,
 )
-from provisioningserver.config import UUID_NOT_SET
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools import ExpectedException
 
@@ -134,23 +132,28 @@ class TestUpdateMaasClusterConf(MAASTestCase):
     def test_config_set_maas_url_sets_url(self):
         expected = factory.make_simple_http_url()
         cluster_config_command.run(self.make_args(region_url=expected))
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_maas_url)
+        with ClusterConfiguration.open() as config:
+            observed = config.maas_url
         self.assertEqual(expected, observed)
 
     def test_config_set_maas_url_without_setting_does_nothing(self):
-        expected = get_config_cluster_variable(CLUSTER_CONFIG.DB_maas_url)
+        with ClusterConfiguration.open() as config:
+            expected = config.maas_url
         cluster_config_command.run(self.make_args(region_url=None))
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_maas_url)
+        with ClusterConfiguration.open() as config:
+            observed = config.maas_url
         self.assertEqual(expected, observed)
 
     def test_config_set_cluster_uuid_sets_cluster_uuid(self):
         expected = unicode(uuid.uuid4())
         cluster_config_command.run(self.make_args(uuid=expected))
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_cluster_uuid)
+        with ClusterConfiguration.open() as config:
+            observed = config.cluster_uuid
         self.assertEqual(expected, observed)
 
     def get_parsed_uuid_from_config(self):
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_cluster_uuid)
+        with ClusterConfiguration.open() as config:
+            observed = config.cluster_uuid
         try:
             parsed_observed = unicode(uuid.UUID(observed))
         except:
@@ -160,10 +163,10 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_config_set_cluster_uuid_without_setting_does_nothing(self):
         expected_previous_value = unicode(uuid.uuid4())
-        set_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid, expected_previous_value)
-        observed_previous_value = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid)
+        with ClusterConfiguration.open() as config:
+            config.cluster_uuid = expected_previous_value
+        with ClusterConfiguration.open() as config:
+            observed_previous_value = config.cluster_uuid
         self.assertEqual(expected_previous_value, observed_previous_value)
 
         cluster_config_command.run(self.make_args(uuid=None))
@@ -173,8 +176,8 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         self.assertEqual(parsed_observed, expected_previous_value)
 
     def test_config_init_creates_initial_cluster_id(self):
-        observed_default = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid)
+        with ClusterConfiguration.open() as config:
+            observed_default = config.cluster_uuid
         self.assertEqual(UUID_NOT_SET, observed_default)
 
         cluster_config_command.run(self.make_args(init=True))
@@ -184,10 +187,10 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_config_init_when_already_configured_does_nothing(self):
         expected_previous_value = unicode(uuid.uuid4())
-        set_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid, expected_previous_value)
-        observed_previous_value = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid)
+        with ClusterConfiguration.open() as config:
+            config.cluster_uuid = expected_previous_value
+        with ClusterConfiguration.open() as config:
+            observed_previous_value = config.cluster_uuid
         self.assertEqual(expected_previous_value, observed_previous_value)
 
         cluster_config_command.run(self.make_args(init=True))
@@ -199,27 +202,29 @@ class TestUpdateMaasClusterConf(MAASTestCase):
     def test_config_set_tftp_port_sets_tftp_port(self):
         expected = factory.pick_port()
         cluster_config_command.run(self.make_args(tftp_port=expected))
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_tftpport)
+        with ClusterConfiguration.open() as config:
+            observed = config.tftp_port
         self.assertEqual(expected, observed)
 
     def test_config_set_tftp_port_without_setting_does_nothing(self):
-        expected = get_config_cluster_variable(CLUSTER_CONFIG.DB_tftpport)
+        with ClusterConfiguration.open() as config:
+            expected = config.tftp_port
         cluster_config_command.run(self.make_args(tftp_port=None))
-        observed = get_config_cluster_variable(CLUSTER_CONFIG.DB_tftpport)
+        with ClusterConfiguration.open() as config:
+            observed = config.tftp_port
         self.assertEqual(expected, observed)
 
     def test_config_set_tftp_port_sets_tftp_root(self):
         expected = self.make_dir()
         cluster_config_command.run(self.make_args(tftp_root=expected))
-        observed = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_tftp_resource_root)
+        with ClusterConfiguration.open() as config:
+            observed = config.tftp_root
         self.assertEqual(expected, observed)
 
     def test_config_set_tftp_root_without_setting_does_nothing(self):
-        expected = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_tftp_resource_root)
+        with ClusterConfiguration.open() as config:
+            expected = config.tftp_root
         cluster_config_command.run(self.make_args(tftp_root=None))
-        observed = get_config_cluster_variable(
-            CLUSTER_CONFIG.DB_tftp_resource_root)
-
+        with ClusterConfiguration.open() as config:
+            observed = config.tftp_root
         self.assertEqual(expected, observed)

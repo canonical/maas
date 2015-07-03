@@ -131,7 +131,7 @@ from provisioningserver.rpc.testing import (
     call_responder,
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import events
 from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
@@ -362,7 +362,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that report_boot_images() uses the above TFTP file tree.
-        self.useFixture(set_tftp_root(tftpdir))
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tftpdir))
 
         images = [
             {"architecture": arch, "subarchitecture": subarch,

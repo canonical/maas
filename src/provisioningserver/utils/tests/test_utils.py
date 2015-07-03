@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
@@ -17,7 +17,6 @@ __metaclass__ = type
 __all__ = []
 
 from collections import Iterator
-from cStringIO import StringIO
 import json
 import os
 from random import choice
@@ -42,6 +41,7 @@ from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
 )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from provisioningserver.utils import (
@@ -53,7 +53,6 @@ from provisioningserver.utils import (
     filter_dict,
     flatten,
     get_init_system,
-    get_cluster_config,
     locate_config,
     maas_custom_config_markers,
     parse_key_value_file,
@@ -72,8 +71,12 @@ from twisted.internet import defer
 
 
 def get_branch_dir(*path):
-    """Locate a file or directory relative to this branch."""
-    return os.path.abspath(os.path.join(root, *path))
+    """Locate a file or directory relative to ``MAAS_ROOT``.
+
+    This function assumes that ``MAAS_ROOT`` has been set to a ``run``
+    subdirectory of this working-tree's root.
+    """
+    return os.path.abspath(os.path.join(root, "run", *path))
 
 
 class TestLocateConfig(MAASTestCase):
@@ -84,15 +87,15 @@ class TestLocateConfig(MAASTestCase):
         self.assertThat(locate_config(), DirExists())
 
     def test_defaults_to_global_etc_maas_if_variable_is_unset(self):
-        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', None))
+        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', None))
         self.assertEqual('/etc/maas', locate_config())
 
     def test_defaults_to_global_etc_maas_if_variable_is_empty(self):
-        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', ''))
+        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', ''))
         self.assertEqual('/etc/maas', locate_config())
 
     def test_returns_absolute_path(self):
-        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', '.'))
+        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', '.'))
         self.assertTrue(os.path.isabs(locate_config()))
 
     def test_locates_config_file(self):
@@ -465,14 +468,14 @@ class TestCreateNode(PservTestCase):
             'power_control': None,
             'system_id': uuid
         }
-        get_cluster_uuid = self.patch(
-            provisioningserver.cluster_config, 'get_cluster_uuid')
-        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+        test_uuid = factory.make_UUID()
+        self.useFixture(ClusterConfigurationFixture(cluster_uuid=test_uuid))
+
         yield create_node(
             macs, arch, power_type, power_parameters, hostname=hostname)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
-                protocol, cluster_uuid=get_cluster_uuid.return_value,
+                protocol, cluster_uuid=test_uuid,
                 architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
                 mac_addresses=macs, hostname=hostname))
@@ -510,9 +513,9 @@ class TestCreateNode(PservTestCase):
         system_id = factory.make_name("system-id")
         protocol.CreateNode.return_value = defer.succeed(
             {"system_id": system_id})
-        get_cluster_uuid = self.patch(
-            provisioningserver.cluster_config, 'get_cluster_uuid')
-        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+
+        test_uuid = factory.make_UUID()
+        self.useFixture(ClusterConfigurationFixture(cluster_uuid=test_uuid))
 
         uuid = 'node-' + factory.make_UUID()
         arch = factory.make_name('architecture')
@@ -533,7 +536,7 @@ class TestCreateNode(PservTestCase):
             macs_with_duplicate, arch, power_type, power_parameters)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
-                protocol, cluster_uuid=get_cluster_uuid.return_value,
+                protocol, cluster_uuid=test_uuid,
                 architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
                 mac_addresses=macs, hostname=None))
@@ -544,9 +547,6 @@ class TestCreateNode(PservTestCase):
         self.addCleanup((yield connecting))
         system_id = factory.make_name("system-id")
         maaslog = self.patch(provisioningserver.utils, 'maaslog')
-        get_cluster_uuid = self.patch(
-            provisioningserver.utils, 'get_cluster_uuid')
-        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
 
         uuid = 'node-' + factory.make_UUID()
         macs = sorted(factory.make_mac_address() for _ in range(3))
@@ -613,37 +613,6 @@ class TestCommissionNode(PservTestCase):
             maaslog.error, MockCalledOnceWith(
                 "Could not commission with system_id %s because %s.",
                 system_id, error.args[0]))
-
-
-class TestGetClusterConfig(MAASTestCase):
-    scenarios = [
-        ('Variable with quoted value', dict(
-            contents='MAAS_URL="http://site/MAAS"',
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Variable with quoted value, comment', dict(
-            contents="# Ignore this\nMAAS_URL=\"http://site/MAAS\"",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Two Variables', dict(
-            contents="CLUSTER_UUID=\"uuid\"\nMAAS_URL=\"http://site/MAAS\"",
-            expected={
-                'MAAS_URL': "http://site/MAAS",
-                'CLUSTER_UUID': "uuid",
-            })),
-        ('Variable with single quoted value', dict(
-            contents="MAAS_URL='http://site/MAAS'",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Variable with unquoted valued', dict(
-            contents="MAAS_URL=http://site/MAAS",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-    ]
-
-    def test_parses_config_file(self):
-        open_mock = self.patch(provisioningserver.utils, "open")
-        open_mock.return_value = StringIO(self.contents)
-        path = factory.make_name('path')
-        result = get_cluster_config(path)
-        self.assertThat(open_mock, MockCalledOnceWith(path))
-        self.assertItemsEqual(self.expected, result)
 
 
 class TestFlatten(MAASTestCase):

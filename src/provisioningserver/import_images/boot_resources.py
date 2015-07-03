@@ -22,10 +22,12 @@ import errno
 import os
 from textwrap import dedent
 
-import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_boot_images
-from provisioningserver.config import BootSources
+from provisioningserver.config import (
+    BootSources,
+    ClusterConfiguration,
+)
 from provisioningserver.import_images.cleanup import (
     cleanup_snapshots_and_cache,
 )
@@ -39,7 +41,6 @@ from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils import get_cluster_config
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
@@ -47,6 +48,16 @@ from provisioningserver.utils.fs import (
     tempdir,
 )
 from provisioningserver.utils.shell import call_and_check
+
+
+def two_dir_levels_up(path):
+    # NOTE: Syntax along the lines of:
+    #    os.path.normpath(os.path.join(
+    #       path, os.path.pardir, os.path.pardir))
+    # will NOT work here, as the classes that use these file paths
+    # to NOT support paths with 'os.path.pardir' segments. Thus
+    # we must manually resolve the path here.
+    return os.path.split(os.path.split(path)[0])[0]
 
 
 class NoConfigFile(Exception):
@@ -250,7 +261,8 @@ def import_images(sources):
                 "any boot images available.")
             return
 
-        storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
+        with ClusterConfiguration.open() as config:
+            storage = two_dir_levels_up(config.tftp_root)
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
             maaslog.info(
@@ -358,10 +370,6 @@ def main_with_services(args):
             traceback.print_exc()
         finally:
             reactor.callLater(0, reactor.stop)
-
-    cluster_config = get_cluster_config('/etc/maas/maas_cluster.conf')
-    os.environ['MAAS_URL'] = cluster_config['MAAS_URL']
-    os.environ['CLUSTER_UUID'] = cluster_config['CLUSTER_UUID']
 
     reactor.callWhenRunning(run_main)
     reactor.run()

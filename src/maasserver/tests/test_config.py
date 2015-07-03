@@ -14,11 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-
-from maasserver import config
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
-from maastesting.fixtures import ImportErrorFixture
 from maastesting.testcase import MAASTestCase
 
 
@@ -95,14 +92,3 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: example_value}, config.store)
-
-
-class TestConfig(MAASTestCase):
-    """Tests for `maasserver.config`."""
-
-    def test_is_dev_environment_returns_false(self):
-        self.useFixture(ImportErrorFixture('maastesting', 'root'))
-        self.assertFalse(config.is_dev_environment())
-
-    def test_is_dev_environment_returns_true(self):
-        self.assertTrue(config.is_dev_environment())

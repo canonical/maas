@@ -15,10 +15,8 @@ __metaclass__ = type
 __all__ = [
     "BootSourcesFixture",
     "ClusterConfigurationFixture",
-    "ConfigFixture",
     "ConfigFixtureBase",
     "ConfigurationFixtureBase",
-    "set_tftp_root",
     ]
 
 from os import path
@@ -31,7 +29,6 @@ from maastesting.fixtures import TempDirectory
 from provisioningserver.config import (
     BootSources,
     ClusterConfiguration,
-    Config,
 )
 import yaml
 
@@ -69,15 +66,6 @@ class ConfigFixtureBase(Fixture):
             self.useFixture(EnvironmentVariableFixture(name, value))
 
 
-class ConfigFixture(ConfigFixtureBase):
-    """Fixture to substitute for :class:`Config` in tests."""
-
-    schema = Config
-
-    def __init__(self, config=None, name='pserv.yaml'):
-        super(ConfigFixture, self).__init__(config=config, name=name)
-
-
 class BootSourcesFixture(ConfigFixtureBase):
     """Fixture to substitute for :class:`BootSources` in tests.
 
@@ -91,14 +79,6 @@ class BootSourcesFixture(ConfigFixtureBase):
 
     def __init__(self, sources=None, name='sources.yaml'):
         super(BootSourcesFixture, self).__init__(config=sources, name=name)
-
-
-def set_tftp_root(tftproot):
-    """Create a `ConfigFixture` fixture that sets the TFTP root directory.
-
-    Add the resulting fixture to your test using `self.useFixture`.
-    """
-    return ConfigFixture({'tftp': {'resource_root': tftproot}})
 
 
 class ConfigurationFixtureBase(Fixture):

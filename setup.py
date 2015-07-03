@@ -64,9 +64,7 @@ setup(
 
     data_files=[
         ('/etc/maas',
-            ['etc/maas/pserv.yaml',
-             'etc/maas/drivers.yaml',
-             'etc/maas_cluster.conf',
+            ['etc/maas/drivers.yaml',
              'contrib/maas-http.conf']),
         ('/etc/maas/templates/uefi',
             glob('etc/maas/templates/uefi/*.template')),

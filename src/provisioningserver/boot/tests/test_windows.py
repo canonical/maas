@@ -41,9 +41,9 @@ from provisioningserver.boot.windows import (
     Bcd,
     WindowsPXEBootMethod,
 )
-from provisioningserver.config import Config
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.deferredruntest import extract_result
 from testtools.matchers import Is
@@ -193,7 +193,6 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
-        self.patch(Config, 'load_from_cache')
         self.patch(windows_module, 'get_hivex_module')
         super(TestWindowsPXEBootMethod, self).setUp()
 
@@ -372,13 +371,8 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             BootMethodError, method.compose_bcd, kernel_params, local_host)
 
     def test_get_resouce_path(self):
-        fake_tftproot = factory.make_name('tftproot')
-        mock_config = self.patch(windows_module, 'Config')
-        mock_config.load_from_cache.return_value = {
-            'tftp': {
-                'resource_root': fake_tftproot,
-                },
-            }
+        fake_tftproot = self.make_dir()
+        self.useFixture(ClusterConfigurationFixture(tftp_root=fake_tftproot))
         method = WindowsPXEBootMethod()
         fake_path = factory.make_name('path')
         fake_kernelparams = make_kernel_parameters()

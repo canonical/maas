@@ -19,26 +19,30 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.osystem import custom
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.osystem.custom import (
     BOOT_IMAGE_PURPOSE,
     CustomOS,
 )
+from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestCustomOS(MAASTestCase):
 
     def make_resource_path(self, filename):
+        self.useFixture(ClusterConfigurationFixture())
         tmpdir = self.make_dir()
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
         label = factory.make_name('label')
+        current_dir = os.path.join(tmpdir, 'current') + '/'
         dirpath = os.path.join(
-            tmpdir, 'current', 'custom', arch, subarch, release, label)
+            current_dir, 'custom', arch, subarch, release, label)
         os.makedirs(dirpath)
         factory.make_file(dirpath, filename)
-        self.patch(custom, 'BOOT_RESOURCES_STORAGE', tmpdir)
+        with ClusterConfiguration.open() as config:
+            config.tftp_root = current_dir
         return arch, subarch, release, label
 
     def test_get_boot_image_purposes(self):

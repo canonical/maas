@@ -27,11 +27,9 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from mock import Mock
-from provisioningserver import (
-    config,
-    upgrade_cluster,
-)
+from provisioningserver import upgrade_cluster
 from provisioningserver.boot.tftppath import list_subdirs
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
     DirExists,
@@ -88,7 +86,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
 
     def configure_storage(self, storage_dir):
         """Create a storage config."""
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
+        self.useFixture(ClusterConfigurationFixture(tftp_root=storage_dir))
 
     def test__calls_chown_if_boot_resources_dir_exists(self):
         self.patch(upgrade_cluster, 'check_call')
@@ -102,7 +100,9 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
     def test__skips_chown_if_boot_resources_dir_does_not_exist(self):
         self.patch(upgrade_cluster, 'check_call')
         storage_dir = os.path.join(self.make_dir(), factory.make_name('none'))
+        os.mkdir(storage_dir)
         self.configure_storage(storage_dir)
+        os.rmdir(storage_dir)
         upgrade_cluster.make_maas_own_boot_resources()
         self.assertThat(upgrade_cluster.check_call, MockNotCalled())
 
@@ -205,10 +205,11 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
 
     def configure_storage(self, storage_dir, make_current_dir=True):
         """Create a storage config."""
-        if make_current_dir:
-            current_dir = os.path.join(storage_dir, "current")
-            os.mkdir(current_dir)
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
+        current_dir = os.path.join(storage_dir, "current")
+        os.makedirs(current_dir)
+        self.useFixture(ClusterConfigurationFixture(tftp_root=current_dir))
+        if not make_current_dir:
+            os.rmdir(current_dir)
 
     def test__list_subdirs_under_current_directory(self):
         self.patch(upgrade_cluster, 'list_subdirs').return_value = ['ubuntu']

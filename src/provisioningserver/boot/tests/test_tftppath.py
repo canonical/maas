@@ -18,10 +18,8 @@ import errno
 import os.path
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import Mock
-from provisioningserver import config
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
@@ -48,7 +46,7 @@ from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
 )
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.os import make_osystem
 from testtools.matchers import (
     Not,
@@ -62,7 +60,7 @@ class TestTFTPPath(MAASTestCase):
     def setUp(self):
         super(TestTFTPPath, self).setUp()
         self.tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(self.tftproot))
+        self.useFixture(ClusterConfigurationFixture(tftp_root=self.tftproot))
 
     def make_image_dir(self, image_params, tftproot):
         """Fake a boot image matching `image_params` under `tftproot`."""
@@ -101,20 +99,12 @@ class TestTFTPPath(MAASTestCase):
             os.path.join(self.tftproot, "maas.meta"))
         self.assertIsNone(observed)
 
-    def test_maas_meta_last_modified_defaults_tftproot(self):
-        path = factory.make_file(self.tftproot, name="maas.meta")
-        maas_meta_file_path = self.patch(tftppath, 'maas_meta_file_path')
-        maas_meta_file_path.return_value = path
-        maas_meta_last_modified()
-        expected_path = os.path.join(
-            config.BOOT_RESOURCES_STORAGE, 'current')
-        self.assertThat(maas_meta_file_path, MockCalledOnceWith(expected_path))
-
     def test_maas_meta_last_modified_reraises_non_ENOENT(self):
+        path = factory.make_file(self.tftproot, name="maas.meta")
         oserror = OSError()
         oserror.errno = errno.E2BIG
         self.patch(os.path, 'getmtime').side_effect = oserror
-        self.assertRaises(OSError, maas_meta_last_modified)
+        self.assertRaises(OSError, maas_meta_last_modified, path)
 
     def test_compose_image_path_follows_storage_directory_layout(self):
         osystem = factory.make_name('osystem')

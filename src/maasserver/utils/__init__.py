@@ -25,21 +25,22 @@ __all__ = [
     'synchronised',
     ]
 
-import errno
 from functools import wraps
-import re
 from urllib import urlencode
 from urlparse import (
     urljoin,
     urlparse,
 )
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.utils.orm import get_one
+from provisioningserver.config import (
+    ClusterConfiguration,
+    UUID_NOT_SET,
+)
 from provisioningserver.utils.text import make_bullet_list
 
 
@@ -150,22 +151,11 @@ def strip_domain(hostname):
 
 def get_local_cluster_UUID():
     """Return the UUID of the local cluster (or None if it cannot be found)."""
-    try:
-        cluster_config = open(settings.LOCAL_CLUSTER_CONFIG).read()
-        match = re.search(
-            "CLUSTER_UUID=(?P<quote>[\"']?)([^\"']+)(?P=quote)",
-            cluster_config)
-        if match is not None:
-            return match.groups()[1]
-        else:
-            return None
-    except IOError as error:
-        if error.errno == errno.ENOENT:
-            # Cluster config file is not present.
+    with ClusterConfiguration.open() as config:
+        if config.cluster_uuid == UUID_NOT_SET:
             return None
         else:
-            # Anything else is an error.
-            raise
+            return config.cluster_uuid
 
 
 def find_nodegroup(request):

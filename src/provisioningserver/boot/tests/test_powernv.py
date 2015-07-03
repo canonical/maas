@@ -19,6 +19,7 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from provisioningserver.boot import (
     BytesReader,
     powernv as powernv_module,
@@ -32,7 +33,7 @@ from provisioningserver.boot.powernv import (
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.pserv_services.tftp import TFTPBackend
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     IsInstance,
@@ -78,7 +79,7 @@ class TestPowerNVBootMethod(MAASTestCase):
     def make_tftp_root(self):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(tftproot))
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tftproot))
         return tftproot
 
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
@@ -255,7 +256,8 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
         data = factory.make_string().encode("ascii")
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = os.path.dirname(temp_file)
-        backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
+        backend = TFTPBackend(
+            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
         method = PowerNVBootMethod()
         options = {
             'backend': backend,
@@ -274,7 +276,8 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
         temp_subdir = os.path.join(temp_dir, 'ppc64el')
         os.mkdir(temp_subdir)
         factory.make_file(temp_subdir, "example", data)
-        backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
+        backend = TFTPBackend(
+            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
         method = PowerNVBootMethod()
         options = {
             'backend': backend,

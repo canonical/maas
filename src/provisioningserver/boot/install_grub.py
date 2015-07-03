@@ -20,7 +20,7 @@ __all__ = [
 import os.path
 
 from provisioningserver.boot.install_bootloader import make_destination
-from provisioningserver.config import Config
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.utils.fs import write_text_file
 
 
@@ -44,7 +44,7 @@ def run(args):
     """Install a GRUB2 pre-boot loader config into the TFTP
     directory structure.
     """
-    config = Config.load(args.config_file)
-    grubroot = os.path.join(config["tftp"]["resource_root"], 'grub')
-    destination_path = make_destination(grubroot)
-    write_text_file(os.path.join(destination_path, 'grub.cfg'), CONFIG_FILE)
+    with ClusterConfiguration.open() as config:
+        destination_path = make_destination(config.grub_root)
+        destination_file = os.path.join(destination_path, 'grub.cfg')
+    write_text_file(destination_file, CONFIG_FILE)

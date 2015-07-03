@@ -88,24 +88,7 @@ class ActionScript:
 
 
 class MainScript(ActionScript):
-    """An `ActionScript` that always accepts a `--config-file` option.
-
-    The `--config-file` option defaults to the value of
-    `MAAS_PROVISIONING_SETTINGS` in the process's environment, or absent
-    that, `$MAAS_CONFIG_DIR/pserv.yaml` (normally /etc/maas/pserv.yaml for
-    packaged installations, or when running from branch, the equivalent
-    inside that branch).
-    """
-
-    def __init__(self, description):
-        # Avoid circular imports.
-        from provisioningserver.config import Config
-
-        super(MainScript, self).__init__(description)
-        self.parser.add_argument(
-            "-c", "--config-file", metavar="FILENAME",
-            help="Configuration file to load [%(default)s].",
-            default=Config.DEFAULT_FILENAME)
+    """An `ActionScript` denoting the main script in an application."""
 
 
 class AtomicWriteScript:
@@ -141,7 +124,7 @@ class AtomicWriteScript:
         if args.mode is not None:
             mode = int(args.mode, 8)
         else:
-            mode = 0600
+            mode = 0o600
         atomic_write(
             content, args.filename, overwrite=not args.no_overwrite,
             mode=mode)

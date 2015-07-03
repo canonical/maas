@@ -18,7 +18,6 @@ __all__ = [
     "commission_node",
     "filter_dict",
     "flatten",
-    "get_cluster_config",
     "import_settings",
     "locate_config",
     "parse_key_value_file",
@@ -116,7 +115,10 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     """
     # Avoid circular dependencies.
     from provisioningserver.rpc.region import CreateNode
-    from provisioningserver.cluster_config import get_cluster_uuid
+    from provisioningserver.config import ClusterConfiguration
+
+    with ClusterConfiguration.open() as config:
+        cluster_uuid = config.cluster_uuid
 
     if hostname is not None:
         hostname = coerce_to_valid_hostname(hostname)
@@ -138,7 +140,7 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     try:
         response = yield client(
             CreateNode,
-            cluster_uuid=get_cluster_uuid(),
+            cluster_uuid=cluster_uuid,
             architecture=arch,
             power_type=power_type,
             power_parameters=json.dumps(power_parameters),
@@ -216,24 +218,16 @@ def commission_node(system_id, user):
 def locate_config(*path):
     """Return the location of a given config file or directory.
 
-    Defaults to `/etc/maas` (followed by any further path elements you
-    specify), but can be overridden using the `MAAS_CONFIG_DIR` environment
-    variable.  (When running from a branch, this variable will point to the
-    `etc/maas` inside the branch.)
-
-    The result is absolute and normalized.
+    :param path: Path elements to resolve relative to `${MAAS_ROOT}/etc/maas`.
     """
-    # Check for MAAS_CONFIG_DIR.  Count empty string as "not set."
-    env_setting = os.getenv('MAAS_CONFIG_DIR', '')
-    if env_setting == '':
-        # Running from installed package.  Config is in /etc/maas.
-        config_dir = '/etc/maas'
+    # The `os.curdir` avoids a crash when `path` is empty.
+    path = os.path.join(os.curdir, *path)
+    if os.path.isabs(path):
+        return path
     else:
-        # Running from branch or other customized setup.  Config is at
-        # $MAAS_CONFIG_DIR/etc/maas.
-        config_dir = env_setting
-
-    return os.path.abspath(os.path.join(config_dir, *path))
+        # Avoid circular imports.
+        from provisioningserver.path import get_tentative_path
+        return get_tentative_path("etc", "maas", path)
 
 
 setting_expression = r"""
@@ -243,15 +237,6 @@ setting_expression = r"""
     (.*)             # Value
     (?:"|\')?        # Optional trailing single or double quote.
     """
-
-
-def get_cluster_config(config_path):
-    contents = open(config_path).read()
-
-    results = re.findall(
-        setting_expression, contents, re.MULTILINE | re.VERBOSE)
-
-    return dict(results)
 
 
 def find_settings(whence):

@@ -20,12 +20,13 @@ __all__ = [
 import os
 from textwrap import dedent
 
-from provisioningserver import config
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.diskless import DisklessDriverRegistry
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
 )
+from provisioningserver.import_images.boot_resources import two_dir_levels_up
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import (
     atomic_symlink,
@@ -47,8 +48,10 @@ def get_diskless_store():
     This is the location that all diskless links exist. It holds all of the
     currently in use disk for diskless booting.
     """
-    return os.path.join(
-        config.BOOT_RESOURCES_STORAGE, 'diskless', 'store')
+    with ClusterConfiguration.open() as config:
+        return os.path.join(
+            two_dir_levels_up(config.tftp_root),
+            'diskless', 'store')
 
 
 def compose_diskless_link_path(system_id):
@@ -99,8 +102,10 @@ def get_diskless_target(system_id):
 
 def get_diskless_tgt_path():
     """Return path to maas-diskless.tgt."""
-    return os.path.join(
-        config.BOOT_RESOURCES_STORAGE, 'diskless', 'maas-diskless.tgt')
+    with ClusterConfiguration.open() as config:
+        return os.path.join(
+            two_dir_levels_up(config.tftp_root),
+            'diskless', 'maas-diskless.tgt')
 
 
 def tgt_entry(system_id, image):
@@ -153,7 +158,7 @@ def update_diskless_tgt():
     symlinks in the diskless store. Reloads the tgt config."""
     tgt_path = get_diskless_tgt_path()
     tgt_config = compose_diskless_tgt_config()
-    atomic_write(tgt_config, tgt_path, mode=0644)
+    atomic_write(tgt_config, tgt_path, mode=0o644)
     reload_diskless_tgt()
 
 
@@ -183,9 +188,10 @@ def compose_source_path(osystem_name, arch, subarch, release, label):
         raise DisklessError(
             "OS doesn't support diskless booting: %s" % osystem_name)
     root_path, _ = osystem.get_xinstall_parameters()
-    return os.path.join(
-        config.BOOT_RESOURCES_STORAGE, 'current',
-        osystem_name, arch, subarch, release, label, root_path)
+    with ClusterConfiguration.open() as config:
+        return os.path.join(
+            config.tftp_root, osystem_name, arch, subarch, release, label,
+            root_path)
 
 
 def create_diskless_disk(driver, driver_options, system_id,

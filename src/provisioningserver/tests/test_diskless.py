@@ -24,10 +24,8 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from provisioningserver import (
-    config,
-    diskless,
-)
+from provisioningserver import diskless
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.diskless import (
     compose_diskless_link_path,
     compose_diskless_tgt_config,
@@ -54,6 +52,7 @@ from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
 )
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.os import FakeOS
 from provisioningserver.utils.testing import RegistryFixture
 from testtools.matchers import (
@@ -71,13 +70,17 @@ class DisklessTestMixin:
 
     def setUp(self):
         super(DisklessTestMixin, self).setUp()
+        self.useFixture(ClusterConfigurationFixture())
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
 
     def configure_resource_storage(self):
         resource_dir = self.make_dir()
         os.mkdir(os.path.join(resource_dir, 'diskless'))
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', resource_dir)
+        current_dir = os.path.join(resource_dir, 'current') + '/'
+        os.mkdir(current_dir)
+        with ClusterConfiguration.open() as config:
+            config.tftp_root = current_dir
         return resource_dir
 
     def configure_diskless_storage(self):
@@ -113,11 +116,14 @@ class DisklessTestMixin:
         self.patch(diskless, 'reload_diskless_tgt')
 
 
-class TestHelpers(MAASTestCase, DisklessTestMixin):
+class TestHelpers(DisklessTestMixin, MAASTestCase):
 
     def test_get_diskless_store(self):
-        storage_dir = factory.make_name('storage')
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
+        storage_dir = self.make_dir()
+        current_dir = os.path.join(storage_dir, 'current') + '/'
+        os.mkdir(current_dir)
+        with ClusterConfiguration.open() as config:
+            config.tftp_root = current_dir
         self.assertEqual(
             os.path.join(storage_dir, 'diskless', 'store'),
             get_diskless_store())
@@ -199,7 +205,7 @@ class TestHelpers(MAASTestCase, DisklessTestMixin):
         self.assertRaises(DisklessError, get_diskless_driver, invalid_name)
 
 
-class TestTgtHelpers(MAASTestCase, DisklessTestMixin):
+class TestTgtHelpers(DisklessTestMixin, MAASTestCase):
 
     def test_get_diskless_target(self):
         system_id = factory.make_name('system_id')
@@ -269,10 +275,10 @@ class TestTgtHelpers(MAASTestCase, DisklessTestMixin):
         update_diskless_tgt()
         self.assertThat(
             mock_write,
-            MockCalledOnceWith(tgt_config, tgt_path, mode=0644))
+            MockCalledOnceWith(tgt_config, tgt_path, mode=0o644))
 
 
-class TestComposeSourcePath(MAASTestCase, DisklessTestMixin):
+class TestComposeSourcePath(DisklessTestMixin, MAASTestCase):
 
     def test__raises_error_on_missing_os_from_registry(self):
         self.assertRaises(
@@ -297,14 +303,15 @@ class TestComposeSourcePath(MAASTestCase, DisklessTestMixin):
         osystem = OperatingSystemRegistry[os_name]
         mock_xi_params = self.patch(osystem, 'get_xinstall_parameters')
         mock_xi_params.return_value = (root_path, 'tgz')
+        with ClusterConfiguration.open() as config:
+            tftp_root = config.tftp_root
         self.assertEqual(
             os.path.join(
-                config.BOOT_RESOURCES_STORAGE, 'current', os_name,
-                arch, subarch, release, label, root_path),
+                tftp_root, os_name, arch, subarch, release, label, root_path),
             compose_source_path(os_name, arch, subarch, release, label))
 
 
-class TestCreateDisklessDisk(MAASTestCase, DisklessTestMixin):
+class TestCreateDisklessDisk(DisklessTestMixin, MAASTestCase):
 
     def test__raises_error_on_doesnt_exist_source_path(self):
         self.configure_compose_source_path(factory.make_name('invalid_path'))
@@ -408,7 +415,7 @@ class TestCreateDisklessDisk(MAASTestCase, DisklessTestMixin):
         self.assertThat(mock_update_tgt, MockCalledOnceWith())
 
 
-class TestDeleteDisklessDisk(MAASTestCase, DisklessTestMixin):
+class TestDeleteDisklessDisk(DisklessTestMixin, MAASTestCase):
 
     def test__exits_early_on_missing_link(self):
         self.configure_diskless_storage()

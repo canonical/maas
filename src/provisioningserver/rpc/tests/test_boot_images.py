@@ -29,7 +29,6 @@ from mock import (
 )
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
-from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
@@ -40,7 +39,10 @@ from provisioningserver.rpc.boot_images import (
     list_boot_images,
     reload_boot_images,
 )
-from provisioningserver.testing.config import BootSourcesFixture
+from provisioningserver.testing.config import (
+    BootSourcesFixture,
+    ClusterConfigurationFixture,
+)
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
 from testtools.matchers import Equals
@@ -64,14 +66,18 @@ def make_sources():
 
 class TestListBootImages(PservTestCase):
 
+    def setUp(self):
+        super(TestListBootImages, self).setUp()
+        self.tftp_root = self.make_dir()
+        self.useFixture(ClusterConfigurationFixture(tftp_root=self.tftp_root))
+
     def test__calls_list_boot_images_with_boot_resource_storage(self):
         self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
         list_boot_images()
         self.assertThat(
             mock_list_boot_images,
-            MockCalledOnceWith(
-                os.path.join(BOOT_RESOURCES_STORAGE, "current")))
+            MockCalledOnceWith(self.tftp_root))
 
     def test__calls_list_boot_images_when_cache_is_None(self):
         self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)

@@ -26,10 +26,7 @@ from urlparse import urlparse
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from provisioningserver import concurrency
-from provisioningserver.cluster_config import (
-    get_cluster_uuid,
-    get_maas_url,
-)
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
@@ -135,7 +132,8 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
-        return {b"ident": get_cluster_uuid().decode("ascii")}
+        with ClusterConfiguration.open() as config:
+            return {b"ident": config.cluster_uuid}
 
     @cluster.Authenticate.responder
     def authenticate(self, message):
@@ -508,9 +506,11 @@ class ClusterClient(Cluster):
         returnValue(digest == digest_local)
 
     def registerWithRegion(self):
-        uuid = get_cluster_uuid()
+        with ClusterConfiguration.open() as config:
+            uuid = config.cluster_uuid
+            url = config.maas_url
+
         networks = discover_networks()
-        url = get_maas_url()
 
         def cb_register(_):
             log.msg(
@@ -760,9 +760,10 @@ class ClusterClientService(TimerService, object):
     @staticmethod
     def _get_rpc_info_url():
         """Return the URL to the RPC infomation page on the region."""
-        url = urlparse(get_maas_url())
-        url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
-        url = url.geturl()
+        with ClusterConfiguration.open() as config:
+            url = urlparse(config.maas_url)
+            url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
+            url = url.geturl()
         return ascii_url(url)
 
     @classmethod

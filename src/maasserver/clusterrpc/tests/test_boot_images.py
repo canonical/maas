@@ -45,11 +45,12 @@ from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
 )
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from twisted.internet.defer import succeed
 
 
-def make_image_dir(image_params, tftproot):
-    """Fake a boot image matching `image_params` under `tftproot`."""
+def make_image_dir(image_params, tftp_root):
+    """Fake a boot image matching `image_params` under `tftp_root`."""
     image_dir = locate_tftp_path(
         compose_image_path(
             osystem=image_params['osystem'],
@@ -57,7 +58,7 @@ def make_image_dir(image_params, tftproot):
             subarch=image_params['subarchitecture'],
             release=image_params['release'],
             label=image_params['label']),
-        tftproot)
+        tftp_root)
     os.makedirs(image_dir)
     factory.make_file(image_dir, 'linux')
     factory.make_file(image_dir, 'initrd.gz')
@@ -136,16 +137,21 @@ class TestIsImportBootImagesRunningFor(MAASServerTestCase):
         self.assertFalse(is_import_boot_images_running_for(nodegroup))
 
 
+def prepare_tftp_root(test):
+    """Create a `current` directory and configure its use."""
+    test.tftp_root = os.path.join(test.make_dir(), 'current')
+    os.mkdir(test.tftp_root)
+    test.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
+    config = ClusterConfigurationFixture(tftp_root=test.tftp_root)
+    test.useFixture(config)
+
+
 class TestGetBootImages(MAASServerTestCase):
     """Tests for `get_boot_images`."""
 
     def setUp(self):
         super(TestGetBootImages, self).setUp()
-        resource_dir = self.make_dir()
-        self.tftproot = os.path.join(resource_dir, 'current')
-        os.mkdir(self.tftproot)
-        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
-        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
+        prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -154,7 +160,7 @@ class TestGetBootImages(MAASServerTestCase):
         purposes = ['install', 'commissioning', 'xinstall']
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
-            make_image_dir(param, self.tftproot)
+            make_image_dir(param, self.tftp_root)
             test_tftppath.make_osystem(self, param['osystem'], purposes)
         self.assertItemsEqual(
             [
@@ -170,11 +176,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetAvailableBootImages, self).setUp()
-        resource_dir = self.make_dir()
-        self.tftproot = os.path.join(resource_dir, 'current')
-        os.mkdir(self.tftproot)
-        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
-        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
+        prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images_for_one_cluster(self):
         factory.make_NodeGroup().accept()
@@ -183,7 +185,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         purposes = ['install', 'commissioning', 'xinstall']
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
-            make_image_dir(param, self.tftproot)
+            make_image_dir(param, self.tftp_root)
             test_tftppath.make_osystem(self, param['osystem'], purposes)
         self.assertItemsEqual(
             [
@@ -260,17 +262,13 @@ class TestGetBootImagesFor(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetBootImagesFor, self).setUp()
-        resource_dir = self.make_dir()
-        self.tftproot = os.path.join(resource_dir, 'current')
-        os.mkdir(self.tftproot)
-        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
-        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
+        prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def make_boot_images(self):
         purposes = ['install', 'commissioning', 'xinstall']
         params = [make_boot_image_storage_params() for _ in range(3)]
         for param in params:
-            make_image_dir(param, self.tftproot)
+            make_image_dir(param, self.tftp_root)
             test_tftppath.make_osystem(self, param['osystem'], purposes)
         return params
 

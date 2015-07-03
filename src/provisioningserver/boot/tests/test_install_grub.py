@@ -20,7 +20,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver.boot.install_grub
 from provisioningserver.boot.tftppath import locate_tftp_path
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.script import MainScript
 from testtools.matchers import FileExists
 
@@ -29,13 +29,12 @@ class TestInstallGrub(MAASTestCase):
 
     def test_integration(self):
         tftproot = self.make_dir()
-        config_fixture = self.useFixture(set_tftp_root(tftproot))
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tftproot))
 
         action = factory.make_name("action")
         script = MainScript(action)
         script.register(action, provisioningserver.boot.install_grub)
-        script.execute(
-            ("--config-file", config_fixture.filename, action))
+        script.execute((action,))
 
         config_filename = os.path.join('grub', 'grub.cfg')
         self.assertThat(

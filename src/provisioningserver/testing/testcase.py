@@ -16,21 +16,12 @@ __all__ = [
     'PservTestCase',
     ]
 
-from fixtures import EnvironmentVariableFixture
 from maastesting import testcase
-from maastesting.factory import factory
 from twisted.internet import reactor
 from twisted.python import threadable
 
 
 class PservTestCase(testcase.MAASTestCase):
-
-    def make_maas_url(self):
-        return 'http://127.0.0.1/%s' % factory.make_name('path')
-
-    def set_maas_url(self):
-        self.useFixture(
-            EnvironmentVariableFixture("MAAS_URL", self.make_maas_url()))
 
     def register_as_io_thread(self):
         """Make the current thread the IO thread.

@@ -118,9 +118,9 @@ class TestBootMethod(MAASTestCase):
 
     def make_fake_templates_dir(self, method):
         """Set up a fake templates dir, and return its path."""
-        fake_etc_maas = self.make_dir()
-        self.useFixture(EnvironmentVariableFixture(
-            'MAAS_CONFIG_DIR', fake_etc_maas))
+        fake_root = self.make_dir()
+        fake_etc_maas = os.path.join(fake_root, "etc", "maas")
+        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', fake_root))
         fake_templates = os.path.join(
             fake_etc_maas, 'templates/%s' % method.template_subdir)
         os.makedirs(fake_templates)

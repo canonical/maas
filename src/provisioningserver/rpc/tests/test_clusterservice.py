@@ -29,7 +29,6 @@ from unittest import skip
 from urlparse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
-from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsUnfiredDeferred,
@@ -57,10 +56,6 @@ from mock import (
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
-from provisioningserver.cluster_config import (
-    get_cluster_uuid,
-    get_maas_url,
-)
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
@@ -108,6 +103,7 @@ from provisioningserver.rpc.testing.doubles import (
     StubOS,
 )
 from provisioningserver.security import set_shared_secret_on_filesystem
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -154,9 +150,8 @@ class TestClusterProtocol_Identify(MAASTestCase):
 
     def test_identify_reports_cluster_uuid(self):
         example_uuid = factory.make_UUID()
-
-        get_cluster_uuid = self.patch(clusterservice, "get_cluster_uuid")
-        get_cluster_uuid.return_value = example_uuid
+        self.useFixture(ClusterConfigurationFixture(
+            cluster_uuid=example_uuid))
 
         d = call_responder(Cluster(), cluster.Identify, {})
 
@@ -232,6 +227,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
     @inlineCallbacks
     def test_list_boot_images_can_be_called(self):
+        self.useFixture(ClusterConfigurationFixture())
         self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
@@ -254,14 +250,16 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         labels = "beta-1", "release"
         purposes = "commissioning", "install", "xinstall"
 
-        # Create a TFTP file tree with a variety of subdirectories.
+        # Populate a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
         current_dir = os.path.join(tftpdir, 'current')
         os.makedirs(current_dir)
         for options in product(osystems, archs, subarchs, releases, labels):
             os.makedirs(os.path.join(current_dir, *options))
             make_osystem(self, options[0], purposes)
-        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', tftpdir)
+
+        self.useFixture(ClusterConfigurationFixture(
+            tftp_root=os.path.join(tftpdir, "current")))
         self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
 
         expected_images = [
@@ -470,7 +468,7 @@ class TestClusterClientService(MAASTestCase):
     def test__get_rpc_info_url(self):
         maas_url = "http://%s/%s/" % (
             factory.make_hostname(), factory.make_name("path"))
-        self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         expected_rpc_info_url = maas_url + "rpc/"
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
@@ -550,7 +548,7 @@ class TestClusterClientService(MAASTestCase):
     def test_update_calls__update_connections(self):
         maas_url = "http://%s/%s/" % (
             factory.make_hostname(), factory.make_name("path"))
-        self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         getPage = self.patch(clusterservice, "getPage")
         getPage.return_value = succeed(self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
@@ -817,10 +815,9 @@ class TestClusterClient(MAASTestCase):
 
     def setUp(self):
         super(TestClusterClient, self).setUp()
-        self.useFixture(EnvironmentVariable(
-            "MAAS_URL", factory.make_simple_http_url()))
-        self.useFixture(EnvironmentVariable(
-            "CLUSTER_UUID", factory.make_UUID().encode("ascii")))
+        self.useFixture(ClusterConfigurationFixture(
+            maas_url=factory.make_simple_http_url(),
+            cluster_uuid=factory.make_UUID()))
 
     def make_running_client(self):
         client = clusterservice.ClusterClient(
@@ -1220,15 +1217,18 @@ class TestClusterClient(MAASTestCase):
 
     @inlineCallbacks
     def test_registerWithRegion_end_to_end(self):
+        maas_url = factory.make_simple_http_url()
+        cluster_uuid = factory.make_UUID()
+        self.useFixture(ClusterConfigurationFixture(
+            maas_url=maas_url, cluster_uuid=cluster_uuid))
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop()
         self.addCleanup((yield connecting))
         yield getRegionClient()
         self.assertThat(
             protocol.Register, MockCalledOnceWith(
-                protocol, uuid=get_cluster_uuid(),
-                networks=discover_networks(),
-                url=urlparse(get_maas_url())))
+                protocol, uuid=cluster_uuid, networks=discover_networks(),
+                url=urlparse(maas_url)))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
@@ -1859,11 +1859,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
     @inlineCallbacks
     def test_happy_path(self):
-        get_maas_url = self.patch_autospec(tags, "get_maas_url")
-        get_maas_url.return_value = sentinel.maas_url
-        get_cluster_uuid = self.patch_autospec(tags, "get_cluster_uuid")
-        get_cluster_uuid.return_value = sentinel.cluster_uuid
-
+        self.useFixture(ClusterConfigurationFixture())
         # Prevent real work being done, which would involve HTTP calls.
         self.patch_autospec(tags, "process_node_tags")
 

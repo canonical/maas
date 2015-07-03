@@ -22,6 +22,17 @@ import os
 from provisioningserver.utils.fs import ensure_dir
 
 
+def get_root():
+    """Return ``MAAS_ROOT`` if set, else "/"."""
+    root = os.getenv('MAAS_ROOT')
+    if root is None:
+        return "/"
+    elif len(root) == 0:
+        return "/"
+    else:
+        return root
+
+
 def get_tentative_path(*path_elements):
     """Return an absolute path based on the `MAAS_ROOT` environment variable.
 
@@ -44,12 +55,12 @@ def get_tentative_path(*path_elements):
     holds your path, export a getter function that returns your path. Add
     caching if it becomes a performance problem.
     """
-    maas_root = os.getenv('MAAS_ROOT', '/')
-    # Strip off a leading slash, if any.  If left in, it would override any
-    # preceding path elements.  The MAAS_ROOT would be ignored.
-    # The dot is there to make the call work even with zero path elements.
+    # Strip off a leading slash from the given path, if any. If it were left
+    # in, it would override preceding path elements and MAAS_ROOT would be
+    # ignored later on. The dot is there to make the call work even with zero
+    # path elements.
     path = os.path.join('.', *path_elements).lstrip('/')
-    path = os.path.join(maas_root, path)
+    path = os.path.join(get_root(), path)
     return os.path.abspath(path)
 
 

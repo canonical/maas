@@ -14,10 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
-
-from fixtures import EnvironmentVariableFixture
-from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
@@ -25,6 +21,7 @@ from maastesting.testcase import (
 )
 import provisioningserver
 from provisioningserver import plugin as plugin_module
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.plugin import (
     Options,
     ProvisioningServiceMaker,
@@ -46,6 +43,7 @@ from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
 )
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -54,7 +52,8 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from twisted.application.service import MultiService
-import yaml
+from twisted.python.filepath import FilePath
+from twisted.web.server import Site
 
 
 class TestOptions(MAASTestCase):
@@ -62,7 +61,7 @@ class TestOptions(MAASTestCase):
 
     def test_defaults(self):
         options = Options()
-        expected = {"config-file": "pserv.yaml", "introspect": None}
+        expected = {"introspect": None}
         self.assertEqual(expected, options.defaults)
 
     def test_parse_minimal_options(self):
@@ -79,17 +78,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
+        self.useFixture(ClusterConfigurationFixture())
         self.patch(provisioningserver, "services", MultiService())
         self.tempdir = self.make_dir()
-        self.useFixture(
-            EnvironmentVariableFixture(
-                "CLUSTER_UUID", factory.make_UUID()))
-
-    def write_config(self, config):
-        config_filename = os.path.join(self.tempdir, "config.yaml")
-        with open(config_filename, "wb") as stream:
-            yaml.safe_dump(config, stream)
-        return config_filename
 
     def test_init(self):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
@@ -101,7 +92,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         Only the site service is created when no options are given.
         """
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
@@ -120,7 +110,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         mock_simplestreams_patch = (
             self.patch(plugin_module, 'force_simplestreams_to_use_urllib2'))
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options)
         self.assertThat(mock_simplestreams_patch, MockCalledOnceWith())
@@ -129,14 +118,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
         mock_tftp_patch = (
             self.patch(plugin_module, 'add_term_error_code_to_tftp'))
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options)
         self.assertThat(mock_tftp_patch, MockCalledOnceWith())
 
     def test_image_download_service(self):
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         image_service = service.getServiceNamed("image_download")
@@ -144,7 +131,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_node_monitor_service(self):
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         node_monitor = service.getServiceNamed("node_monitor")
@@ -152,7 +138,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_dhcp_probe_service(self):
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
         service = service_maker.makeService(options)
         dhcp_probe = service.getServiceNamed("dhcp_probe")
@@ -160,7 +145,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_service_monitor_service(self):
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         service_monitor = service.getServiceNamed("service_monitor")
@@ -168,53 +152,44 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
-        config = {
-            "tftp": {
-                "generator": "http://candlemass/solitude",
-                "resource_root": self.tempdir,
-                "port": factory.pick_port(),
-                },
-            }
         options = Options()
-        options["config-file"] = self.write_config(config)
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         tftp_service = service.getServiceNamed("tftp")
         self.assertIsInstance(tftp_service, TFTPService)
 
+        with ClusterConfiguration.open() as config:
+            tftp_generator_url = config.tftp_generator_url
+            tftp_root = config.tftp_root
+            tftp_port = config.tftp_port
+
         expected_backend = MatchesAll(
             IsInstance(TFTPBackend),
             AfterPreprocessing(
                 lambda backend: backend.base.path,
-                Equals(config["tftp"]["resource_root"])),
+                Equals(tftp_root)),
             AfterPreprocessing(
                 lambda backend: backend.generator_url.geturl(),
-                Equals(config["tftp"]["generator"])))
+                Equals(tftp_generator_url)))
 
         self.assertThat(
             tftp_service, MatchesStructure(
                 backend=expected_backend,
-                port=Equals(config["tftp"]["port"]),
+                port=Equals(tftp_port),
             ))
 
     def test_image_service(self):
-        from provisioningserver import config
-        from twisted.web.server import Site
-        from twisted.python.filepath import FilePath
-
         options = Options()
-        options["config-file"] = self.write_config({})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         image_service = service.getServiceNamed("image_service")
         self.assertIsInstance(image_service, BootImageEndpointService)
         self.assertIsInstance(image_service.site, Site)
         resource = image_service.site.resource
-        root = resource.getChildWithDefault(
-            "images", request=None)
+        root = resource.getChildWithDefault("images", request=None)
         self.assertThat(root, IsInstance(FilePath))
 
-        resource_root = os.path.join(
-            config.BOOT_RESOURCES_STORAGE, "current")
+        with ClusterConfiguration.open() as config:
+            resource_root = FilePath(config.tftp_root)
 
-        self.assertEqual(resource_root, root.path)
+        self.assertEqual(resource_root, root)

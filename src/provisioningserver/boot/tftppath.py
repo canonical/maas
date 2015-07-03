@@ -23,7 +23,6 @@ import errno
 from itertools import chain
 import os.path
 
-from provisioningserver import config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
@@ -199,17 +198,14 @@ def maas_meta_file_path(tftproot):
     return os.path.join(tftproot, 'maas.meta')
 
 
-def maas_meta_last_modified(tftproot=None):
+def maas_meta_last_modified(tftproot):
     """Return time of last modification of maas.meta.
 
     The time is the same as returned from getmtime() (seconds since epoch),
     or None if the file doesn't exist.
 
-    :param tftproot: Optional tftp root dir, defaults to
-        provisioningserver.config.BOOT_RESOURCES_STORAGE
+    :param tftproot: The TFTP root path.
     """
-    if tftproot is None:
-        tftproot = os.path.join(config.BOOT_RESOURCES_STORAGE, 'current')
     meta_file = maas_meta_file_path(tftproot)
     try:
         return os.path.getmtime(meta_file)

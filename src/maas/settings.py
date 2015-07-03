@@ -68,11 +68,6 @@ PISTON_DISPLAY_ERRORS = False
 # same model, so we silence the warnings that Piston gives.
 PISTON_IGNORE_DUPE_MODELS = True
 
-# Location of the local cluster config file (installed by
-# the package maas-cluster-controller).  Use to distinguish the local cluster
-# from the others.
-LOCAL_CLUSTER_CONFIG = "/etc/maas/maas_cluster.conf"
-
 TEMPLATE_DEBUG = DEBUG
 
 YUI_DEBUG = DEBUG

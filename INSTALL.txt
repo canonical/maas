@@ -330,7 +330,7 @@ Traffic between the region contoller and cluster controllers
 
   * Initiate TCP connections (for HTTP) to each region controller on
     port 80 or port 5240, the choice of which depends on the setting of
-    ``MAAS_URL``.
+    the MAAS URL.
 
   * Initiate TCP connections (for RPC) to each region controller between
     port 5250 and 5259 inclusive. This permits up to 10 ``maas-regiond``

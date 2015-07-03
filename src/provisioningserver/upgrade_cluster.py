@@ -38,12 +38,12 @@ import shutil
 from subprocess import check_call
 from textwrap import dedent
 
-from provisioningserver import config
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot.tftppath import (
     drill_down,
     list_subdirs,
 )
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.import_images.boot_resources import (
     update_targets_conf,
     write_targets_conf,
@@ -57,8 +57,10 @@ maaslog = get_maas_logger("cluster_upgrade")
 def make_maas_own_boot_resources():
     """Upgrade hook: make the `maas` user the owner of the boot resources."""
     # This reduces the privileges required for importing and managing images.
-    if os.path.isdir(config.BOOT_RESOURCES_STORAGE):
-        check_call(['chown', '-R', 'maas', config.BOOT_RESOURCES_STORAGE])
+    with ClusterConfiguration.open() as config:
+        boot_resources_storage = config.tftp_root
+    if os.path.isdir(boot_resources_storage):
+        check_call(['chown', '-R', 'maas', boot_resources_storage])
 
 
 def create_gnupg_home():
@@ -145,10 +147,10 @@ def retire_bootresources_yaml():
 def filter_out_directories_with_extra_levels(paths):
     """Remove paths that contain directories with more levels. We don't want
     to move other operating systems under the ubuntu directory."""
+    with ClusterConfiguration.open() as config:
+        tftp_root = config.tftp_root
     for arch, subarch, release, label in paths:
-        path = os.path.join(
-            config.BOOT_RESOURCES_STORAGE, 'current',
-            arch, subarch, release, label)
+        path = os.path.join(tftp_root, arch, subarch, release, label)
         if len(list_subdirs(path)) == 0:
             yield (arch, subarch, release, label)
 
@@ -165,7 +167,8 @@ def migrate_architectures_into_ubuntu_directory():
     folders have structure arch/subarch/release/label and move them into
     ubuntu folder. Making the final path ubuntu/arch/subarch/release/label.
     """
-    current_dir = os.path.join(config.BOOT_RESOURCES_STORAGE, "current")
+    with ClusterConfiguration.open() as config:
+        current_dir = config.tftp_root
     if not os.path.isdir(current_dir):
         return
     # If ubuntu folder already exists, then no reason to continue

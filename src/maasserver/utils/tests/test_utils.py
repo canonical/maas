@@ -22,7 +22,6 @@ from urlparse import (
     urlparse,
 )
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
@@ -49,6 +48,7 @@ from maasserver.utils import (
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from netaddr import IPAddress
+from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestAbsoluteReverse(MAASServerTestCase):
@@ -231,20 +231,13 @@ class TestStripDomain(MAASTestCase):
 
 class TestGetLocalClusterUUID(MAASTestCase):
 
-    def test_get_local_cluster_UUID_returns_None_if_no_config_file(self):
-        bogus_file_name = '/tmp/bogus/%s' % factory.make_name('name')
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', bogus_file_name)
-        self.assertIsNone(get_local_cluster_UUID())
-
-    def test_get_local_cluster_UUID_returns_None_if_parsing_fails(self):
-        file_name = self.make_file(contents="wrong content")
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+    def test_get_local_cluster_UUID_returns_None_if_not_set(self):
+        self.useFixture(ClusterConfigurationFixture())
         self.assertIsNone(get_local_cluster_UUID())
 
     def test_get_local_cluster_UUID_returns_cluster_UUID(self):
         uuid = factory.make_UUID()
-        file_name = self.make_file(contents='CLUSTER_UUID="%s"' % uuid)
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+        self.useFixture(ClusterConfigurationFixture(cluster_uuid=uuid))
         self.assertEqual(uuid, get_local_cluster_UUID())
 
 

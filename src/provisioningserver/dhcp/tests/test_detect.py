@@ -23,10 +23,7 @@ import urllib2
 
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
-from fixtures import (
-    EnvironmentVariable,
-    FakeLogger,
-)
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -48,6 +45,7 @@ from provisioningserver.dhcp.detect import (
     update_region_controller,
 )
 import provisioningserver.dhcp.detect as detect_module
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 
 
@@ -343,7 +341,7 @@ class TestPeriodicTask(PservTestCase):
             factory.make_string(),
             )
         api_credentials = make_api_credentials()
-        self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         self.knowledge = dict(
             nodegroup_uuid=uuid,
             api_credentials=api_credentials,

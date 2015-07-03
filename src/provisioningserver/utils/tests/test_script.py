@@ -38,7 +38,6 @@ import provisioningserver.utils
 from provisioningserver.utils.script import (
     ActionScript,
     AtomicWriteScript,
-    MainScript,
 )
 from testtools.matchers import (
     FileContains,
@@ -156,30 +155,6 @@ class TestActionScript(MAASTestCase):
         script.register("smash", handler)
         error = self.assertRaises(SystemExit, script, ["smash"])
         self.assertEqual(1, error.code)
-
-
-class TestMainScript(TestActionScript):
-
-    factory = MainScript
-
-    def test_default_arguments(self):
-        # MainScript accepts a --config-file parameter. The value of this is
-        # passed through into the args namespace object as config_file.
-        handler_calls = []
-        handler = types.ModuleType(b"handler")
-        handler.add_arguments = lambda parser: None
-        handler.run = handler_calls.append
-        script = self.factory("Description")
-        script.register("dislocate", handler)
-        dummy_config_file = factory.make_name("config-file")
-        # --config-file is specified before the action.
-        args = ["--config-file", dummy_config_file, "dislocate"]
-        error = self.assertRaises(SystemExit, script, args)
-        self.assertEqual(0, error.code)
-        namespace = handler_calls[0]
-        self.assertEqual(
-            {"config_file": dummy_config_file, "handler": handler},
-            vars(namespace))
 
 
 class TestAtomicWriteScript(MAASTestCase):

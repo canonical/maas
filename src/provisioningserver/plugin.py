@@ -17,10 +17,10 @@ __all__ = [
 ]
 
 from errno import ENOPROTOOPT
-import os
 import socket
 from socket import error as socket_error
 
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.monkey import (
     add_term_error_code_to_tftp,
     force_simplestreams_to_use_urllib2,
@@ -48,7 +48,6 @@ class Options(usage.Options):
     """Command line options for the provisioning server."""
 
     optParameters = [
-        ["config-file", "c", "pserv.yaml", "Configuration file to load."],
         ["introspect", None, None,
          ("Allow introspection, allowing unhindered access to the internals "
           "of MAAS. This should probably only be used for debugging. Supply "
@@ -79,12 +78,10 @@ class ProvisioningServiceMaker:
         site_service.setName("site")
         return site_service
 
-    def _makeImageService(self):
+    def _makeImageService(self, resource_root):
         from provisioningserver.pserv_services.image import (
             BootImageEndpointService)
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
-        from provisioningserver import config
-
         port = 5248  # config["port"]
         # Make a socket with SO_REUSEPORT set so that we can run multiple we
         # applications. This is easier to do from outside of Twisted as there's
@@ -112,59 +109,54 @@ class ProvisioningServiceMaker:
         site_endpoint.socket = s  # Prevent garbage collection.
 
         image_service = BootImageEndpointService(
-            resource_root=os.path.join(
-                config.BOOT_RESOURCES_STORAGE, "current"),
-            endpoint=site_endpoint)
+            resource_root=resource_root, endpoint=site_endpoint)
         image_service.setName("image_service")
         return image_service
 
-    def _makeTFTPService(self, tftp_config):
+    def _makeTFTPService(
+            self, cluster_uuid, tftp_root, tftp_port, tftp_generator):
         """Create the dynamic TFTP service."""
         from provisioningserver.pserv_services.tftp import TFTPService
         tftp_service = TFTPService(
-            resource_root=tftp_config['resource_root'],
-            port=tftp_config['port'], generator=tftp_config['generator'])
+            resource_root=tftp_root, port=tftp_port, generator=tftp_generator,
+            uuid=cluster_uuid)
         tftp_service.setName("tftp")
         return tftp_service
 
-    def _makeImageDownloadService(self, rpc_service):
-        from provisioningserver.cluster_config import get_cluster_uuid
+    def _makeImageDownloadService(self, rpc_service, cluster_uuid, tftp_root):
         from provisioningserver.pserv_services.image_download_service \
             import ImageDownloadService
         image_download_service = ImageDownloadService(
-            rpc_service, reactor, get_cluster_uuid())
+            rpc_service, cluster_uuid, tftp_root, reactor)
         image_download_service.setName("image_download")
         return image_download_service
 
-    def _makeLeaseUploadService(self, rpc_service):
-        from provisioningserver.cluster_config import get_cluster_uuid
+    def _makeLeaseUploadService(self, rpc_service, cluster_uuid):
         from provisioningserver.pserv_services.lease_upload_service \
             import LeaseUploadService
         lease_upload_service = LeaseUploadService(
-            rpc_service, reactor, get_cluster_uuid())
+            rpc_service, reactor, cluster_uuid)
         lease_upload_service.setName("lease_upload")
         return lease_upload_service
 
-    def _makeNodePowerMonitorService(self):
-        from provisioningserver.cluster_config import get_cluster_uuid
+    def _makeNodePowerMonitorService(self, cluster_uuid):
         from provisioningserver.pserv_services.node_power_monitor_service \
             import NodePowerMonitorService
-        node_monitor = NodePowerMonitorService(get_cluster_uuid(), reactor)
+        node_monitor = NodePowerMonitorService(cluster_uuid, reactor)
         node_monitor.setName("node_monitor")
         return node_monitor
 
-    def _makeRPCService(self, rpc_config):
+    def _makeRPCService(self):
         from provisioningserver.rpc.clusterservice import ClusterClientService
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
         return rpc_service
 
-    def _makeDHCPProbeService(self, rpc_service):
-        from provisioningserver.cluster_config import get_cluster_uuid
+    def _makeDHCPProbeService(self, rpc_service, cluster_uuid):
         from provisioningserver.pserv_services.dhcp_probe_service \
             import DHCPProbeService
         dhcp_probe_service = DHCPProbeService(
-            rpc_service, reactor, get_cluster_uuid())
+            rpc_service, reactor, cluster_uuid)
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
@@ -183,6 +175,23 @@ class ProvisioningServiceMaker:
         introspect_service.setName("introspect")
         return introspect_service
 
+    def _makeServices(self, config):
+        # Several services need to make use of the RPC service.
+        rpc_service = self._makeRPCService()
+        yield rpc_service
+        # Other services that make up the MAAS Region Controller.
+        yield self._makeDHCPProbeService(rpc_service, config.cluster_uuid)
+        yield self._makeLeaseUploadService(rpc_service, config.cluster_uuid)
+        yield self._makeNodePowerMonitorService(config.cluster_uuid)
+        yield self._makeServiceMonitorService()
+        yield self._makeImageDownloadService(
+            rpc_service, config.cluster_uuid, config.tftp_root)
+        # The following are network-accessible services.
+        yield self._makeImageService(config.tftp_root)
+        yield self._makeTFTPService(
+            config.cluster_uuid, config.tftp_root, config.tftp_port,
+            config.tftp_generator_url)
+
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
@@ -190,33 +199,9 @@ class ProvisioningServiceMaker:
         add_term_error_code_to_tftp()
 
         from provisioningserver import services
-        from provisioningserver.config import Config
-
-        config = Config.load(options["config-file"])
-
-        image_service = self._makeImageService()
-        image_service.setServiceParent(services)
-
-        tftp_service = self._makeTFTPService(config["tftp"])
-        tftp_service.setServiceParent(services)
-
-        rpc_service = self._makeRPCService(config["rpc"])
-        rpc_service.setServiceParent(services)
-
-        node_monitor = self._makeNodePowerMonitorService()
-        node_monitor.setServiceParent(services)
-
-        image_download_service = self._makeImageDownloadService(rpc_service)
-        image_download_service.setServiceParent(services)
-
-        dhcp_probe_service = self._makeDHCPProbeService(rpc_service)
-        dhcp_probe_service.setServiceParent(services)
-
-        lease_upload_service = self._makeLeaseUploadService(rpc_service)
-        lease_upload_service.setServiceParent(services)
-
-        service_monitor_service = self._makeServiceMonitorService()
-        service_monitor_service.setServiceParent(services)
+        with ClusterConfiguration.open() as config:
+            for service in self._makeServices(config):
+                service.setServiceParent(services)
 
         if options["introspect"] is not None:
             introspect = self._makeIntrospectionService(options["introspect"])

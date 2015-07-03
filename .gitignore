@@ -4,6 +4,8 @@
 /.db.lock
 /.hypothesis
 /.idea
+/.idea/scopes
+/.idea/workspace.xml
 /.installed.cfg
 /.noseids
 /acceptance/*.build
@@ -23,6 +25,8 @@
 /docs/_build
 /docs/api.rst
 /eggs
+/etc/maas/clusterd.conf
+/etc/maas/regiond.conf
 /include
 /lib
 /local
@@ -32,6 +36,8 @@
 /media/development
 /parts
 /run/*
+/run/etc/*
+/run/etc/maas/*
 /services/*/introspect
 /services/*/supervise
 /src/maasserver/static/js/enums.js

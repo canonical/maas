@@ -297,7 +297,7 @@ $(scss_output): $(scss_inputs)
 clean-styles:
 	$(RM) $(scss_output)
 
-clean: stop
+clean: stop clean-run
 	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -316,7 +316,21 @@ clean: stop
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
-	$(RM) -r run/* run-e2e/* services/*/supervise
+	$(RM) -r services/*/supervise
+
+# Be selective about what to remove from run and run-e2e.
+define clean-run-template
+find $(1) -depth ! -type d \
+    ! -path $(1)/etc/maas/templates \
+    ! -path $(1)/etc/maas/drivers.yaml \
+    -print0 | xargs -r0 $(RM)
+find $(1) -depth -type d \
+    -print0 | xargs -r0 rmdir --ignore-fail-on-non-empty
+endef
+
+clean-run:
+	$(call clean-run-template,run)
+	$(call clean-run-template,run-e2e)
 
 clean+db: clean
 	$(RM) -r db
@@ -348,6 +362,7 @@ define phony_targets
   check
   clean
   clean+db
+  clean-run
   clean-styles
   configure-buildout
   copyright

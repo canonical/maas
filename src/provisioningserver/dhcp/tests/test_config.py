@@ -74,9 +74,9 @@ class TestGetConfig(PservTestCase):
         """
         if name is None:
             name = 'dhcpd.conf.template'
-        fake_etc_maas = self.make_dir()
-        self.useFixture(EnvironmentVariableFixture(
-            'MAAS_CONFIG_DIR', fake_etc_maas))
+        fake_root = self.make_dir()
+        fake_etc_maas = path.join(fake_root, "etc", "maas")
+        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', fake_root))
         template_dir = path.join(fake_etc_maas, 'templates', 'dhcp')
         makedirs(template_dir)
         template = factory.make_file(

@@ -30,7 +30,6 @@ import hashlib
 from itertools import count
 import os
 from os import (
-    environ,
     rename,
     stat,
     chown,
@@ -58,7 +57,13 @@ def get_maas_provision_command():
     development mode it will return the path for the current development
     environment.
     """
-    return environ.get("MAAS_PROVISION_CMD", "maas-provision")
+    # Avoid circular imports.
+    from provisioningserver.config import is_dev_environment
+    if is_dev_environment():
+        from maastesting import root
+        return os.path.join(root, "bin", "maas-provision")
+    else:
+        return "maas-provision"
 
 
 def _write_temp_file(content, filename):

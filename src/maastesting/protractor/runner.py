@@ -26,15 +26,13 @@ from django.conf import settings
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS
 from django.test.runner import setup_databases
-from fixtures import (
-    EnvironmentVariableFixture,
-    Fixture,
-)
+from fixtures import Fixture
 from maastesting.fixtures import (
     ChromiumWebDriverFixture,
     DisplayFixture,
 )
 from postgresfixture import ClusterFixture
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools.monkey import patch
 from twisted.scripts import twistd
 
@@ -161,17 +159,12 @@ class MAASRegionServiceFixture(Fixture):
 class MAASClusterServiceFixture(Fixture):
     """Starts and stops the MAAS cluster service."""
 
-    MAAS_URL = "http://0.0.0.0:5253/MAAS/"
-    CLUSTER_UUID = "adfd3977-f251-4f2c-8d61-745dbd690bf2"
-    CONFIG_FILE = "src/maastesting/protractor.yaml"
-
     def setUp(self):
         """Start the clusterd service."""
         super(MAASClusterServiceFixture, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_URL", self.MAAS_URL))
-        self.useFixture(EnvironmentVariableFixture(
-            "CLUSTER_UUID", self.CLUSTER_UUID))
+        self.useFixture(ClusterConfigurationFixture(
+            cluster_uuid="adfd3977-f251-4f2c-8d61-745dbd690bf2",
+            maas_url="http://0.0.0.0:5253/MAAS/"))
 
         # Fork the process to have clusterd run in its own process.
         twistd_pid = os.fork()
@@ -180,13 +173,7 @@ class MAASClusterServiceFixture(Fixture):
             redirect_to_devnull()
 
             # Add command line options to start twistd.
-            sys.argv[1:] = [
-                "--nodaemon",
-                "--pidfile", "",
-                "maas-clusterd",
-                "--config-file",
-                self.CONFIG_FILE,
-                ]
+            sys.argv[1:] = ["--nodaemon", "--pidfile", "", "maas-clusterd"]
 
             # Start twistd.
             try:

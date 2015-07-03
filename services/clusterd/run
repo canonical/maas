@@ -17,16 +17,18 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
+# Configure the cluster's UUID to match sampledata, and also use a high
+# port for TFTP to match this branch's etc/services.
+bin/maas-provision config \
+    --uuid adfd3977-f251-4f2c-8d61-745dbd690bf2 \
+    --tftp-port 5244
+
+# Wait for the installation of the shared-secret.
+until bin/maas-provision check-for-shared-secret; do sleep 2; done
+
 # Exec the Provisioning Server.
 script="$(readlink -f bin/twistd.cluster)"
-config="$(readlink -f etc/maas/pserv.yaml)"
-
-# Obtain the development setting for CLUSTER_UUID.
-. etc/demo_maas_cluster.conf
-export CLUSTER_UUID
-export MAAS_URL
 
 exec $(command -v authbind && echo --deep) \
     "${script}" --nodaemon --pidfile="" maas-clusterd \
-    --introspect="unix:${here}/introspect:lockfile=0" \
-    --config-file "${config}"
+    --introspect="unix:${here}/introspect:lockfile=0"

@@ -21,12 +21,10 @@ __all__ = [
 
 from uuid import uuid4
 
-from provisioningserver.cluster_config import (
-    CLUSTER_CONFIG,
-    get_config_cluster_variable,
-    set_config_cluster_variable,
+from provisioningserver.config import (
+    ClusterConfiguration,
+    UUID_NOT_SET,
 )
-from provisioningserver.config import UUID_NOT_SET
 
 
 def update_maas_cluster_conf(
@@ -44,28 +42,20 @@ def update_maas_cluster_conf(
     and init be passed at the same time, as these are mutually exclusive
     parameters.
     """
+    with ClusterConfiguration.open() as config:
+        if url is not None:
+            config.maas_url = url
+        if uuid is not None:
+            config.cluster_uuid = uuid
+        if init:
+            cur_uuid = config.cluster_uuid
+            if cur_uuid == UUID_NOT_SET:
+                config.cluster_uuid = unicode(uuid4())
+        if tftp_port is not None:
+            config.tftp_port = tftp_port
+        if tftp_root is not None:
+            config.tftp_root = tftp_root
 
-    if url is not None:
-        set_config_cluster_variable(CLUSTER_CONFIG.DB_maas_url, url)
-
-    if uuid is not None:
-        set_config_cluster_variable(
-            CLUSTER_CONFIG.DB_cluster_uuid, uuid)
-
-    if init:
-        cur_uuid = get_config_cluster_variable(CLUSTER_CONFIG.DB_cluster_uuid)
-        if cur_uuid == UUID_NOT_SET:
-            set_config_cluster_variable(
-                CLUSTER_CONFIG.DB_cluster_uuid,
-                unicode(uuid4()))
-
-    if tftp_port is not None:
-        set_config_cluster_variable(CLUSTER_CONFIG.DB_tftpport, tftp_port)
-
-    if tftp_root is not None:
-        set_config_cluster_variable(
-            CLUSTER_CONFIG.DB_tftp_resource_root,
-            tftp_root)
 
 all_arguments = (
     '--region-url',
@@ -101,11 +91,7 @@ def add_arguments(parser):
 
 
 def run(args):
-    """Update MAAS_URL setting in configuration files.
-
-    For use by the MAAS packaging scripts.  Updates configuration data
-    store to reflect provided settings.
-    """
+    """Update configuration settings."""
     params = vars(args).copy()
     url = params.pop('region_url', None)
     uuid = params.pop('uuid', None)

@@ -24,8 +24,9 @@
 ./docs/_autosummary
 ./docs/_build
 ./docs/api.rst
-./etc/maas/regiond.conf
 ./eggs
+./etc/maas/clusterd.conf
+./etc/maas/regiond.conf
 ./include
 ./lib
 ./local
@@ -35,6 +36,8 @@
 ./media/development
 ./parts
 ./run/*
+./run/etc/*
+./run/etc/maas/*
 ./services/*/introspect
 ./services/*/supervise
 ./src/maasserver/static/js/enums.js

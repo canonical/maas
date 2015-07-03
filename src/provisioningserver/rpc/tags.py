@@ -21,10 +21,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
 )
-from provisioningserver.cluster_config import (
-    get_cluster_uuid,
-    get_maas_url,
-)
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.tags import process_node_tags
 from provisioningserver.utils.twisted import synchronous
 
@@ -38,9 +35,12 @@ def evaluate_tag(tag_name, tag_definition, tag_nsmap, credentials):
     :param tag_nsmap: The namespace map as used by LXML's ETree library.
     :param credentials: A 3-tuple of OAuth credentials.
     """
+    with ClusterConfiguration.open() as config:
+        cluster_uuid = config.cluster_uuid
+        maas_url = config.maas_url
     client = MAASClient(
         auth=MAASOAuth(*credentials), dispatcher=MAASDispatcher(),
-        base_url=get_maas_url())
+        base_url=maas_url)
     process_node_tags(
         tag_name=tag_name, tag_definition=tag_definition, tag_nsmap=tag_nsmap,
-        client=client, nodegroup_uuid=get_cluster_uuid())
+        client=client, nodegroup_uuid=cluster_uuid)

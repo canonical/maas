@@ -25,12 +25,12 @@ from provisioningserver.drivers.osystem import (
 )
 from provisioningserver.drivers.osystem.windows import (
     BOOT_IMAGE_PURPOSE,
-    Config,
     REQUIRE_LICENSE_KEY,
     WINDOWS_CHOICES,
     WINDOWS_DEFAULT,
     WindowsOS,
 )
+from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestWindowsOS(MAASTestCase):
@@ -46,11 +46,7 @@ class TestWindowsOS(MAASTestCase):
         os.makedirs(dirpath)
         for fname in files:
             factory.make_file(dirpath, fname)
-        self.patch(Config, 'load_from_cache').return_value = {
-            'tftp': {
-                'resource_root': tmpdir,
-                },
-            }
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
         return arch, subarch, release, label
 
     def test_get_boot_image_purposes_neither(self):

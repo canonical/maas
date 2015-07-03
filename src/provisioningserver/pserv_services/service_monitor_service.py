@@ -20,6 +20,7 @@ __all__ = [
 
 from datetime import timedelta
 
+from provisioningserver.config import is_dev_environment
 from provisioningserver.service_monitor import service_monitor
 from twisted.application.internet import TimerService
 from twisted.internet.threads import deferToThread
@@ -41,6 +42,11 @@ class ServiceMonitorService(TimerService, object):
         """Monitors all of the external services and makes sure they
         stay running.
         """
-        d = deferToThread(service_monitor.ensure_all_services)
-        d.addErrback(log.err, "Failed to monitor services.")
-        return d
+        if is_dev_environment():
+            log.msg(
+                "Skipping check of services; they're not running under "
+                "the supervision of Upstart or systemd.")
+        else:
+            d = deferToThread(service_monitor.ensure_all_services)
+            d.addErrback(log.err, "Failed to monitor services.")
+            return d

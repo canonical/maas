@@ -28,6 +28,7 @@ import tempfile
 import time
 
 from lockfile import FileLock
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
@@ -37,11 +38,13 @@ from mock import (
     Mock,
     sentinel,
 )
+import provisioningserver.config
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     ensure_dir,
     FileLockProxy,
+    get_maas_provision_command,
     get_mtime,
     incremental_write,
     pick_new_mtime,
@@ -284,6 +287,21 @@ class TestPickNewMTime(MAASTestCase):
         self.assertEqual(now, pick_new_mtime(now))
 
 
+class TestGetMAASProvisionCommand(MAASTestCase):
+
+    def test__returns_just_command_for_production(self):
+        self.patch(provisioningserver.config, "is_dev_environment")
+        provisioningserver.config.is_dev_environment.return_value = False
+        self.assertEqual("maas-provision", get_maas_provision_command())
+
+    def test__returns_full_path_for_development(self):
+        self.patch(provisioningserver.config, "is_dev_environment")
+        provisioningserver.config.is_dev_environment.return_value = True
+        self.assertEqual(
+            root.rstrip("/") + "/bin/maas-provision",
+            get_maas_provision_command())
+
+
 class TestSudoWriteFile(MAASTestCase):
     """Testing for `sudo_write_file`."""
 
@@ -301,11 +319,9 @@ class TestSudoWriteFile(MAASTestCase):
 
         sudo_write_file(path, contents)
 
-        self.assertThat(fs_module.Popen, MockCalledOnceWith([
-            'sudo', '-n', 'maas-provision', 'atomic-write',
-            '--filename', path, '--mode', '0644',
-        ],
-            stdin=PIPE))
+        self.assertThat(fs_module.Popen, MockCalledOnceWith(
+            ['sudo', '-n', get_maas_provision_command(), 'atomic-write',
+             '--filename', path, '--mode', '0644'], stdin=PIPE))
 
     def test_encodes_contents(self):
         process = self.patch_popen()

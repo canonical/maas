@@ -38,9 +38,6 @@ DHCP_CONNECT = True
 
 MAAS_CLI = abspath("bin/maas-region-admin")
 
-# Use the in-branch development version of maas_cluster.conf.
-LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")
-
 # For demo purposes, give nodes unauthenticated access to their metadata
 # even if we can't pass boot parameters.  This is not safe; do not
 # enable it on a production MAAS.

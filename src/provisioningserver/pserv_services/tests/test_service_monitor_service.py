@@ -15,11 +15,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.pserv_services import service_monitor_service as sms
 from provisioningserver.service_monitor import service_monitor
 from testtools.matchers import MatchesStructure
@@ -40,7 +44,23 @@ class TestServiceMonitorService(MAASTestCase):
         service = sms.ServiceMonitorService(Clock())
         return service
 
+    def test_monitor_services_does_not_do_anything_in_dev_environment(self):
+        # Belt-n-braces make sure we're in a development environment.
+        self.assertTrue(sms.is_dev_environment())
+
+        service = self.make_monitor_service()
+        mock_deferToThread = self.patch(sms, "deferToThread")
+        with TwistedLoggerFixture() as logger:
+            service.monitor_services()
+        self.assertThat(mock_deferToThread, MockNotCalled())
+        self.assertDocTestMatches(
+            "Skipping check of services; they're not running under the "
+            "supervision of Upstart or systemd.", logger.output)
+
     def test_monitor_services_defers_ensure_all_services_to_thread(self):
+        # Pretend we're in a production environment.
+        self.patch(sms, "is_dev_environment").return_value = False
+
         service = self.make_monitor_service()
         mock_deferToThread = self.patch(sms, "deferToThread")
         service.monitor_services()

@@ -73,6 +73,14 @@ class TestGetPathFunctions(MAASTestCase):
             os.path.join(root, path),
             self.get_path_function(path))
 
+    def test__assumes_MAAS_ROOT_is_unset_if_empty(self):
+        self.set_root("")
+        self.patch(provisioningserver.path, 'ensure_dir')
+        path = factory.make_name('path')
+        self.assertEqual(
+            os.path.join("/", path),
+            self.get_path_function(path))
+
     def test__returns_absolute_path(self):
         self.set_root('.')
         self.patch(provisioningserver.path, 'ensure_dir')

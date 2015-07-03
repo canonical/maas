@@ -35,7 +35,6 @@ from provisioningserver.boot import (
     BootMethodRegistry,
     get_remote_mac,
 )
-from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
@@ -109,16 +108,18 @@ class TFTPBackend(FilesystemSynchronousBackend):
     fetch files at many similar paths which must not be passed on.
     """
 
-    def __init__(self, base_path, generator_url):
+    def __init__(self, base_path, generator_url, cluster_uuid):
         """
         :param base_path: The root directory for this TFTP server.
         :param generator_url: The URL which can be queried for the PXE
             config. See `get_generator_url` for the types of queries it is
             expected to accept.
+        :param cluster_uuid: The cluster's UUID, as a string.
         """
         super(TFTPBackend, self).__init__(
             base_path, can_read=True, can_write=False)
         self.generator_url = urlparse(generator_url)
+        self.cluster_uuid = cluster_uuid
         self.fetcher = PageFetcher(agent=self.__class__)
         self.get_page = self.fetcher.get
 
@@ -223,7 +224,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         params["local"] = local_host
         remote_host, remote_port = tftp.get_remote_address()
         params["remote"] = remote_host
-        params["cluster_uuid"] = get_cluster_uuid()
+        params["cluster_uuid"] = self.cluster_uuid
         d = self.get_boot_method_reader(boot_method, params)
         return d
 
@@ -314,16 +315,17 @@ class TFTPService(MultiService, object):
 
     """
 
-    def __init__(self, resource_root, port, generator):
+    def __init__(self, resource_root, port, generator, uuid):
         """
         :param resource_root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
         :param generator: The URL to be queried for PXE configuration.
             This will normally point to the `pxeconfig` endpoint on the
             region-controller API.
+        :param uuid: The cluster's UUID, as a string.
         """
         super(TFTPService, self).__init__()
-        self.backend = TFTPBackend(resource_root, generator)
+        self.backend = TFTPBackend(resource_root, generator, uuid)
         self.port = port
         # Establish a periodic call to self.updateServers() every 45
         # seconds, so that this service eventually converges on truth.

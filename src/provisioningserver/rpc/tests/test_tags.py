@@ -27,16 +27,17 @@ from mock import (
     sentinel,
 )
 from provisioningserver.rpc import tags
+from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestEvaluateTag(MAASTestCase):
 
     def setUp(self):
         super(TestEvaluateTag, self).setUp()
-        get_maas_url = self.patch_autospec(tags, "get_maas_url")
-        get_maas_url.return_value = sentinel.maas_url
-        get_cluster_uuid = self.patch_autospec(tags, "get_cluster_uuid")
-        get_cluster_uuid.return_value = sentinel.cluster_uuid
+        self.mock_cluster_uuid = factory.make_UUID()
+        self.mock_url = factory.make_simple_http_url()
+        self.useFixture(ClusterConfigurationFixture(
+            cluster_uuid=self.mock_cluster_uuid, maas_url=self.mock_url))
 
     def test__calls_process_node_tags(self):
         credentials = "aaa", "bbb", "ccc"
@@ -49,7 +50,7 @@ class TestEvaluateTag(MAASTestCase):
                 tag_name=sentinel.tag_name,
                 tag_definition=sentinel.tag_definition,
                 tag_nsmap=sentinel.tag_nsmap, client=ANY,
-                nodegroup_uuid=sentinel.cluster_uuid))
+                nodegroup_uuid=self.mock_cluster_uuid))
 
     def test__constructs_client_with_credentials(self):
         consumer_key = factory.make_name("ckey")
@@ -66,7 +67,7 @@ class TestEvaluateTag(MAASTestCase):
 
         client = tags.process_node_tags.call_args[1]["client"]
         self.assertIsInstance(client, MAASClient)
-        self.assertEqual(sentinel.maas_url, client.url)
+        self.assertEqual(self.mock_url, client.url)
         self.assertIsInstance(client.dispatcher, MAASDispatcher)
         self.assertIsInstance(client.auth, MAASOAuth)
         self.assertThat(tags.MAASOAuth, MockCalledOnceWith(
