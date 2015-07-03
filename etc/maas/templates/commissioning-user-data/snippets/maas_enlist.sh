@@ -77,7 +77,7 @@ get_host_architecture() {
 get_host_subarchitecture() {
 	local arch=$1
 	case $arch in
-	    i386|amd64|ppc64el)
+	    i386|amd64|arm64|ppc64el)
 		# Skip the call to archdetect as that's what
 		# get_host_architecture does
 		echo generic
