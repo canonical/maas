@@ -16,8 +16,11 @@ __all__ = []
 
 import httplib
 import json
+import random
+from uuid import uuid4
 
 from django.core.urlresolvers import reverse
+from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -137,7 +140,127 @@ class TestPartitions(APITestCase):
                                                  partition.id])
         response = self.client.delete(uri)
 
-        # Should return no content and a 204 status_code
+        # Returns no content and a 204 status_code.
         self.assertEqual(
             httplib.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(partition))
+
+    def test_format_partition_as_admin(self):
+        """Tests formatting a partition
+
+        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
+             ?op=format
+        """
+        self.become_admin()
+        block_size = 4096
+        device = factory.make_PhysicalBlockDevice(size=8192 * block_size,
+                                                  block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = factory.make_Partition(partition_table=partition_table,
+                                           start_offset=4096 * block_size,
+                                           size=4096 * block_size)
+        uri = reverse('partition_handler', args=[device.node.system_id,
+                                                 device.id,
+                                                 partition.id])
+        fs_uuid = unicode(uuid4())
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': FILESYSTEM_TYPE.EXT4,
+            'label': 'mylabel',
+        })
+        # Returns the filesystem.
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        filesystem = json.loads(response.content)['filesystem']
+        self.assertEqual(filesystem['fstype'], FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(filesystem['label'], 'mylabel')
+        self.assertEqual(filesystem['uuid'], fs_uuid)
+
+    def test_format_partition_as_node_owner(self):
+        """Tests formatting a partition as a normal user
+
+        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
+             ?op=format
+        """
+        block_size = 4096
+        node = factory.make_Node(owner=self.logged_in_user)
+        device = factory.make_PhysicalBlockDevice(node=node,
+                                                  size=8192 * block_size,
+                                                  block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = factory.make_Partition(partition_table=partition_table,
+                                           start_offset=4096 * block_size,
+                                           size=4096 * block_size)
+        uri = reverse('partition_handler', args=[device.node.system_id,
+                                                 device.id,
+                                                 partition.id])
+        fs_uuid = unicode(uuid4())
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': FILESYSTEM_TYPE.EXT4,
+            'label': 'mylabel',
+        })
+        # Returns the filesystem.
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        filesystem = json.loads(response.content)['filesystem']
+        self.assertEqual(filesystem['fstype'], FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(filesystem['label'], 'mylabel')
+        self.assertEqual(filesystem['uuid'], fs_uuid)
+
+    def test_format_missing_partition(self):
+        """Tests formatting a missing partition - Fails with a 404.
+
+        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
+             ?op=format
+        """
+        block_size = 4096
+        node = factory.make_Node(owner=self.logged_in_user)
+        device = factory.make_PhysicalBlockDevice(node=node,
+                                                  size=8192 * block_size,
+                                                  block_size=block_size)
+        factory.make_PartitionTable(block_device=device)
+        partition_id = random.randint(1, 1000)  # Most likely a bogus one
+        uri = reverse('partition_handler', args=[device.node.system_id,
+                                                 device.id,
+                                                 partition_id])
+        fs_uuid = unicode(uuid4())
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': FILESYSTEM_TYPE.EXT4,
+            'label': 'mylabel',
+        })
+        # Fails with a NOT_FOUND status.
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_format_partition_with_invalid_parameters(self):
+        """Tests formatting a partition with invalid parameters
+
+        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
+             ?op=format
+        """
+        block_size = 4096
+        node = factory.make_Node(owner=self.logged_in_user)
+        device = factory.make_PhysicalBlockDevice(node=node,
+                                                  size=8192 * block_size,
+                                                  block_size=block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = factory.make_Partition(partition_table=partition_table,
+                                           start_offset=4096 * block_size,
+                                           size=4096 * block_size)
+        uri = reverse('partition_handler', args=[device.node.system_id,
+                                                 device.id,
+                                                 partition.id])
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': 'NOT A VALID UUID',
+            'fstype': 'FAT16',  # We don't support FAT16
+            'label': 'mylabel',
+        })
+        # Fails with a BAD_REQUEST status.
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)

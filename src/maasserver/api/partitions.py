@@ -20,7 +20,11 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPINotFound
+from maasserver.exceptions import (
+    MAASAPINotFound,
+    MAASAPIValidationError,
+)
+from maasserver.forms import FormatPartitionForm
 from maasserver.models import (
     BlockDevice,
     Node,
@@ -37,6 +41,12 @@ DISPLAYED_PARTITION_FIELDS = (
     'size',
     'start_offset',
     'bootable',
+    ('filesystem', (
+        'fstype',
+        'label',
+        'uuid',
+        'mount_point',
+    )),
 )
 
 
@@ -131,3 +141,29 @@ class PartitionHandler(OperationsHandler):
         partition = partition_table.partitions.get(id=partition_id)
         partition.delete()
         return rc.DELETED
+
+    @operation(idempotent=False)
+    def format(self, request, system_id, device_id, partition_id):
+        """Format a partition
+
+        :param system_id: The node to query.
+        :param device_id: The block device.
+        :param partition_id: The partition.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        device = get_object_or_404(BlockDevice, id=device_id)
+        if device.node != node:
+            raise MAASAPINotFound()
+        partition_table = get_object_or_404(PartitionTable,
+                                            block_device=device)
+        partition = get_object_or_404(Partition,
+                                      partition_table=partition_table,
+                                      id=partition_id)
+        data = request.data
+        form = FormatPartitionForm(partition, data=data)
+        if form.is_valid():
+            form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+        return partition

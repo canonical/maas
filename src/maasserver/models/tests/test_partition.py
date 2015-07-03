@@ -17,7 +17,10 @@ __all__ = []
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import PARTITION_TABLE_TYPE
+from maasserver.enum import (
+    FILESYSTEM_TYPE,
+    PARTITION_TABLE_TYPE,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -170,6 +173,48 @@ class TestPartition(MAASServerTestCase):
                                            start_offset=0,
                                            size=device.size)
         self.assertEqual(partition.size, device.size)
+
+    def test_partition_add_filesystem(self):
+        """Add a file system to a partition"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+        filesystem = partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
+        self.assertEquals(filesystem.partition_id, partition.id)
+        self.assertEquals(filesystem.fstype, FILESYSTEM_TYPE.EXT4)
+
+    def test_partition_add_second_filesystem(self):
+        """Adding a second file system to a partition should fail"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+        partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
+
+        # Adding a second one should fail
+        self.assertRaises(ValidationError, partition.add_filesystem,
+                          **{'fstype': FILESYSTEM_TYPE.EXT4})
+
+    def test_partition_remove_filesystem(self):
+        """Tests filesystem removal from a partition"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+        partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
+        # After removal, partition.filesystem should be None
+        partition.remove_filesystem()
+        self.assertIsNone(partition.filesystem)
+
+    def test_partition_remove_absent_filesystem(self):
+        """Tests whether attempting to remove a non-existent FS fails"""
+        block_size = 1024
+        device = factory.make_BlockDevice(size=10000 * block_size)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = partition_table.add_partition()
+        # Removal should do nothing
+        self.assertIsNone(partition.remove_filesystem())
 
     def test_get_filesystem_returns_filesystem(self):
         """Checks that the get_filesystem method returns the filesystem that's

@@ -102,7 +102,7 @@ class TestBlockDevices(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_devices = json.loads(response.content)
-        self.assertEquals({
+        self.assertDictContainsSubset({
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
             "mount_point": filesystem.mount_point,
@@ -191,6 +191,7 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 140 * 1024,
+            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })
@@ -207,6 +208,7 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 140 * 1024,
+            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })
@@ -217,6 +219,7 @@ class TestBlockDevices(APITestCase):
         self.assertEqual(pbd.name, 'sda')
         self.assertEqual(pbd.block_size, 1024)
         self.assertEqual(pbd.size, 140 * 1024)
+        self.assertEqual(pbd.path, '/dev/disk/by-dname/sda')
         self.assertEqual(pbd.model, 'A2M0003')
         self.assertEqual(pbd.serial, '42')
 
@@ -229,6 +232,7 @@ class TestBlockDevices(APITestCase):
             'name': 'sda',
             'block_size': 1024,
             'size': 100 * 1024,
+            'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
         })
@@ -266,7 +270,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertEquals({
+        self.assertDictContainsSubset({
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
             "mount_point": filesystem.mount_point,
@@ -501,7 +505,7 @@ class TestBlockDeviceAPI(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertEquals({
+        self.assertDictContainsSubset({
             'fstype': fstype,
             'uuid': fsuuid,
             'mount_point': None,
@@ -712,8 +716,8 @@ class TestBlockDeviceAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_update_virtual_block_device_as_normal_user(self):
-        """Check update block device with a virtual one.
-        """
+        """Check update block device with a virtual one works with a normal
+        user."""
         node = factory.make_Node(owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node,
                                                        name='myblockdevice',

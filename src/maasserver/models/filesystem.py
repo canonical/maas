@@ -71,6 +71,9 @@ class Filesystem(CleanSave, TimestampedModel):
     block_device = ForeignKey(
         BlockDevice, unique=True, null=True, blank=True)
 
+    label = CharField(
+        max_length=255, null=True, blank=True)
+
     filesystem_group = ForeignKey(
         FilesystemGroup, null=True, blank=True, related_name='filesystems')
 

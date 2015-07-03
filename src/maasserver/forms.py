@@ -3015,6 +3015,33 @@ class FormatBlockDeviceForm(Form):
         return self.block_device
 
 
+class FormatPartitionForm(Form):
+    """Form used to format a partition - to add a Filesystem to it."""
+
+    uuid = UUID4Field(required=False)
+    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
+    label = forms.CharField(required=False)
+    mount_point = AbsolutePathField(required=False)
+
+    def __init__(self, partition, *args, **kwargs):
+        super(FormatPartitionForm, self).__init__(*args, **kwargs)
+        self.partition = partition
+
+    def save(self):
+        """Add the Filesystem to the partition.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        # Remove the previous format if one already exists.
+        self.partition.remove_filesystem()
+        data = self.cleaned_data
+        filesystem = self.partition.add_filesystem(
+            uuid=data['uuid'],
+            fstype=data['fstype'],
+            label=data['label'])
+        return filesystem
+
+
 class MountBlockDeviceForm(Form):
     """Form used to mount a block device."""
 

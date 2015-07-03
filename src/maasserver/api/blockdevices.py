@@ -51,6 +51,7 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'tags',
     ('filesystem', (
         'fstype',
+        'label',
         'uuid',
         'mount_point',
     )),

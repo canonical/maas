@@ -21,6 +21,7 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
+from django.db import IntegrityError
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -123,5 +124,33 @@ class Partition(CleanSave, TimestampedModel):
 
     @property
     def filesystem(self):
-        """Returns the filesystem that's using this partition"""
+        """Returns the filesystem that's using this partition."""
         return get_one(self.filesystem_set.all())
+
+    def add_filesystem(self, uuid=None, fstype=None, label=None,
+                       create_params=None, mount_point=None,
+                       mount_params=None):
+        """Creates a filesystem directly on this partition and returns it."""
+
+        # Avoid a circular import.
+        from maasserver.models.filesystem import Filesystem
+
+        filesystem = Filesystem(uuid=uuid, fstype=fstype, label=label,
+                                create_params=create_params,
+                                mount_point=mount_point,
+                                mount_params=mount_params,
+                                partition=self)
+        filesystem.save()
+        return filesystem
+
+    def remove_filesystem(self):
+        """Deletes any filesystem on this partition. Do nothing if there is no
+        filesystem on this partition"""
+
+        filesystem = self.filesystem
+        if filesystem is None:
+            return None
+        elif filesystem.filesystem_group is None:
+            self.filesystem.delete()
+        else:
+            raise IntegrityError('This filesystem is in use by a volume group')
