@@ -473,8 +473,8 @@ services/regiond2/@deps: bin/maas-region-admin
 # has a bug and always considers apt-source tarballs before the specified
 # branch.  So instead, export to a local tarball which is always found.
 # Make sure debhelper and dh-apport packages are installed before using this.
-PACKAGING := $(CURDIR)/../packaging.trunk
-PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
+PACKAGING := $(CURDIR)/../packaging-1.8
+PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging-1.8
 
 package_branch:
 	@echo Downloading/refreshing packaging branch...
