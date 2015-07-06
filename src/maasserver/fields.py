@@ -580,23 +580,23 @@ class CIDRField(Field):
 
 
 class IPListFormField(CharField):
-    """Accepts a Space/comma separated list of IP addresses.
+    """Accepts a space/comma separated list of IP addresses.
 
     This field normalizes the list to a space-separated list.
     """
-    separators = re.compile('[,\ ]')
+    separators = re.compile('[,\s]+')
 
     def clean(self, value):
         if value is None:
             return None
         else:
             ips = re.split(self.separators, value)
-            ips = [ip.strip() for ip in ips if ip.strip() != '']
+            ips = [ip.strip() for ip in ips if ip != '']
             for ip in ips:
                 try:
                     GenericIPAddressField().clean(ip, model_instance=None)
                 except ValidationError:
                     raise ValidationError(
-                        "Invalid IP address: %s; Provide a list of "
+                        "Invalid IP address: %s; provide a list of "
                         "space-separated IP addresses" % ip)
             return ' '.join(ips)

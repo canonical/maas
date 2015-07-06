@@ -185,7 +185,7 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'label': (
                 "Upstream DNS used to resolve domains not managed by this "
-                "MAAS (space/comma-separated IP addresses)"),
+                "MAAS (space-separated IP addresses)"),
             'required': False,
             'help_text': (
                 "Only used when MAAS is running its own DNS server. This "
