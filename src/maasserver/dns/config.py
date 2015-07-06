@@ -133,7 +133,7 @@ def write_full_dns_config(reload_retry=False, force=False):
     zones = ZoneGenerator(
         NodeGroup.objects.all(), serial_generator=next_zone_serial
         ).as_list()
-    upstream_dns = Config.objects.get_config("upstream_dns")
+    upstream_dns = get_upstream_dns()
     tasks.write_full_dns_config.delay(
         zones=zones,
         callback=tasks.rndc_command.subtask(
@@ -152,3 +152,12 @@ def get_trusted_networks():
         "%s;" % net.get_network().cidr
         for net in Network.objects.all())
     return networks
+
+
+def get_upstream_dns():
+    """Return the IP addresses of configured upstream DNS servers.
+
+    :return: A list of IP addresses.
+    """
+    upstream_dns = Config.objects.get_config("upstream_dns")
+    return [] if upstream_dns is None else upstream_dns.split()

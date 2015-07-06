@@ -16,6 +16,7 @@ __all__ = []
 
 import json
 from random import randint
+import re
 
 from django.core import serializers
 from django.core.exceptions import ValidationError
@@ -27,6 +28,7 @@ from django.db.models import BinaryField
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.fields import (
     EditableBinaryField,
+    IPListFormField,
     LargeObjectField,
     LargeObjectFile,
     MAC,
@@ -518,3 +520,38 @@ class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
         field = LargeObjectField()
         self.assertRaises(
             AssertionError, field.to_python, factory.make_string())
+
+
+class IPListFormFieldTest(MAASServerTestCase):
+
+    def test_accepts_none(self):
+        self.assertIsNone(IPListFormField().clean(None))
+
+    def test_accepts_single_ip(self):
+        ip = factory.make_ipv4_address()
+        self.assertEquals(ip, IPListFormField().clean(ip))
+
+    def test_accepts_space_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ' '.join(ips)
+        self.assertEquals(input, IPListFormField().clean(input))
+
+    def test_accepts_comma_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ','.join(ips)
+        self.assertEquals(' '.join(ips), IPListFormField().clean(input))
+
+    def test_rejects_invalid_input(self):
+        invalid = factory.make_name('invalid')
+        input = ' '.join([factory.make_ip_address(), invalid])
+        error = self.assertRaises(
+            ValidationError, IPListFormField().clean, input)
+        self.assertIn("Invalid IP address: %s" % invalid, error.message)
+
+    def test_separators_dont_conflict_with_ipv4_address(self):
+        self.assertIsNone(re.search(
+            IPListFormField.separators, factory.make_ipv4_address()))
+
+    def test_separators_dont_conflict_with_ipv6_address(self):
+        self.assertIsNone(re.search(
+            IPListFormField.separators, factory.make_ipv6_address()))

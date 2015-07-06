@@ -1,7 +1,9 @@
 {{if upstream_dns}}
-    forwarders {
-        {{upstream_dns}};
-    };
+forwarders {
+{{for upstream_dns_address in upstream_dns}}
+    {{upstream_dns_address}};
+{{endfor}}
+};
 {{endif}}
 
 allow-query { any; };

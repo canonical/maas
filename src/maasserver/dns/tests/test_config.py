@@ -27,6 +27,7 @@ from maasserver.dns.config import (
     add_zone,
     change_dns_zones,
     get_trusted_networks,
+    get_upstream_dns,
     is_dns_enabled,
     is_dns_in_use,
     next_zone_serial,
@@ -274,13 +275,14 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_write_full_dns_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
-        random_ip = factory.make_ipv4_address()
-        Config.objects.set_config("upstream_dns", random_ip)
+        ips = [factory.make_ipv4_address() for _ in range(3)]
+        input_ips = " ".join(ips)
+        Config.objects.set_config("upstream_dns", input_ips)
         patched_task = self.patch(dns_tasks.write_full_dns_config, "delay")
         write_full_dns_config()
         self.assertThat(patched_task, MockCalledOnceWith(
             zones=ANY, callback=ANY, trusted_networks=ANY,
-            upstream_dns=random_ip))
+            upstream_dns=ips))
 
     def test_write_full_dns_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -433,6 +435,24 @@ class TestIPv6DNS(TestDNSServer):
             nodegroup=nodegroup)
         self.assertDNSMatches(
             node.hostname, nodegroup.name, static.ip, version=6)
+
+
+class TestGetUpstreamDNS(MAASServerTestCase):
+    """Test for maasserver/dns/config.py:get_upstream_dns()"""
+
+    def test__returns_empty_list_if_not_set(self):
+        self.assertEqual([], get_upstream_dns())
+
+    def test__returns_list_of_one_address_if_set(self):
+        address = factory.make_ip_address()
+        Config.objects.set_config("upstream_dns", address)
+        self.assertEqual([address], get_upstream_dns())
+
+    def test__returns_list_if_space_separated_ips(self):
+        addresses = [
+            factory.make_ip_address() for _ in range(3)]
+        Config.objects.set_config("upstream_dns", " ".join(addresses))
+        self.assertEqual(addresses, get_upstream_dns())
 
 
 class TestGetTrustedNetworks(MAASServerTestCase):

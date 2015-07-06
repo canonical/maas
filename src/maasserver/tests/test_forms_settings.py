@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+
 from django import forms
 from maasserver.forms_settings import (
     CONFIG_ITEMS,
@@ -70,3 +71,10 @@ class TestSpecificConfigSettings(MAASServerTestCase):
             compose_invalid_choice_text(
                 'commissioning_distro_series', field.choices),
             field.error_messages['invalid_choice'])
+
+    def test_upstream_dns_accepts_ip_list(self):
+        field = get_config_field('upstream_dns')
+        ips1 = [factory.make_ip_address() for _ in range(3)]
+        ips2 = [factory.make_ip_address() for _ in range(3)]
+        input = ' '.join(ips1) + ' ' + ','.join(ips2)
+        self.assertEqual(' '.join(ips1 + ips2), field.clean(input))

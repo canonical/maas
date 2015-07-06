@@ -133,13 +133,17 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_set_up_options_conf_writes_configuration(self):
         dns_conf_dir = patch_dns_config_path(self)
-        fake_dns = factory.make_ipv4_address()
-        set_up_options_conf(upstream_dns=fake_dns)
+        ips = [factory.make_ip_address() for _ in range(3)]
+        set_up_options_conf(upstream_dns=ips)
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
         self.assertThat(
             target_file,
-            FileContains(matcher=Contains(fake_dns)))
+            MatchesAll(*[
+                FileContains(matcher=Contains(ip))
+                for ip in ips
+            ])
+        )
 
     def test_set_up_options_conf_handles_no_upstream_dns(self):
         dns_conf_dir = patch_dns_config_path(self)

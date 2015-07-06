@@ -25,6 +25,7 @@ from socket import gethostname
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.fields import IPListFormField
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
@@ -185,11 +186,11 @@ CONFIG_ITEMS = {
     },
     'upstream_dns': {
         'default': None,
-        'form': forms.GenericIPAddressField,
+        'form': IPListFormField,
         'form_kwargs': {
             'label': (
                 "Upstream DNS used to resolve domains not managed by this "
-                "MAAS"),
+                "MAAS (space-separated IP addresses)"),
             'required': False,
             'help_text': (
                 "Only used when MAAS is running its own DNS server. This "
