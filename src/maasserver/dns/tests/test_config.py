@@ -496,15 +496,16 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_dns_update_all_zones_now_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
-        random_ip = factory.make_ipv4_address()
-        Config.objects.set_config("upstream_dns", random_ip)
+        ips = [factory.make_ipv4_address() for _ in range(3)]
+        input_ips = " ".join(ips)
+        Config.objects.set_config("upstream_dns", input_ips)
         bind_write_options = self.patch_autospec(
             dns_config_module, "bind_write_options")
         dns_update_all_zones_now()
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(
-                dnssec_validation='auto', upstream_dns=[random_ip]))
+                dnssec_validation='auto', upstream_dns=ips))
 
     def test_dns_update_all_zones_now_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -667,12 +668,13 @@ class TestGetUpstreamDNS(MAASServerTestCase):
         self.assertEqual([], get_upstream_dns())
 
     def test__returns_list_of_one_address_if_set(self):
-        address = factory.make_ipv4_address()
+        address = factory.make_ip_address()
         Config.objects.set_config("upstream_dns", address)
         self.assertEqual([address], get_upstream_dns())
 
-    def test__returns_list_of_many_address_if_set(self):
-        addresses = [factory.make_ipv4_address(), factory.make_ipv4_address()]
+    def test__returns_list_if_space_separated_ips(self):
+        addresses = [
+            factory.make_ip_address() for _ in range(3)]
         Config.objects.set_config("upstream_dns", " ".join(addresses))
         self.assertEqual(addresses, get_upstream_dns())
 
