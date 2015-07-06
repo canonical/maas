@@ -2041,10 +2041,6 @@ class Node(CleanSave, TimestampedModel):
             return None
 
         @transactional
-        def pc_start_transition_monitor(timeout):
-            self.start_transition_monitor(timeout)
-
-        @transactional
         def pc_deallocate_by_node():
             # Deallocate the static IPs we claimed earlier.
             StaticIPAddress.objects.deallocate_by_node(self)
