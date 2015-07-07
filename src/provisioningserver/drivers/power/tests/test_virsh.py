@@ -32,16 +32,17 @@ class TestVirshPowerDriver(MAASTestCase):
         poweraddr = factory.make_name('power_address')
         machine = factory.make_name('power_id')
         password = factory.make_name('power_pass')
-        return system_id, poweraddr, machine, password
-
-    def test_extract_virsh_parameters_extracts_parameters(self):
-        system_id, poweraddr, machine, password = self.make_parameters()
         params = {
             'system_id': system_id,
             'power_address': poweraddr,
             'power_id': machine,
             'power_pass': password,
         }
+        return system_id, poweraddr, machine, password, params
+
+    def test_extract_virsh_parameters_extracts_parameters(self):
+        system_id, poweraddr, machine, password, params = (
+            self.make_parameters())
 
         self.assertItemsEqual(
             (poweraddr, machine, password),
@@ -49,13 +50,8 @@ class TestVirshPowerDriver(MAASTestCase):
 
     def test_power_on_calls_power_control_virsh(self):
         power_change = 'on'
-        system_id, poweraddr, machine, password = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': poweraddr,
-            'power_id': machine,
-            'power_pass': password,
-        }
+        system_id, poweraddr, machine, password, params = (
+            self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_control_virsh = self.patch(
             virsh_module, 'power_control_virsh')
@@ -67,13 +63,8 @@ class TestVirshPowerDriver(MAASTestCase):
 
     def test_power_off_calls_power_control_virsh(self):
         power_change = 'off'
-        system_id, poweraddr, machine, password = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': poweraddr,
-            'power_id': machine,
-            'power_pass': password,
-        }
+        system_id, poweraddr, machine, password, params = (
+            self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_control_virsh = self.patch(
             virsh_module, 'power_control_virsh')
@@ -84,13 +75,8 @@ class TestVirshPowerDriver(MAASTestCase):
                 poweraddr, machine, power_change, password))
 
     def test_power_query_calls_power_state_virsh(self):
-        system_id, poweraddr, machine, password = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': poweraddr,
-            'power_id': machine,
-            'power_pass': password,
-        }
+        system_id, poweraddr, machine, password, params = (
+            self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_state_virsh = self.patch(
             virsh_module, 'power_state_virsh')
