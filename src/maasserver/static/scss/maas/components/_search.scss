@@ -27,6 +27,33 @@
         border: none;
         padding: 13px 20px;
         font-size: 1.25em;
+
+        &::-webkit-input-placeholder {
+           color: #000 !important;
+        }
+
+        &:-moz-placeholder { /* Firefox 18- */
+           color: #000 !important;
+        }
+
+        &::-moz-placeholder {  /* Firefox 19+ */
+           color: #000 !important;
+        }
+
+        &:-ms-input-placeholder {
+           color: #000 !important;
+        }
+
+        &[disabled="disabled"] {
+            background-color: #fff;
+            opacity: .5;
+            pointer-events: none;
+
+            & + .search__submit.close {
+                pointer-events: none;
+                opacity: .5;
+            }
+        }
     }
 
     .search__submit {

@@ -18,7 +18,8 @@
     margin-bottom: 40px;
 
     .disabled & {
-        background: transparent;
+        opacity: .5;
+        pointer-events: none;
     }
 
     // accordion main sidebar title
