@@ -76,6 +76,7 @@ from maasserver.rpc import getClientFor
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 from piston.utils import rc
+from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
@@ -690,9 +691,7 @@ class NodeHandler(OperationsHandler):
             power_type=power_info.power_type,
             context=power_info.power_parameters)
         try:
-            # Allow 30 seconds for the power query max as we're holding
-            # up an appserver thread here.
-            state = call.wait(30)
+            state = call.wait(POWER_QUERY_TIMEOUT)
         except crochet.TimeoutError:
             maaslog.error(
                 "%s: Timed out waiting for power response in Node.power_state",
