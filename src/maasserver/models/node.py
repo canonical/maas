@@ -39,6 +39,7 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    DateTimeField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -96,7 +97,10 @@ from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
-from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.timestampedmodel import (
+    now,
+    TimestampedModel,
+)
 from maasserver.models.zone import Zone
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
@@ -462,13 +466,18 @@ class Node(CleanSave, TimestampedModel):
     power_type = CharField(
         max_length=10, null=False, blank=True, default='')
 
-    # JSON-encoded set of parameters for power control.
-    power_parameters = JSONObjectField(blank=True, default="")
+    # JSON-encoded set of parameters for power control, limited to 32kiB when
+    # encoded as JSON.
+    power_parameters = JSONObjectField(
+        max_length=(2 ** 15), blank=True, default="")
 
     power_state = CharField(
         max_length=10, null=False, blank=False,
         choices=POWER_STATE_CHOICES, default=POWER_STATE.UNKNOWN,
         editable=False)
+
+    power_state_updated = DateTimeField(
+        null=True, blank=False, default=None, editable=False)
 
     token = ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
@@ -1772,6 +1781,7 @@ class Node(CleanSave, TimestampedModel):
     def update_power_state(self, power_state):
         """Update a node's power state """
         self.power_state = power_state
+        self.power_state_updated = now()
         mark_ready = (
             self.status == NODE_STATUS.RELEASING and
             power_state == POWER_STATE.OFF)

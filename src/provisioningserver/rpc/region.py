@@ -221,11 +221,16 @@ class MarkNodeFailed(amp.Command):
 
 
 class ListNodePowerParameters(amp.Command):
-    """Return the list of power parameters for nodes
-    that this cluster controls.
+    """Return power parameters for the nodes in the specified cluster.
 
-    Used to query all of the nodes that the cluster
-    composes.
+    This will only return power parameters for nodes that have power types for
+    which MAAS has a query capability.
+
+    It will return nodes in priority order. Those nodes at the beginning of
+    the list should be queried first.
+
+    It may return an empty list. This means that all nodes have been recently
+    queried. Take a break before asking again.
 
     :since: 1.7
     """

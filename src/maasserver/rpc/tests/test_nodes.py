@@ -14,10 +14,16 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from datetime import timedelta
+from itertools import imap
+import json
+from operator import attrgetter
 import random
+from random import randint
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_STATUS
+from maasserver.models.timestampedmodel import now
 from maasserver.rpc.nodes import (
     commission_node,
     create_node,
@@ -47,12 +53,15 @@ from provisioningserver.rpc.exceptions import (
     NodeStateViolation,
     NoSuchNode,
 )
+from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from simplejson import dumps
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    GreaterThan,
     Is,
+    LessThan,
     Not,
 )
 
@@ -321,25 +330,127 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
     # Those tests have been left there for now because they also check
     # that the return values are being formatted correctly for RPC.
 
-    def test_does_not_return_power_info_for_broken_nodes(self):
+    def make_Node(
+            self, cluster, power_type=None, power_state_updated=None,
+            **kwargs):
+        if power_type is None:
+            # Ensure that this node's power status can be queried.
+            power_type = random.choice(QUERY_POWER_TYPES)
+        if power_state_updated is None:
+            # Ensure that this node was last queried at least 5 minutes ago.
+            power_state_updated = now() - timedelta(minutes=randint(6, 16))
+        return factory.make_Node(
+            nodegroup=cluster, power_type=power_type,
+            power_state_updated=power_state_updated, **kwargs)
+
+    def test__returns_unchecked_nodes_first(self):
         cluster = factory.make_NodeGroup()
-        broken_node = factory.make_Node(
-            nodegroup=cluster, status=NODE_STATUS.BROKEN)
+        nodes = [self.make_Node(cluster) for _ in xrange(5)]
+        node_unchecked = random.choice(nodes)
+        node_unchecked.power_state_updated = None
+        node_unchecked.save()
 
         power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
-        returned_system_ids = [
-            power_params['system_id'] for power_params in power_parameters]
+        system_ids = [params["system_id"] for params in power_parameters]
 
-        self.assertThat(
-            returned_system_ids, Not(Contains(broken_node.system_id)))
+        # The unchecked node is always the first out.
+        self.assertEqual(node_unchecked.system_id, system_ids[0])
 
-    def test_does_not_return_power_info_for_devices(self):
+    def test__excludes_recently_checked_nodes(self):
         cluster = factory.make_NodeGroup()
-        device = factory.make_Device()
+
+        node_unchecked = self.make_Node(cluster)
+        node_unchecked.power_state_updated = None
+        node_unchecked.save()
+
+        datetime_now = now()
+        node_checked_recently = self.make_Node(cluster)
+        node_checked_recently.power_state_updated = datetime_now
+        node_checked_recently.save()
+
+        datetime_10_minutes_ago = datetime_now - timedelta(minutes=10)
+        node_checked_long_ago = self.make_Node(cluster)
+        node_checked_long_ago.power_state_updated = datetime_10_minutes_ago
+        node_checked_long_ago.save()
 
         power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
-        returned_system_ids = [
-            power_params['system_id'] for power_params in power_parameters]
+        system_ids = [params["system_id"] for params in power_parameters]
 
-        self.assertThat(
-            returned_system_ids, Not(Contains(device.system_id)))
+        self.assertItemsEqual(
+            {node_unchecked.system_id, node_checked_long_ago.system_id},
+            system_ids)
+
+    def test__excludes_unqueryable_power_types(self):
+        cluster = factory.make_NodeGroup()
+        node_queryable = self.make_Node(cluster)
+        self.make_Node(cluster, "foobar")  # Unqueryable power type.
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        system_ids = [params["system_id"] for params in power_parameters]
+
+        self.assertItemsEqual([node_queryable.system_id], system_ids)
+
+    def test__excludes_broken_nodes(self):
+        cluster = factory.make_NodeGroup()
+        node_queryable = self.make_Node(cluster)
+
+        self.make_Node(cluster, status=NODE_STATUS.BROKEN)
+        self.make_Node(
+            cluster, status=NODE_STATUS.BROKEN, power_state_updated=(
+                now() - timedelta(minutes=10)))
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        system_ids = [params["system_id"] for params in power_parameters]
+
+        self.assertItemsEqual([node_queryable.system_id], system_ids)
+
+    def test__excludes_devices(self):
+        cluster = factory.make_NodeGroup()
+        node_queryable = self.make_Node(cluster)
+
+        factory.make_Device(nodegroup=cluster)
+        factory.make_Device(nodegroup=cluster, power_type="ipmi")
+        factory.make_Device(
+            nodegroup=cluster, power_type="ipmi", power_state_updated=(
+                now() - timedelta(minutes=10)))
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        system_ids = [params["system_id"] for params in power_parameters]
+
+        self.assertItemsEqual([node_queryable.system_id], system_ids)
+
+    def test__returns_checked_nodes_in_last_checked_order(self):
+        cluster = factory.make_NodeGroup()
+        nodes = [self.make_Node(cluster) for _ in xrange(5)]
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        system_ids = [params["system_id"] for params in power_parameters]
+
+        # Checked nodes are always sorted from least recently checked to most.
+        node_sort_key = attrgetter("power_state_updated", "system_id")
+        nodes_in_order = sorted(nodes, key=node_sort_key)
+        self.assertEqual(
+            [node.system_id for node in nodes_in_order],
+            system_ids)
+
+    def test__returns_at_most_60kiB_of_JSON(self):
+        cluster = factory.make_NodeGroup()
+
+        # Ensure that there are at least 64kiB of power parameters (when
+        # converted to JSON) in the database.
+        example_parameters = {"key%d" % i: "value%d" % i for i in xrange(100)}
+        remaining = 2 ** 16
+        while remaining > 0:
+            node = self.make_Node(cluster, power_parameters=example_parameters)
+            remaining -= len(json.dumps(node.get_effective_power_parameters()))
+
+        nodes = list_cluster_nodes_power_parameters(cluster.uuid)
+
+        # The total size of the JSON is less than 60kiB, but only a bit.
+        nodes_json = imap(json.dumps, nodes)
+        nodes_json_lengths = imap(len, nodes_json)
+        nodes_json_length = sum(nodes_json_lengths)
+        expected_maximum = 60 * (2 ** 10)  # 60kiB
+        self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))
+        expected_minimum = 50 * (2 ** 10)  # 50kiB
+        self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))

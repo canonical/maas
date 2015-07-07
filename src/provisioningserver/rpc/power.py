@@ -19,6 +19,7 @@ __all__ = [
 
 from datetime import timedelta
 from functools import partial
+import sys
 
 from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import (
@@ -383,41 +384,53 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         # type, however this is left here to prevent PEBKAC.
         raise PowerActionFail("Unknown power_type '%s'" % power_type)
 
-    # Use increasing waiting times to work around race conditions that could
-    # arise when power querying the node.
-    for waiting_time in default_waiting_policy:
-        error = None
-        # Perform power query.
+    def check_power_state(state):
+        if state not in ("on", "off", "unknown"):
+            # This is considered an error.
+            raise PowerActionFail(state)
+
+    # Capture errors as we go along.
+    exc_info = None, None, None
+
+    if is_power_driver_available(power_type):
+        # New-style power drivers handle retries for themselves, so we only
+        # ever call them once.
         try:
-            # Check if power_type has PowerDriver support.
-            if is_power_driver_available(power_type):
-                power_state = yield perform_power_driver_query(
-                    system_id, hostname, power_type, context)
-            else:
+            power_state = yield perform_power_driver_query(
+                system_id, hostname, power_type, context)
+            check_power_state(power_state)
+        except:
+            # Hold the error; it will be reported later.
+            exc_info = sys.exc_info()
+        else:
+            yield power_state_update(system_id, power_state)
+            returnValue(power_state)
+    else:
+        # Old-style power drivers need to be retried. Use increasing waiting
+        # times to work around race conditions that could arise when power
+        # querying the node.
+        for waiting_time in default_waiting_policy:
+            # Perform power query.
+            try:
                 power_state = yield deferToThread(
-                    perform_power_query, system_id,
-                    hostname, power_type, context)
-            if power_state not in ("on", "off", "unknown"):
-                # This is considered an error.
-                raise PowerActionFail(power_state)
-        except PowerActionFail as e:
-            # Hold the error so if failure after retries, we can
-            # log the reason.
-            error = e
+                    perform_power_query, system_id, hostname,
+                    power_type, context)
+                check_power_state(power_state)
+            except:
+                # Hold the error; it may be reported later.
+                exc_info = sys.exc_info()
+                # Wait before trying again.
+                yield pause(waiting_time, clock)
+            else:
+                yield power_state_update(system_id, power_state)
+                returnValue(power_state)
 
-            # Wait before trying again.
-            yield pause(waiting_time, clock)
-            if is_power_driver_available(power_type):
-                break
-            continue
-        yield power_state_update(system_id, power_state)
-        returnValue(power_state)
-
-    # Send node is broken, since query failed after the multiple retries.
-    message = "Node could not be queried %s (%s) %s" % (
-        system_id, hostname, error)
+    # Reaching here means that things have gone wrong.
+    assert exc_info != (None, None, None)
+    exc_type, exc_value, exc_trace = exc_info
+    message = "Power state could not be queried: %s" % (exc_value,)
     yield power_query_failure(system_id, hostname, message)
-    raise PowerActionFail(error)
+    raise exc_type, exc_value, exc_trace
 
 
 def maaslog_report_success(node, power_state):

@@ -27,10 +27,6 @@ from provisioningserver.rpc.exceptions import (
 )
 from provisioningserver.rpc.power import query_all_nodes
 from provisioningserver.rpc.region import ListNodePowerParameters
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
@@ -42,7 +38,7 @@ maaslog = get_maas_logger("power_monitor_service")
 class NodePowerMonitorService(TimerService, object):
     """Service to monitor the power status of all nodes in this cluster."""
 
-    check_interval = timedelta(minutes=5).total_seconds()
+    check_interval = timedelta(seconds=15).total_seconds()
     max_nodes_at_once = 5
 
     def __init__(self, cluster_uuid, clock=None):
@@ -57,42 +53,38 @@ class NodePowerMonitorService(TimerService, object):
         Log errors on failure, but do not propagate them up; that will
         stop the timed loop from running.
         """
-        def query_nodes_failed(failure):
+        try:
+            client = getRegionClient()
+        except NoConnectionsAvailable:
+            maaslog.debug(
+                "Cannot monitor nodes' power status; "
+                "region not available.")
+        else:
+            d = self.query_nodes(client, uuid)
+            d.addErrback(self.query_nodes_failed, uuid)
+            return d
+
+    @inlineCallbacks
+    def query_nodes(self, client, uuid):
+        # Get the nodes' power parameters from the region. Keep getting more
+        # power parameters until the region returns an empty list.
+        while True:
+            response = yield client(ListNodePowerParameters, uuid=uuid)
+            power_parameters = response['nodes']
+            if len(power_parameters) > 0:
+                yield query_all_nodes(
+                    power_parameters, max_concurrency=self.max_nodes_at_once,
+                    clock=self.clock)
+            else:
+                break
+
+    def query_nodes_failed(self, failure, uuid):
+        if failure.check(NoSuchCluster):
+            maaslog.error("Cluster %s is not recognised.", uuid)
+        else:
             # Log the error in full to the Twisted log.
-            log.err(failure)
+            log.err(failure, "Querying node power states.")
             # Log something concise to the MAAS log.
             maaslog.error(
                 "Failed to query nodes' power status: %s",
                 failure.getErrorMessage())
-
-        return self.query_nodes(uuid).addErrback(query_nodes_failed)
-
-    @inlineCallbacks
-    def query_nodes(self, uuid):
-        # Retry a few times, since this service usually comes up before
-        # the RPC service.
-        for elapsed, remaining, wait in retries(15, 5, self.clock):
-            try:
-                client = getRegionClient()
-            except NoConnectionsAvailable:
-                yield pause(wait, self.clock)
-            else:
-                break
-        else:
-            maaslog.error(
-                "Cannot monitor nodes' power status; "
-                "region not available.")
-            return
-
-        # Get the nodes' power parameters from the region.
-        try:
-            response = yield client(ListNodePowerParameters, uuid=uuid)
-        except NoSuchCluster:
-            maaslog.error(
-                "This cluster (%s) is not recognised by the region.",
-                uuid)
-        else:
-            node_power_parameters = response['nodes']
-            yield query_all_nodes(
-                node_power_parameters,
-                max_concurrency=self.max_nodes_at_once, clock=self.clock)

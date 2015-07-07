@@ -17,6 +17,7 @@ __all__ = [
     "Messages",
     ]
 
+from datetime import timedelta
 import hashlib
 from io import BytesIO
 import logging
@@ -25,6 +26,7 @@ import time
 
 from django.contrib.auth.models import User
 from django.test.client import RequestFactory
+from django.utils import timezone
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -116,6 +118,11 @@ MAX_PUBLIC_KEYS = 5
 
 
 ALL_NODE_STATES = map_enum(NODE_STATUS).values()
+
+
+# Use `undefined` instead of `None` for default factory arguments when `None`
+# is a reasonable value for the argument.
+undefined = object()
 
 
 class Messages:
@@ -242,12 +249,13 @@ class Factory(maastesting.factory.Factory):
         device.save()
         return device
 
-    def make_Node(self, mac=False, hostname=None, status=None,
-                  architecture="i386/generic", installable=True, updated=None,
-                  created=None, nodegroup=None, routers=None, zone=None,
-                  power_type=None, networks=None, boot_type=None,
-                  sortable_name=False, parent=None, power_state=None,
-                  disable_ipv4=None, **kwargs):
+    def make_Node(
+            self, mac=False, hostname=None, status=None,
+            architecture="i386/generic", installable=True, updated=None,
+            created=None, nodegroup=None, routers=None, zone=None,
+            networks=None, boot_type=None, sortable_name=False,
+            power_type=None, power_parameters=None, power_state=None,
+            power_state_updated=undefined, disable_ipv4=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -271,8 +279,13 @@ class Factory(maastesting.factory.Factory):
             zone = self.make_Zone()
         if power_type is None:
             power_type = 'ether_wake'
+        if power_parameters is None:
+            power_parameters = ""
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
+        if power_state_updated is undefined:
+            power_state_updated = (
+                timezone.now() - timedelta(minutes=random.randint(0, 15)))
         if disable_ipv4 is None:
             disable_ipv4 = self.pick_bool()
         if boot_type is None:
@@ -280,9 +293,10 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             installable=installable, nodegroup=nodegroup, routers=routers,
-            zone=zone, power_type=power_type, disable_ipv4=disable_ipv4,
-            parent=parent, boot_type=boot_type, power_state=power_state,
-            **kwargs)
+            zone=zone, boot_type=boot_type, power_type=power_type,
+            power_parameters=power_parameters, power_state=power_state,
+            power_state_updated=power_state_updated,
+            disable_ipv4=disable_ipv4, **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to

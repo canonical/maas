@@ -19,6 +19,9 @@ __all__ = [
     "create_node",
 ]
 
+from datetime import timedelta
+from itertools import chain
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from maasserver import exceptions
@@ -30,6 +33,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
 )
+from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
@@ -59,35 +63,97 @@ def mark_node_failed(system_id, error_description):
         raise NodeStateViolation(e)
 
 
-@synchronous
-@transactional
-def list_cluster_nodes_power_parameters(uuid):
-    """Query a cluster controller and return all of its nodes
-    power parameters
+def _gen_cluster_nodes_power_parameters(nodes):
+    """Generate power parameters for `nodes`.
 
-    for :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
+    These fulfil a subset of the return schema for the RPC call for
+    :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
+
+    :return: A generator yielding `dict`s.
     """
-    try:
-        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
-    except NodeGroup.DoesNotExist:
-        raise NoSuchCluster.from_uuid(uuid)
-    else:
-        power_info_by_node = (
-            (node, node.get_effective_power_info())
-            for node in nodegroup.node_set.exclude(
-                status=NODE_STATUS.BROKEN).exclude(installable=False)
-        )
-        return [
-            {
+    five_minutes_ago = now() - timedelta(minutes=5)
+
+    # This is meant to be temporary until all the power types support querying
+    # the power state of a node. See the definition of QUERY_POWER_TYPES for
+    # more information.
+    from provisioningserver.rpc.power import QUERY_POWER_TYPES
+
+    nodes_unchecked = (
+        nodes
+        .filter(power_state_updated=None)
+        .filter(power_type__in=QUERY_POWER_TYPES)
+        .exclude(status=NODE_STATUS.BROKEN)
+        .exclude(installable=False)
+    )
+    nodes_checked = (
+        nodes
+        .exclude(power_state_updated=None)
+        .exclude(power_state_updated__gt=five_minutes_ago)
+        .filter(power_type__in=QUERY_POWER_TYPES)
+        .exclude(status=NODE_STATUS.BROKEN)
+        .exclude(installable=False)
+        .order_by("power_state_updated", "system_id")
+    )
+
+    for node in chain(nodes_unchecked, nodes_checked):
+        power_info = node.get_effective_power_info()
+        if power_info.power_type is not None:
+            yield {
                 'system_id': node.system_id,
                 'hostname': node.hostname,
                 'power_state': node.power_state,
                 'power_type': power_info.power_type,
                 'context': power_info.power_parameters,
             }
-            for node, power_info in power_info_by_node
-            if power_info.power_type is not None
-        ]
+
+
+def _gen_up_to_json_limit(things, limit):
+    """Yield until the combined JSON dump of those things would exceed `limit`.
+
+    :param things: Any iterable whose elements can dumped as JSON.
+    :return: A generator that yields items from `things` unmodified, and in
+        order, though maybe not all of them.
+    """
+    # Deduct the space required for brackets. json.dumps(), by default, does
+    # not add padding, so it's just the opening and closing brackets.
+    limit -= 2
+
+    for index, thing in enumerate(things):
+        # Adjust the limit according the the size of thing.
+        if index == 0:
+            # A sole element does not need a delimiter.
+            limit -= len(json.dumps(thing))
+        else:
+            # There is a delimiter between this and the preceeding element.
+            # json.dumps(), by default, uses ", ", i.e. 2 characters.
+            limit -= len(json.dumps(thing)) + 2
+
+        # Check if we've reached the limit.
+        if limit == 0:
+            yield thing
+            break
+        elif limit > 0:
+            yield thing
+        else:
+            break
+
+
+@synchronous
+@transactional
+def list_cluster_nodes_power_parameters(uuid):
+    """Return power parameters for a cluster's nodes, in priority order.
+
+    For :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
+    """
+    try:
+        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
+    except NodeGroup.DoesNotExist:
+        raise NoSuchCluster.from_uuid(uuid)
+    else:
+        nodes = nodegroup.node_set.all()
+        details = _gen_cluster_nodes_power_parameters(nodes)
+        details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
+        return list(details)
 
 
 @synchronous

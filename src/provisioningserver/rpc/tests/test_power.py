@@ -30,6 +30,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import (
+    always_fail_with,
     always_succeed_with,
     TwistedLoggerFixture,
 )
@@ -794,6 +795,79 @@ class TestPowerQuery(MAASTestCase):
             self.assertThat(execute, MockCallsMatch(*calls))
             clock.advance(waiting_time)
         self.assertEqual("off", extract_result(d))
+
+
+class TestPowerQueryExceptions(MAASTestCase):
+
+    scenarios = tuple(
+        (power_type, {
+            "power_type": power_type,
+            "func": (  # Function to invoke driver.
+                "perform_power_driver_query"
+                if power_type in PowerDriverRegistry
+                else "perform_power_query"),
+            "waits": (  # Pauses between retries.
+                [] if power_type in PowerDriverRegistry
+                else power.default_waiting_policy),
+            "calls": (  # No. of calls to the driver.
+                1 if power_type in PowerDriverRegistry
+                else len(power.default_waiting_policy)),
+        })
+        for power_type in power.QUERY_POWER_TYPES
+    )
+
+    def test_get_power_state_captures_all_exceptions(self):
+        logger_twisted = self.useFixture(TwistedLoggerFixture())
+        logger_maaslog = self.useFixture(FakeLogger("maas"))
+
+        # Avoid threads here.
+        self.patch(power, "deferToThread", maybeDeferred)
+
+        exception_type = factory.make_exception_type()
+        exception_message = factory.make_string()
+        exception = exception_type(exception_message)
+
+        # Pretend the query always fails with `exception`.
+        query = self.patch_autospec(power, self.func)
+        query.side_effect = always_fail_with(exception)
+
+        # Intercept calls to power_query_failure().
+        self.patch_autospec(power, "power_query_failure")
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        context = sentinel.context
+        clock = Clock()
+
+        d = power.get_power_state(
+            system_id, hostname, self.power_type, context, clock)
+
+        # Crank through some number of retries.
+        for wait in self.waits:
+            self.assertFalse(d.called)
+            clock.advance(wait)
+        self.assertTrue(d.called)
+
+        # Finally the exception from the query is raised.
+        self.assertRaises(exception_type, extract_result, d)
+
+        # The broken power query function patched earlier was called the same
+        # number of times as there are steps in the default waiting policy.
+        expected_call = call(system_id, hostname, self.power_type, context)
+        expected_calls = [expected_call] * self.calls
+        self.assertThat(query, MockCallsMatch(*expected_calls))
+
+        # power_query_failure() was called once at the end with a message
+        # constructed using the error message we fabricated at the beginning.
+        expected_message = (
+            "Power state could not be queried: %s" % exception_message)
+        self.assertThat(power.power_query_failure, MockCalledOnceWith(
+            system_id, hostname, expected_message))
+
+        # Nothing was logged to the Twisted log or to maaslog; that happens
+        # elsewhere, in maaslog_query_failure() and maaslog_query().
+        self.assertEqual("", logger_twisted.output)
+        self.assertEqual("", logger_maaslog.output)
 
 
 class TestPowerQueryAsync(MAASTestCase):

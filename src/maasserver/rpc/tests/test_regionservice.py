@@ -103,6 +103,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchNode,
 )
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.region import (
     Authenticate,
     CommissionNode,
@@ -655,7 +656,10 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
         nodegroup = yield deferToThread(self.create_nodegroup)
         nodes = []
         for _ in range(3):
-            node = yield deferToThread(self.create_node, nodegroup)
+            node = yield deferToThread(
+                self.create_node, nodegroup,
+                power_type=random.choice(QUERY_POWER_TYPES),
+                power_state_updated=None)
             power_params = yield deferToThread(
                 self.get_node_power_parameters, node)
             nodes.append({
@@ -668,12 +672,15 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
         # Create a node with an invalid power type (i.e. the empty string).
         # This will not be reported by the call to ListNodePowerParameters.
-        yield deferToThread(self.create_node, nodegroup, power_type="")
+        yield deferToThread(
+            self.create_node, nodegroup, power_type="",
+            power_state_updated=None)
 
         response = yield call_responder(
             Region(), ListNodePowerParameters,
             {b'uuid': nodegroup.uuid})
 
+        self.maxDiff = None
         self.assertItemsEqual(nodes, response['nodes'])
 
     @wait_for_reactor
