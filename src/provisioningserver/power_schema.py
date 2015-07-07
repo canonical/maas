@@ -124,7 +124,7 @@ def make_json_field(
     :param label: The label to be presented to the user for this field.
     :type label: string
     :param field_type: The type of field to create. Can be one of
-        (string, choice, mac_addres, password). Defaults to string.
+        (string, choice, mac_address, password). Defaults to string.
     :type field_type: string.
     :param choices: The collection of choices to present to the user.
         Needs to be structured as a list of lists, otherwise
@@ -310,7 +310,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'node_outlet', "APC PDU node outlet number (1-16)"),
             make_json_field(
                 'power_on_delay', "Power ON outlet delay (seconds)",
-                default='5', field_type='password'),
+                default='5'),
         ],
     },
 ]
