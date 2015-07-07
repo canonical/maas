@@ -29,7 +29,6 @@ python-docutils
 python-formencode
 python-hivex
 python-httplib2
-python-iscpy
 python-jsonschema
 python-lockfile
 python-netaddr
