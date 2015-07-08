@@ -313,4 +313,18 @@ JSON_POWER_TYPE_PARAMETERS = [
                 default='5'),
         ],
     },
+    {
+        'name': 'hmc',
+        'description': "IBM Hardware Management Console (HMC)",
+        'fields': [
+            make_json_field('power_address', "IP for HMC"),
+            make_json_field('power_user', "HMC username"),
+            make_json_field(
+                'power_pass', "HMC password", field_type='password'),
+            make_json_field(
+                'server_name', "HMC Managed System server name"),
+            make_json_field(
+                'lpar', "HMC logical partition"),
+        ],
+    },
 ]
