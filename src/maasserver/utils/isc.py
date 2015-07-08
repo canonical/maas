@@ -33,16 +33,24 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
+from collections import OrderedDict
+
 
 str = None
 
 __metaclass__ = type
 __all__ = [
+    'ISCParseException',
     'make_isc_string',
     'parse_isc_string',
+    'read_isc_file',
 ]
 
 import copy
+
+
+class ISCParseException(Exception):
+    """Thrown when an ISC string cannot be parsed."""
 
 
 def _clip(char_list):
@@ -64,7 +72,7 @@ def _clip(char_list):
             return index, char_list[:index]
         elif item == '}':
             skip -= 1
-    raise Exception("Invalid brackets.")
+    raise ISCParseException("Invalid brackets.")
 
 
 def _parse_tokens(char_list):
@@ -86,11 +94,11 @@ def _parse_tokens(char_list):
           {'10.1.0/32': True, '10.1.1/32': True}}}
     """
     index = 0
-    dictionary_fragment = {}
+    dictionary_fragment = OrderedDict()
     new_char_list = copy.deepcopy(char_list)
     if type(new_char_list) == str:
         return new_char_list
-    if type(new_char_list) == dict:
+    if type(new_char_list) == OrderedDict:
         return new_char_list
     last_open = None
     continuous_line = False
@@ -146,6 +154,8 @@ def _parse_tokens(char_list):
             # fine)
             elif new_char_list[index] not in ['{', ';', '}']:
                 key = new_char_list[index]
+                if type(dictionary_fragment) == list:
+                    raise ISCParseException("Dictionary expected; got a list")
                 dictionary_fragment[key] = ''
                 index += 1
             index += 1
@@ -277,7 +287,18 @@ def make_isc_string(isc_dict, terminate=True):
             new_list[-1] = '%s%s' % (new_list[-1], terminator)
             isc_list.append(
                 '%s { %s }%s' % (option, ' '.join(new_list), terminator))
-        elif type(isc_dict[option]) == dict:
+        elif (type(isc_dict[option]) == OrderedDict or
+              type(isc_dict[option]) == dict):
             isc_list.append('%s { %s }%s' % (
                 option, make_isc_string(isc_dict[option]), terminator))
     return '\n'.join(isc_list)
+
+
+def read_isc_file(isc_file):
+    """Given the specified filename, parses it to create a dictionary.
+
+    :param:isc_file: the filename to read
+    :return:dict: dictionary of ISC file representation
+    """
+    with open(isc_file, "r") as f:
+        return parse_isc_string(f.read())
