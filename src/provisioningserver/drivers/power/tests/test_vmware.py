@@ -1,0 +1,99 @@
+# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for `provisioningserver.drivers.power.vmware`."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = []
+
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.power import vmware as vmware_module
+from provisioningserver.drivers.power.vmware import (
+    extract_vmware_parameters,
+    VMwarePowerDriver,
+)
+from testtools.matchers import Equals
+
+
+class TestVMwarePowerDriver(MAASTestCase):
+
+    def make_parameters(self):
+        system_id = factory.make_name('system_id')
+        host = factory.make_name('power_address')
+        username = factory.make_name('power_user')
+        password = factory.make_name('power_pass')
+        vm_name = factory.make_name('power_vm_name')
+        uuid = factory.make_name('power_uuid')
+        port = protocol = None
+        params = {
+            'system_id': system_id,
+            'power_address': host,
+            'power_user': username,
+            'power_pass': password,
+            'power_vm_name': vm_name,
+            'power_uuid': uuid,
+            'power_port': port,
+            'power_protocol': protocol,
+        }
+        return (system_id, host, username, password,
+                vm_name, uuid, port, protocol, params)
+
+    def test_extract_vmware_parameters_extracts_parameters(self):
+        (system_id, host, username, password,
+         vm_name, uuid, port, protocol, params) = self.make_parameters()
+
+        self.assertItemsEqual(
+            (host, username, password, vm_name, uuid, port, protocol),
+            extract_vmware_parameters(params))
+
+    def test_power_on_calls_power_control_vmware(self):
+        power_change = 'on'
+        (system_id, host, username, password,
+         vm_name, uuid, port, protocol, params) = self.make_parameters()
+        vmware_power_driver = VMwarePowerDriver()
+        power_control_vmware = self.patch(
+            vmware_module, 'power_control_vmware')
+        vmware_power_driver.power_on(**params)
+
+        self.assertThat(
+            power_control_vmware, MockCalledOnceWith(
+                host, username, password, vm_name,
+                uuid, power_change, port, protocol))
+
+    def test_power_off_calls_power_control_vmware(self):
+        power_change = 'off'
+        (system_id, host, username, password,
+         vm_name, uuid, port, protocol, params) = self.make_parameters()
+        vmware_power_driver = VMwarePowerDriver()
+        power_control_vmware = self.patch(
+            vmware_module, 'power_control_vmware')
+        vmware_power_driver.power_off(**params)
+
+        self.assertThat(
+            power_control_vmware, MockCalledOnceWith(
+                host, username, password, vm_name,
+                uuid, power_change, port, protocol))
+
+    def test_power_query_calls_power_query_vmware(self):
+        (system_id, host, username, password,
+         vm_name, uuid, port, protocol, params) = self.make_parameters()
+        vmware_power_driver = VMwarePowerDriver()
+        power_query_vmware = self.patch(
+            vmware_module, 'power_query_vmware')
+        power_query_vmware.return_value = 'off'
+        expected_result = vmware_power_driver.power_query(**params)
+
+        self.expectThat(
+            power_query_vmware, MockCalledOnceWith(
+                host, username, password, vm_name, uuid, port, protocol))
+        self.expectThat(expected_result, Equals('off'))

@@ -335,11 +335,13 @@ class PowerDriverRegistry(Registry):
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
+from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
 builtin_power_drivers = [
     HMCPowerDriver(),
     MSCMPowerDriver(),
     VirshPowerDriver(),
+    VMwarePowerDriver(),
 ]
 for driver in builtin_power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
