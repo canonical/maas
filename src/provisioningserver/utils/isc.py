@@ -144,6 +144,8 @@ def _parse_tokens(char_list):
             # If there are more than 1 'keywords' at new_char_list[index]
             # ex - "recursion no;"
             elif len(new_char_list[index].split()) >= 2:
+                if type(dictionary_fragment) == list:
+                    raise ISCParseException("Syntax error")
                 dictionary_fragment[
                     new_char_list[index].split()[0]] = (
                     ' '.join(new_char_list[index].split()[1:]))
@@ -155,7 +157,7 @@ def _parse_tokens(char_list):
             elif new_char_list[index] not in ['{', ';', '}']:
                 key = new_char_list[index]
                 if type(dictionary_fragment) == list:
-                    raise ISCParseException("Dictionary expected; got a list")
+                    raise ISCParseException("Syntax error")
                 dictionary_fragment[key] = ''
                 index += 1
             index += 1
