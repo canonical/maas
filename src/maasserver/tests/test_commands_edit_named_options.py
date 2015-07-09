@@ -30,12 +30,12 @@ from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import get_one
-from maasserver.utils.isc import (
+from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+from provisioningserver.utils.isc import (
     make_isc_string,
     parse_isc_string,
     read_isc_file,
 )
-from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 from testtools.matchers import (
     Contains,
     Equals,

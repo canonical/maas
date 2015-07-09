@@ -8,6 +8,13 @@ forwarders {
 
 dnssec-validation {{dnssec_validation}};
 
+
+{{if not upstream_allow_query}}
 allow-query { any; };
+{{endif}}
+{{if not upstream_allow_recursion}}
 allow-recursion { trusted; };
+{{endif}}
+{{if not upstream_allow_query_cache}}
 allow-query-cache { trusted; };
+{{endif}}

@@ -32,6 +32,8 @@ def patch_dns_config_path(testcase, config_dir=None):
         config_dir = config_dir.encode(fsenc)
     testcase.useFixture(
         EnvironmentVariable(b"MAAS_DNS_CONFIG_DIR", config_dir))
+    testcase.useFixture(
+        EnvironmentVariable(b"MAAS_BIND_CONFIG_DIR", config_dir))
     return config_dir.decode(fsenc)
 
 
