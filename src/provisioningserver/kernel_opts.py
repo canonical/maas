@@ -21,6 +21,7 @@ __all__ = [
 from collections import namedtuple
 import os
 
+import curtin
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.logger import get_maas_logger
 
@@ -171,6 +172,15 @@ def compose_arch_opts(params):
         return []
 
 
+CURTIN_KERNEL_CMDLINE_NAME = 'KERNEL_CMDLINE_COPY_TO_INSTALL_SEP'
+
+
+def get_curtin_kernel_cmdline_sep():
+    """Return the separator for passing extra parameters to the kernel."""
+    return getattr(
+        curtin, CURTIN_KERNEL_CMDLINE_NAME, '--')
+
+
 def compose_kernel_command_line(params):
     """Generate a line of kernel options for booting `node`.
 
@@ -185,13 +195,16 @@ def compose_kernel_command_line(params):
     #       as it would be nice to have.
     options += compose_logging_opts(params.log_host)
     options += compose_arch_opts(params)
+    cmdline_sep = get_curtin_kernel_cmdline_sep()
     if params.extra_opts:
-        # Using -- before extra opts makes both d-i and Curtin install
+        # Using --- before extra opts makes both d-i and Curtin install
         # them into the grub config when installing an OS, thus causing
         # the options to "stick" when local booting later.
-        options.append('--')
+        # see LP: #1402042 for info on '---' versus '--'
+        options.append(cmdline_sep)
         options.append(params.extra_opts)
     kernel_opts = ' '.join(options)
     maaslog.debug(
-        '%s: kernel parameters -- "%s"' % (params.hostname, kernel_opts))
+        '%s: kernel parameters %s "%s"' %
+        (cmdline_sep, params.hostname, kernel_opts))
     return kernel_opts
