@@ -33,7 +33,7 @@ from django.core.management.base import (
     CommandError,
     )
 from maasserver.models import Config
-from maasserver.utils.isc import (
+from provisioningserver.utils.isc import (
     ISCParseException,
     make_isc_string,
     parse_isc_string,

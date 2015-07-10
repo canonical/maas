@@ -39,6 +39,7 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
+    NAMED_CONF_OPTIONS,
     render_dns_template,
     report_missing_config_dir,
     set_up_options_conf,
@@ -54,12 +55,16 @@ from provisioningserver.dns.zoneconfig import (
     DNSReverseZoneConfig,
     )
 from provisioningserver.utils import locate_config
+from provisioningserver.utils.isc import read_isc_file
 from testtools.matchers import (
+    AllMatch,
     Contains,
     ContainsAll,
     EndsWith,
+    Equals,
     FileContains,
     FileExists,
+    Is,
     IsInstance,
     MatchesAll,
     Not,
@@ -68,6 +73,47 @@ from testtools.matchers import (
     )
 from testtools.testcase import ExpectedException
 from twisted.python.filepath import FilePath
+
+
+NAMED_CONF_OPTIONS_CONTENTS = dedent("""\
+    options {
+        forwarders {
+            8.8.8.8;
+            8.8.4.4;
+        };
+        dnssec-validation auto;
+        allow-query { any; };
+        allow-recursion { trusted; };
+        allow-query-cache { trusted; };
+        auth-nxdomain no;
+        listen-on-v6 { any; };
+    };
+    """)
+
+NAMED_CONF_OPTIONS_WITH_ALLOW_QUERY_CONTENTS = dedent("""\
+    options {
+        forwarders {
+            8.8.8.8;
+            8.8.4.4;
+        };
+        dnssec-validation auto;
+        allow-query { any; };
+        auth-nxdomain no;
+        listen-on-v6 { any; };
+    };
+    """)
+
+NAMED_CONF_OPTIONS_NO_ALLOW_CONTENTS = dedent("""\
+    options {
+        forwarders {
+            8.8.8.8;
+            8.8.4.4;
+        };
+        dnssec-validation auto;
+        auth-nxdomain no;
+        listen-on-v6 { any; };
+    };
+    """)
 
 
 class TestHelpers(MAASTestCase):
@@ -86,6 +132,24 @@ class TestHelpers(MAASTestCase):
             "MAAS_DNS_CONFIG_DIR", directory.encode("ascii")))
         self.assertThat(
             config.get_dns_config_dir(), MatchesAll(
+                SamePath(directory),
+                IsInstance(unicode),
+            ))
+
+    def test_get_bind_config_dir_defaults_to_etc_bind_maas(self):
+        self.useFixture(EnvironmentVariable("MAAS_BIND_CONFIG_DIR"))
+        self.assertThat(
+            config.get_bind_config_dir(), MatchesAll(
+                SamePath(locate_config("../bind")),
+                IsInstance(unicode),
+            ))
+
+    def test_get_bind_config_dir_checks_environ_first(self):
+        directory = self.make_dir()
+        self.useFixture(EnvironmentVariable(
+            "MAAS_BIND_CONFIG_DIR", directory.encode("ascii")))
+        self.assertThat(
+            config.get_bind_config_dir(), MatchesAll(
                 SamePath(directory),
                 IsInstance(unicode),
             ))
@@ -144,6 +208,59 @@ class TestRNDCUtilities(MAASTestCase):
                 for ip in ips
             ])
         )
+
+    def test_set_up_options_conf_write_config_assumes_no_overrides(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf()
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        target = read_isc_file(target_file)
+        self.assertThat([
+            target['allow-query']['any'],
+            target['allow-recursion']['trusted'],
+            target['allow-query-cache']['trusted'],
+        ], AllMatch(Equals(True)))
+
+    def test_set_up_options_conf_write_config_allows_overrides(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        factory.make_file(
+            location=dns_conf_dir, name=NAMED_CONF_OPTIONS,
+            contents=NAMED_CONF_OPTIONS_CONTENTS)
+        set_up_options_conf()
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        target = read_isc_file(target_file)
+        self.assertThat([
+            target.get('allow-query'),
+            target.get('allow-recursion'),
+            target.get('allow-query-cache'),
+        ], AllMatch(Is(None)))
+
+    def test_set_up_options_conf_write_config_allows_zero_overrides(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        factory.make_file(
+            location=dns_conf_dir, name=NAMED_CONF_OPTIONS,
+            contents=NAMED_CONF_OPTIONS_NO_ALLOW_CONTENTS)
+        set_up_options_conf()
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        target = read_isc_file(target_file)
+        self.assertThat([
+            target['allow-query']['any'],
+            target['allow-recursion']['trusted'],
+            target['allow-query-cache']['trusted'],
+        ], AllMatch(Equals(True)))
+
+    def test_set_up_options_conf_write_config_allows_single_override(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        factory.make_file(
+            location=dns_conf_dir, name=NAMED_CONF_OPTIONS,
+            contents=NAMED_CONF_OPTIONS_WITH_ALLOW_QUERY_CONTENTS)
+        set_up_options_conf()
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        target = read_isc_file(target_file)
+        self.assertIsNone(target.get('allow-query'))
 
     def test_set_up_options_conf_handles_no_upstream_dns(self):
         dns_conf_dir = patch_dns_config_path(self)

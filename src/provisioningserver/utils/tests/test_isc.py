@@ -18,13 +18,13 @@ __all__ = []
 from collections import OrderedDict
 from textwrap import dedent
 
-from maasserver.utils.isc import (
+from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.isc import (
     ISCParseException,
     make_isc_string,
     parse_isc_string,
     read_isc_file,
     )
-from maastesting.testcase import MAASTestCase
 from testtools import ExpectedException
 
 
@@ -219,6 +219,10 @@ class TestParseISCString(MAASTestCase):
     def test_parse_malformed_list_throws_iscparseexception(self):
         with ExpectedException(ISCParseException):
             parse_isc_string("forwarders {{}a;;b}")
+
+    def test_parse_forgotten_semicolons_throw_iscparseexception(self):
+        with ExpectedException(ISCParseException):
+            parse_isc_string("a { b; } { c; } d e;")
 
     def test_read_isc_file(self):
         testdata = dedent("""\

@@ -31,10 +31,12 @@ import sys
 
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
 import tempita
 
 
+NAMED_CONF_OPTIONS = 'named.conf.options'
 MAAS_NAMED_CONF_NAME = 'named.conf.maas'
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = 'named.conf.options.inside.maas'
 MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
@@ -46,6 +48,18 @@ def get_dns_config_dir():
     setting = os.getenv(
         "MAAS_DNS_CONFIG_DIR",
         locate_config(os.path.pardir, "bind", "maas"))
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        return setting.decode(fsenc)
+    else:
+        return setting
+
+
+def get_bind_config_dir():
+    """Location of bind configuration files."""
+    setting = os.getenv(
+        "MAAS_BIND_CONFIG_DIR",
+        locate_config(os.path.pardir, "bind"))
     if isinstance(setting, bytes):
         fsenc = sys.getfilesystemencoding()
         return setting.decode(fsenc)
@@ -192,6 +206,25 @@ def set_up_options_conf(overwrite=True, **kwargs):
     # specify it. If it's not set, the substitution will fail with the default
     # template that uses this value.
     kwargs.setdefault("upstream_dns")
+
+    # Parse the options file and make sure MAAS doesn't define any options
+    # that the user has already customized.
+    allow_user_override_options = [
+        "allow-query",
+        "allow-recursion",
+        "allow-query-cache",
+    ]
+
+    try:
+        parsed_options = read_isc_file(
+            compose_bind_config_path(NAMED_CONF_OPTIONS))
+    except IOError:
+        parsed_options = {}
+
+    options = parsed_options.get('options', {})
+    for option in allow_user_override_options:
+        kwargs['upstream_' + option.replace('-', '_')] = option in options
+
     try:
         rendered = template.substitute(kwargs)
     except NameError as error:
@@ -204,6 +237,11 @@ def set_up_options_conf(overwrite=True, **kwargs):
 def compose_config_path(filename):
     """Return the full path for a DNS config or zone file."""
     return os.path.join(get_dns_config_dir(), filename)
+
+
+def compose_bind_config_path(filename):
+    """Return the full path for a DNS config or zone file."""
+    return os.path.join(get_bind_config_dir(), filename)
 
 
 def render_dns_template(template_name, *parameters):
