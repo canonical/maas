@@ -14,7 +14,14 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maascli.parser import ArgumentParser
+import sys
+
+from maascli.parser import (
+    ArgumentParser,
+    prepare_parser,
+)
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -39,3 +46,35 @@ class TestArgumentParser(MAASTestCase):
         # The subparsers property, once populated, always returns the same
         # object.
         self.assertIs(subparsers, parser.subparsers)
+
+    def test_bad_arguments_prints_help_to_stderr(self):
+        argv = ['maas', factory.make_name(prefix="profile"), 'nodes']
+        parser = prepare_parser(argv)
+        mock_print_help = self.patch(ArgumentParser, 'print_help')
+        self.patch(sys.exit)
+        self.patch(ArgumentParser, '_print_error')
+        # We need to catch this TypeError, because after our overridden error()
+        # method is called, argparse expects the system to exit. Without
+        # catching it, when we mock sys.exit() it will continue unexpectedly
+        # and crash with the TypeError later.
+        try:
+            parser.parse_args(argv[1:])
+        except TypeError:
+            pass
+        self.assertThat(mock_print_help, MockCalledOnceWith(sys.stderr))
+
+    def test_bad_arguments_calls_sys_exit_2(self):
+        argv = ['maas', factory.make_name(prefix="profile"), 'nodes']
+        parser = prepare_parser(argv)
+        self.patch(ArgumentParser, 'print_help')
+        mock_exit = self.patch(sys.exit)
+        self.patch(ArgumentParser, '_print_error')
+        # We need to catch this TypeError, because after our overridden error()
+        # method is called, argparse expects the system to exit. Without
+        # catching it, when we mock sys.exit() it will continue unexpectedly
+        # and crash with the TypeError later.
+        try:
+            parser.parse_args(argv[1:])
+        except TypeError:
+            pass
+        self.assertThat(mock_exit, MockCalledOnceWith(2))
