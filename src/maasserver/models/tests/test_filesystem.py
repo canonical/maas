@@ -99,3 +99,13 @@ class TestFilesystem(MAASServerTestCase):
         uuid = uuid4()
         fs = factory.make_Filesystem(uuid=uuid)
         self.assertEquals('%s' % uuid, fs.uuid)
+
+    def test_get_parent_returns_block_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        self.assertEquals(block_device, filesystem.get_parent())
+
+    def test_get_parent_returns_partition(self):
+        partition = factory.make_Partition()
+        filesystem = factory.make_Filesystem(partition=partition)
+        self.assertEquals(partition, filesystem.get_parent())

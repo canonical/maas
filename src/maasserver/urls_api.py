@@ -113,6 +113,10 @@ from maasserver.api.users import (
     UsersHandler,
 )
 from maasserver.api.version import VersionHandler
+from maasserver.api.volume_groups import (
+    VolumeGroupHandler,
+    VolumeGroupsHandler,
+)
 from maasserver.api.zones import (
     ZoneHandler,
     ZonesHandler,
@@ -148,6 +152,10 @@ partition_handler = RestrictedResource(
     PartitionHandler, authentication=api_auth)
 partition_table_handler = RestrictedResource(
     PartitionTableHandler, authentication=api_auth)
+volume_group_handler = RestrictedResource(
+    VolumeGroupHandler, authentication=api_auth)
+volume_groups_handler = RestrictedResource(
+    VolumeGroupsHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -222,14 +230,19 @@ urlpatterns += patterns(
         name='node_macs_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
         blockdevices_handler, name='blockdevices_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
+        blockdevice_handler, name='blockdevice_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partitions/$',
         partition_table_handler, name='partition_table_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partitions/(?P<partition_id>[^/]+)$',
         partition_handler, name='partition_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
-        blockdevice_handler, name='blockdevice_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/volume-groups/$',
+        volume_groups_handler, name='volume_groups_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/volume-group/'
+        '(?P<volume_group_id>[^/]+)/$',
+        volume_group_handler, name='volume_group_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

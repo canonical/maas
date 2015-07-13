@@ -113,6 +113,13 @@ class Filesystem(CleanSave, TimestampedModel):
         else:
             return 0
 
+    def get_parent(self):
+        """Return linked `BlockDevice` or linked `Partition`."""
+        if self.block_device is None:
+            return self.partition
+        else:
+            return self.block_device
+
     def clean(self, *args, **kwargs):
         super(Filesystem, self).clean(*args, **kwargs)
 
