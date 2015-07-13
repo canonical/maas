@@ -200,7 +200,7 @@ def update_filesystem_group(sender, instance, **kwargs):
     filesystem group.
     """
     if isinstance(instance, BlockDevice):
-        groups = FilesystemGroup.objects.get_filesystem_groups_for(instance)
+        groups = FilesystemGroup.objects.filter_by_block_device(instance)
         for group in groups:
             # Re-save the group so the VirtualBlockDevice is updated. This will
             # fix the size of the VirtualBlockDevice if the size of this block

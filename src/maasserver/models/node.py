@@ -2130,7 +2130,7 @@ class Node(CleanSave, TimestampedModel):
             block_device__in=physical_block_devices).delete()
         for block_device in self.virtualblockdevice_set.all():
             try:
-                block_device.filesystem_group.delete()
+                block_device.filesystem_group.delete(force=True)
             except FilesystemGroup.DoesNotExist:
                 # When a filesystem group has multiple virtual block devices
                 # it is possible that accessing `filesystem_group` will

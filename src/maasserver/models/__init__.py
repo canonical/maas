@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'Bcache',
     'BlockDevice',
     'BootResource',
     'BootResourceFile',
@@ -41,6 +42,7 @@ __all__ = [
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
+    'RAID',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -48,6 +50,7 @@ __all__ = [
     'Tag',
     'UserProfile',
     'VirtualBlockDevice',
+    'VolumeGroup',
     'Zone',
     ]
 
@@ -78,7 +81,12 @@ from maasserver.models.eventtype import EventType
 from maasserver.models.fabric import Fabric
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
-from maasserver.models.filesystemgroup import FilesystemGroup
+from maasserver.models.filesystemgroup import (
+    Bcache,
+    FilesystemGroup,
+    RAID,
+    VolumeGroup,
+)
 from maasserver.models.interface import Interface
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
@@ -111,6 +119,7 @@ from piston.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
+    Bcache,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -136,12 +145,14 @@ ignore_unused(
     NodeGroupInterface,
     Partition,
     PartitionTable,
+    RAID,
     SSHKey,
     StaticIPAddress,
     Tag,
     UserProfile,
     VirtualBlockDevice,
     VLAN,
+    VolumeGroup,
     Zone,
 )
 
@@ -228,8 +239,11 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, BlockDevice):
-            node = obj.node
+        elif isinstance(obj, BlockDevice) or isinstance(obj, FilesystemGroup):
+            if isinstance(obj, BlockDevice):
+                node = obj.node
+            else:
+                node = obj.get_node()
             if perm == NODE_PERMISSION.VIEW:
                 # If the node is not ownered or the owner is the user then
                 # they can view the information.

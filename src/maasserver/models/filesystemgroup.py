@@ -20,12 +20,17 @@ __all__ = [
 from collections import Counter
 from uuid import uuid4
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import (
     CharField,
     Manager,
     Q,
 )
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPES,
@@ -37,10 +42,50 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class FilesystemGroupManager(Manager):
-    """Manager for `FilesystemGroup` class."""
+class BaseFilesystemGroupManager(Manager):
+    """A utility to manage the collection of FilesystemGroup."""
 
-    def get_filesystem_groups_for(self, block_device):
+    extra_filters = {}
+
+    def get_queryset(self):
+        return super(
+            BaseFilesystemGroupManager,
+            self).get_queryset().filter(**self.extra_filters)
+
+    def get_object_or_404(
+            self, system_id, filesystem_group_id, user, perm):
+        """Fetch a `FilesystemGroup` by its `Node`'s system_id and its id.
+        Raise exceptions if no `FilesystemGroup` with this id exist, if the
+        `Node` with system_id doesn't exist, if the `FilesystemGroup` doesn't
+        exist on the `Node`, or if the provided user has not the required
+        permission on this `Node` and `FilesystemGroup`.
+
+        :param name: The system_id.
+        :type name: string
+        :param name: The filesystem_group_id.
+        :type name: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        params = self.extra_filters.copy()
+        params["id"] = filesystem_group_id
+        filesystem_group = get_object_or_404(self.model, **params)
+        node = filesystem_group.get_node()
+        if node.system_id != system_id:
+            raise Http404()
+        if not user.has_perm(perm, filesystem_group):
+            raise PermissionDenied()
+        return filesystem_group
+
+    def filter_by_block_device(self, block_device):
         """Return all the `FilesystemGroup`s that are related to
         block_device."""
         partition_query = Q(
@@ -48,6 +93,38 @@ class FilesystemGroupManager(Manager):
         return self.filter(
             Q(filesystems__block_device=block_device) |
             partition_query).distinct()
+
+    def filter_by_node(self, node):
+        """Return all `FilesystemGroup` that are related to node."""
+        partition_query = Q(**{
+            "filesystems__partition__partition_table__"
+            "block_device__node": node,
+            })
+        return self.filter(
+            Q(filesystems__block_device__node=node) |
+            partition_query).distinct()
+
+
+class FilesystemGroupManager(BaseFilesystemGroupManager):
+    """All the FilesystemGroup objects together."""
+
+
+class VolumeGroupManager(BaseFilesystemGroupManager):
+    """Volume groups."""
+
+    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.LVM_VG}
+
+
+class RAIDManager(BaseFilesystemGroupManager):
+    """RAID groups"""
+
+    extra_filters = {'group_type__in': FILESYSTEM_GROUP_RAID_TYPES}
+
+
+class BcacheManager(BaseFilesystemGroupManager):
+    """Bcache groups"""
+
+    extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.BCACHE}
 
 
 class FilesystemGroup(CleanSave, TimestampedModel):
@@ -377,6 +454,30 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             from maasserver.models.virtualblockdevice import VirtualBlockDevice
             VirtualBlockDevice.objects.create_or_update_for(self)
 
+    def delete(self, force=False):
+        """Delete from the database.
+
+        :param force: Delete any related object that prevents this object
+            from being deleted.
+        """
+        if self.is_lvm():
+            if self.virtual_devices.count() > 0:
+                if force:
+                    # Delete the linked virtual block devices, since the
+                    # deletion of this object is forced.
+                    self.virtual_devices.all().delete()
+                else:
+                    # Don't allow the filesystem group to be deleted if virtual
+                    # block devices are linked. You cannot delete a volume
+                    # group that has logical volumes.
+                    raise ValidationError(
+                        "This volume group has logical volumes; it cannot be "
+                        "deleted.")
+        else:
+            # For the other types we delete the virtual block device.
+            self.virtual_device.delete()
+        super(FilesystemGroup, self).delete()
+
     def get_virtual_block_device_prefix(self):
         """Return the prefix that should be used when creating a linked virtual
         block device."""
@@ -403,3 +504,47 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return self.get_bcache_backing_filesystem().get_block_size()
         else:
             raise ValueError("Unknown group_type.")
+
+# Piston serializes objects based on the object class.
+# Here we define a proxy classes so that we can specialize how all the
+# different group types are serialized on the API.
+
+
+class VolumeGroup(FilesystemGroup):
+    """A volume group."""
+
+    objects = VolumeGroupManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(VolumeGroup, self).__init__(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs)
+
+
+class RAID(FilesystemGroup):
+    """A RAID."""
+
+    objects = RAIDManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(RAID, self).__init__(*args, **kwargs)
+        if self.group_type not in FILESYSTEM_GROUP_RAID_TYPES:
+            raise ValueError("group_type must be a valid RAID type.")
+
+
+class Bcache(FilesystemGroup):
+    """A Bcache."""
+
+    objects = BcacheManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Bcache, self).__init__(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs)

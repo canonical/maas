@@ -165,7 +165,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         device = factory.make_BlockDevice(node=node)
         self.assertTrue(backend.has_perm(user, NODE_PERMISSION.VIEW, device))
 
-    def test_user_cannot_edit_when_not_node_owner(self):
+    def test_user_cannot_edit_BlockDevice_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
@@ -187,6 +187,47 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         self.assertFalse(
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_BlockDevice()))
+
+    def test_user_cannot_view_FilesystemGroup_when_not_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        filesystem_group = factory.make_FilesystemGroup(node=node)
+        self.assertFalse(
+            backend.has_perm(user, NODE_PERMISSION.VIEW, filesystem_group))
+
+    def test_user_can_view_FilesystemGroup_when_no_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(node=node)
+        self.assertTrue(
+            backend.has_perm(user, NODE_PERMISSION.VIEW, filesystem_group))
+
+    def test_user_can_view_FilesystemGroup_when_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        filesystem_group = factory.make_FilesystemGroup(node=node)
+        self.assertTrue(
+            backend.has_perm(user, NODE_PERMISSION.VIEW, filesystem_group))
+
+    def test_user_cannot_edit_FilesystemGroup_when_not_node_owner(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        filesystem_group = factory.make_FilesystemGroup(node=node)
+        self.assertFalse(
+            backend.has_perm(user, NODE_PERMISSION.EDIT, filesystem_group))
+
+    def test_user_has_no_admin_permission_on_FilesystemGroup(self):
+        # NODE_PERMISSION.ADMIN permission on block devices is granted to super
+        # user only.
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.ADMIN, factory.make_FilesystemGroup()))
 
 
 class TestNodeVisibility(MAASServerTestCase):

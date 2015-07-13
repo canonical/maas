@@ -337,10 +337,10 @@ class TestBlockDevicePostSave(MAASServerTestCase):
         ]
 
     def test__calls_save_on_related_filesystem_groups(self):
-        mock_get_filesystem_groups_for = self.patch(
-            FilesystemGroup.objects, "get_filesystem_groups_for")
+        mock_filter_by_block_device = self.patch(
+            FilesystemGroup.objects, "filter_by_block_device")
         mock_filesystem_group = MagicMock()
-        mock_get_filesystem_groups_for.return_value = [
+        mock_filter_by_block_device.return_value = [
             mock_filesystem_group,
         ]
         self.factory()

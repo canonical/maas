@@ -18,16 +18,35 @@ import random
 import re
 from uuid import uuid4
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from django.http import Http404
 from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
+    NODE_PERMISSION,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.filesystemgroup import FilesystemGroup
+from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import (
+    Bcache,
+    BcacheManager,
+    FilesystemGroup,
+    RAID,
+    RAIDManager,
+    VolumeGroup,
+    VolumeGroupManager,
+)
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import (
+    reload_object,
+    reload_objects,
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import machine_readable_bytes
 from maastesting.matchers import (
@@ -42,24 +61,142 @@ from testtools.matchers import (
 )
 
 
-class TestFilesystemGroupManager(MAASServerTestCase):
-    """Tests for the `FilesystemGroup` manager."""
+class TestManagersGetObjectOr404(MAASServerTestCase):
+    """Tests for the `get_object_or_404` on the managers."""
 
-    def test_get_filesystem_groups_for_on_block_device(self):
+    scenarios = (
+        ("FilesystemGroup", {
+            "model": FilesystemGroup,
+            "type": None,
+        }),
+        ("VolumeGroup", {
+            "model": VolumeGroup,
+            "type": FILESYSTEM_GROUP_TYPE.LVM_VG,
+        }),
+        ("RAID", {
+            "model": RAID,
+            "type": FILESYSTEM_GROUP_TYPE.RAID_0,
+        }),
+        ("Bcache", {
+            "model": Bcache,
+            "type": FILESYSTEM_GROUP_TYPE.BCACHE,
+        }),
+    )
+
+    def test__raises_Http404_when_invalid_node(self):
+        user = factory.make_admin()
+        filesystem_group = factory.make_FilesystemGroup(group_type=self.type)
+        self.assertRaises(
+            Http404, self.model.objects.get_object_or_404,
+            factory.make_name("system_id"), filesystem_group.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__raises_Http404_when_invalid_device(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        self.assertRaises(
+            Http404, self.model.objects.get_object_or_404,
+            node.system_id, random.randint(0, 100), user,
+            NODE_PERMISSION.VIEW)
+
+    def test__view_raises_PermissionDenied_when_user_not_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertRaises(
+            PermissionDenied,
+            self.model.objects.get_object_or_404,
+            node.system_id, filesystem_group.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__view_returns_device_when_no_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertEquals(
+            filesystem_group.id,
+            self.model.objects.get_object_or_404(
+                node.system_id, filesystem_group.id, user,
+                NODE_PERMISSION.VIEW).id)
+
+    def test__view_returns_device_when_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertEquals(
+            filesystem_group.id,
+            self.model.objects.get_object_or_404(
+                node.system_id, filesystem_group.id, user,
+                NODE_PERMISSION.VIEW).id)
+
+    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertRaises(
+            PermissionDenied,
+            self.model.objects.get_object_or_404,
+            node.system_id, filesystem_group.id, user,
+            NODE_PERMISSION.EDIT)
+
+    def test__edit_returns_device_when_user_is_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertEquals(
+            filesystem_group.id,
+            self.model.objects.get_object_or_404(
+                node.system_id, filesystem_group.id, user,
+                NODE_PERMISSION.EDIT).id)
+
+    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertRaises(
+            PermissionDenied,
+            self.model.objects.get_object_or_404,
+            node.system_id, filesystem_group.id, user,
+            NODE_PERMISSION.ADMIN)
+
+    def test__admin_returns_device_when_admin(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertEquals(
+            filesystem_group.id,
+            self.model.objects.get_object_or_404(
+                node.system_id, filesystem_group.id, user,
+                NODE_PERMISSION.ADMIN).id)
+
+
+class TestManagersFilterByBlockDevice(MAASServerTestCase):
+    """Tests for the managers `filter_by_block_device`."""
+
+    def test__volume_group_on_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_block_device(
+                block_device))
         result_filesystem_group_ids = [
             fsgroup.id
-            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
-                block_device)
+            for fsgroup in filesystem_groups
         ]
         self.assertItemsEqual(
             [filesystem_group.id], result_filesystem_group_ids)
 
-    def test_get_filesystem_groups_for_on_partition(self):
+    def test__volume_group_on_partition(self):
         block_device = factory.make_PhysicalBlockDevice()
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -68,15 +205,17 @@ class TestFilesystemGroupManager(MAASServerTestCase):
             fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_block_device(
+                block_device))
         result_filesystem_group_ids = [
             fsgroup.id
-            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
-                block_device)
+            for fsgroup in filesystem_groups
         ]
         self.assertItemsEqual(
             [filesystem_group.id], result_filesystem_group_ids)
 
-    def test_get_filesystem_groups_for_on_two_partitions(self):
+    def test__volume_group_on_two_partitions(self):
         block_device = factory.make_PhysicalBlockDevice()
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -95,10 +234,282 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_block_device(
+                block_device))
         result_filesystem_group_ids = [
             fsgroup.id
-            for fsgroup in FilesystemGroup.objects.get_filesystem_groups_for(
-                block_device)
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__raid_on_block_devices(self):
+        node = factory.make_Node()
+        block_device_one = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, block_device=block_device_one)
+        block_device_two = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, block_device=block_device_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            RAID.objects.filter_by_block_device(
+                block_device_one))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__raid_on_partitions(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            RAID.objects.filter_by_block_device(
+                block_device))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__bcache_on_block_devices(self):
+        node = factory.make_Node()
+        block_device_one = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+            block_device=block_device_one)
+        block_device_two = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            block_device=block_device_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            Bcache.objects.filter_by_block_device(
+                block_device_one))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__bcache_on_partitions(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            Bcache.objects.filter_by_block_device(
+                block_device))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+
+class TestManagersFilterByNode(MAASServerTestCase):
+    """Tests for the managers `filter_by_node`."""
+
+    def test__volume_group_on_block_device(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__volume_group_on_partition(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[filesystem])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__volume_group_on_two_partitions(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            VolumeGroup.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__raid_on_block_devices(self):
+        node = factory.make_Node()
+        block_device_one = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, block_device=block_device_one)
+        block_device_two = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, block_device=block_device_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            RAID.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__raid_on_partitions(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.RAID, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            RAID.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__bcache_on_block_devices(self):
+        node = factory.make_Node()
+        block_device_one = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+            block_device=block_device_one)
+        block_device_two = factory.make_PhysicalBlockDevice(node=node)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            block_device=block_device_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            Bcache.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
+        ]
+        self.assertItemsEqual(
+            [filesystem_group.id], result_filesystem_group_ids)
+
+    def test__bcache_on_partitions(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition_one = factory.make_Partition(
+            partition_table=partition_table, start_offset=0,
+            size=block_device.size / 2)
+        partition_two_size = (
+            block_device.size - partition_one.size - block_device.block_size)
+        partition_two = factory.make_Partition(
+            partition_table=partition_table, start_offset=partition_one.size,
+            size=partition_two_size)
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE, partition=partition_one)
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[filesystem_one, filesystem_two])
+        filesystem_groups = (
+            Bcache.objects.filter_by_node(node))
+        result_filesystem_group_ids = [
+            fsgroup.id
+            for fsgroup in filesystem_groups
         ]
         self.assertItemsEqual(
             [filesystem_group.id], result_filesystem_group_ids)
@@ -815,6 +1226,47 @@ class TestFilesystemGroup(MAASServerTestCase):
             filesystem.get_block_size(),
             filesystem_group.get_virtual_block_device_block_size())
 
+    def test_delete_deletes_filesystems_not_block_devices(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=bd)
+            for bd in block_devices
+            ]
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=filesystems)
+        filesystem_group.delete()
+        deleted_filesystems = reload_objects(Filesystem, filesystems)
+        kept_block_devices = reload_objects(PhysicalBlockDevice, block_devices)
+        self.assertItemsEqual([], deleted_filesystems)
+        self.assertItemsEqual(block_devices, kept_block_devices)
+
+    def test_delete_cannot_delete_volume_group_with_logical_volumes(self):
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        factory.make_VirtualBlockDevice(
+            size=volume_group.get_size(),
+            filesystem_group=volume_group)
+        error = self.assertRaises(ValidationError, volume_group.delete)
+        self.assertEqual(
+            "This volume group has logical volumes; it cannot be deleted.",
+            error.message)
+
+    def test_delete_deletes_virtual_block_device(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        virtual_device = filesystem_group.virtual_device
+        filesystem_group.delete()
+        self.assertIsNone(
+            reload_object(virtual_device),
+            "VirtualBlockDevice should have been deleted.")
+
 
 class TestFilesystemGroupGetVirtualBlockDevicePrefix(MAASServerTestCase):
 
@@ -894,3 +1346,33 @@ class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
         self.assertEquals(
             self.block_size,
             filesystem_group.get_virtual_block_device_block_size())
+
+
+class TestVolumeGroup(MAASServerTestCase):
+
+    def test_objects_is_VolumeGroupManager(self):
+        self.assertIsInstance(VolumeGroup.objects, VolumeGroupManager)
+
+    def test_group_type_set_to_LVM_VG(self):
+        obj = VolumeGroup()
+        self.assertEquals(FILESYSTEM_GROUP_TYPE.LVM_VG, obj.group_type)
+
+
+class TestRAID(MAASServerTestCase):
+
+    def test_objects_is_RAIDManager(self):
+        self.assertIsInstance(RAID.objects, RAIDManager)
+
+    def test_init_raises_ValueError_if_group_type_not_set_to_raid_type(self):
+        self.assertRaises(
+            ValueError, RAID, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+
+
+class TestBcache(MAASServerTestCase):
+
+    def test_objects_is_BcacheManager(self):
+        self.assertIsInstance(Bcache.objects, BcacheManager)
+
+    def test_group_type_set_to_BCACHE(self):
+        obj = Bcache()
+        self.assertEquals(FILESYSTEM_GROUP_TYPE.BCACHE, obj.group_type)
