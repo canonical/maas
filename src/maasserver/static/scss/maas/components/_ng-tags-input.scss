@@ -1,41 +1,35 @@
-@charset "UTF-8";
-
-/**
- * ngTagsInput Styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
- */
+////
+/// MAAS ngTagsInput Styles
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
 
 tags-input {
-  .tags {
-    -moz-appearance: textfield;
-    -webkit-appearance: textfield;
-    padding: 1px;
-    overflow: hidden;
-    word-wrap: break-word;
-    cursor: text;
-    background: #FFF;
-    color: #333;
-    border: 1px solid #D2D2D2;
-    height: 100%;
-    border-radius: 2px;
+  outline: none;
 
+  .host:focus {
+    outline: none;
+  }
+
+  .tags {
+
+    &:focus,
     &.focused {
       outline: none;
     }
 
     .tag-list {
-      margin: 0;
+      margin: 4px 0 0;
       padding: 0;
       list-style-type: none;
+      width: 100%;
+      float: left;
     }
 
     .tag-item {
-      margin: 2px;
-      padding: 0 5px;
       display: inline-block;
       float: left;
       font-family: Ubuntu,Arial,"libra sans",sans-serif;
@@ -43,33 +37,23 @@ tags-input {
       font-weight: 300;
       height: 30px;
       line-height: 30px;
-
-      &:hover {
-        color: $ubuntu-orange;
-      }
-
-      &:after {
-        content: ',';
-        color: #999;
-      }
-
-      &:last-of-type {
-
-        &:after {
-          content: '';
-        }
-      }
+      cursor: default;
+      color: #000;
+      padding-right: 15px;
+      position: relative;
+      margin: 0 11px 0 0;
 
       .remove-button {
-        margin: 0 3px;
-        padding: 0;
-        border: none;
-        background: none;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        text-indent: -999em;
+        background: url('../img/icons/tag-close.svg') no-repeat;
+        background-size: 12px 12px;
+        position: absolute;
+        right: 0;
+        top: 9px;
         cursor: pointer;
-        vertical-align: middle;
-        font-family: Ubuntu,Arial,"libra sans",sans-serif;
-        font-size: 1em;
-        font-weight: 300;
 
         &:hover {
           text-decoration: none;
@@ -81,21 +65,12 @@ tags-input {
     }
 
     .input {
-      border: 0;
-      outline: none;
-      margin: 2px;
-      padding: 0;
-      padding-left: 5px;
-      float: none;
-      display: inline-block;
-      width: auto !important;
-      height: 26px;
-      font-family: Ubuntu,Arial,"libra sans",sans-serif;
-      font-size: 1em;
-      font-weight: 300;
-      position: relative;
-      top: inherit;
-      left: inherit;
+      @extend %input--styles;
+      padding: 7px 10px;
+      width: 100% !important;
+      float: left;
+      position: relative !important;
+      left: 0;
 
       &.invalid-tag {
       }
@@ -113,6 +88,7 @@ tags-input {
     border: 1px solid #D2D2D2;
     border-top: 0;
     border-radius: 0 0 2px 2px;
+    display: none;
 
     li {
 
@@ -152,10 +128,7 @@ tags-input {
 }
 
 .tag-link {
-
-  &:after {
-    content: ',';
-  }
+  margin-right: 10px;
 
   &:last-of-type {
 

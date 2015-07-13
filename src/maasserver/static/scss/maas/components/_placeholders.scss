@@ -108,6 +108,10 @@
 %margin-top,
 .margin-top {
     margin-top: 20px;
+
+    &--ten {
+        margin-top: 10px;
+    }
 }
 
 %margin-rght,
