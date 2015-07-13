@@ -1,40 +1,40 @@
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:12.057660', id_path: null,
-    name: vda, node: 6, path: /dev/vda, size: 8589934592, tags: '["ssd"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 6, size: 8589934592, tags: '["ssd"]', updated: !!timestamp '2015-03-23
       16:28:12.057660'}
   model: maasserver.blockdevice
   pk: 1
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:12.420473', id_path: null,
-    name: vda, node: 2, path: /dev/vda, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 2, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
       16:28:12.420473'}
   model: maasserver.blockdevice
   pk: 3
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:13.456614', id_path: null,
-    name: vda, node: 7, path: /dev/vda, size: 8589934592, tags: '["ssd","rotary","sata"]',
+    name: vda, node: 7, size: 8589934592, tags: '["ssd","rotary","sata"]',
     updated: !!timestamp '2015-03-23 16:28:13.456614'}
   model: maasserver.blockdevice
   pk: 5
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:13.849894', id_path: /dev/disk/by-id/ata-QEMU_HARDDISK_QM00001,
-    name: sda, node: 5, path: /dev/sda, size: 21474836480, tags: '["ssd","rotary"]',
+    name: sda, node: 5, size: 21474836480, tags: '["ssd","rotary"]',
     updated: !!timestamp '2015-03-23 16:28:13.849894'}
   model: maasserver.blockdevice
   pk: 6
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:14.462942', id_path: null,
-    name: vda, node: 8, path: /dev/vda, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 8, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
       16:28:14.462942'}
   model: maasserver.blockdevice
   pk: 7
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:15.072538', id_path: null,
-    name: vda, node: 4, path: /dev/vda, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 4, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
       16:28:15.072538'}
   model: maasserver.blockdevice
   pk: 8
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:15.098060', id_path: null,
-    name: vda, node: 3, path: /dev/vda, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 3, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
       16:28:15.098060'}
   model: maasserver.blockdevice
   pk: 9
 - fields: {block_size: 4096, created: !!timestamp '2015-03-23 16:28:17.597004', id_path: null,
-    name: vda, node: 1, path: /dev/vda, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
+    name: vda, node: 1, size: 8589934592, tags: '["rotary"]', updated: !!timestamp '2015-03-23
       16:28:17.597004'}
   model: maasserver.blockdevice
   pk: 10
