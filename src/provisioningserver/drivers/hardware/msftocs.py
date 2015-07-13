@@ -32,7 +32,7 @@ class MicrosoftOCSState(object):
     OFF = "OFF"
 
 
-class MicrosoftOCSException(Exception):
+class MicrosoftOCSError(Exception):
     """Failure talking to a MicrosoftOCS chassis controller. """
 
 
@@ -59,10 +59,8 @@ class MicrosoftOCSAPI(object):
         self.username = username
         self.password = password
 
-    def build_url(self, command, params=None):
+    def build_url(self, command, params=[]):
         url = 'http://%s:%d/' % (self.ip, self.port)
-        if params is None:
-            params = []
         params = filter(None, params)
         return urlparse.urljoin(url, command) + '?' + '&'.join(params)
 
@@ -158,15 +156,19 @@ def power_state_msftocs(ip, port, username, password, blade_id):
 
     try:
         power_state = api.get_blade_power_state(blade_id)
-    except Exception as e:
-        raise MicrosoftOCSException(
-            "Failed to retrieve power state: %s" % e)
+    except urllib2.HTTPError as e:
+        raise MicrosoftOCSError(
+            "Failed to retrieve power state. HTTP error code: %s" % e.code)
+    except urllib2.URLError as e:
+        raise MicrosoftOCSError(
+            "Failed to retrieve power state. Server could not be reached: %s"
+            % e.reason)
 
     if power_state == MicrosoftOCSState.OFF:
         return 'off'
     elif power_state == MicrosoftOCSState.ON:
         return 'on'
-    raise MicrosoftOCSException('Unknown power state: %s' % power_state)
+    raise MicrosoftOCSError('Unknown power state: %s' % power_state)
 
 
 def power_control_msftocs(
@@ -188,7 +190,7 @@ def power_control_msftocs(
     elif power_change == 'off':
         api.set_power_off_blade(blade_id)
     else:
-        raise MicrosoftOCSException(
+        raise MicrosoftOCSError(
             "Unexpected MAAS power mode: %s" % power_change)
 
 
@@ -205,11 +207,17 @@ def probe_and_enlist_msftocs(
     try:
         # if get_blades works, we have access to the system
         blades = api.get_blades()
-    except:
-        raise MicrosoftOCSException(
+    except urllib2.HTTPError as e:
+        raise MicrosoftOCSError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
-            "port=%d, username=%s, password=%s"
-            % (ip, port, username, password))
+            "port=%d, username=%s, password=%s. HTTP error code: %s"
+            % (ip, port, username, password, e.code))
+    except urllib2.URLError as e:
+        raise MicrosoftOCSError(
+            "Failed to probe nodes for Microsoft OCS with ip=%s "
+            "port=%d, username=%s, password=%s. "
+            "Server could not be reached: %s"
+            % (ip, port, username, password, e.reason))
 
     for blade_id, macs in blades.iteritems():
         # Set default (persistent) boot to HDD
