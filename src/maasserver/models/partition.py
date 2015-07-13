@@ -145,12 +145,14 @@ class Partition(CleanSave, TimestampedModel):
 
     def remove_filesystem(self):
         """Deletes any filesystem on this partition. Do nothing if there is no
-        filesystem on this partition"""
+        filesystem on this partition."""
 
         filesystem = self.filesystem
         if filesystem is None:
             return None
-        elif filesystem.filesystem_group is None:
-            self.filesystem.delete()
-        else:
+        elif filesystem.filesystem_group is not None:
             raise IntegrityError('This filesystem is in use by a volume group')
+        elif filesystem.mount_point is not None:
+            raise IntegrityError('This filesystem is in use ')
+        else:
+            self.filesystem.delete()

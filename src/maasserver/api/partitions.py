@@ -21,6 +21,7 @@ from maasserver.api.support import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import (
+    MAASAPIBadRequest,
     MAASAPINotFound,
     MAASAPIValidationError,
 )
@@ -93,8 +94,8 @@ class PartitionTableHandler(OperationsHandler):
         offset = machine_readable_bytes(request.POST.get('offset', None))
         size = machine_readable_bytes(request.POST.get('size', None))
 
-        partition = partition_table.add_partition(start_offset=offset,
-                                                  size=size)
+        partition = partition_table.add_partition(
+            start_offset=offset, size=size)
         return partition
 
 
@@ -144,7 +145,7 @@ class PartitionHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def format(self, request, system_id, device_id, partition_id):
-        """Format a partition
+        """Format a partition.
 
         :param system_id: The node to query.
         :param device_id: The block device.
@@ -155,15 +156,41 @@ class PartitionHandler(OperationsHandler):
         device = get_object_or_404(BlockDevice, id=device_id)
         if device.node != node:
             raise MAASAPINotFound()
-        partition_table = get_object_or_404(PartitionTable,
-                                            block_device=device)
-        partition = get_object_or_404(Partition,
-                                      partition_table=partition_table,
-                                      id=partition_id)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
         data = request.data
         form = FormatPartitionForm(partition, data=data)
         if form.is_valid():
             form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+        return partition
+
+    @operation(idempotent=False)
+    def unformat(self, request, system_id, device_id, partition_id):
+        """Unformat a partition."""
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        device = get_object_or_404(BlockDevice, id=device_id)
+        if device.node != node:
+            raise MAASAPINotFound()
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
+        filesystem = partition.filesystem
+        if filesystem is None:
+            raise MAASAPIBadRequest("Partition is not formatted.")
+        if filesystem.mount_point:
+            raise MAASAPIBadRequest(
+                "Filesystem is mounted and cannot be unformatted. Unmount the "
+                "filesystem before unformatting the partition.")
+        if filesystem.filesystem_group is not None:
+            raise MAASAPIBadRequest(
+                "Filesystem is part of a filesystem group, and cannot be "
+                "unformatted. Remove partition from filesystem group "
+                "before unformatting the partition.")
+        partition.remove_filesystem()
         return partition
