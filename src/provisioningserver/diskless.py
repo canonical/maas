@@ -26,13 +26,13 @@ from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
 )
-from provisioningserver.import_images.boot_resources import two_dir_levels_up
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
 )
 from provisioningserver.utils.shell import call_and_check
+from twisted.python.filepath import FilePath
 
 
 maaslog = get_maas_logger("diskless")
@@ -49,9 +49,8 @@ def get_diskless_store():
     currently in use disk for diskless booting.
     """
     with ClusterConfiguration.open() as config:
-        return os.path.join(
-            two_dir_levels_up(config.tftp_root),
-            'diskless', 'store')
+        storage = FilePath(config.tftp_root).parent()
+    return storage.child('diskless').child('store').path
 
 
 def compose_diskless_link_path(system_id):
@@ -103,9 +102,8 @@ def get_diskless_target(system_id):
 def get_diskless_tgt_path():
     """Return path to maas-diskless.tgt."""
     with ClusterConfiguration.open() as config:
-        return os.path.join(
-            two_dir_levels_up(config.tftp_root),
-            'diskless', 'maas-diskless.tgt')
+        storage = FilePath(config.tftp_root).parent()
+    return storage.child('diskless').child('maas-diskless.tgt').path
 
 
 def tgt_entry(system_id, image):

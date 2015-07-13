@@ -48,16 +48,7 @@ from provisioningserver.utils.fs import (
     tempdir,
 )
 from provisioningserver.utils.shell import call_and_check
-
-
-def two_dir_levels_up(path):
-    # NOTE: Syntax along the lines of:
-    #    os.path.normpath(os.path.join(
-    #       path, os.path.pardir, os.path.pardir))
-    # will NOT work here, as the classes that use these file paths
-    # to NOT support paths with 'os.path.pardir' segments. Thus
-    # we must manually resolve the path here.
-    return os.path.split(os.path.split(path)[0])[0]
+from twisted.python.filepath import FilePath
 
 
 class NoConfigFile(Exception):
@@ -262,7 +253,7 @@ def import_images(sources):
             return
 
         with ClusterConfiguration.open() as config:
-            storage = two_dir_levels_up(config.tftp_root)
+            storage = FilePath(config.tftp_root).parent().path
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
             maaslog.info(
