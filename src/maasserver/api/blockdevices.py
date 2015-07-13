@@ -36,6 +36,7 @@ from maasserver.models import (
     Node,
     PartitionTable,
     PhysicalBlockDevice,
+    VirtualBlockDevice,
 )
 from piston.utils import rc
 
@@ -84,8 +85,11 @@ class BlockDevicesHandler(OperationsHandler):
     """Manage block devices on a node."""
     api_doc_section_name = "Block devices"
     replace = update = delete = None
-    model = BlockDevice
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('blockdevices_handler', ["node_system_id"])
 
     def read(self, request, system_id):
         """List all block devices belonging to node.
@@ -127,6 +131,17 @@ class BlockDeviceHandler(OperationsHandler):
     model = BlockDevice
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
 
+    @classmethod
+    def resource_uri(cls, block_device=None):
+        # See the comment in NodeHandler.resource_uri.
+        if block_device is None:
+            node_system_id = "node_system_id"
+            block_device_id = "block_device_id"
+        else:
+            block_device_id = block_device.id
+            node_system_id = block_device.node.system_id
+        return ('blockdevice_handler', (node_system_id, block_device_id))
+
     def read(self, request, system_id, device_id):
         """Read block device on node.
 
@@ -165,6 +180,11 @@ class BlockDeviceHandler(OperationsHandler):
         return rc.DELETED
 
     def update(self, request, system_id, device_id):
+        """Update block device on node.
+
+        Returns 404 if the node or block device is not found.
+        Returns 403 if the user is not allowed to update the block device.
+        """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
 
@@ -187,7 +207,7 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def add_tag(self, request, system_id, device_id):
-        """Add a tag to a BlockDevice.
+        """Add a tag to block device on node.
 
         :param tag: The tag being added.
         """
@@ -205,7 +225,7 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def remove_tag(self, request, system_id, device_id):
-        """Remove a tag from a BlockDevice.
+        """Remove a tag from block device on node.
 
         :param tag: The tag being removed.
         """
@@ -228,8 +248,8 @@ class BlockDeviceHandler(OperationsHandler):
         :param fstype: Type of filesystem.
         :param uuid: UUID of the filesystem.
 
-        Returns 403 when the user doesn't have the ability to format the block
-            device.
+        Returns 403 when the user doesn't have the ability to format the \
+            block device.
         Returns 404 if the node or block device is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
@@ -244,9 +264,9 @@ class BlockDeviceHandler(OperationsHandler):
     def unformat(self, request, system_id, device_id):
         """Unformat block device with filesystem.
 
-        Returns 400 if the block device is not formatted, currently mounted,
+        Returns 400 if the block device is not formatted, currently mounted, \
             or part of a filesystem group.
-        Returns 403 when the user doesn't have the ability to unformat the
+        Returns 403 when the user doesn't have the ability to unformat the \
             block device.
         Returns 404 if the node or block device is not found.
         """
@@ -273,8 +293,8 @@ class BlockDeviceHandler(OperationsHandler):
 
         :param mount_point: Path on the filesystem to mount.
 
-        Returns 403 when the user doesn't have the ability to format the block
-            device.
+        Returns 403 when the user doesn't have the ability to format the \
+            block device.
         Returns 404 if the node or block device is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
@@ -289,9 +309,9 @@ class BlockDeviceHandler(OperationsHandler):
     def unmount(self, request, system_id, device_id):
         """Unmount the filesystem on block device.
 
-        Returns 400 if the block device is not formatted or not currently
+        Returns 400 if the block device is not formatted or not currently \
             mounted.
-        Returns 403 when the user doesn't have the ability to unformat the
+        Returns 403 when the user doesn't have the ability to unformat the \
             block device.
         Returns 404 if the node or block device is not found.
         """
@@ -305,3 +325,31 @@ class BlockDeviceHandler(OperationsHandler):
         filesystem.mount_point = None
         filesystem.save()
         return device
+
+
+class PhysicalBlockDeviceHandler(BlockDeviceHandler):
+    """
+    This handler only exists because piston requires a unique handler per
+    class type. Without this class the resource_uri will not be added to any
+    object that is of type `PhysicalBlockDevice` when it is emitted from the
+    `BlockDeviceHandler`.
+
+    Important: This should not be used in the urls_api.py. This is only here
+        to support piston.
+    """
+    hidden = True
+    model = PhysicalBlockDevice
+
+
+class VirtualBlockDeviceHandler(BlockDeviceHandler):
+    """
+    This handler only exists because piston requires a unique handler per
+    class type. Without this class the resource_uri will not be added to any
+    object that is of type `VirtualBlockDevice` when it is emitted from the
+    `BlockDeviceHandler`.
+
+    Important: This should not be used in the urls_api.py. This is only here
+        to support piston.
+    """
+    hidden = True
+    model = VirtualBlockDevice

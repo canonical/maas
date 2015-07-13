@@ -43,10 +43,12 @@ class TestParseISCString(MAASTestCase):
             """)
         options = parse_isc_string(testdata)
         self.assertEqual(
-            OrderedDict({u'options': OrderedDict({u'auth-nxdomain': u'no',
-                        u'directory': u'"/var/cache/bind"',
-                        u'dnssec-validation': u'auto',
-                        u'listen-on-v6': OrderedDict({u'any': True})})}),
+            OrderedDict({
+                u'options': OrderedDict({
+                    u'auth-nxdomain': u'no',
+                    u'directory': u'"/var/cache/bind"',
+                    u'dnssec-validation': u'auto',
+                    u'listen-on-v6': OrderedDict({u'any': True})})}),
             options)
 
     def test_parses_bind_acl(self):

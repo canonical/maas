@@ -250,7 +250,9 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
         self.assertEquals(block_device.id, parsed_device["id"])
-        self.assertEquals(block_device.type, parsed_device["type"])
+        self.assertEquals("physical", parsed_device["type"])
+        self.assertEquals(
+            get_blockdevice_uri(block_device), parsed_device["resource_uri"])
 
     def test_read_virtual_block_device(self):
         block_device = factory.make_VirtualBlockDevice()
@@ -260,8 +262,9 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
         self.assertEquals(block_device.id, parsed_device["id"])
-        self.assertEquals(block_device.type, parsed_device["type"])
-        self.assertEqual(parsed_device["type"], 'virtual')
+        self.assertEquals("virtual", parsed_device["type"])
+        self.assertEquals(
+            get_blockdevice_uri(block_device), parsed_device["resource_uri"])
 
     def test_read_returns_filesystem(self):
         block_device = factory.make_PhysicalBlockDevice()
