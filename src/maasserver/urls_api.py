@@ -91,6 +91,10 @@ from maasserver.api.partitions import (
     PartitionTableHandler,
 )
 from maasserver.api.pxeconfig import pxeconfig
+from maasserver.api.raid import (
+    RAIDDeviceHandler,
+    RAIDDevicesHandler,
+)
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,
@@ -156,6 +160,10 @@ volume_group_handler = RestrictedResource(
     VolumeGroupHandler, authentication=api_auth)
 volume_groups_handler = RestrictedResource(
     VolumeGroupsHandler, authentication=api_auth)
+raid_device_handler = RestrictedResource(
+    RAIDDeviceHandler, authentication=api_auth)
+raid_devices_handler = RestrictedResource(
+    RAIDDevicesHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -243,6 +251,10 @@ urlpatterns += patterns(
     url(r'^nodes/(?P<system_id>[^/]+)/volume-group/'
         '(?P<volume_group_id>[^/]+)/$',
         volume_group_handler, name='volume_group_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/raids/$',
+        raid_devices_handler, name='raid_devices_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/raid/(?P<raid_id>[^/]+)/$',
+        raid_device_handler, name='raid_device_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),
