@@ -236,19 +236,6 @@ class TestPowerAction(MAASTestCase):
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from ipmipower", output)
 
-    def test_ucsm_renders_template(self):
-        # I'd like to assert that escape_py_literal is being used here,
-        # but it's not obvious how to mock things in the template
-        # rendering namespace so I passed on that.
-        action = PowerAction('ucsm')
-        script = action.render_template(
-            action.get_template(),
-            action.update_context(dict(
-                power_address='foo', power_user='bar', power_pass='baz',
-                uuid=factory.make_UUID(), power_change='on')),
-        )
-        self.assertIn('power_control_ucsm', script)
-
     def test_msftocs_renders_template(self):
         context = {
             'power_address': 'foo', 'power_port': 'foz', 'power_user': 'bar',
