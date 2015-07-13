@@ -332,12 +332,14 @@ class PowerDriverRegistry(Registry):
         return schemas
 
 
+from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
 builtin_power_drivers = [
+    APCPowerDriver(),
     HMCPowerDriver(),
     MSCMPowerDriver(),
     VirshPowerDriver(),

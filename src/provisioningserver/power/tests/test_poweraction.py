@@ -249,18 +249,6 @@ class TestPowerAction(MAASTestCase):
         )
         self.assertIn('power_control_ucsm', script)
 
-    def test_apc_renders_template(self):
-        context = {
-            'power_address': 'foo', 'power_user': 'bar', 'power_pass': 'baz',
-            'node_outlet': "%s" % randint(1, 16), 'power_change': 'on',
-            'power_on_delay': '0',
-        }
-        action = PowerAction('apc')
-        action.update_context(context)
-        context['escape_py_literal'] = Mock()
-        script = action.render_template(action.get_template(), context)
-        self.assertIn('power_control_apc', script)
-
     def test_msftocs_renders_template(self):
         context = {
             'power_address': 'foo', 'power_port': 'foz', 'power_user': 'bar',
