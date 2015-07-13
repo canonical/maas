@@ -34,10 +34,6 @@ class TestMSCMPowerDriver(MAASTestCase):
         username = factory.make_name('power_user')
         password = factory.make_name('power_pass')
         node_id = make_node_id()
-        return system_id, host, username, password, node_id
-
-    def test_extract_mscm_parameters_extracts_parameters(self):
-        system_id, host, username, password, node_id = self.make_parameters()
         params = {
             'system_id': system_id,
             'power_address': host,
@@ -45,20 +41,19 @@ class TestMSCMPowerDriver(MAASTestCase):
             'power_pass': password,
             'node_id': node_id,
         }
+        return system_id, host, username, password, node_id, params
+
+    def test_extract_mscm_parameters_extracts_parameters(self):
+        system_id, host, username, password, node_id, params = (
+            self.make_parameters())
 
         self.assertItemsEqual(
             (host, username, password, node_id),
             extract_mscm_parameters(params))
 
     def test_power_on_calls_power_control_mscm(self):
-        system_id, host, username, password, node_id = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': host,
-            'power_user': username,
-            'power_pass': password,
-            'node_id': node_id,
-        }
+        system_id, host, username, password, node_id, params = (
+            self.make_parameters())
         mscm_power_driver = MSCMPowerDriver()
         power_control_mscm = self.patch(
             mscm_module, 'power_control_mscm')
@@ -69,14 +64,8 @@ class TestMSCMPowerDriver(MAASTestCase):
                 host, username, password, node_id, power_change='on'))
 
     def test_power_off_calls_power_control_mscm(self):
-        system_id, host, username, password, node_id = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': host,
-            'power_user': username,
-            'power_pass': password,
-            'node_id': node_id,
-        }
+        system_id, host, username, password, node_id, params = (
+            self.make_parameters())
         mscm_power_driver = MSCMPowerDriver()
         power_control_mscm = self.patch(
             mscm_module, 'power_control_mscm')
@@ -87,14 +76,8 @@ class TestMSCMPowerDriver(MAASTestCase):
                 host, username, password, node_id, power_change='off'))
 
     def test_power_query_calls_power_state_mscm(self):
-        system_id, host, username, password, node_id = self.make_parameters()
-        params = {
-            'system_id': system_id,
-            'power_address': host,
-            'power_user': username,
-            'power_pass': password,
-            'node_id': node_id,
-        }
+        system_id, host, username, password, node_id, params = (
+            self.make_parameters())
         mscm_power_driver = MSCMPowerDriver()
         power_state_mscm = self.patch(
             mscm_module, 'power_state_mscm')
