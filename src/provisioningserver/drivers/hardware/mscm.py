@@ -27,6 +27,7 @@ import re
 from paramiko import (
     AutoAddPolicy,
     SSHClient,
+    SSHException,
 )
 from provisioningserver.utils import (
     commission_node,
@@ -57,11 +58,10 @@ class MSCMError(Exception):
     """Failure communicating to MSCM. """
 
 
-class MSCM_CLI_API:
-    """An API for interacting with the Moonshot iLO CM CLI."""
+class MSCM:
+    """An API for interacting with the Moonshot iLO CM CLI via SSH."""
 
     def __init__(self, host, username, password):
-        """MSCM_CLI_API Constructor."""
         self.host = host
         self.username = username
         self.password = password
@@ -128,8 +128,7 @@ class MSCM_CLI_API:
         cartridge = node_detail.split('Product Name: ')[1].splitlines()[0]
         if cartridge in cartridge_mapping:
             return cartridge_mapping[cartridge]
-        else:
-            return cartridge_mapping['Default']
+        return cartridge_mapping['Default']
 
     def get_node_power_state(self, node_id):
         """Get power state of node (on/off).
@@ -165,7 +164,7 @@ def power_control_mscm(host, username, password, node_id, power_change):
     """Handle calls from the power template for nodes with a power type
     of 'mscm'.
     """
-    mscm = MSCM_CLI_API(host, username, password)
+    mscm = MSCM(host, username, password)
 
     if power_change == 'off':
         mscm.power_node_off(node_id)
@@ -180,11 +179,12 @@ def power_control_mscm(host, username, password, node_id, power_change):
 
 def power_state_mscm(host, username, password, node_id):
     """Return the power state for the mscm machine."""
-    mscm = MSCM_CLI_API(host, username, password)
+    mscm = MSCM(host, username, password)
     try:
         power_state = mscm.get_node_power_state(node_id)
-    except:
-        raise MSCMError("Failed to retrieve power state.")
+    except SSHException as e:
+        raise MSCMError(
+            "Failed to retrieve power state: %s" % e)
 
     if power_state == MSCMState.OFF:
         return 'off'
@@ -198,15 +198,15 @@ def probe_and_enlist_mscm(user, host, username, password, accept_all=False):
     """ Extracts all of nodes from mscm, sets all of them to boot via M.2 by,
     default, sets them to bootonce via PXE, and then enlists them into MAAS.
     """
-    mscm = MSCM_CLI_API(host, username, password)
+    mscm = MSCM(host, username, password)
     try:
         # if discover_nodes works, we have access to the system
         nodes = mscm.discover_nodes()
-    except:
+    except SSHException as e:
         raise MSCMError(
             "Failed to probe nodes for mscm with host=%s, "
-            "username=%s, password=%s"
-            % (host, username, password))
+            "username=%s, password=%s: %s"
+            % (host, username, password, e))
 
     for node_id in nodes:
         # Set default boot to M.2
