@@ -8,10 +8,6 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
-from provisioningserver.utils.debug import (
-    register_sigusr2_thread_dump_handler,
-)
-
 
 str = None
 
@@ -20,11 +16,17 @@ __all__ = [
     "RegionServiceMaker",
 ]
 
+from itertools import chain
+import sys
+
+from provisioningserver.utils.debug import (
+    register_sigusr2_thread_dump_handler,
+)
 from twisted.application.service import IServiceMaker
+from twisted.internet import reactor
 from twisted.plugin import IPlugin
 from twisted.python import usage
 from zope.interface import implementer
-from twisted.internet import reactor
 
 
 def serverFromString(description):
@@ -79,6 +81,42 @@ class RegionServiceMaker:
         else:
             django_setup()
 
+    def _checkDatabase(self):
+        # Figure out if there are migrations yet to apply.
+        try:
+            from south import migration, models
+            # Limit the applications to `maasserver` and `metadataserver`
+            # instead of asking Django for a list of running applications
+            # because during testing Django has isolation issues: it returns
+            # different lists of running applications depending on what other
+            # tests have run, even if the sets of tests requested are from the
+            # same application.
+            apps = {"maasserver", "metadataserver"}
+            migrations = list(chain.from_iterable(
+                migration.Migrations(app) for app in apps))
+            migrations_applied = list(
+                models.MigrationHistory.objects.filter(app_name__in=apps))
+            migrations_unapplied = list(
+                migration.get_unapplied_migrations(
+                    migrations, migrations_applied))
+        except SystemExit:
+            raise
+        except KeyboardInterrupt:
+            raise
+        except:
+            _, error, _ = sys.exc_info()
+            raise SystemExit(
+                "The MAAS database cannot be used. Please "
+                "investigate: %s" % unicode(error).rstrip())
+        else:
+            if len(migrations_unapplied) > 0:
+                raise SystemExit(
+                    "The MAAS database schema is not yet fully installed: "
+                    "%d migration(s) are missing." % len(migrations_unapplied))
+            else:
+                # Things look good.
+                pass
+
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
@@ -103,6 +141,7 @@ class RegionServiceMaker:
 
         self._configureLogging()
         self._configureDjango()
+        self._checkDatabase()
         self._configureCrochet()
         self._configurePoolSize()
 
