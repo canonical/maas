@@ -16,7 +16,6 @@ __metaclass__ = type
 __all__ = []
 
 import os
-from random import randint
 import re
 
 from maastesting.factory import factory
@@ -27,7 +26,6 @@ from maastesting.testcase import (
 )
 from mock import (
     ANY,
-    Mock,
     sentinel,
 )
 import provisioningserver.power.poweraction
@@ -235,18 +233,6 @@ class TestPowerAction(MAASTestCase):
         )
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from ipmipower", output)
-
-    def test_msftocs_renders_template(self):
-        context = {
-            'power_address': 'foo', 'power_port': 'foz', 'power_user': 'bar',
-            'power_pass': 'baz', 'blade_id': '%d' % randint(1, 24),
-            'power_change': 'on',
-        }
-        action = PowerAction('msftocs')
-        action.update_context(context)
-        context['escape_py_literal'] = Mock()
-        script = action.render_template(action.get_template(), context)
-        self.assertIn('power_control_msftocs', script)
 
 
 class TestTemplateContext(MAASTestCase):
