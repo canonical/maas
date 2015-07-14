@@ -561,6 +561,10 @@ class TestPostCommitDo(MAASTestCase):
 
 class TestTransactional(DjangoTransactionTestCase):
 
+    def test__exposes_original_function(self):
+        function = Mock(__name__=self.getUniqueString())
+        self.assertThat(orm.transactional(function).func, Is(function))
+
     def test__calls_function_within_transaction_then_closes_connections(self):
         close_old_connections = self.patch(orm, "close_old_connections")
 

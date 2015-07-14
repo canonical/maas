@@ -21,7 +21,6 @@ from datetime import (
 import random
 import threading
 
-from crochet import wait_for_reactor
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -92,7 +91,6 @@ from maasserver.utils import ignore_unused
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
-    transactional,
 )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
@@ -128,15 +126,18 @@ from provisioningserver.utils.enum import (
 )
 from testtools import ExpectedException
 from testtools.matchers import (
+    AfterPreprocessing,
     Contains,
     Equals,
     HasLength,
     Is,
     IsInstance,
+    MatchesListwise,
     MatchesStructure,
     Not,
 )
 from twisted.internet import defer
+from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python.failure import Failure
@@ -1243,37 +1244,37 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.OFF)
-        deallocate_static_ip_addresses = self.patch_autospec(
-            node, "_async_deallocate_static_ip_addresses")
+        deallocate_static_ip_addresses_later = self.patch_autospec(
+            node, "deallocate_static_ip_addresses_later")
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses, MockCalledOnceWith())
+            deallocate_static_ip_addresses_later, MockCalledOnceWith())
 
     def test_release_deallocates_static_ip_when_node_cannot_be_queried(self):
         user = factory.make_User()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='ether_wake')
-        deallocate_static_ip_addresses = self.patch_autospec(
-            node, "_async_deallocate_static_ip_addresses")
+        deallocate_static_ip_addresses_later = self.patch_autospec(
+            node, "deallocate_static_ip_addresses_later")
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses, MockCalledOnceWith())
+            deallocate_static_ip_addresses_later, MockCalledOnceWith())
 
     def test_release_doesnt_deallocate_static_ip_when_node_releasing(self):
         user = factory.make_User()
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='virsh')
-        deallocate_static_ip_addresses = self.patch_autospec(
-            node, "_async_deallocate_static_ip_addresses")
+        deallocate_static_ip_addresses_later = self.patch_autospec(
+            node, "deallocate_static_ip_addresses_later")
         self.patch_autospec(node, 'stop')
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses, MockNotCalled())
+            deallocate_static_ip_addresses_later, MockNotCalled())
 
     def test_deallocate_static_ip_deletes_static_ip_host_maps(self):
         remove_host_maps = self.patch_autospec(
@@ -1926,19 +1927,20 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
-        deallocate_static_ip_addresses = self.patch_autospec(
-            node, '_async_deallocate_static_ip_addresses')
+        deallocate_static_ip_addresses_later = self.patch_autospec(
+            node, 'deallocate_static_ip_addresses_later')
         self.patch(node, 'stop_transition_monitor')
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(deallocate_static_ip_addresses, MockCalledOnceWith())
+        self.assertThat(
+            deallocate_static_ip_addresses_later, MockCalledOnceWith())
 
     def test_update_power_state_doesnt_deallocates_static_ips_if_not_off(self):
         node = factory.make_Node(
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
-        deallocate_static_ip_addresses = self.patch_autospec(
-            node, '_async_deallocate_static_ip_addresses')
+        deallocate_static_ip_addresses_later = self.patch_autospec(
+            node, 'deallocate_static_ip_addresses_later')
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(deallocate_static_ip_addresses, MockNotCalled())
+        self.assertThat(deallocate_static_ip_addresses_later, MockNotCalled())
 
     def test_end_deployment_changes_state(self):
         self.disable_node_query()
@@ -2649,23 +2651,22 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
                 update_host_maps=False)
 
-
-class TestAsyncDellocateStaticIPAddress(MAASTransactionServerTestCase):
-    """The following TestAsyncDellocateStaticIPAddress tests require
-        MAASTransactionServerTestCase, and thus have been separated
-        from the TestNode above.
-    """
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test__async_deallocate_static_ip_address_calls_deallocate(self):
-        node = yield deferToThread(transactional(factory.make_Node))
-        deallocate_static_ip_addresses = self.patch(
-            node, "deallocate_static_ip_addresses")
-        deallocate_static_ip_addresses.__name__ = (
-            b"deallocate_static_ip_addresses")
-        yield node._async_deallocate_static_ip_addresses()
-        self.assertThat(deallocate_static_ip_addresses, MockCalledOnceWith())
+    def test__deallocate_static_ip_addresses_later_calls_deallocate(self):
+        clock = self.patch(node_module, "reactor", Clock())
+        node = factory.make_Node()
+        node.deallocate_static_ip_addresses_later()
+        self.assertThat(clock.getDelayedCalls(), HasLength(1))
+        [call] = clock.getDelayedCalls()
+        self.assertThat(call, MatchesStructure(
+            time=Equals(0.0),
+            func=Is(deferToThread),
+            args=MatchesListwise([
+                AfterPreprocessing(
+                    lambda thing: thing.func,
+                    Equals(node.deallocate_static_ip_addresses)),
+            ]),
+            kw=Equals({}),
+        ))
 
 
 class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):

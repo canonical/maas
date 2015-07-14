@@ -405,6 +405,10 @@ def transactional(func):
             finally:
                 close_old_connections()
 
+    # For convenience, when introspecting for example, expose the original
+    # function on the function we're returning.
+    call_within_transaction.func = func
+
     return call_within_transaction
 
 

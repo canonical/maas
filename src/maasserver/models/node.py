@@ -132,11 +132,11 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     callOutToThread,
+    FOREVER,
     synchronous,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
-from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 
 
@@ -1681,7 +1681,7 @@ class Node(CleanSave, TimestampedModel):
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
         if deallocate_ip_address:
-            self._async_deallocate_static_ip_addresses()
+            self.deallocate_static_ip_addresses_later()
 
         # Clear the nodes storage configuration.
         self._clear_storage_configuration()
@@ -1791,7 +1791,7 @@ class Node(CleanSave, TimestampedModel):
             self.status = NODE_STATUS.READY
             self.owner = None
             self.stop_transition_monitor()
-            self._async_deallocate_static_ip_addresses()
+            self.deallocate_static_ip_addresses_later()
         self.save()
 
     def claim_static_ip_addresses(
@@ -1892,17 +1892,17 @@ class Node(CleanSave, TimestampedModel):
 
         return deallocated_ips
 
-    def _async_deallocate_static_ip_addresses(self):
-        """Schedule for the `deallocate_static_ip_addresses` to be called
-        later from within the reactor.
+    @asynchronous(timeout=FOREVER)
+    def deallocate_static_ip_addresses_later(self):
+        """Schedule for `deallocate_static_ip_addresses` to be called later.
 
-        This prevents the running task from blocking waiting for
-        this task to finish. This can cause blocking and thread starvation
-        inside the reactor threadpool.
+        This prevents the running task from blocking waiting for this task to
+        finish. This can cause blocking and thread starvation inside the
+        reactor threadpool.
         """
-        return deferLater(
-            reactor, 0, deferToThread,
-            transactional(self.deallocate_static_ip_addresses))
+        reactor.callLater(
+            0, deferToThread, transactional(
+                self.deallocate_static_ip_addresses))
 
     def get_boot_purpose(self):
         """
