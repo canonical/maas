@@ -101,5 +101,11 @@ class TestMachineReadableBytes(MAASTestCase):
         self.assertEqual(machine_readable_bytes('987T'), 987000000000000)
         self.assertEqual(machine_readable_bytes('987P'), 987000000000000000)
         self.assertEqual(machine_readable_bytes('987E'), 987000000000000000000)
+        self.assertEqual(machine_readable_bytes('987k'), 987000)
+        self.assertEqual(machine_readable_bytes('987m'), 987000000)
+        self.assertEqual(machine_readable_bytes('987g'), 987000000000)
+        self.assertEqual(machine_readable_bytes('987t'), 987000000000000)
+        self.assertEqual(machine_readable_bytes('987p'), 987000000000000000)
+        self.assertEqual(machine_readable_bytes('987e'), 987000000000000000000)
 
         self.assertRaises(ValueError, machine_readable_bytes, '987Z')

@@ -84,17 +84,17 @@ def machine_readable_bytes(humanized):
     """
     if humanized == '' or humanized is None:
         return None
-    elif humanized.endswith('K'):
+    elif humanized.endswith('K') or humanized.endswith('k'):
         return int(humanized[:-1]) * 1000
-    elif humanized.endswith('M'):
+    elif humanized.endswith('M') or humanized.endswith('m'):
         return int(humanized[:-1]) * 1000000
-    elif humanized.endswith('G'):
+    elif humanized.endswith('G') or humanized.endswith('g'):
         return int(humanized[:-1]) * 1000000000
-    elif humanized.endswith('T'):
+    elif humanized.endswith('T') or humanized.endswith('t'):
         return int(humanized[:-1]) * 1000000000000
-    elif humanized.endswith('P'):
+    elif humanized.endswith('P') or humanized.endswith('p'):
         return int(humanized[:-1]) * 1000000000000000
-    elif humanized.endswith('E'):
+    elif humanized.endswith('E') or humanized.endswith('e'):
         return int(humanized[:-1]) * 1000000000000000000
     else:
         return int(humanized)

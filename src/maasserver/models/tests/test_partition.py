@@ -39,15 +39,8 @@ class TestPartition(MAASServerTestCase):
             partition.partition_table.get_block_size(),
             partition.get_block_size())
 
-    def test_doesnt_set_uuid_if_partition_table_is_MBR(self):
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR)
-        partition = factory.make_Partition(partition_table=table)
-        self.assertIsNone(partition.uuid)
-
-    def test_set_uuid_if_partition_table_is_GPT(self):
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT)
+    def test_set_uuid_if_missing(self):
+        table = factory.make_PartitionTable()
         partition = factory.make_Partition(partition_table=table)
         self.assertIsNotNone(partition.uuid)
 

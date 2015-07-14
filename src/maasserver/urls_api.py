@@ -252,7 +252,7 @@ urlpatterns += patterns(
         '(?P<device_id>[^/]+)/partitions/$',
         partition_table_handler, name='partition_table_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
-        '(?P<device_id>[^/]+)/partitions/(?P<partition_id>[^/]+)$',
+        '(?P<device_id>[^/]+)/partition/(?P<partition_id>[^/]+)$',
         partition_handler, name='partition_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/volume-groups/$',
         volume_groups_handler, name='volume_groups_handler'),

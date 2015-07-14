@@ -29,7 +29,6 @@ from django.db.models import (
     ForeignKey,
 )
 from maasserver import DefaultMeta
-from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
@@ -73,11 +72,7 @@ class Partition(CleanSave, TimestampedModel):
 
     def save(self, *args, **kwargs):
         """Save partition."""
-        if (self.partition_table.table_type == PARTITION_TABLE_TYPE.GPT and
-                not self.uuid):
-            # Partition is part of a GPT partition table and doesn't have
-            # a UUID set. Set the UUID so MAAS will know the UUID of the
-            # partition on the created machine.
+        if not self.uuid:
             self.uuid = uuid4()
         return super(Partition, self).save(*args, **kwargs)
 

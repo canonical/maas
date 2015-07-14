@@ -15,27 +15,24 @@ __metaclass__ = type
 
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
-    admin_method,
     operation,
     OperationsHandler,
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import (
     MAASAPIBadRequest,
-    MAASAPINotFound,
     MAASAPIValidationError,
 )
 from maasserver.forms import (
+    AddPartitionForm,
     FormatPartitionForm,
     MountPartitionForm,
 )
 from maasserver.models import (
     BlockDevice,
-    Node,
     Partition,
     PartitionTable,
 )
-from maasserver.utils.converters import machine_readable_bytes
 from piston.utils import rc
 
 
@@ -45,6 +42,8 @@ DISPLAYED_PARTITION_FIELDS = (
     'size',
     'start_offset',
     'bootable',
+    'start_block',
+    'end_block',
     ('filesystem', (
         'fstype',
         'label',
@@ -55,94 +54,99 @@ DISPLAYED_PARTITION_FIELDS = (
 
 
 class PartitionTableHandler(OperationsHandler):
-    """Manage partitions on a partition table on a block device on a node."""
+    """Manage partitions on a block device."""
     api_doc_section_name = "Partitions"
-    create = replace = update = delete = None
-    model = PartitionTable
+    update = delete = None
     fields = DISPLAYED_PARTITION_FIELDS
 
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return (
+            'partition_table_handler',
+            ["node_system_id", "block_device_id"],
+            )
+
     def read(self, request, system_id, device_id):
-        """List all partitions on the partition table of a block device
-        belonging to a node.
+        """List all partitions on the block device.
 
-        :param system_id: The node to query.
-        :param device_id: The block device.
-
-        Returns 404 if the node or the block device or partition table are not
-        found.
+        Returns 404 if the node or the block device are not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        if device.node != node:
-            raise MAASAPINotFound()
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.VIEW)
         partition_table = device.partitiontable_set.get()
-        return partition_table.partitions.all()
+        if partition_table is None:
+            return []
+        else:
+            return partition_table.partitions.all()
 
-    @admin_method
-    @operation(idempotent=False)
-    def add_partition(self, request, system_id, device_id):
-        """Add a partition
+    def create(self, request, system_id, device_id):
+        """Create a partition on the block device.
 
-        :param system_id: The node to query.
-        :param device_id: The block device.
+        :param offset: The starting offset of the partition from the
+            beginning of the block device.
+        :param size: The size of the partition.
+        :param uuid: UUID for the partition. Only used if the partition table
+            type for the block device is GPT.
+        :param bootable: If the partition should be marked bootable.
+
+        Returns 404 if the node or the block device are not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        if device.node != node:
-            raise MAASAPINotFound()
-
-        partition_table = device.partitiontable_set.get()
-        offset = machine_readable_bytes(request.POST.get('offset', None))
-        size = machine_readable_bytes(request.POST.get('size', None))
-
-        partition = partition_table.add_partition(
-            start_offset=offset, size=size)
-        return partition
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        form = AddPartitionForm(device, data=request.data)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        else:
+            return form.save()
 
 
 class PartitionHandler(OperationsHandler):
-    """Manage single partition on a block device on a node."""
+    """Manage partition on a block device."""
     api_doc_section_name = "Partitions"
     create = replace = update = None
     model = Partition
     fields = DISPLAYED_PARTITION_FIELDS
 
+    @classmethod
+    def resource_uri(cls, partition=None):
+        # See the comment in NodeHandler.resource_uri.
+        if partition is None:
+            node_system_id = "node_system_id"
+            block_device_id = "block_device_id"
+            partition_id = "partition_id"
+        else:
+            partition_id = partition.id
+            block_device = partition.partition_table.block_device
+            block_device_id = block_device.id
+            node_system_id = block_device.node.system_id
+        return (
+            'partition_handler',
+            (node_system_id, block_device_id, partition_id),
+            )
+
     def read(self, request, system_id, device_id, partition_id):
-        """Read partition on block device on node.
+        """Read partition.
 
-        :param system_id: The node to query.
-        :param device_id: The block device.
-        :param partition_id: The partition.
-
-        Returns 404 if the node or the partition table or the block device or
-        the partition are not found.
-
+        Returns 404 if the node, block device, or partition are not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        partition_table = device.partitiontable_set.get()
-        if device.node != node:
-            raise MAASAPINotFound()
-        partition = partition_table.partitions.get(id=partition_id)
-        return partition
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.VIEW)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        return get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
 
     def delete(self, request, system_id, device_id, partition_id):
-        """Delete a partition
+        """Delete partition.
 
-        :param system_id: The node to query.
-        :param device_id: The block device.
-        :param partition_id: The partition.
+        Returns 404 if the node, block device, or partition are not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        if device.node != node:
-            raise MAASAPINotFound()
-        partition_table = device.partitiontable_set.get()
-        partition = partition_table.partitions.get(id=partition_id)
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
         partition.delete()
         return rc.DELETED
 
@@ -150,39 +154,31 @@ class PartitionHandler(OperationsHandler):
     def format(self, request, system_id, device_id, partition_id):
         """Format a partition.
 
-        :param system_id: The node to query.
-        :param device_id: The block device.
-        :param partition_id: The partition.
+        :param fstype: Type of filesystem.
+        :param uuid: The UUID for the filesystem.
+        :param label: The label for the filesystem.
 
-        Returns 403 when the user doesn't have the ability to format the
+        Returns 403 when the user doesn't have the ability to format the \
             partition.
-        Returns 404 if the node, block device or partition is not found.
+        Returns 404 if the node, block device, or partition is not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        if device.node != node:
-            raise MAASAPINotFound()
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_object_or_404(
             Partition, partition_table=partition_table, id=partition_id)
-        data = request.data
-        form = FormatPartitionForm(partition, data=data)
-        if form.is_valid():
-            form.save()
-        else:
+        form = FormatPartitionForm(partition, data=request.data)
+        if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
-        return partition
+        else:
+            return form.save()
 
     @operation(idempotent=False)
     def unformat(self, request, system_id, device_id, partition_id):
         """Unformat a partition."""
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
-        device = get_object_or_404(BlockDevice, id=device_id)
-        if device.node != node:
-            raise MAASAPINotFound()
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_object_or_404(
@@ -208,40 +204,38 @@ class PartitionHandler(OperationsHandler):
 
         :param mount_point: Path on the filesystem to mount.
 
-        Returns 403 when the user doesn't have the ability to mount the
+        Returns 403 when the user doesn't have the ability to mount the \
             partition.
-        Returns 404 if the node, block device or partition is not found.
+        Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        partition_table = get_object_or_404(PartitionTable,
-                                            block_device=device)
-        partition = get_object_or_404(Partition,
-                                      partition_table=partition_table,
-                                      id=partition_id)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
         form = MountPartitionForm(partition, data=request.data)
-        if form.is_valid():
-            return form.save()
-        else:
+        if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
+        else:
+            return form.save()
 
     @operation(idempotent=False)
     def unmount(self, request, system_id, device_id, partition_id):
         """Unmount the filesystem on partition.
 
-        Returns 400 if the partition is not formatted or not currently
+        Returns 400 if the partition is not formatted or not currently \
             mounted.
-        Returns 403 when the user doesn't have the ability to unmount the
+        Returns 403 when the user doesn't have the ability to unmount the \
             partition.
-        Returns 404 if the node, block device os partition is not found.
+        Returns 404 if the node, block device, or partition is not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        partition_table = get_object_or_404(PartitionTable,
-                                            block_device=device)
-        partition = get_object_or_404(Partition,
-                                      partition_table=partition_table,
-                                      id=partition_id)
+        partition_table = get_object_or_404(
+            PartitionTable, block_device=device)
+        partition = get_object_or_404(
+            Partition, partition_table=partition_table, id=partition_id)
         filesystem = partition.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")

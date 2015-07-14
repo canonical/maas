@@ -69,6 +69,10 @@ from django.contrib.auth.models import (
     User,
 )
 from django.core.exceptions import ValidationError
+from django.core.validators import (
+    MaxValueValidator,
+    MinValueValidator,
+)
 from django.db import connection
 from django.db.utils import IntegrityError
 from django.forms import (
@@ -139,6 +143,7 @@ from maasserver.models import (
     VirtualBlockDevice,
     Zone,
 )
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.node import (
     fqdn_is_duplicate,
     nodegroup_fqdn,
@@ -150,6 +155,7 @@ from maasserver.node_action import (
     compile_node_actions,
 )
 from maasserver.utils import strip_domain
+from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
@@ -2974,6 +2980,38 @@ class AbsolutePathField(forms.RegexField):
         super(AbsolutePathField, self).__init__(regex, *args, **kwargs)
 
 
+class BytesField(forms.RegexField):
+    """Validates and converts a byte value."""
+
+    def __init__(self, *args, **kwargs):
+        self.min_value = kwargs.pop("min_value")
+        self.max_value = kwargs.pop("max_value")
+        regex = r"^-?[0-9]+([KkMmGgTtPpEe]{1})?$"
+        super(BytesField, self).__init__(regex, *args, **kwargs)
+
+    def to_python(self, value):
+        if value is not None:
+            # Make sure the value is a string not an integer.
+            value = "%s" % value
+        return value
+
+    def clean(self, value):
+        value = super(BytesField, self).clean(value)
+        if value is not None:
+            value = machine_readable_bytes(value)
+
+        # Run validation again, but with the min and max validators. This is
+        # because the value has now been converted to an integer.
+        self.validators = []
+        if self.min_value is not None:
+            self.validators.append(MinValueValidator(self.min_value))
+        if self.max_value is not None:
+            self.validators.append(MaxValueValidator(self.max_value))
+        self.run_validators(value)
+
+        return value
+
+
 class FormatBlockDeviceForm(Form):
     """Form used to format a block device."""
     uuid = UUID4Field(required=False)
@@ -3015,33 +3053,6 @@ class FormatBlockDeviceForm(Form):
         return self.block_device
 
 
-class FormatPartitionForm(Form):
-    """Form used to format a partition - to add a Filesystem to it."""
-
-    uuid = UUID4Field(required=False)
-    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
-    label = forms.CharField(required=False)
-    mount_point = AbsolutePathField(required=False)
-
-    def __init__(self, partition, *args, **kwargs):
-        super(FormatPartitionForm, self).__init__(*args, **kwargs)
-        self.partition = partition
-
-    def save(self):
-        """Add the Filesystem to the partition.
-
-        This implementation of `save` does not support the `commit` argument.
-        """
-        # Remove the previous format if one already exists.
-        self.partition.remove_filesystem()
-        data = self.cleaned_data
-        filesystem = self.partition.add_filesystem(
-            uuid=data['uuid'],
-            fstype=data['fstype'],
-            label=data['label'])
-        return filesystem
-
-
 class MountBlockDeviceForm(Form):
     """Form used to mount a block device."""
 
@@ -3079,32 +3090,67 @@ class MountBlockDeviceForm(Form):
         return self.block_device
 
 
-class PhysicalBlockDeviceForm(MAASModelForm):
-    """For validating and saving physical block devices"""
+class AddPartitionForm(Form):
+    """Form used to add a partition to block device."""
 
-    path = AbsolutePathField(required=False)
+    bootable = forms.BooleanField(required=False)
+    uuid = UUID4Field(required=False)
 
-    class Meta:
-        model = PhysicalBlockDevice
+    def __init__(self, block_device, *args, **kwargs):
+        super(AddPartitionForm, self).__init__(*args, **kwargs)
+        self.block_device = block_device
+        self.set_up_fields()
 
-    def __init__(self, node, *args, **kwargs):
-        super(PhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
-        self.node = node
+    def set_up_fields(self):
+        """Create the `offset` and `size` fields.
+
+        This needs to be done on the fly so that we can pass the maximum offset
+        and size.
+        """
+        self.fields['offset'] = BytesField(
+            min_value=0,
+            max_value=self.block_device.size - MIN_BLOCK_DEVICE_SIZE,
+            required=False)
+        self.fields['size'] = BytesField(
+            min_value=MIN_BLOCK_DEVICE_SIZE,
+            max_value=self.block_device.size,
+            required=True)
 
     def save(self):
-        block_device = super(PhysicalBlockDeviceForm, self).save(commit=False)
-        block_device.node = self.node
-        block_device.save()
-        return block_device
+        partition_table, _ = PartitionTable.objects.get_or_create(
+            block_device=self.block_device)
+        return partition_table.add_partition(
+            size=self.cleaned_data['size'],
+            start_offset=self.cleaned_data.get('offset'),
+            uuid=self.cleaned_data.get('uuid'),
+            bootable=self.cleaned_data.get('bootable'))
 
 
-class VirtualBlockDeviceForm(MAASModelForm):
-    """For validating and saving virtual block devices"""
+class FormatPartitionForm(Form):
+    """Form used to format a partition - to add a Filesystem to it."""
 
-    path = AbsolutePathField(required=False)
+    uuid = UUID4Field(required=False)
+    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
+    label = forms.CharField(required=False)
+    mount_point = AbsolutePathField(required=False)
 
-    class Meta:
-        model = VirtualBlockDevice
+    def __init__(self, partition, *args, **kwargs):
+        super(FormatPartitionForm, self).__init__(*args, **kwargs)
+        self.partition = partition
+
+    def save(self):
+        """Add the Filesystem to the partition.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        # Remove the previous format if one already exists.
+        self.partition.remove_filesystem()
+        data = self.cleaned_data
+        self.partition.add_filesystem(
+            uuid=data['uuid'],
+            fstype=data['fstype'],
+            label=data['label'])
+        return self.partition
 
 
 class MountPartitionForm(Form):
@@ -3142,3 +3188,31 @@ class MountPartitionForm(Form):
         filesystem.mount_point = self.cleaned_data['mount_point']
         filesystem.save()
         return self.partition
+
+
+class PhysicalBlockDeviceForm(MAASModelForm):
+    """For validating and saving physical block devices"""
+
+    path = AbsolutePathField(required=False)
+
+    class Meta:
+        model = PhysicalBlockDevice
+
+    def __init__(self, node, *args, **kwargs):
+        super(PhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
+        self.node = node
+
+    def save(self):
+        block_device = super(PhysicalBlockDeviceForm, self).save(commit=False)
+        block_device.node = self.node
+        block_device.save()
+        return block_device
+
+
+class VirtualBlockDeviceForm(MAASModelForm):
+    """For validating and saving virtual block devices"""
+
+    path = AbsolutePathField(required=False)
+
+    class Meta:
+        model = VirtualBlockDevice

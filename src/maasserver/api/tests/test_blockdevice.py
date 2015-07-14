@@ -26,6 +26,10 @@ from maasserver.enum import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+)
 
 
 def get_blockdevices_uri(node):
@@ -112,7 +116,7 @@ class TestBlockDevices(APITestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
-            block_device=block_device, table_type='GPT')
+            block_device=block_device)
 
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
@@ -283,8 +287,7 @@ class TestBlockDeviceAPI(APITestCase):
         node = factory.make_Node()
         block_size = 1024
         block_device = factory.make_PhysicalBlockDevice(
-            node=node,
-            size=1000000 * block_size)
+            node=node, size=1000000 * block_size)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type='MBR')
         # Use PartitionTable methods that auto-size and position partitions
@@ -294,24 +297,28 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-
-        self.assertEqual({u'bootable': partition1.bootable,
-                          u'end_block': partition1.end_block,
-                          u'id': partition1.id,
-                          u'size': partition1.size,
-                          u'start_block': partition1.start_block,
-                          u'start_offset': partition1.start_offset,
-                          u'uuid': partition1.uuid},
-                         parsed_device['partitions'][0])
-
-        self.assertEqual({u'bootable': partition2.bootable,
-                          u'end_block': partition2.end_block,
-                          u'id': partition2.id,
-                          u'size': partition2.size,
-                          u'start_block': partition2.start_block,
-                          u'start_offset': partition2.start_offset,
-                          u'uuid': partition2.uuid},
-                         parsed_device['partitions'][1])
+        self.assertThat(
+            parsed_device['partitions'][0],
+            ContainsDict({
+                'bootable': Equals(partition1.bootable),
+                'end_block': Equals(partition1.end_block),
+                'id': Equals(partition1.id),
+                'size': Equals(partition1.size),
+                'start_block': Equals(partition1.start_block),
+                'start_offset': Equals(partition1.start_offset),
+                'uuid': Equals(partition1.uuid),
+                }))
+        self.assertThat(
+            parsed_device['partitions'][1],
+            ContainsDict({
+                'bootable': Equals(partition2.bootable),
+                'end_block': Equals(partition2.end_block),
+                'id': Equals(partition2.id),
+                'size': Equals(partition2.size),
+                'start_block': Equals(partition2.start_block),
+                'start_offset': Equals(partition2.start_offset),
+                'uuid': Equals(partition2.uuid),
+                }))
 
     def test_read_returns_filesytems_on_partitions(self):
         node = factory.make_Node()
@@ -332,15 +339,15 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-
         self.assertEquals({
             "fstype": filesystem1.fstype,
+            "label": filesystem1.label,
             "uuid": filesystem1.uuid,
             "mount_point": filesystem1.mount_point,
             }, parsed_device['partitions'][0]['filesystem'])
-
         self.assertEquals({
             "fstype": filesystem2.fstype,
+            "label": filesystem2.label,
             "uuid": filesystem2.uuid,
             "mount_point": filesystem2.mount_point,
             }, parsed_device['partitions'][1]['filesystem'])
