@@ -25,7 +25,10 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     MAASAPIValidationError,
 )
-from maasserver.forms import FormatPartitionForm
+from maasserver.forms import (
+    FormatPartitionForm,
+    MountPartitionForm,
+)
 from maasserver.models import (
     BlockDevice,
     Node,
@@ -150,6 +153,10 @@ class PartitionHandler(OperationsHandler):
         :param system_id: The node to query.
         :param device_id: The block device.
         :param partition_id: The partition.
+
+        Returns 403 when the user doesn't have the ability to format the
+            partition.
+        Returns 404 if the node, block device or partition is not found.
         """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)
@@ -193,4 +200,53 @@ class PartitionHandler(OperationsHandler):
                 "unformatted. Remove partition from filesystem group "
                 "before unformatting the partition.")
         partition.remove_filesystem()
+        return partition
+
+    @operation(idempotent=False)
+    def mount(self, request, system_id, device_id, partition_id):
+        """Mount the filesystem on partition.
+
+        :param mount_point: Path on the filesystem to mount.
+
+        Returns 403 when the user doesn't have the ability to mount the
+            partition.
+        Returns 404 if the node, block device or partition is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        partition_table = get_object_or_404(PartitionTable,
+                                            block_device=device)
+        partition = get_object_or_404(Partition,
+                                      partition_table=partition_table,
+                                      id=partition_id)
+        form = MountPartitionForm(partition, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def unmount(self, request, system_id, device_id, partition_id):
+        """Unmount the filesystem on partition.
+
+        Returns 400 if the partition is not formatted or not currently
+            mounted.
+        Returns 403 when the user doesn't have the ability to unmount the
+            partition.
+        Returns 404 if the node, block device os partition is not found.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        partition_table = get_object_or_404(PartitionTable,
+                                            block_device=device)
+        partition = get_object_or_404(Partition,
+                                      partition_table=partition_table,
+                                      id=partition_id)
+        filesystem = partition.filesystem
+        if filesystem is None:
+            raise MAASAPIBadRequest("Partition is not formatted.")
+        if not filesystem.mount_point:
+            raise MAASAPIBadRequest("Filesystem is already unmounted.")
+        filesystem.mount_point = None
+        filesystem.save()
         return partition

@@ -3105,3 +3105,40 @@ class VirtualBlockDeviceForm(MAASModelForm):
 
     class Meta:
         model = VirtualBlockDevice
+
+
+class MountPartitionForm(Form):
+    """Form used to mount a partition."""
+
+    mount_point = AbsolutePathField(required=True)
+
+    def __init__(self, partition, *args, **kwargs):
+        super(MountPartitionForm, self).__init__(*args, **kwargs)
+        self.partition = partition
+
+    def clean(self):
+        """Validate block device doesn't have a partition table."""
+        # Get the clean_data, check that all of the fields we need are
+        # present. If not then the form will error, so no reason to continue.
+        cleaned_data = super(MountPartitionForm, self).clean()
+        if 'mount_point' not in cleaned_data:
+            return cleaned_data
+        filesystem = self.partition.filesystem
+        if filesystem is None:
+            raise ValidationError(
+                "Cannot mount an unformatted partition.")
+        if filesystem.filesystem_group is not None:
+            raise ValidationError(
+                "Partition is part of a filesystem group, and cannot be "
+                "mounted.")
+        return cleaned_data
+
+    def save(self):
+        """Persist the `Filesystem` into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        filesystem = self.partition.filesystem
+        filesystem.mount_point = self.cleaned_data['mount_point']
+        filesystem.save()
+        return self.partition

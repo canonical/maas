@@ -293,7 +293,7 @@ class BlockDeviceHandler(OperationsHandler):
 
         :param mount_point: Path on the filesystem to mount.
 
-        Returns 403 when the user doesn't have the ability to format the \
+        Returns 403 when the user doesn't have the ability to mount the \
             block device.
         Returns 404 if the node or block device is not found.
         """
@@ -311,7 +311,7 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 400 if the block device is not formatted or not currently \
             mounted.
-        Returns 403 when the user doesn't have the ability to unformat the \
+        Returns 403 when the user doesn't have the ability to unmount the \
             block device.
         Returns 404 if the node or block device is not found.
         """

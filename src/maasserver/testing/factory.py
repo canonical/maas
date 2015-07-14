@@ -1175,7 +1175,7 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000 * block_size, 1000 * 1000 * block_size)
+            size = random.randint(1000, 1000 * 1000) * block_size
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         return BlockDevice.objects.create(
@@ -1189,12 +1189,10 @@ class Factory(maastesting.factory.Factory):
             node = self.make_Node()
         if name is None:
             name = self.make_name('name')
-        if size is None:
-            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000 * block_size, 1000 * 1000 * block_size)
+            size = random.randint(1000, 1000 * 1000) * block_size
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         if model is None:
@@ -1339,8 +1337,7 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(280 * block_size,
-                                  1000 * 1000 * block_size)
+            size = random.randint(1000, 1000 * 1000) * block_size
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:
