@@ -13,14 +13,16 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "get_available_boot_images",
+    "get_all_available_boot_images",
     "get_boot_images",
     "get_boot_images_for",
+    "get_common_available_boot_images",
     "is_import_boot_images_running",
     "is_import_boot_images_running_for",
 ]
 
 from functools import partial
+from itertools import imap
 
 from maasserver.rpc import (
     getAllClients,
@@ -94,41 +96,40 @@ def get_boot_images(nodegroup):
 
 
 @synchronous
-def get_available_boot_images():
-    """Obtain boot images that are available on all clusters."""
-    responses = async.gather(
-        partial(client, ListBootImages)
-        for client in getAllClients())
-    responses = [
-        response["images"]
-        for response in suppress_failures(responses)
-        ]
-    if len(responses) == 0:
-        return []
+def _get_available_boot_images():
+    """Obtain boot images available on connected clusters."""
+    listimages = lambda client: partial(client, ListBootImages)
+    responses = async.gather(imap(listimages, getAllClients()))
+    for response in suppress_failures(responses):
+        # Convert each image to a frozenset of its items.
+        yield frozenset(
+            frozenset(image.viewitems())
+            for image in response["images"]
+        )
 
-    # Create the initial set of images from the first response. This will be
-    # used to perform the intersection of all the other responses.
-    images = responses.pop()
-    images = {
-        frozenset(image.items())
-        for image in images
-        }
 
-    # Intersect all of the remaining responses to get only the images that
-    # exist on all clusters.
-    for response in responses:
-        response_images = {
-            frozenset(image.items())
-            for image in response
-            }
-        images = images & response_images
+@synchronous
+def get_common_available_boot_images():
+    """Obtain boot images that are available on *all* clusters."""
+    image_sets = list(_get_available_boot_images())
+    if len(image_sets) > 0:
+        images = frozenset.intersection(*image_sets)
+    else:
+        images = frozenset()
+    # Return using the same format as get_boot_images.
+    return list(dict(image) for image in images)
 
-    # Return only boot images on all cluster, in the same format as
-    # get_boot_images.
-    return [
-        dict(image)
-        for image in list(images)
-        ]
+
+@synchronous
+def get_all_available_boot_images():
+    """Obtain boot images that are available on *any* clusters."""
+    image_sets = list(_get_available_boot_images())
+    if len(image_sets) > 0:
+        images = frozenset.union(*image_sets)
+    else:
+        images = frozenset()
+    # Return using the same format as get_boot_images.
+    return list(dict(image) for image in images)
 
 
 @synchronous

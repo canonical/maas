@@ -59,7 +59,12 @@ from maasserver.models import (
     Config,
     LargeFile,
 )
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.config import RegionConfigurationFixture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -80,17 +85,21 @@ from mock import (
 )
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
+from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.text import normalise_whitespace
+from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,
     ContainsAll,
     Equals,
-    Is,
+    HasLength,
 )
 from twisted.application.internet import TimerService
-from twisted.internet.defer import fail
-from twisted.internet.threads import deferToThread
+from twisted.internet.defer import (
+    fail,
+    succeed,
+)
 
 
 def make_boot_resource_file_with_stream():
@@ -1355,72 +1364,132 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         service = bootresources.ImportResourcesProgressService()
         self.assertEqual(180, service.step)
 
-    def test__defers_check_to_thread(self):
+    def test__calls_try_check_boot_images(self):
         service = bootresources.ImportResourcesProgressService()
         func, args, kwargs = service.call
-        self.expectThat(func, Is(deferToThread))
-        self.expectThat(args, Equals((service.check_boot_images,)))
-        self.expectThat(kwargs, Equals({}))
+        self.expectThat(func, Equals(service.try_check_boot_images))
+        self.expectThat(args, HasLength(0))
+        self.expectThat(kwargs, HasLength(0))
 
-    def set_mass_url_with_two_level_path(self):
-        abs_path = "/%s/%s/" % (factory.make_string(), factory.make_string())
-        maas_url = factory.make_simple_http_url(path=abs_path)
+    def set_maas_url(self):
+        maas_url_path = "/path/%s" % factory.make_string()
+        maas_url = factory.make_simple_http_url(path=maas_url_path)
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        return abs_path
+        return maas_url, maas_url_path
+
+    def patch_are_functions(self, service, region_answer, cluster_answer):
+        # Patch the are_boot_images_available_* functions.
+        are_region_func = self.patch_autospec(
+            service, "are_boot_images_available_in_the_region")
+        are_region_func.return_value = region_answer
+        are_cluster_func = self.patch_autospec(
+            service, "are_boot_images_available_in_any_cluster")
+        are_cluster_func.return_value = cluster_answer
 
     def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
-        self.useFixture(RegionConfigurationFixture())
-        abs_path = self.set_mass_url_with_two_level_path()
-
-        list_boot_images = self.patch(bootresources, "list_boot_images")
-        list_boot_images.return_value = [make_rpc_boot_image()]
+        _, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
+        self.patch_are_functions(service, False, True)
         service.check_boot_images()
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        error_expected = """
-        Your cluster currently has boot images, but your region does not.
-        Nodes will not be able to provision until you import boot images into
-        the region. Visit the <a href="%s">boot images</a> page to start the
-        import.
+        error_expected = """\
+        One or more of your clusters currently has boot images, but your
+        region does not. Nodes will not be able to provision until you import
+        boot images into the region. Visit the <a href="%s">boot images</a>
+        page to start the import.
         """
-        images_link = abs_path + 'images/'
+        images_link = maas_url_path + '/images/'
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
-            error_observed)
+            normalise_whitespace(error_observed))
 
     def test__adds_warning_if_boot_image_import_not_started(self):
-        self.useFixture(RegionConfigurationFixture())
-        abs_path = self.set_mass_url_with_two_level_path()
-
-        list_boot_images = self.patch(bootresources, "list_boot_images")
-        list_boot_images.return_value = []
+        _, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
+        self.patch_are_functions(service, False, False)
         service.check_boot_images()
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        error_expected = """
+        error_expected = """\
         Boot image import process not started. Nodes will not be able to
         provision without boot images. Visit the <a href="%s">boot images</a>
         page to start the import.
         """
-        images_link = abs_path + 'images/'
+        images_link = maas_url_path + '/images/'
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
-            error_observed)
+            normalise_whitespace(error_observed))
 
     def test__removes_warning_if_boot_image_process_started(self):
         register_persistent_error(
             COMPONENT.IMPORT_PXE_FILES,
             "You rotten swine, you! You have deaded me!")
 
-        # A BootResource implies that the import process has started.
-        factory.make_BootResource()
-
         service = bootresources.ImportResourcesProgressService()
+        self.patch_are_functions(service, True, False)
         service.check_boot_images()
 
         error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         self.assertIsNone(error)
+
+    def test__logs_all_errors(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        exception = factory.make_exception()
+        service = bootresources.ImportResourcesProgressService()
+        check_boot_images = self.patch_autospec(service, "check_boot_images")
+        check_boot_images.side_effect = exception
+        try_check_boot_images = asynchronous(service.try_check_boot_images)
+        try_check_boot_images().wait()
+
+        self.assertDocTestMatches(
+            """\
+            Failure checking for boot images.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...:
+            """,
+            logger.output)
+
+    def test__are_boot_images_available_in_the_region(self):
+        service = bootresources.ImportResourcesProgressService()
+        self.assertFalse(service.are_boot_images_available_in_the_region())
+        factory.make_BootResource()
+        self.assertTrue(service.are_boot_images_available_in_the_region())
+
+    def test__are_boot_images_available_in_any_cluster(self):
+        # Import the websocket handlers now: merely defining DeviceHandler,
+        # e.g., causes a database access, which will crash if it happens
+        # inside the reactor thread where database access is forbidden and
+        # prevented. My own opinion is that a class definition should not
+        # cause a database access and we ought to fix that.
+        import maasserver.websockets.handlers  # noqa
+
+        cluster = factory.make_NodeGroup()
+        service = bootresources.ImportResourcesProgressService()
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        region_rpc = MockLiveRegionToClusterRPCFixture()
+        self.useFixture(region_rpc)
+
+        # are_boot_images_available_in_the_region() returns False when there
+        # are no clusters connected.
+        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+
+        # Connect a cluster to the region via RPC.
+        cluster_rpc = region_rpc.makeCluster(cluster, ListBootImages)
+
+        # are_boot_images_available_in_the_region() returns False when none of
+        # the clusters have any images.
+        cluster_rpc.ListBootImages.return_value = succeed({"images": []})
+        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+
+        # are_boot_images_available_in_the_region() returns True when a
+        # cluster has an imported boot image.
+        response = {"images": [make_rpc_boot_image()]}
+        cluster_rpc.ListBootImages.return_value = succeed(response)
+        self.assertTrue(service.are_boot_images_available_in_any_cluster())

@@ -17,9 +17,10 @@ __all__ = []
 import os
 
 from maasserver.clusterrpc.boot_images import (
-    get_available_boot_images,
+    get_all_available_boot_images,
     get_boot_images,
     get_boot_images_for,
+    get_common_available_boot_images,
     is_import_boot_images_running,
     is_import_boot_images_running_for,
 )
@@ -172,7 +173,19 @@ class TestGetBootImages(MAASServerTestCase):
 
 
 class TestGetAvailableBootImages(MAASServerTestCase):
-    """Tests for `get_available_boot_images`."""
+    """Tests for `get_common_available_boot_images` and
+    `get_all_available_boot_images`."""
+
+    scenarios = (
+        ("get_common_available_boot_images", {
+            "get": get_common_available_boot_images,
+            "all": False,
+        }),
+        ("get_all_available_boot_images", {
+            "get": get_all_available_boot_images,
+            "all": True,
+        }),
+    )
 
     def setUp(self):
         super(TestGetAvailableBootImages, self).setUp()
@@ -193,7 +206,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
                 for param in params
                 for purpose in purposes
             ],
-            get_available_boot_images())
+            self.get())
 
     def test_returns_boot_images_on_all_clusters(self):
         factory.make_NodeGroup().accept()
@@ -215,9 +228,8 @@ class TestGetAvailableBootImages(MAASServerTestCase):
                 # All clients but the first return only available images.
                 callRemote.return_value = succeed({'images': available_images})
 
-        self.assertItemsEqual(
-            available_images,
-            get_available_boot_images())
+        expected_images = images if self.all else available_images
+        self.assertItemsEqual(expected_images, self.get())
 
     def test_ignores_failures_when_talking_to_clusters(self):
         factory.make_NodeGroup().accept()
@@ -237,9 +249,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
                 # All clients but the first raise an exception.
                 callRemote.side_effect = ZeroDivisionError()
 
-        self.assertItemsEqual(
-            images,
-            get_available_boot_images())
+        self.assertItemsEqual(images, self.get())
 
     def test_returns_empty_list_when_all_clusters_fail(self):
         factory.make_NodeGroup().accept()
@@ -252,9 +262,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             callRemote.side_effect = ZeroDivisionError()
 
-        self.assertItemsEqual(
-            [],
-            get_available_boot_images())
+        self.assertItemsEqual([], self.get())
 
 
 class TestGetBootImagesFor(MAASServerTestCase):

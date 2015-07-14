@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 import logging
+from random import randrange
 
 from django.db import connection
 from django.db.utils import DatabaseError
@@ -28,6 +29,7 @@ from maasserver.bootresources import (
     ensure_boot_source_definition,
     import_resources,
 )
+from maasserver.clusterrpc.boot_images import get_all_available_boot_images
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import (
@@ -40,16 +42,17 @@ from maasserver.triggers import register_all_triggers
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
+    post_commit_do,
     transactional,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
     pause,
 )
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
@@ -110,6 +113,8 @@ def start_up():
             break
 
 
+@transactional
+@synchronised(locks.startup)
 def start_import_on_upgrade():
     """Starts importing `BootResource`s on upgrade from MAAS where the boot
     images where only stored on the clusters."""
@@ -117,9 +122,8 @@ def start_import_on_upgrade():
     if BootResource.objects.exists():
         return
 
-    # Do nothing if the cluster on the machine does not have
-    # boot images present.
-    boot_images = list_boot_images()
+    # Do nothing if none of the clusters have boot images present.
+    boot_images = get_all_available_boot_images()
     if len(boot_images) == 0:
         return
 
@@ -148,7 +152,7 @@ def start_import_on_upgrade():
     boot_source = BootSource.objects.first()
 
     # Clear all current selections and create the new selections
-    # based on the information retrieved from list_boot_images.
+    # based on the information retrieved from clusters.
     boot_source.bootsourceselection_set.all().delete()
     for osystem, options in osystems.items():
         for release in options["releases"]:
@@ -182,8 +186,11 @@ def inner_start_up():
     # If there are no boot-source definitions yet, create defaults.
     ensure_boot_source_definition()
 
-    # Start import on upgrade if needed.
-    start_import_on_upgrade()
+    # Start import on upgrade if needed, but not until there's a good chance
+    # than one or more clusters are connected.
+    post_commit_do(
+        reactor.callLater, randrange(45, 90), reactor.callInThread,
+        start_import_on_upgrade)
 
     # Register all of the triggers.
     register_all_triggers()

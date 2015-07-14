@@ -29,17 +29,20 @@ from maasserver.models import (
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import call
+from mock import (
+    ANY,
+    call,
+)
 from testtools.matchers import (
     Equals,
     HasLength,
 )
+from twisted.internet import reactor
 
 
 class LockChecker:
@@ -67,6 +70,7 @@ class TestStartUp(MAASServerTestCase):
         super(TestStartUp, self).setUp()
         self.useFixture(RegionEventLoopFixture())
         self.patch(start_up, 'create_gnupg_home')
+        self.patch(start_up, 'post_commit_do')
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()
@@ -87,14 +91,14 @@ class TestStartUp(MAASServerTestCase):
             None,  # Success.
         ]
         # We don't want to really sleep.
-        pause = self.patch(start_up, "pause")
+        self.patch(start_up, "pause")
         # start_up() returns without error.
         start_up.start_up()
         # However, it did call inner_start_up() twice; the first call resulted
         # in the "Boom!" exception so it tried again.
         self.expectThat(inner_start_up, MockCallsMatch(call(), call()))
         # It also slept once, for 3 seconds, between those attempts.
-        self.expectThat(pause, MockCalledOnceWith(3.0))
+        self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
 
 
 class TestStartImportOnUpgrade(MAASServerTestCase):
@@ -102,33 +106,29 @@ class TestStartImportOnUpgrade(MAASServerTestCase):
 
     def setUp(self):
         super(TestStartImportOnUpgrade, self).setUp()
+        self.patch_autospec(start_up, "get_all_available_boot_images")
+        self.patch_autospec(start_up, 'import_resources')
         ensure_boot_source_definition()
-        self.mock_import_resources = self.patch(start_up, 'import_resources')
 
     def test__does_nothing_if_boot_resources_exist(self):
-        mock_list_boot_images = self.patch(start_up, 'list_boot_images')
         factory.make_BootResource()
         start_up.start_import_on_upgrade()
-        self.assertThat(mock_list_boot_images, MockNotCalled())
+        self.assertThat(start_up.import_resources, MockNotCalled())
 
-    def test__does_nothing_if_list_boot_images_is_empty(self):
-        self.patch(start_up, 'list_boot_images').return_value = []
+    def test__does_nothing_if_no_cluster_has_any_images(self):
+        start_up.get_all_available_boot_images.return_value = []
         start_up.start_import_on_upgrade()
-        self.assertThat(self.mock_import_resources, MockNotCalled())
+        self.assertThat(start_up.import_resources, MockNotCalled())
 
-    def test__calls_import_resources(self):
-        self.patch(start_up, 'list_boot_images').return_value = [
-            make_rpc_boot_image(),
-            ]
+    def test__calls_import_resources_when_any_cluster_has_an_image(self):
+        boot_images = [make_rpc_boot_image()]
+        start_up.get_all_available_boot_images.return_value = boot_images
         start_up.start_import_on_upgrade()
-        self.assertThat(self.mock_import_resources, MockCalledOnceWith())
+        self.assertThat(start_up.import_resources, MockCalledOnceWith())
 
     def test__sets_source_selections_based_on_boot_images(self):
-        boot_images = [
-            make_rpc_boot_image()
-            for _ in range(3)
-            ]
-        self.patch(start_up, 'list_boot_images').return_value = boot_images
+        boot_images = [make_rpc_boot_image() for _ in range(3)]
+        start_up.get_all_available_boot_images.return_value = boot_images
         start_up.start_import_on_upgrade()
 
         boot_source = BootSource.objects.first()
@@ -148,16 +148,15 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
-        self.mock_create_gnupg_home = self.patch(
-            start_up, 'create_gnupg_home')
+        self.patch_autospec(start_up, 'create_gnupg_home')
+        self.patch_autospec(start_up, 'post_commit_do')
 
     def test__calls_write_full_dns_config(self):
-        recorder = FakeMethod()
-        self.patch(start_up, 'dns_update_all_zones', recorder)
+        self.patch_autospec(start_up, 'dns_update_all_zones')
         start_up.inner_start_up()
-        self.assertEqual(
-            (1, [()]),
-            (recorder.call_count, recorder.extract_args()))
+        self.assertThat(
+            start_up.dns_update_all_zones,
+            MockCalledOnceWith(reload_retry=True))
 
     def test__creates_master_nodegroup(self):
         start_up.inner_start_up()
@@ -167,13 +166,12 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test__calls_create_gnupg_home(self):
         start_up.inner_start_up()
-        self.assertThat(self.mock_create_gnupg_home, MockCalledOnceWith())
+        self.assertThat(start_up.create_gnupg_home, MockCalledOnceWith())
 
     def test__calls_register_all_triggers(self):
-        mock_register_all_triggers = self.patch(
-            start_up, 'register_all_triggers')
+        self.patch(start_up, 'register_all_triggers')
         start_up.inner_start_up()
-        self.assertThat(mock_register_all_triggers, MockCalledOnceWith())
+        self.assertThat(start_up.register_all_triggers, MockCalledOnceWith())
 
     def test__initialises_boot_source_config(self):
         self.assertItemsEqual([], BootSource.objects.all())
@@ -181,6 +179,8 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(BootSource.objects.all(), HasLength(1))
 
     def test__calls_start_import_on_upgrade(self):
-        mock_start_import = self.patch(start_up, 'start_import_on_upgrade')
         start_up.inner_start_up()
-        self.expectThat(mock_start_import, MockCalledOnceWith())
+        self.assertThat(
+            start_up.post_commit_do, MockCalledOnceWith(
+                reactor.callLater, ANY, reactor.callInThread,
+                start_up.start_import_on_upgrade))

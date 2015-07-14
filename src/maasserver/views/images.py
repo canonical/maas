@@ -40,7 +40,7 @@ from maasserver.bootresources import (
 )
 from maasserver.bootsources import get_os_info_from_boot_sources
 from maasserver.clusterrpc.boot_images import (
-    get_available_boot_images,
+    get_common_available_boot_images,
     is_import_boot_images_running,
 )
 from maasserver.clusterrpc.osystems import get_os_release_title
@@ -121,7 +121,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             'default_distro_series')
 
         # Load list of boot resources that currently exist on all clusters.
-        cluster_images = get_available_boot_images()
+        cluster_images = get_common_available_boot_images()
         self.clusters_syncing = is_import_boot_images_running()
         self.cluster_resources = (
             BootResource.objects.get_resources_matching_boot_images(

@@ -25,7 +25,10 @@ __all__ = [
 ]
 
 from datetime import timedelta
+from itertools import imap
+from operator import itemgetter
 from subprocess import CalledProcessError
+from textwrap import dedent
 import threading
 import time
 
@@ -64,6 +67,7 @@ from maasserver.models import (
     LargeFile,
     NodeGroup,
 )
+from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
     absolute_url_reverse,
@@ -82,10 +86,13 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.boot_images import list_boot_images
+from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    synchronous,
+)
 from simplestreams import util as sutil
 from simplestreams.mirrors import (
     BasicMirrorWriter,
@@ -94,6 +101,7 @@ from simplestreams.mirrors import (
 from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
+from twisted.internet.defer import DeferredList
 from twisted.internet.threads import deferToThread
 from twisted.python import log
 
@@ -1063,32 +1071,66 @@ class ImportResourcesProgressService(TimerService, object):
 
     def __init__(self, interval=timedelta(minutes=3)):
         super(ImportResourcesProgressService, self).__init__(
-            interval.total_seconds(), deferToThread, self.check_boot_images)
+            interval.total_seconds(), self.try_check_boot_images)
+
+    def try_check_boot_images(self):
+        d = deferToThread(self.check_boot_images)
+        d.addErrback(log.err, "Failure checking for boot images.")
+        return d
 
     @transactional
     def check_boot_images(self):
         """Add a persistent error if the boot image import hasn't started."""
-        if BootResource.objects.all().exists():
+        if self.are_boot_images_available_in_the_region():
             # The region has boot resources. The clusters will soon too if
             # they haven't already. Nothing to see here, please move along.
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         else:
-            # If the cluster is on the same machine as the region, it's
-            # possible that the cluster has images and the region does not. We
-            # can provide a better message to the user in this case.
+            # We can ask clusters if they somehow have some imported images
+            # already, from another source perhaps. We can provide a better
+            # message to the user in this case.
             images_link = absolute_url_reverse('images')
-            boot_images_locally = list_boot_images()
-            if len(boot_images_locally) > 0:
-                warning = (
-                    "Your cluster currently has boot images, but your region "
-                    "does not. Nodes will not be able to provision until you "
-                    "import boot images into the region. Visit the "
-                    "<a href=\"%s\">boot images</a> page to start the "
-                    "import." % images_link)
+
+            if self.are_boot_images_available_in_any_cluster():
+                warning = dedent("""\
+                One or more of your clusters currently has boot images, but
+                your region does not. Nodes will not be able to provision
+                until you import boot images into the region. Visit the <a
+                href="%s">boot images</a> page to start the import.
+                """) % images_link
             else:
-                warning = (
-                    "Boot image import process not started. Nodes will not "
-                    "be able to provision without boot images. Visit the "
-                    "<a href=\"%s\">boot images</a> page to start the "
-                    "import." % images_link)
+                warning = dedent("""\
+                Boot image import process not started. Nodes will not be able
+                to provision without boot images. Visit the <a href="%s">boot
+                images</a> page to start the import.
+                """) % images_link
+
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+
+    @synchronous
+    def are_boot_images_available_in_the_region(self):
+        """Return true if there are boot images available in the region. """
+        return BootResource.objects.all().exists()
+
+    @asynchronous(timeout=90)
+    def are_boot_images_available_in_any_cluster(self):
+        """Return true if there are boot images available in any cluster.
+
+        Only considers clusters that are currently connected, and ignores
+        errors resulting from communicating with the clusters.
+        """
+        clients = getAllClients()
+
+        def get_images(client):
+            return client(ListBootImages).addCallback(itemgetter("images"))
+
+        d = DeferredList(imap(get_images, clients), consumeErrors=True)
+
+        def has_boot_images(results):
+            return any(
+                len(result) > 0
+                for success, result in results
+                if success  # Ignore failures.
+            )
+
+        return d.addCallback(has_boot_images)
