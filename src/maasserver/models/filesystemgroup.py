@@ -260,6 +260,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 return filesystem
         return None
 
+    def get_bcache_cache_filesystem(self):
+        """Return the filesystem that is the cache device for the Bcache."""
+        for filesystem in self.filesystems.all():
+            if filesystem.fstype == FILESYSTEM_TYPE.BCACHE_CACHE:
+                return filesystem
+        return None
+
     def get_bcache_size(self):
         """Size of this Bcache.
 

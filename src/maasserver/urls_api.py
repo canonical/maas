@@ -20,6 +20,10 @@ from django.conf.urls import (
 )
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
+from maasserver.api.bcache import (
+    BcacheDeviceHandler,
+    BcacheDevicesHandler,
+)
 from maasserver.api.blockdevices import (
     BlockDeviceHandler,
     BlockDevicesHandler,
@@ -164,6 +168,10 @@ raid_device_handler = RestrictedResource(
     RAIDDeviceHandler, authentication=api_auth)
 raid_devices_handler = RestrictedResource(
     RAIDDevicesHandler, authentication=api_auth)
+bcache_device_handler = RestrictedResource(
+    BcacheDeviceHandler, authentication=api_auth)
+bcache_devices_handler = RestrictedResource(
+    BcacheDevicesHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -255,6 +263,10 @@ urlpatterns += patterns(
         raid_devices_handler, name='raid_devices_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/raid/(?P<raid_id>[^/]+)/$',
         raid_device_handler, name='raid_device_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/bcaches/$',
+        bcache_devices_handler, name='bcache_devices_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/bcache/(?P<bcache_id>[^/]+)/$',
+        bcache_device_handler, name='bcache_device_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

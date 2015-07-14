@@ -1226,6 +1226,20 @@ class TestFilesystemGroup(MAASServerTestCase):
             filesystem.get_block_size(),
             filesystem_group.get_virtual_block_device_block_size())
 
+    def test_get_bcache_cache_filesystem_for_bcache(self):
+        node = factory.make_Node()
+        backing_filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            block_device=factory.make_PhysicalBlockDevice(node=node))
+        cache_filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+            block_device=factory.make_PhysicalBlockDevice(node=node))
+        bcache = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            filesystems=[cache_filesystem, backing_filesystem])
+        self.assertEquals(
+            cache_filesystem, bcache.get_bcache_cache_filesystem())
+
     def test_delete_deletes_filesystems_not_block_devices(self):
         node = factory.make_Node()
         block_devices = [
