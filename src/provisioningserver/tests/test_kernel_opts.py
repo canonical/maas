@@ -20,6 +20,7 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from provisioningserver import kernel_opts
 from provisioningserver.drivers import (
     Architecture,
@@ -29,6 +30,8 @@ from provisioningserver.kernel_opts import (
     compose_arch_opts,
     compose_kernel_command_line,
     compose_preseed_opt,
+    CURTIN_KERNEL_CMDLINE_NAME,
+    get_curtin_kernel_cmdline_sep,
     get_ephemeral_name,
     get_last_directory,
     ISCSI_TARGET_NAME_PREFIX,
@@ -104,6 +107,29 @@ class TestUtilitiesKernelOpts(MAASTestCase):
 
         self.assertIn(':' + target, full_name)
         self.assertNotIn('::' + target, full_name)
+
+
+class TestGetCurtinKernelCmdlineSepTest(MAASTestCase):
+
+    def test_get_curtin_kernel_cmdline_sep_returns_curtin_value(self):
+        sep = factory.make_name('separator')
+        self.patch(
+            kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME, sep)
+        self.assertEqual(sep, get_curtin_kernel_cmdline_sep())
+
+    def test_get_curtin_kernel_cmdline_sep_returns_default(self):
+        original_sep = getattr(
+            kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME,
+            sentinel.missing)
+
+        if original_sep != sentinel.missing:
+            def restore_sep():
+                setattr(
+                    kernel_opts.curtin,
+                    CURTIN_KERNEL_CMDLINE_NAME, original_sep)
+            self.addCleanup(restore_sep)
+            delattr(kernel_opts.curtin, CURTIN_KERNEL_CMDLINE_NAME)
+        self.assertEqual('--', get_curtin_kernel_cmdline_sep())
 
 
 class TestKernelOpts(MAASTestCase):
@@ -191,12 +217,16 @@ class TestKernelOpts(MAASTestCase):
                 "ip=::::%s:BOOTIF" % params.hostname]))
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
+        mock_get_curtin_sep = self.patch(
+            kernel_opts, 'get_curtin_kernel_cmdline_sep')
+        sep = factory.make_name('sep')
+        mock_get_curtin_sep.return_value = sep
         extra_opts = "special console=ABCD -- options to pass"
         params = self.make_kernel_parameters(extra_opts=extra_opts)
         cmdline = compose_kernel_command_line(params)
-        # There should be a double dash (--) surrounded by spaces before
-        # the options, but otherwise added verbatim.
-        self.assertThat(cmdline, Contains(' -- ' + extra_opts))
+        # There should be KERNEL_CMDLINE_COPY_TO_INSTALL_SEP surrounded by
+        # spaces before the options, but otherwise added verbatim.
+        self.assertThat(cmdline, Contains(' %s ' % sep + extra_opts))
 
     def test_commissioning_compose_kernel_handles_extra_opts_None(self):
         params = self.make_kernel_parameters(extra_opts=None)
