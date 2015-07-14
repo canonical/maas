@@ -20,6 +20,7 @@ import uuid
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
@@ -507,7 +508,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_format_formats_block_device_by_creating_filesystem(self):
         node = factory.make_Node(owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        fstype = factory.pick_enum(FILESYSTEM_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(

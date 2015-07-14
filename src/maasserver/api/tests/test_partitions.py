@@ -20,7 +20,7 @@ import random
 from uuid import uuid4
 
 from django.core.urlresolvers import reverse
-from maasserver.enum import FILESYSTEM_TYPE
+from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -196,16 +196,17 @@ class TestPartitions(APITestCase):
             size=4096 * block_size)
         uri = get_partition_uri(partition)
         fs_uuid = unicode(uuid4())
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
-            'fstype': FILESYSTEM_TYPE.EXT4,
+            'fstype': fstype,
             'label': 'mylabel',
         })
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         filesystem = json.loads(response.content)['filesystem']
-        self.assertEqual(FILESYSTEM_TYPE.EXT4, filesystem['fstype'])
+        self.assertEqual(fstype, filesystem['fstype'])
         self.assertEqual('mylabel', filesystem['label'])
         self.assertEqual(fs_uuid, filesystem['uuid'])
 
@@ -225,10 +226,11 @@ class TestPartitions(APITestCase):
             'partition_handler',
             args=[node.system_id, device.id, partition_id])
         fs_uuid = unicode(uuid4())
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
-            'fstype': FILESYSTEM_TYPE.EXT4,
+            'fstype': fstype,
             'label': 'mylabel',
         })
         # Fails with a NOT_FOUND status.

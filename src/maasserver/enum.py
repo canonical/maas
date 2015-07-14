@@ -386,6 +386,14 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.BCACHE_BACKING, "bcache-backing"),
     )
 
+# Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
+# representation). When a user does a format operation only these values
+# are allowed. The other values are reserved for internal use.
+FILESYSTEM_FORMAT_TYPE_CHOICES = (
+    (FILESYSTEM_TYPE.EXT3, "ext3"),
+    (FILESYSTEM_TYPE.EXT4, "ext4"),
+    )
+
 
 class FILESYSTEM_GROUP_TYPE:
     """The vocabulary of possible partition types for `FilesystemGroup`."""

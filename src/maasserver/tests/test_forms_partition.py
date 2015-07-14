@@ -17,7 +17,10 @@ __all__ = []
 import random
 import uuid
 
-from maasserver.enum import FILESYSTEM_TYPE
+from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
+    FILESYSTEM_TYPE,
+)
 from maasserver.forms import (
     AddPartitionForm,
     FormatPartitionForm,
@@ -194,7 +197,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertItemsEqual(['fstype'], form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
-        fstype = factory.pick_enum(FILESYSTEM_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         partition = factory.make_Partition()
         data = {
             'fstype': fstype,
@@ -206,9 +209,25 @@ class TestFormatPartitionForm(MAASServerTestCase):
             "Should be invalid because of an invalid uuid.")
         self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
 
+    def test_is_not_valid_if_invalid_format_fstype(self):
+        partition = factory.make_Partition()
+        data = {
+            'fstype': FILESYSTEM_TYPE.LVM_PV,
+            }
+        form = FormatPartitionForm(partition, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an invalid fstype.")
+        self.assertEquals({
+            'fstype': [
+                "Select a valid choice. lvm-pv is not one of the "
+                "available choices."
+                ],
+            }, form._errors)
+
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()
-        fstype = factory.pick_enum(FILESYSTEM_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         partition = factory.make_Partition()
         data = {
             'uuid': fsuuid,
@@ -224,7 +243,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertEquals(fsuuid, filesystem.uuid)
 
     def test_deletes_old_filesystem_and_creates_new_one(self):
-        fstype = factory.pick_enum(FILESYSTEM_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         partition = factory.make_Partition()
         prev_filesystem = factory.make_Filesystem(partition=partition)
         data = {

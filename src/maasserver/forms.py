@@ -96,7 +96,7 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
-    FILESYSTEM_TYPE_CHOICES,
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_STATUS,
@@ -3016,7 +3016,8 @@ class FormatBlockDeviceForm(Form):
     """Form used to format a block device."""
     uuid = UUID4Field(required=False)
 
-    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
+    fstype = forms.ChoiceField(
+        choices=FILESYSTEM_FORMAT_TYPE_CHOICES, required=True)
 
     def __init__(self, block_device, *args, **kwargs):
         super(FormatBlockDeviceForm, self).__init__(*args, **kwargs)
@@ -3130,9 +3131,9 @@ class FormatPartitionForm(Form):
     """Form used to format a partition - to add a Filesystem to it."""
 
     uuid = UUID4Field(required=False)
-    fstype = forms.ChoiceField(choices=FILESYSTEM_TYPE_CHOICES, required=True)
+    fstype = forms.ChoiceField(
+        choices=FILESYSTEM_FORMAT_TYPE_CHOICES, required=True)
     label = forms.CharField(required=False)
-    mount_point = AbsolutePathField(required=False)
 
     def __init__(self, partition, *args, **kwargs):
         super(FormatPartitionForm, self).__init__(*args, **kwargs)
