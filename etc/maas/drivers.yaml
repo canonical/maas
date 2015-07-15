@@ -19,3 +19,30 @@ drivers:
   module: hpvsa
   package: hpvsa
   repository: http://ppa.launchpad.net/hp-iss-team/hpvsa-update/ubuntu
+- comment: Cisco snic DKMS driver
+  key_binary: !!binary |
+         mQINBFRjf2EBEADVD60xGOaZj8ahKJNRoi6rtzfjzwzTLzntzeXj8rLM99cca9mxsObGMKfHz9PP
+         eXbgA6rCAdfKbxuEdMgJtOz1+u78IUpRkyb5iemOwskehMvHY0p2DUHMTjJUQzpwTUzMPLmtzGl9
+         LJPcBOzhvayPEpLEOxImUPFhEC/VfLhBDd6P90+g7OfOKgQt8P86aNW+F4zz93R/wzADhe04ZiJ6
+         bnFwwpooQ/AF9X2QV2MTmbRkjYzF5wpthCXbVyw6c+fkcrvFz7wm+z3bY5pCi5EQNqLFga/8BBAL
+         XguO/YndMyWTayWyQ7lAfarzAGEGG+UfUn4woGF3Ux4BNjlELhlO8BGcmKd9MKjcYUJSWO0eI+nn
+         mhUEwDzGdDggdnvZzkO7/lqAmVKatbfW4HSePI6jKMhf6Iu6nzemH16fPZ6x5pnapXmIWgAcxtQG
+         dGcMgmxsUpYsGPi39+utgkkQnuaDCaAO1HrPc8AFJbUDjCuWZCFVCqLsAV05l2/ZlTfd1mzuNFQr
+         5KkYjZPD5cswMtnaFOjxIdWV9ZXD7DF7IhnIO2zowZXZ0xwWfPEpCBwrIC7bGGx8w9uYXpMAR4R0
+         l3E8iXQzoHkiyQlQ4SMxvR0MlCNMw/Zr7DFpzTVMmS+eQJ11eVo+xBrYB5aWeJraGhHJ1DFHYcrc
+         a5l1UhT7hUUJawARAQABtCRMYXVuY2hwYWQgUFBBIGZvciBUaGUgQ2lzY28tdWNzIHRlYW2JAjgE
+         EwECACIFAlRjf2ECGwMGCwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEAl3Giay6pPBft0P/1de
+         8yU4W0xnrbBRq1RxkX3l69aIL68sJXenAcS+IHtSx/X2hROwh7nUtR2L5TNHfkKjlnWd0XFeZICt
+         lWc3eUjwpmizI2tGfe9Lesf7XB/+ua7IHW4GnqfJifGp4g5tHiznku9n8eKSxdpO/mz5xMJy2eDJ
+         vEpS9P6IpCRWPhNu6lkRYEjR/xLLFzci3mYrzStUQR691MegH2GhUfR0Xk8m1mNrCun3RaL+yfPd
+         gSLEsIzaI3XnJyLeKgARqWOYYpw6XRGtFPZDu4LYPCngKymWvGc0XiLfiNmA4mewUi58oyDprQeE
+         QcF/to3HfevAXoGeAksBSpUd3XeaEG+NrxRLwEEOj918VoMwOucbLMRApH08nJdAMFQoGOrkyG0r
+         y6/XpcA41dn51u0LuRmjA2dMRGH4KRVi6simYT0TJqAO5tdgoHB4v8m7yFccalexRGGK1VHLHuzP
+         6ZqCNe1X0ju4FDPpCdMz2LtxfR3X77dVZDOPRk+3NtisEoXgWeAuYcGuInbP065FYbu5VSfe1DfW
+         0bXSQDvv8/eI5zo5IjN6P0OFSel4M8fl6VEXyoWzsp8rkdGHq6KDjPzKPwrNr+g26YDtr9sVeR38
+         +5Pt/KIf37T5D3Io4PtvVb0hFzsAeIAcZKzlOm6IJjFGIKkWQVwcsp3Zx37imfXJCAqczvq7
+  modaliases:
+  - 'pci:v00001137d00000046sv*sd*bc*sc*i*'
+  module: snic
+  package: snic-dkms
+  repository: http://ppa.launchpad.net/cisco-ucs-team/snic-stable/ubuntu 
