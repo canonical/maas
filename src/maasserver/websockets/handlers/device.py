@@ -139,6 +139,7 @@ class DeviceHandler(TimestampedModelHandler):
             "boot_type",
             "status",
             "power_parameters",
+            "power_state_updated",
             "disable_ipv4",
             "osystem",
             "power_type",

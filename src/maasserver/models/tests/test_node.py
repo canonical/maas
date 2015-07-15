@@ -63,6 +63,7 @@ from maasserver.models import (
 )
 from maasserver.models.node import PowerInfo
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     get_failed_status,
@@ -1836,6 +1837,13 @@ class TestNode(MAASServerTestCase):
         state = factory.pick_enum(POWER_STATE)
         node.update_power_state(state)
         self.assertEqual(state, reload_object(node).power_state)
+
+    def test_update_power_state_sets_last_updated_field(self):
+        node = factory.make_Node(power_state_updated=None)
+        self.assertIsNone(node.power_state_updated)
+        state = factory.pick_enum(POWER_STATE)
+        node.update_power_state(state)
+        self.assertEqual(now(), reload_object(node).power_state_updated)
 
     def test_update_power_state_readies_node_if_releasing(self):
         node = factory.make_Node(

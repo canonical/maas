@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'now',
     'TimestampedModel',
     ]
 

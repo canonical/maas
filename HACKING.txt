@@ -449,13 +449,19 @@ in ``src/<application>/models/__init__.py``
 
 .. _schemamigration: http://south.aeracode.org/docs/commands.html#schemamigration
 
-Once you've changed the code, run::
+Once you've changed the code, ensure the database is running and
+contains the starting schema::
+
+    $ make services/database/@start
+    $ make syncdb
+
+then generate the migration script with::
 
     $ ./bin/maas-region-admin schemamigration maasserver --auto description_of_the_change
 
 This will generate a migration module named
-``src/maasserver/migrations/<auto_number>_description_of_the_change.py``. Don't
-forget to add that file to the project with::
+``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.
+Don't forget to add that file to the project with::
 
     $ bzr add src/maasserver/migrations/<auto_number>_description_of_the_change.py
 
