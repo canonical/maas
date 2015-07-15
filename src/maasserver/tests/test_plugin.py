@@ -17,6 +17,7 @@ __all__ = []
 import crochet
 from maasserver import eventloop
 from maasserver.plugin import (
+    MAX_THREADS,
     Options,
     RegionServiceMaker,
 )
@@ -24,11 +25,13 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
 from provisioningserver.utils.twisted import asynchronous
+from testtools.matchers import GreaterThan
 from twisted.application.service import MultiService
+from twisted.internet import reactor
 
 
 class TestOptions(MAASTestCase):
-    """Tests for `provisioningserver.plugin.Options`."""
+    """Tests for `maasserver.plugin.Options`."""
 
     def test_defaults(self):
         options = Options()
@@ -42,7 +45,7 @@ class TestOptions(MAASTestCase):
 
 
 class TestRegionServiceMaker(MAASTestCase):
-    """Tests for `provisioningserver.plugin.RegionServiceMaker`."""
+    """Tests for `maasserver.plugin.RegionServiceMaker`."""
 
     def setUp(self):
         super(TestRegionServiceMaker, self).setUp()
@@ -78,3 +81,12 @@ class TestRegionServiceMaker(MAASTestCase):
             "Not all services are named.")
         self.assertThat(logger.basicConfig, MockCalledOnceWith())
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
+
+    @asynchronous(timeout=5)
+    def test__sets_pool_size(self):
+        service_maker = RegionServiceMaker("Harry", "Hill")
+        service_maker.makeService(Options())
+        threadpool = reactor.getThreadPool()
+        self.assertEqual(MAX_THREADS, threadpool.max)
+        # Max threads is reasonable.
+        self.assertThat(threadpool.max, GreaterThan(50))

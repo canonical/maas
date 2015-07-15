@@ -24,6 +24,7 @@ from twisted.application.service import IServiceMaker
 from twisted.plugin import IPlugin
 from twisted.python import usage
 from zope.interface import implementer
+from twisted.internet import reactor
 
 
 def serverFromString(description):
@@ -43,6 +44,14 @@ class Options(usage.Options):
           "with Endpoints' on the Twisted Wiki may help."),
          serverFromString],
     ]
+
+
+# The maximum number of threads used by the default twisted thread pool.
+# This value is a trade-off between a small value (such as the default: 10)
+# which can create deadlocks (see 1470013) and a huge value which can cause
+# MAAS to hit other limitations such as the number of open files or the
+# number of concurrent database connexions.
+MAX_THREADS = 100
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -76,6 +85,10 @@ class RegionServiceMaker:
         import crochet
         crochet.no_setup()
 
+    def _configurePoolSize(self):
+        threadpool = reactor.getThreadPool()
+        threadpool.adjustPoolsize(10, MAX_THREADS)
+
     def _makeIntrospectionService(self, endpoint):
         from provisioningserver.utils import introspect
         introspect_service = (
@@ -91,6 +104,7 @@ class RegionServiceMaker:
         self._configureLogging()
         self._configureDjango()
         self._configureCrochet()
+        self._configurePoolSize()
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop

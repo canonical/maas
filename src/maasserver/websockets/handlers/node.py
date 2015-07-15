@@ -48,6 +48,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
 )
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
+from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -547,9 +548,7 @@ class NodeHandler(TimestampedModelHandler):
                 power_type=power_info.power_type,
                 context=power_info.power_parameters)
             try:
-                # Allow 15 seconds for the power query max as we're holding
-                # up a thread waiting.
-                state = call.wait(15)['state']
+                state = call.wait(POWER_QUERY_TIMEOUT)['state']
             except crochet.TimeoutError:
                 maaslog.error(
                     "%s: Timed out waiting for power response in "
@@ -569,5 +568,5 @@ class NodeHandler(TimestampedModelHandler):
         # sure the change is committed and retried if required. Not pushing
         # this to another thread, would result in the entire power query being
         # performed again.
-        update_power_state(state).wait(15)
+        update_power_state(state).wait(POWER_QUERY_TIMEOUT)
         return state

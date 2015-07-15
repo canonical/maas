@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "POWER_QUERY_TIMEOUT",
     "PowerActionError",
     "PowerAuthError",
     "PowerConnError",
@@ -29,6 +30,7 @@ from abc import (
     abstractmethod,
     abstractproperty,
 )
+from datetime import timedelta
 
 from jsonschema import validate
 from provisioningserver.drivers import (
@@ -50,6 +52,13 @@ JSON_POWER_DRIVERS_SCHEMA = {
     'type': 'array',
     'items': JSON_SETTING_SCHEMA,
 }
+
+
+# Timeout for the power query action. We might be holding up a thread for that
+# long but some BMCs (notably seamicro) can take a long time to respond to
+# a power query request.
+# This should be configurable per-BMC.
+POWER_QUERY_TIMEOUT = timedelta(seconds=45).total_seconds()
 
 
 class PowerError(Exception):

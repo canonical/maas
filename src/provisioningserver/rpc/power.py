@@ -78,7 +78,8 @@ QUERY_POWER_TYPES = [
 
 
 # Timeout for change_power_state(). We set it to 5 minutes by default,
-# but it would be lovely if this was configurable.
+# but it would be lovely if this was configurable. This is only a backstop
+# meant to cope with broken BMCs.
 CHANGE_POWER_STATE_TIMEOUT = timedelta(minutes=5).total_seconds()
 
 
