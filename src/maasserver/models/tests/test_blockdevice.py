@@ -21,7 +21,11 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.http import Http404
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+    NODE_PERMISSION,
+)
 from maasserver.models import (
     BlockDevice,
     FilesystemGroup,
@@ -230,6 +234,31 @@ class TestBlockDeviceManager(MAASServerTestCase):
         self.assertItemsEqual(
             free_devices,
             BlockDevice.objects.get_free_block_devices_for_node(node))
+
+    def test_get_block_devices_in_filesystem_group(self):
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        block_devices = [
+            filesystem.block_device
+            for filesystem in filesystem_group.filesystems.all()
+            if filesystem.block_device is not None
+        ]
+        block_device_with_partitions = factory.make_PhysicalBlockDevice(
+            node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device_with_partitions)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV,
+            partition=partition, filesystem_group=filesystem_group)
+        block_devices_in_filesystem_group = (
+            BlockDevice.objects.get_block_devices_in_filesystem_group(
+                filesystem_group))
+        self.assertItemsEqual(
+            block_devices, block_devices_in_filesystem_group)
+        self.assertNotIn(
+            block_device_with_partitions, block_devices_in_filesystem_group)
 
 
 class TestBlockDevice(MAASServerTestCase):

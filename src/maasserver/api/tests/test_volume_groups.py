@@ -238,6 +238,64 @@ class TestVolumeGroupAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
+    def test_update_403_when_not_owner(self):
+        volume_group = factory.make_VolumeGroup()
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.put(uri)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_404_when_not_volume_group(self):
+        not_volume_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        uri = get_volume_group_uri(not_volume_group)
+        response = self.client.put(uri)
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_update_updates_volume_group(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        volume_group = factory.make_VolumeGroup(node=node)
+        delete_block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=delete_block_device,
+            filesystem_group=volume_group)
+        delete_bd_for_partition = factory.make_PhysicalBlockDevice(node=node)
+        delete_table = factory.make_PartitionTable(
+            block_device=delete_bd_for_partition)
+        delete_partition = factory.make_Partition(partition_table=delete_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=delete_partition,
+            filesystem_group=volume_group)
+        new_name = factory.make_name("vg")
+        new_uuid = "%s" % uuid.uuid4()
+        new_block_device = factory.make_PhysicalBlockDevice(node=node)
+        new_bd_for_partition = factory.make_PhysicalBlockDevice(node=node)
+        new_table = factory.make_PartitionTable(
+            block_device=new_bd_for_partition)
+        new_partition = factory.make_Partition(partition_table=new_table)
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "uuid": new_uuid,
+            "add_block_devices": [new_block_device.id],
+            "remove_block_devices": [delete_block_device.id],
+            "add_partitions": [new_partition.id],
+            "remove_partitions": [delete_partition.id],
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        volume_group = reload_object(volume_group)
+        self.assertEquals(new_name, volume_group.name)
+        self.assertEquals(new_uuid, volume_group.uuid)
+        self.assertEquals(
+            volume_group.id, new_block_device.filesystem.filesystem_group.id)
+        self.assertEquals(
+            volume_group.id, new_partition.filesystem.filesystem_group.id)
+        self.assertIsNone(delete_block_device.filesystem)
+        self.assertIsNone(delete_partition.filesystem)
+
     def test_delete_deletes_volume_group(self):
         node = factory.make_Node(owner=self.logged_in_user)
         volume_group = factory.make_FilesystemGroup(

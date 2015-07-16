@@ -83,6 +83,7 @@ from maasserver.models import (
     Tag,
     VirtualBlockDevice,
     VLAN,
+    VolumeGroup,
     Zone,
 )
 from maasserver.models.bootresourceset import (
@@ -1332,6 +1333,14 @@ class Factory(maastesting.factory.Factory):
         # Save again to make sure that the added filesystems are correct.
         group.save()
         return group
+
+    def make_VolumeGroup(self, *args, **kwargs):
+        if len(args) > 1:
+            args[1] = FILESYSTEM_GROUP_TYPE.LVM_VG
+        else:
+            kwargs['group_type'] = FILESYSTEM_GROUP_TYPE.LVM_VG
+        filesystem_group = self.make_FilesystemGroup(*args, **kwargs)
+        return VolumeGroup.objects.get(id=filesystem_group.id)
 
     def make_VirtualBlockDevice(
             self, name=None, size=None, block_size=None,

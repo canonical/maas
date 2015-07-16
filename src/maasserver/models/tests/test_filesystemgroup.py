@@ -903,6 +903,31 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=filesystems)
 
+    def test_cannot_save_volume_group_if_logical_volumes_larger(self):
+        node = factory.make_Node()
+        filesystem_one = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV,
+            block_device=factory.make_PhysicalBlockDevice(node=node))
+        filesystem_two = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV,
+            block_device=factory.make_PhysicalBlockDevice(node=node))
+        filesystems = [
+            filesystem_one,
+            filesystem_two,
+        ]
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=filesystems)
+        factory.make_VirtualBlockDevice(
+            size=volume_group.get_size(), filesystem_group=volume_group)
+        filesystem_two.delete()
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "[u'Volume group cannot be smaller than its "
+                    "logical volumes.']")):
+            volume_group.save()
+
     def test_cannot_save_raid_0_with_less_than_2_raid_devices(self):
         node = factory.make_Node()
         filesystems = [
@@ -1441,6 +1466,52 @@ class TestVolumeGroup(MAASServerTestCase):
     def test_group_type_set_to_LVM_VG(self):
         obj = VolumeGroup()
         self.assertEquals(FILESYSTEM_GROUP_TYPE.LVM_VG, obj.group_type)
+
+    def test_update_block_devices_and_partitions(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        new_block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_block_device = factory.make_PhysicalBlockDevice(
+            size=MIN_BLOCK_DEVICE_SIZE * 3, node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=partition_block_device)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        new_partition = partition_table.add_partition(
+            size=MIN_BLOCK_DEVICE_SIZE)
+        initial_bd_filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=bd)
+            for bd in block_devices
+        ]
+        initial_part_filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.LVM_PV, partition=part)
+            for part in partitions
+        ]
+        volume_group = factory.make_VolumeGroup(
+            filesystems=initial_bd_filesystems + initial_part_filesystems)
+        deleted_block_device = block_devices[0]
+        updated_block_devices = [new_block_device] + block_devices[1:]
+        deleted_partition = partitions[0]
+        update_partitions = [new_partition] + partitions[1:]
+        volume_group.update_block_devices_and_partitions(
+            updated_block_devices, update_partitions)
+        self.assertIsNone(deleted_block_device.filesystem)
+        self.assertIsNone(deleted_partition.filesystem)
+        self.assertEquals(
+            volume_group.id,
+            new_block_device.filesystem.filesystem_group.id)
+        self.assertEquals(
+            volume_group.id, new_partition.filesystem.filesystem_group.id)
+        for device in block_devices[1:] + partitions[1:]:
+            self.assertEquals(
+                volume_group.id, device.filesystem.filesystem_group.id)
 
 
 class TestRAID(MAASServerTestCase):

@@ -498,6 +498,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 raise ValidationError(
                     "Cannot change the group_type of a FilesystemGroup.")
 
+        # Prevent saving if the size of the volume group is now smaller than
+        # the total size of logical volumes.
+        if (self.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG and
+                self.get_lvm_free_space() < 0):
+            raise ValidationError(
+                "Volume group cannot be smaller than its logical volumes.")
+
         if not self.uuid:
             self.uuid = uuid4()
         super(FilesystemGroup, self).save(*args, **kwargs)
@@ -577,6 +584,49 @@ class VolumeGroup(FilesystemGroup):
     def __init__(self, *args, **kwargs):
         super(VolumeGroup, self).__init__(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs)
+
+    def update_block_devices_and_partitions(self, block_devices, partitions):
+        """Update the block devices and partitions that are in this
+        volume group.
+        """
+        self._update_block_devices(block_devices)
+        self._update_partitions(partitions)
+        self.save()
+
+    def _update_block_devices(self, block_devices):
+        """Update the block devices that are in this volume group."""
+        # Circual imports.
+        from maasserver.models.filesystem import Filesystem
+        block_devices = list(block_devices)
+        current_filesystems = self.filesystems.filter(partition__isnull=True)
+        for filesystem in current_filesystems:
+            block_device = filesystem.block_device
+            if block_device in block_devices:
+                block_devices.remove(block_device)
+            else:
+                filesystem.delete()
+        for new_block_device in block_devices:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=new_block_device,
+                filesystem_group=self)
+
+    def _update_partitions(self, partitions):
+        """Update the partitions that are in this volume group."""
+        # Circual imports.
+        from maasserver.models.filesystem import Filesystem
+        partitions = list(partitions)
+        current_filesystems = self.filesystems.filter(
+            block_device__isnull=True)
+        for filesystem in current_filesystems:
+            partition = filesystem.partition
+            if partition in partitions:
+                partitions.remove(partition)
+            else:
+                filesystem.delete()
+        for new_partition in partitions:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.LVM_PV, partition=new_partition,
+                filesystem_group=self)
 
 
 class RAID(FilesystemGroup):

@@ -16,7 +16,10 @@ __metaclass__ = type
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import CreateVolumeGroupForm
+from maasserver.forms import (
+    CreateVolumeGroupForm,
+    UpdateVolumeGroupForm,
+)
 from maasserver.models import (
     Node,
     VolumeGroup,
@@ -80,7 +83,7 @@ class VolumeGroupsHandler(OperationsHandler):
 class VolumeGroupHandler(OperationsHandler):
     """Manage volume group on a node."""
     api_doc_section_name = "Volume group"
-    create = update = None
+    create = None
     model = VolumeGroup
     fields = DISPLAYED_VOLUME_GROUP_FIELDS
 
@@ -138,6 +141,27 @@ class VolumeGroupHandler(OperationsHandler):
         """
         return VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.VIEW)
+
+    def update(self, request, system_id, volume_group_id):
+        """Read volume group on node.
+
+        :param name: Name of the volume group.
+        :param uuid: UUID of the volume group.
+        :param add_block_devices: Block devices to add to the volume group.
+        :param remove_block_devices: Block devices to remove from the
+            volume group.
+        :param add_partitions: Partitions to add to the volume group.
+        :param remove_partitions: Partitions to remove from the volume group.
+
+        Returns 404 if the node or volume group is not found.
+        """
+        volume_group = VolumeGroup.objects.get_object_or_404(
+            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+        form = UpdateVolumeGroupForm(volume_group, data=request.data)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        else:
+            return form.save()
 
     def delete(self, request, system_id, volume_group_id):
         """Delete volume group on node.

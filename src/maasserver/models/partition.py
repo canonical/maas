@@ -64,6 +64,10 @@ class PartitionManager(Manager):
             i += 1
         return i
 
+    def get_partitions_in_filesystem_group(self, filesystem_group):
+        """Return `Partition`s for the belong to the filesystem group."""
+        return self.filter(filesystem__filesystem_group=filesystem_group)
+
 
 class Partition(CleanSave, TimestampedModel):
     """A partition in a partition table.

@@ -16,7 +16,11 @@ __all__ = []
 
 import uuid
 
-from maasserver.forms import CreateVolumeGroupForm
+from maasserver.enum import FILESYSTEM_TYPE
+from maasserver.forms import (
+    CreateVolumeGroupForm,
+    UpdateVolumeGroupForm,
+)
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -205,3 +209,106 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
         ]
         self.assertItemsEqual(block_devices, block_devices_in_vg)
         self.assertItemsEqual(partitions, partitions_in_vg)
+
+
+class TestUpdateVolumeGroupForm(MAASServerTestCase):
+
+    def test_requires_no_fields(self):
+        volume_group = factory.make_VolumeGroup()
+        form = UpdateVolumeGroupForm(volume_group, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_updates_name(self):
+        volume_group = factory.make_VolumeGroup()
+        name = factory.make_name("vg")
+        data = {
+            'name': name,
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(name, volume_group.name)
+
+    def test_is_not_valid_if_invalid_uuid(self):
+        volume_group = factory.make_VolumeGroup()
+        data = {
+            'uuid': factory.make_string(size=32),
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an invalid uuid.")
+        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+
+    def test_updates_uuid(self):
+        volume_group = factory.make_VolumeGroup()
+        vguuid = "%s" % uuid.uuid4()
+        data = {
+            'uuid': vguuid,
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(vguuid, volume_group.uuid)
+
+    def test_adds_block_device(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        data = {
+            'add_block_devices': [block_device.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(
+            volume_group.id, block_device.filesystem.filesystem_group.id)
+
+    def test_removes_block_device(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device,
+            filesystem_group=volume_group)
+        data = {
+            'remove_block_devices': [block_device.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertIsNone(block_device.filesystem)
+
+    def test_adds_partition(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        data = {
+            'add_partitions': [partition.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(
+            volume_group.id, partition.filesystem.filesystem_group.id)
+
+    def test_removes_partition(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
+            filesystem_group=volume_group)
+        data = {
+            'remove_partitions': [partition.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertIsNone(partition.filesystem)

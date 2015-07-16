@@ -82,6 +82,10 @@ class BlockDeviceManager(Manager):
         partition table."""
         return self.filter(node=node, partitiontable=None, filesystem=None)
 
+    def get_block_devices_in_filesystem_group(self, filesystem_group):
+        """Return `BlockDevice`s for the belong to the filesystem group."""
+        return self.filter(filesystem__filesystem_group=filesystem_group)
+
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):
             if isinstance(tags, unicode) or not isinstance(tags, Iterable):

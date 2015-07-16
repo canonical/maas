@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
@@ -72,6 +73,24 @@ class TestPartitionManager(MAASServerTestCase):
             3,
             Partition.objects.get_next_partition_number_for_table(
                 partition_table))
+
+    def test_get_partitions_in_filesystem_group(self):
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        block_device_with_partitions = factory.make_PhysicalBlockDevice(
+            node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device_with_partitions)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV,
+            partition=partition, filesystem_group=filesystem_group)
+        partitions_in_filesystem_group = (
+            Partition.objects.get_partitions_in_filesystem_group(
+                filesystem_group))
+        self.assertItemsEqual(
+            [partition], partitions_in_filesystem_group)
 
 
 class TestPartition(MAASServerTestCase):

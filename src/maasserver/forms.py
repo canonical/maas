@@ -3315,11 +3315,10 @@ class CreateVolumeGroupForm(Form):
     def __init__(self, node, *args, **kwargs):
         super(CreateVolumeGroupForm, self).__init__(*args, **kwargs)
         self.node = node
-        self.set_up_fields()
+        self.set_up_choice_fields()
 
-    def set_up_fields(self):
-        """Sets up the `block_devices`, `partition`, `spare_block_devices`,
-        and `spare_partitions` fields.
+    def set_up_choice_fields(self):
+        """Sets up the choice fields.
 
         This needs to be done on the fly so that we can pass a dynamic list of
         partitions and block devices that fit this node.
@@ -3369,3 +3368,101 @@ class CreateVolumeGroupForm(Form):
             uuid=self.cleaned_data.get('uuid'),
             block_devices=BlockDevice.objects.filter(id__in=block_device_ids),
             partitions=Partition.objects.filter(id__in=partition_ids))
+
+
+class UpdateVolumeGroupForm(Form):
+    """For validating and updating a new volume group."""
+
+    name = forms.CharField(required=False)
+    uuid = UUID4Field(required=False)
+    add_block_devices = forms.MultipleChoiceField(required=False)
+    remove_block_devices = forms.MultipleChoiceField(required=False)
+    add_partitions = forms.MultipleChoiceField(required=False)
+    remove_partitions = forms.MultipleChoiceField(required=False)
+
+    def __init__(self, volume_group, *args, **kwargs):
+        super(UpdateVolumeGroupForm, self).__init__(*args, **kwargs)
+        self.volume_group = volume_group
+        self.set_up_choice_fields()
+
+    def set_up_choice_fields(self):
+        """Sets up the choice fields.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        partitions and block devices that fit this node.
+        """
+        node = self.volume_group.get_node()
+        # Select the unused, non-partitioned block devices of this node.
+        self.fields['add_block_devices'].choices = [
+            (bd.id, bd.id)
+            for bd in BlockDevice.objects.get_free_block_devices_for_node(
+                node)
+        ]
+        # Select the unused partitions of this node.
+        self.fields['add_partitions'].choices = [
+            (partition.id, partition.id)
+            for partition in Partition.objects.get_free_partitions_for_node(
+                node)
+        ]
+        # Select the block devices in the volume group.
+        self.fields['remove_block_devices'].choices = [
+            (bd.id, bd.id)
+            for bd in (
+                BlockDevice.objects.get_block_devices_in_filesystem_group(
+                    self.volume_group))
+        ]
+        # Select the current partitions in the volume group.
+        self.fields['remove_partitions'].choices = [
+            (partition.id, partition.id)
+            for partition in (
+                Partition.objects.get_partitions_in_filesystem_group(
+                    self.volume_group))
+        ]
+
+    def save(self):
+        """Update the `VolumeGroup`.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        if 'name' in self.cleaned_data and self.cleaned_data['name']:
+            self.volume_group.name = self.cleaned_data['name']
+        if 'uuid' in self.cleaned_data and self.cleaned_data['uuid']:
+            self.volume_group.uuid = self.cleaned_data['uuid']
+
+        # Create the new list of block devices.
+        add_block_device_ids = map(
+            int, self.cleaned_data['add_block_devices'])
+        remove_block_device_ids = map(
+            int, self.cleaned_data['remove_block_devices'])
+        block_devices = (
+            BlockDevice.objects.get_block_devices_in_filesystem_group(
+                self.volume_group))
+        block_devices = [
+            block_device
+            for block_device in block_devices
+            if block_device.id not in remove_block_device_ids
+            ]
+        block_devices = block_devices + list(
+            BlockDevice.objects.filter(id__in=add_block_device_ids))
+
+        # Create the new list of partitions.
+        add_partition_ids = map(
+            int, self.cleaned_data['add_partitions'])
+        remove_partition_ids = map(
+            int, self.cleaned_data['remove_partitions'])
+        partitions = (
+            Partition.objects.get_partitions_in_filesystem_group(
+                self.volume_group))
+        partitions = [
+            partition
+            for partition in partitions
+            if partition.id not in remove_partition_ids
+            ]
+        partitions = partitions + list(
+            Partition.objects.filter(id__in=add_partition_ids))
+
+        # Update the block devices and partitions in the volume group.
+        self.volume_group.update_block_devices_and_partitions(
+            block_devices, partitions)
+        self.volume_group.save()
+        return self.volume_group
