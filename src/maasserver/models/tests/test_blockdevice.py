@@ -211,6 +211,26 @@ class TestBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(
             ValueError, BlockDevice.objects.filter_by_tags, object())
 
+    def test_get_free_block_devices_for_node(self):
+        node = factory.make_Node()
+        free_devices = [
+            factory.make_BlockDevice(node=node)
+            for _ in range(3)
+        ]
+        # Block devices with partition tables.
+        for _ in range(3):
+            factory.make_PartitionTable(
+                block_device=factory.make_BlockDevice(
+                    node=node))
+        # Block devices with filesystems.
+        for _ in range(3):
+            factory.make_Filesystem(
+                block_device=factory.make_BlockDevice(
+                    node=node))
+        self.assertItemsEqual(
+            free_devices,
+            BlockDevice.objects.get_free_block_devices_for_node(node))
+
 
 class TestBlockDevice(MAASServerTestCase):
     """Tests for the `BlockDevice` model."""

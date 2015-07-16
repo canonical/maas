@@ -15,6 +15,8 @@ __metaclass__ = type
 
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import CreateVolumeGroupForm
 from maasserver.models import (
     Node,
     VolumeGroup,
@@ -41,7 +43,7 @@ DISPLAYED_VOLUME_GROUP_FIELDS = (
 class VolumeGroupsHandler(OperationsHandler):
     """Manage volume groups on a node."""
     api_doc_section_name = "Volume groups"
-    create = update = delete = None
+    update = delete = None
     fields = DISPLAYED_VOLUME_GROUP_FIELDS
 
     @classmethod
@@ -57,6 +59,22 @@ class VolumeGroupsHandler(OperationsHandler):
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
         return VolumeGroup.objects.filter_by_node(node)
+
+    def create(self, request, system_id):
+        """Create a volume group belonging to node.
+
+        :param name: Name of the volume group.
+        :param uuid: (optional) UUID of the volume group.
+        :param block_devices: Block devices to add to the volume group.
+        :param partitions: Partitions to add to the volume group.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        form = CreateVolumeGroupForm(node, data=request.data)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        else:
+            return form.save()
 
 
 class VolumeGroupHandler(OperationsHandler):

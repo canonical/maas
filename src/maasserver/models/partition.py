@@ -27,11 +27,22 @@ from django.db.models import (
     BooleanField,
     CharField,
     ForeignKey,
+    Manager,
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
+
+
+class PartitionManager(Manager):
+    """Manager for `Partition` class."""
+
+    def get_free_partitions_for_node(self, node):
+        """Return `Partition`s for node that have no filesystems or
+        partition table."""
+        return self.filter(
+            partition_table__block_device__node=node, filesystem=None)
 
 
 class Partition(CleanSave, TimestampedModel):
@@ -47,6 +58,8 @@ class Partition(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
+    objects = PartitionManager()
 
     partition_table = ForeignKey(
         'maasserver.PartitionTable', null=False, blank=False,

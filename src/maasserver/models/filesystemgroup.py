@@ -114,6 +114,23 @@ class VolumeGroupManager(BaseFilesystemGroupManager):
 
     extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.LVM_VG}
 
+    def create_volume_group(self, name, block_devices, partitions, uuid=None):
+        """Create a `VolumeGroup` with the list of block devices and
+        partitions."""
+        # Circual imports.
+        from maasserver.models.filesystem import Filesystem
+        volume_group = VolumeGroup.objects.create(name=name, uuid=uuid)
+        for block_device in block_devices:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device,
+                filesystem_group=volume_group)
+        for partition in partitions:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
+                filesystem_group=volume_group)
+        volume_group.save()
+        return volume_group
+
 
 class RAIDManager(BaseFilesystemGroupManager):
     """RAID groups"""

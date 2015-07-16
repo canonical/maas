@@ -21,8 +21,33 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import Partition
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestPartitionManager(MAASServerTestCase):
+    """Tests for the `PartitionManager`."""
+
+    def test_get_free_partitions_for_node(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 4)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        free_partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        # Make used partitions.
+        for _ in range(2):
+            factory.make_Filesystem(
+                partition=partition_table.add_partition(
+                    size=MIN_BLOCK_DEVICE_SIZE))
+        self.assertItemsEqual(
+            free_partitions,
+            Partition.objects.get_free_partitions_for_node(node))
 
 
 class TestPartition(MAASServerTestCase):

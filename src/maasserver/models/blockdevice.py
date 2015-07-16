@@ -77,6 +77,11 @@ class BlockDeviceManager(Manager):
         else:
             raise PermissionDenied()
 
+    def get_free_block_devices_for_node(self, node):
+        """Return `BlockDevice`s for node that have no filesystems or
+        partition table."""
+        return self.filter(node=node, partitiontable=None, filesystem=None)
+
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):
             if isinstance(tags, unicode) or not isinstance(tags, Iterable):

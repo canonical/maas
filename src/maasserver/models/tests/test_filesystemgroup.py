@@ -515,6 +515,83 @@ class TestManagersFilterByNode(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids)
 
 
+class TestVolumeGroupManager(MAASServerTestCase):
+    """Tests for the `VolumeGroupManager`."""
+
+    def test_create_volume_group_with_name_and_uuid(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        name = factory.make_name("vg")
+        vguuid = "%s" % uuid4()
+        volume_group = VolumeGroup.objects.create_volume_group(
+            name, [block_device], [], uuid=vguuid)
+        self.assertEquals(name, volume_group.name)
+        self.assertEquals(vguuid, volume_group.uuid)
+
+    def test_create_volume_group_with_block_devices(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        name = factory.make_name("vg")
+        volume_group = VolumeGroup.objects.create_volume_group(
+            name, block_devices, [])
+        block_devices_in_vg = [
+            filesystem.block_device.actual_instance
+            for filesystem in volume_group.filesystems.all()
+        ]
+        self.assertItemsEqual(block_devices, block_devices_in_vg)
+
+    def test_create_volume_group_with_partitions(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        name = factory.make_name("vg")
+        volume_group = VolumeGroup.objects.create_volume_group(
+            name, [], partitions)
+        partitions_in_vg = [
+            filesystem.partition
+            for filesystem in volume_group.filesystems.all()
+        ]
+        self.assertItemsEqual(partitions, partitions_in_vg)
+
+    def test_create_volume_group_with_block_devices_and_partitions(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        name = factory.make_name("vg")
+        volume_group = VolumeGroup.objects.create_volume_group(
+            name, block_devices, partitions)
+        block_devices_in_vg = [
+            filesystem.block_device.actual_instance
+            for filesystem in volume_group.filesystems.all()
+            if filesystem.block_device is not None
+        ]
+        partitions_in_vg = [
+            filesystem.partition
+            for filesystem in volume_group.filesystems.all()
+            if filesystem.partition is not None
+        ]
+        self.assertItemsEqual(block_devices, block_devices_in_vg)
+        self.assertItemsEqual(partitions, partitions_in_vg)
+
+
 class TestFilesystemGroup(MAASServerTestCase):
     """Tests for the `FilesystemGroup` model."""
 

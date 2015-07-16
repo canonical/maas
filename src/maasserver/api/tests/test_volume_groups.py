@@ -16,12 +16,14 @@ __all__ = []
 
 import httplib
 import json
+import uuid
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -80,6 +82,70 @@ class TestVolumeGroups(APITestCase):
             for vg in json.loads(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_create_raises_403_if_not_owner(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_volume_groups_uri(node)
+        response = self.client.post(uri, {
+            'name': factory.make_name("vg"),
+            'block_devices': [block_device.id],
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_raises_400_if_form_validation_failes(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        uri = get_volume_groups_uri(node)
+        response = self.client.post(uri, {})
+
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertItemsEqual(['name'], json.loads(response.content).keys())
+
+    def test_create_creates_with_block_devices_and_partitions(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        block_device_ids = [
+            block_device.id
+            for block_device in block_devices
+        ]
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        partition_ids = [
+            partition.id
+            for partition in partitions
+        ]
+        name = factory.make_name("vg")
+        vguuid = "%s" % uuid.uuid4()
+        uri = get_volume_groups_uri(node)
+        response = self.client.post(uri, {
+            'name': name,
+            'uuid': vguuid,
+            'block_devices': block_device_ids,
+            'partitions': partition_ids,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_volume_group = json.loads(response.content)
+        parsed_device_ids = [
+            device["id"]
+            for device in parsed_volume_group["devices"]
+        ]
+        self.assertThat(parsed_volume_group, ContainsDict({
+            "uuid": Equals(vguuid),
+            "name": Equals(name),
+        }))
+        self.assertItemsEqual(
+            block_device_ids + partition_ids, parsed_device_ids)
 
 
 class TestVolumeGroupAPI(APITestCase):

@@ -118,6 +118,7 @@ from maasserver.forms_settings import (
     INVALID_SETTING_MSG_TEMPLATE,
 )
 from maasserver.models import (
+    BlockDevice,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -135,12 +136,14 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Partition,
     PartitionTable,
     PhysicalBlockDevice,
     SSHKey,
     SSLKey,
     Tag,
     VirtualBlockDevice,
+    VolumeGroup,
     Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -3217,3 +3220,70 @@ class VirtualBlockDeviceForm(MAASModelForm):
 
     class Meta:
         model = VirtualBlockDevice
+
+
+class CreateVolumeGroupForm(Form):
+    """For validating and saving a new volume group."""
+
+    name = forms.CharField(required=True)
+    uuid = UUID4Field(required=False)
+    block_devices = forms.MultipleChoiceField(required=False)
+    partitions = forms.MultipleChoiceField(required=False)
+
+    def __init__(self, node, *args, **kwargs):
+        super(CreateVolumeGroupForm, self).__init__(*args, **kwargs)
+        self.node = node
+        self.set_up_fields()
+
+    def set_up_fields(self):
+        """Sets up the `block_devices`, `partition`, `spare_block_devices`,
+        and `spare_partitions` fields.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        partitions and block devices that fit this node.
+        """
+        # Select the unused, non-partitioned block devices of this node.
+        self.fields['block_devices'].choices = [
+            (bd.id, bd.id)
+            for bd in BlockDevice.objects.get_free_block_devices_for_node(
+                self.node)
+        ]
+        # Select the unused partitions of this node.
+        self.fields['partitions'].choices = [
+            (partition.id, partition.id)
+            for partition in Partition.objects.get_free_partitions_for_node(
+                self.node)
+        ]
+
+    def clean(self):
+        """Validate the atleast one block device or partition is given."""
+        cleaned_data = super(CreateVolumeGroupForm, self).clean()
+        if "name" not in cleaned_data:
+            return cleaned_data
+        has_block_devices = (
+            "block_devices" in cleaned_data and
+            len(cleaned_data["block_devices"]) > 0)
+        has_partitions = (
+            "partitions" in cleaned_data and
+            len(cleaned_data["partitions"]) > 0)
+        has_block_device_and_partition_errors = (
+            "block_devices" in self._errors or "partitions" in self._errors)
+        if (not has_block_devices and
+                not has_partitions and
+                not has_block_device_and_partition_errors):
+            raise ValidationError(
+                "Atleast one valid block device or partition is required.")
+        return cleaned_data
+
+    def save(self):
+        """Persist the `VolumeGroup` into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        block_device_ids = map(int, self.cleaned_data['block_devices'])
+        partition_ids = map(int, self.cleaned_data['partitions'])
+        return VolumeGroup.objects.create_volume_group(
+            name=self.cleaned_data['name'],
+            uuid=self.cleaned_data.get('uuid'),
+            block_devices=BlockDevice.objects.filter(id__in=block_device_ids),
+            partitions=Partition.objects.filter(id__in=partition_ids))
