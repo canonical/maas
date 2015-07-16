@@ -55,6 +55,8 @@ from __future__ import (
 )
 import string
 
+from netaddr import IPNetwork
+
 
 str = None
 
@@ -135,14 +137,19 @@ def _add_additional_interface_properties(interface, line):
     for name in cumul_settings:
         value = settings.get(name)
         if value is not None:
-            group = interface.setdefault(name, [])
-            group.append(value)
+            if not IPNetwork(value).is_link_local():
+                group = interface.setdefault(name, [])
+                group.append(value)
 
 
 def parse_ip_addr(output):
-    """
+    """Parses the output from 'ip addr' into a dictionary.
+
     Given the full output from 'ip addr [show]', parses it and returns a
     dictionary mapping each interface name to its settings.
+
+    Link-local addresses are excluded from the returned dictionary.
+
     :param output: string or unicode
     :return: dict
     """
