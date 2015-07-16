@@ -94,6 +94,7 @@ from maasserver.models.interface import (
     Interface,
     InterfaceRelationship,
 )
+from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
@@ -1192,7 +1193,7 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000, 1000 * 1000) * block_size
+            size = random.randint(1000 ** 2, 1000 ** 3) * block_size
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         if model is None:
@@ -1213,18 +1214,21 @@ class Factory(maastesting.factory.Factory):
 
     def make_Partition(
             self, partition_table=None, uuid=None, start_offset=None,
-            size=None, bootable=None):
+            size=None, bootable=None, partition_number=None):
         if partition_table is None:
             partition_table = self.make_PartitionTable()
         if start_offset is None:
             start_offset = random.randint(0, partition_table.get_size() - 2)
         if size is None:
-            size = random.randint(1, partition_table.get_size() - start_offset)
+            size = random.randint(
+                MIN_PARTITION_SIZE,
+                partition_table.get_size() - start_offset)
         if bootable is None:
             bootable = random.choice([True, False])
         return Partition.objects.create(
             partition_table=partition_table, uuid=uuid,
-            start_offset=start_offset, size=size, bootable=bootable)
+            start_offset=start_offset, size=size, bootable=bootable,
+            partition_number=partition_number)
 
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,

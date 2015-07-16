@@ -20,20 +20,28 @@ from math import ceil
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import (
+    MaxValueValidator,
+    MinValueValidator,
+)
 from django.db import IntegrityError
 from django.db.models import (
     BigIntegerField,
     BooleanField,
     CharField,
     ForeignKey,
+    IntegerField,
     Manager,
 )
 from maasserver import DefaultMeta
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one
+
+
+MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
 
 
 class PartitionManager(Manager):
@@ -45,6 +53,17 @@ class PartitionManager(Manager):
         return self.filter(
             partition_table__block_device__node=node, filesystem=None)
 
+    def get_next_partition_number_for_table(self, partition_table):
+        """Return the next available partition number for the partition
+        table."""
+        used_partition_numbers = self.filter(
+            partition_table=partition_table).order_by(
+            'partition_number').values_list('partition_number', flat=True)
+        i = 1
+        while i in used_partition_numbers:
+            i += 1
+        return i
+
 
 class Partition(CleanSave, TimestampedModel):
     """A partition in a partition table.
@@ -55,10 +74,13 @@ class Partition(CleanSave, TimestampedModel):
         the disk.
     :ivar size: Size of the partition in bytes.
     :ivar bootable: Whether the partition is set as bootable.
+    :ivar partition_number: Partition number in the partition table. This is
+        only used for GPT partition tables.
     """
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+        unique_together = ("partition_table", "partition_number")
 
     objects = PartitionManager()
 
@@ -69,12 +91,29 @@ class Partition(CleanSave, TimestampedModel):
     uuid = CharField(
         max_length=36, unique=True, null=True, blank=True)
 
-    start_offset = BigIntegerField(null=False,
-                                   validators=[MinValueValidator(0)])
+    start_offset = BigIntegerField(
+        null=False, validators=[MinValueValidator(0)])
 
-    size = BigIntegerField(null=False, validators=[MinValueValidator(1)])
+    size = BigIntegerField(
+        null=False, validators=[MinValueValidator(MIN_PARTITION_SIZE)])
 
     bootable = BooleanField(default=False)
+
+    partition_number = IntegerField(
+        null=False, blank=False,
+        validators=[MinValueValidator(1), MaxValueValidator(256)])
+
+    @property
+    def name(self):
+        return "%s-part%s" % (
+            self.partition_table.block_device.name,
+            self.get_partition_number())
+
+    @property
+    def path(self):
+        return "%s-part%s" % (
+            self.partition_table.block_device.path,
+            self.get_partition_number())
 
     def get_node(self):
         """`Node` this partition belongs to."""
@@ -84,10 +123,42 @@ class Partition(CleanSave, TimestampedModel):
         """Block size of partition."""
         return self.partition_table.get_block_size()
 
+    def get_partition_number(self):
+        """Return the partition number.
+
+        This changes based on if the partition table this partition belongs to
+        is MBR or GPT.
+        """
+        # Circular imports.
+        from maasserver.models.partitiontable import PARTITION_TABLE_TYPE
+        if self.partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
+            # Partition number for GPT is set on the partition itself, since
+            # GPT allows you to create a partition with any number.
+            return self.partition_number
+        elif self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
+            # Partition number is based on how it is ordered on the disk. We
+            # order the partition number based on the start_offset of each
+            # partition. If there is more than 4 partitions partition_number
+            # 4 will be skipped as that will become an extended partition.
+            all_partition_ids = list(Partition.objects.filter(
+                partition_table=self.partition_table).order_by(
+                'start_offset').values_list('id', flat=True))
+            partitions_count = len(all_partition_ids)
+            partition_number = all_partition_ids.index(self.id) + 1
+            if partition_number > 3 and partitions_count > 4:
+                partition_number += 1
+            return partition_number
+        else:
+            raise ValueError("Unknown partition table type.")
+
     def save(self, *args, **kwargs):
         """Save partition."""
         if not self.uuid:
             self.uuid = uuid4()
+        if self.partition_number is None and self.partition_table is not None:
+            self.partition_number = (
+                Partition.objects.get_next_partition_number_for_table(
+                    self.partition_table))
         return super(Partition, self).save(*args, **kwargs)
 
     def clean(self):
@@ -146,9 +217,9 @@ class Partition(CleanSave, TimestampedModel):
         """Returns the filesystem that's using this partition."""
         return get_one(self.filesystem_set.all())
 
-    def add_filesystem(self, uuid=None, fstype=None, label=None,
-                       create_params=None, mount_point=None,
-                       mount_params=None):
+    def add_filesystem(
+            self, uuid=None, fstype=None, label=None, create_params=None,
+            mount_point=None, mount_params=None):
         """Creates a filesystem directly on this partition and returns it."""
 
         # Avoid a circular import.

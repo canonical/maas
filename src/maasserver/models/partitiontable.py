@@ -76,7 +76,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         return True
 
     def add_partition(self, start_offset=None, size=None, uuid=None,
-                      bootable=False):
+                      bootable=False, partition_number=None):
         """Adds a partition to this partition table, returns the added
         partition.
 
@@ -113,7 +113,8 @@ class PartitionTable(CleanSave, TimestampedModel):
             size = self.block_device.size - start_offset
 
         partition = Partition(partition_table=self, start_offset=start_offset,
-                              size=size, uuid=uuid, bootable=bootable)
+                              size=size, uuid=uuid, bootable=bootable,
+                              partition_number=partition_number)
         partition.save()
         return partition
 
