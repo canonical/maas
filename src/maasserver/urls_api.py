@@ -96,8 +96,8 @@ from maasserver.api.partitions import (
 )
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.raid import (
-    RAIDDeviceHandler,
-    RAIDDevicesHandler,
+    RaidHandler,
+    RaidsHandler,
 )
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
@@ -165,9 +165,9 @@ volume_group_handler = RestrictedResource(
 volume_groups_handler = RestrictedResource(
     VolumeGroupsHandler, authentication=api_auth)
 raid_device_handler = RestrictedResource(
-    RAIDDeviceHandler, authentication=api_auth)
+    RaidHandler, authentication=api_auth)
 raid_devices_handler = RestrictedResource(
-    RAIDDevicesHandler, authentication=api_auth)
+    RaidsHandler, authentication=api_auth)
 bcache_device_handler = RestrictedResource(
     BcacheDeviceHandler, authentication=api_auth)
 bcache_devices_handler = RestrictedResource(

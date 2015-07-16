@@ -97,6 +97,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
+    FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_STATUS,
@@ -139,6 +140,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    RAID,
     SSHKey,
     SSLKey,
     Tag,
@@ -3220,6 +3222,86 @@ class VirtualBlockDeviceForm(MAASModelForm):
 
     class Meta:
         model = VirtualBlockDevice
+
+
+class CreateRaidForm(Form):
+    """For validating and saving a new RAID."""
+
+    name = forms.CharField(required=True)
+    uuid = UUID4Field(required=False)
+    level = forms.ChoiceField(
+        choices=FILESYSTEM_GROUP_RAID_TYPE_CHOICES, required=True)
+    block_devices = forms.MultipleChoiceField(required=False)
+    partitions = forms.MultipleChoiceField(required=False)
+    spare_devices = forms.MultipleChoiceField(required=False)
+    spare_partitions = forms.MultipleChoiceField(required=False)
+
+    def set_up_block_devices_partitions_and_spares_fields(self):
+        """Sets up the `block_devices`, `partition` and `spare_devices` fields.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        partitions and block devices that fit this node."""
+        # Select the unused, non-partitioned block devices of this node.
+        block_device_choices = [
+            (bd.id, bd.__unicode__())
+            for bd in self.node.blockdevice_set.filter(
+                partitiontable=None, filesystem=None)
+        ]
+
+        # Select the unused partitions of this node.
+        partition_choices = [
+            (partition.id, partition.__unicode__())
+            for partition in Partition.objects.filter(
+                partition_table__block_device__node=self.node,
+                filesystem=None)
+        ]
+
+        self.fields['block_devices'].choices = block_device_choices
+        self.fields['partitions'].choices = partition_choices
+        self.fields['spare_devices'].choices = block_device_choices
+        self.fields['spare_partitions'].choices = partition_choices
+
+    def __init__(self, node, *args, **kwargs):
+        super(CreateRaidForm, self).__init__(*args, **kwargs)
+        self.node = node
+        self.set_up_block_devices_partitions_and_spares_fields()
+
+    def clean(self):
+        cleaned_data = super(CreateRaidForm, self).clean()
+        # It is not possible to create a RAID without any devices or
+        # partitions, but we catch this situation here in order to provide a
+        # clearer error message.
+        if 'block_devices' in cleaned_data and 'partitions' in cleaned_data \
+           and len(cleaned_data['block_devices']
+                   + cleaned_data['partitions']) == 0:
+            raise ValidationError('At least one block device or partition must'
+                                  ' be added to the array.')
+        return cleaned_data
+
+    def save(self):
+        """Persist the RAID into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+
+        block_devices = BlockDevice.objects.filter(
+            id__in=[int(i) for i in self.cleaned_data['block_devices']])
+        partitions = Partition.objects.filter(
+            id__in=[int(i) for i in self.cleaned_data['partitions']])
+        spare_devices = BlockDevice.objects.filter(
+            id__in=[int(i) for i in self.cleaned_data['spare_devices']])
+        spare_partitions = Partition.objects.filter(
+            id__in=[int(i) for i in self.cleaned_data['spare_partitions']])
+
+        return RAID.objects.create_raid(
+            name=self.cleaned_data['name'],
+            level=self.cleaned_data['level'],
+            uuid=self.cleaned_data['uuid'],
+            block_devices=block_devices,
+            partitions=partitions,
+            spare_devices=spare_devices,
+            spare_partitions=spare_partitions
+        )
 
 
 class CreateVolumeGroupForm(Form):

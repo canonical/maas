@@ -32,6 +32,7 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one
 
 
@@ -114,6 +115,16 @@ class Partition(CleanSave, TimestampedModel):
                     "Partition (%d-%d) overlaps with partition %s (%d-%d)." %
                     (self.start_block, self.end_block,
                      p.id, p.start_block, p.end_block))
+
+    def __unicode__(self):
+        return "{size} partition on {bd}".format(
+            size=human_readable_bytes(self.size),
+            bd=self.partition_table.block_device.__unicode__())
+
+    @property
+    def type(self):
+        """Return the type."""
+        return "partition"
 
     @property
     def start_block(self):

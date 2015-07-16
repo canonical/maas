@@ -39,6 +39,7 @@ from piston.utils import rc
 DISPLAYED_PARTITION_FIELDS = (
     'id',
     'uuid',
+    'type',
     'size',
     'start_offset',
     'bootable',

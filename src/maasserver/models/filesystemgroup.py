@@ -137,6 +137,39 @@ class RAIDManager(BaseFilesystemGroupManager):
 
     extra_filters = {'group_type__in': FILESYSTEM_GROUP_RAID_TYPES}
 
+    def create_raid(self, name, level, uuid, block_devices=[], partitions=[],
+                    spare_devices=[], spare_partitions=[]):
+
+        # Avoid circular import issues
+        from maasserver.models.filesystem import Filesystem
+
+        # Create a FilesystemGroup for this RAID
+        raid = RAID(name=name, group_type=level, uuid=uuid)
+        raid.save()
+
+        for block_device in block_devices:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=block_device,
+                filesystem_group=raid)
+        for partition in partitions:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.RAID,
+                partition=partition,
+                filesystem_group=raid)
+        for block_device in spare_devices:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                block_device=block_device,
+                filesystem_group=raid)
+        for partition in spare_partitions:
+            Filesystem.objects.create(
+                fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                partition=partition,
+                filesystem_group=raid)
+        raid.save()
+        return raid
+
 
 class BcacheManager(BaseFilesystemGroupManager):
     """Bcache groups"""
@@ -254,7 +287,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Possible when no filesytems are attached to this group.
             return 0
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
-            return min_size
+            return min_size * self.filesystems.count()
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
             return min_size
         else:
@@ -400,19 +433,18 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             if fstype == FILESYSTEM_TYPE.RAID_SPARE
             ])
         if self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
-            # RAID 0 can only contain 2 RAID filesystems and no spares are
+            # RAID 0 can contain 2 or more RAID filesystems and no spares are
             # allowed.
-            if num_raid != 2 or num_raid_spare != 0:
-                raise ValidationError(
-                    "RAID level 0 must have exactly 2 raid devices and "
-                    "no spares.")
-        elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
-            # RAID 1 must have at least 2 RAID filesystems and should not
-            # have any spares.
             if num_raid < 2 or num_raid_spare != 0:
                 raise ValidationError(
-                    "RAID level 1 must have atleast 2 raid devices and "
+                    "RAID level 0 must have at least 2 raid devices and "
                     "no spares.")
+        elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
+            # RAID 1 must have at least 2 RAID filesystems.
+            if num_raid < 2:
+                raise ValidationError(
+                    "RAID level 1 must have at least 2 raid devices and "
+                    "any number of spares.")
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_4:
             # RAID 4 must have at least 3 RAID filesystems, but can have
             # spares.

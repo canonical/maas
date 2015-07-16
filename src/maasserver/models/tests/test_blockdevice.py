@@ -346,6 +346,10 @@ class TestBlockDevice(MAASServerTestCase):
                                   block_size=511, size=143360)
         self.assertRaises(ValidationError, blockdevice.save)
 
+    def test_get_partition_table_returns_none_for_non_partitioned_device(self):
+        blockdevice = BlockDevice()
+        self.assertIsNone(blockdevice.get_partitiontable())
+
 
 class TestBlockDevicePostSave(MAASServerTestCase):
     """Tests for the `BlockDevice` post_save signal."""

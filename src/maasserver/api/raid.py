@@ -18,6 +18,8 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     NODE_PERMISSION,
 )
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import CreateRaidForm
 from maasserver.models import (
     Node,
     RAID,
@@ -39,16 +41,29 @@ DISPLAYED_RAID_FIELDS = (
 )
 
 
-class RAIDDevicesHandler(OperationsHandler):
+class RaidsHandler(OperationsHandler):
     """Manage RAID devices on a node."""
     api_doc_section_name = "RAID Devices"
-    create = update = delete = None
+    update = delete = None
     fields = DISPLAYED_RAID_FIELDS
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
         return ('raid_devices_handler', ["node_system_id"])
+
+    def create(self, request, system_id):
+        """Creates a RAID
+
+        Returns 404 if the node is not found.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        form = CreateRaidForm(node, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     def read(self, request, system_id):
         """List all RAID devices belonging to node.
@@ -60,7 +75,7 @@ class RAIDDevicesHandler(OperationsHandler):
         return RAID.objects.filter_by_node(node)
 
 
-class RAIDDeviceHandler(OperationsHandler):
+class RaidHandler(OperationsHandler):
     """Manage RAID device on a node."""
     api_doc_section_name = "RAID Device"
     create = update = None

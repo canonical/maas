@@ -115,8 +115,13 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # This also tests the post_save signal on `BlockDevice`. Because the
         # filesystem_group.save() does not need to be called here. The
         # post_save performs that operation.
+
+        # The new size of the RAID-0 array should be the size of the smallest
+        # filesystem (in this case, they are all the same) times the number of
+        # filesystems in it.
+        array_size = new_size * filesystem_group.filesystems.count()
         self.assertEquals(
-            new_size, reload_object(filesystem_group.virtual_device).size)
+            array_size, reload_object(filesystem_group.virtual_device).size)
 
     def test_create_or_update_for_bcache_updates_block_device(self):
         # This will create the filesystem group and a virtual block device.

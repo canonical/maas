@@ -180,6 +180,10 @@ class BlockDevice(CleanSave, TimestampedModel):
             return filesystems[0]
         return None
 
+    def get_partitiontable(self):
+        """Returns this device's partition table (or None, if none exists."""
+        return self.partitiontable_set.first()
+
     def display_size(self, include_suffix=True):
         return human_readable_bytes(self.size, include_suffix=include_suffix)
 

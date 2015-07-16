@@ -116,3 +116,7 @@ class PartitionTable(CleanSave, TimestampedModel):
                               size=size, uuid=uuid, bootable=bootable)
         partition.save()
         return partition
+
+    def __unicode__(self):
+        return "Partition table for {bd}".format(
+            bd=self.block_device.__unicode__())

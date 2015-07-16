@@ -660,7 +660,9 @@ class TestFilesystemGroup(MAASServerTestCase):
         ]
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0, filesystems=filesystems)
-        self.assertEquals(small_size, fsgroup.get_size())
+        # Size should be twice the smallest device (the rest of the larger
+        # device remains unused.
+        self.assertEquals(small_size * 2, fsgroup.get_size())
 
     def test_get_size_returns_smallest_disk_size_for_raid_1(self):
         node = factory.make_Node()
@@ -911,24 +913,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 0 must have exactly 2 raid "
-                    "devices and no spares.']}")):
-            factory.make_FilesystemGroup(
-                group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
-                filesystems=filesystems)
-
-    def test_cannot_save_raid_0_with_more_than_2_raid_devices(self):
-        node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.RAID,
-                block_device=factory.make_PhysicalBlockDevice(node=node))
-            for _ in range(3)
-        ]
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': [u'RAID level 0 must have exactly 2 raid "
+                    "{'__all__': [u'RAID level 0 must have at least 2 raid "
                     "devices and no spares.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
@@ -949,7 +934,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 0 must have exactly 2 raid "
+                    "{'__all__': [u'RAID level 0 must have at least 2 raid "
                     "devices and no spares.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
@@ -968,6 +953,19 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
             filesystems=filesystems)
 
+    def test_can_save_raid_0_with_more_then_2_raid_devices(self):
+        node = factory.make_Node()
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=factory.make_PhysicalBlockDevice(node=node))
+            for _ in range(10)
+        ]
+        # Test is that this does not raise an exception.
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_0,
+            filesystems=filesystems)
+
     def test_cannot_save_raid_1_with_less_than_2_raid_devices(self):
         node = factory.make_Node()
         filesystems = [
@@ -978,13 +976,13 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 1 must have atleast 2 raid "
-                    "devices and no spares.']}")):
+                    "{'__all__': [u'RAID level 1 must have at least 2 raid "
+                    "devices and any number of spares.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.RAID_1,
                 filesystems=filesystems)
 
-    def test_cannot_save_raid_1_with_spare_raid_devices(self):
+    def test_can_save_raid_1_with_spare_raid_devices(self):
         node = factory.make_Node()
         filesystems = [
             factory.make_Filesystem(
@@ -996,14 +994,10 @@ class TestFilesystemGroup(MAASServerTestCase):
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 block_device=factory.make_PhysicalBlockDevice(node=node)))
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': [u'RAID level 1 must have atleast 2 raid "
-                    "devices and no spares.']}")):
-            factory.make_FilesystemGroup(
-                group_type=FILESYSTEM_GROUP_TYPE.RAID_1,
-                filesystems=filesystems)
+        # Test is that this does not raise an exception.
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_1,
+            filesystems=filesystems)
 
     def test_can_save_raid_1_with_2_or_more_raid_devices(self):
         node = factory.make_Node()
@@ -1457,6 +1451,249 @@ class TestRAID(MAASServerTestCase):
     def test_init_raises_ValueError_if_group_type_not_set_to_raid_type(self):
         self.assertRaises(
             ValueError, RAID, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+
+    def test_create_raid(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        for bd in block_devices[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        partitions = [
+            bd.get_partitiontable().add_partition()
+            for bd in block_devices[5:]
+        ]
+        spare_block_device = block_devices[0]
+        spare_partition = partitions[0]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_6,
+            uuid=uuid,
+            block_devices=block_devices[1:5],
+            partitions=partitions[1:],
+            spare_devices=[spare_block_device],
+            spare_partitions=[spare_partition])
+        self.assertEqual('md0', raid.name)
+        self.assertEqual(6 * device_size, raid.get_size())
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
+        self.assertEqual(uuid, raid.uuid)
+        self.assertEqual(10, raid.filesystems.count())
+        self.assertEqual(8, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID).count())
+        self.assertEqual(2, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID_SPARE).count())
+
+    def test_create_raid_0_with_a_spare_fails(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 0 must have at least 2 raid "
+                    "devices and no spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_0,
+                uuid=uuid,
+                block_devices=block_devices[1:],
+                partitions=[],
+                spare_devices=block_devices[:1],
+                spare_partitions=[])
+
+    def test_create_raid_without_devices_fails(self):
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'At least one filesystem must have been "
+                    "added.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_0,
+                uuid=uuid,
+                block_devices=[],
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_0_with_one_element_fails(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 0 must have at least 2 raid "
+                    "devices and no spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_0,
+                uuid=uuid,
+                block_devices=[block_device],
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_1_with_spares(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        for bd in block_devices[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        partitions = [
+            bd.get_partitiontable().add_partition()
+            for bd in block_devices[5:]
+        ]
+        spare_block_device = block_devices[0]
+        spare_partition = partitions[0]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_1,
+            uuid=uuid,
+            block_devices=block_devices[1:5],
+            partitions=partitions[1:],
+            spare_devices=[spare_block_device],
+            spare_partitions=[spare_partition])
+        self.assertEqual('md0', raid.name)
+        self.assertEqual(device_size, raid.get_size())
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_1, raid.group_type)
+        self.assertEqual(uuid, raid.uuid)
+        self.assertEqual(10, raid.filesystems.count())
+        self.assertEqual(8, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID).count())
+        self.assertEqual(2, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID_SPARE).count())
+
+    def test_create_raid_1_with_one_element_fails(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 1 must have at least 2 raid "
+                    "devices and any number of spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_1,
+                uuid=uuid,
+                block_devices=[block_device],
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_5_with_spares(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        for bd in block_devices[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        partitions = [
+            bd.get_partitiontable().add_partition()
+            for bd in block_devices[5:]
+        ]
+        spare_block_device = block_devices[0]
+        spare_partition = partitions[0]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices[1:5],
+            partitions=partitions[1:],
+            spare_devices=[spare_block_device],
+            spare_partitions=[spare_partition])
+        self.assertEqual('md0', raid.name)
+        self.assertEqual(7 * device_size, raid.get_size())
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_5, raid.group_type)
+        self.assertEqual(uuid, raid.uuid)
+        self.assertEqual(10, raid.filesystems.count())
+        self.assertEqual(8, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID).count())
+        self.assertEqual(2, raid.filesystems.filter(
+            fstype=FILESYSTEM_TYPE.RAID_SPARE).count())
+
+    def test_create_raid_5_with_2_elements_fails(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            for _ in range(2)
+        ]
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 5 must have atleast 3 raid "
+                    "devices and any number of spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_5,
+                uuid=uuid,
+                block_devices=block_devices,
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_6_with_3_elements_fails(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                    "devices and any number of spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_6,
+                uuid=uuid,
+                block_devices=block_devices,
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_with_block_device_from_other_node_fails(self):
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        block_devices_1 = [
+            factory.make_PhysicalBlockDevice(node=node1)
+            for _ in range(5)
+        ]
+        block_devices_2 = [
+            factory.make_PhysicalBlockDevice(node=node2)
+            for _ in range(5)
+        ]
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'All added filesystems must belong to the "
+                    "same node.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_1,
+                uuid=uuid,
+                block_devices=block_devices_1 + block_devices_2,
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
 
 
 class TestBcache(MAASServerTestCase):
