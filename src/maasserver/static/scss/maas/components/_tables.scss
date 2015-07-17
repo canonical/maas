@@ -113,6 +113,7 @@ table {
             &:hover {
                 color: #333;
                 text-decoration: none;
+                border-bottom: 1px solid #333;
             }
 
             &:focus,
@@ -126,7 +127,7 @@ table {
             }
 
             &.sort {
-                text-decoration: underline;
+                border-bottom: 1px solid #333;
             }
         }
 
