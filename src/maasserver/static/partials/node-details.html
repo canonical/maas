@@ -25,13 +25,13 @@
                         </span>
                     </span>
                 </span>
+                <a href="" class="alt ng-hide"
+                    data-ng-show="nameHeader.editing"
+                    data-ng-click="cancelEditName()">Cancel</a>
                 <a href="" class="link-cta-ubuntu ng-hide"
                     data-ng-show="nameHeader.editing"
                     data-ng-class="{ secondary: editNameInvalid() }"
                     data-ng-click="saveEditName()">Save</a>
-                <a href="" class="alt ng-hide"
-                    data-ng-show="nameHeader.editing"
-                    data-ng-click="cancelEditName()">Cancel</a>
             </h1>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
             <div data-ng-show="!nameHeader.editing && availableActionOptions.length">

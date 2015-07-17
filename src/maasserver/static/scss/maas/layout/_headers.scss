@@ -330,7 +330,10 @@ header.banner {
         .link-cta-ubuntu,
         .alt {
             font-size: 16px;
-            margin-right: 20px;
+            margin-left: 20px;
+            position: relative;
+            vertical-align: middle;
+            margin-top: -5px;
         }
     }
 
