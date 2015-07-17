@@ -91,7 +91,7 @@
                         font-weight: 400;
 
                         .accordion__tab-link {
-                            background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
+                            background: transparent url('../img/icons/cross.svg') top 7px right 0px no-repeat;
                         }
 
                         &:hover {
@@ -99,7 +99,7 @@
 
                             .accordion__tab-link {
                                 color: $ubuntu-orange;
-                                background-image: url('../img/icons/remove-orange.svg');
+                                background-image: url('../img/icons/cross-orange.svg');
                             }
                         }
                     }

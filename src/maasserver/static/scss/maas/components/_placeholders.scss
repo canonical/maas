@@ -36,8 +36,7 @@
     }
 
     &.remove {
-        background-image: url('../img/icons/remove.png');
-        background-image: url('../img/icons/remove.svg'), none;
+        background-image: url('../img/icons/cross.svg'), none;
     }
 
     &.warning {
