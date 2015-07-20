@@ -36,8 +36,7 @@
     }
 
     &.remove {
-        background-image: url('../img/icons/remove.png');
-        background-image: url('../img/icons/remove.svg'), none;
+        background-image: url('../img/icons/cross.svg'), none;
     }
 
     &.warning {
@@ -108,6 +107,10 @@
 %margin-top,
 .margin-top {
     margin-top: 20px;
+
+    &--ten {
+        margin-top: 10px;
+    }
 }
 
 %margin-rght,

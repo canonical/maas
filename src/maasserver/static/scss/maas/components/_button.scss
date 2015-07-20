@@ -53,6 +53,7 @@
     line-height: 1;
 
     &:hover {
+        cursor: pointer;
         background-color: #F2F2F2;
     }
 }
@@ -94,9 +95,11 @@ form input[type='submit'] {
 
         &:hover {
             background-color: #F2F2F2;
+            cursor: pointer;
         }
 
-        &[disabled] {
+        &[disabled],
+        .disabled {
             cursor: default;
             color: lighten(#FFF, 50%);
             border: 1px solid #b2b2b2;

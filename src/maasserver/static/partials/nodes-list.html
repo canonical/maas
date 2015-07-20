@@ -47,12 +47,16 @@
                         </span>
                         <!-- XXX rbanffy 2015-03-23 - Need to add e2e test. -->
                         <span class="ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'set-zone'">
-                            <label for="zone">Select Zone</label>
-                            <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
-                                data-ng-model="tabs.nodes.zoneSelection"
-                                data-ng-options="zone as zone.name for zone in zones">
-                                <option value="" disabled="disabled">Choose a zone</option>
-                            </select>
+                            <span class="five-col no-margin-bottom">
+                              <span class="inline">
+                                <label for="zone">Select Zone</label>
+                                <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
+                                    data-ng-model="tabs.nodes.zoneSelection"
+                                    data-ng-options="zone as zone.name for zone in zones">
+                                    <option value="" disabled="disabled">Choose a zone</option>
+                                </select>
+                              </span>
+                            </span>
                         </span>
                         <div class="right">
                             <a href="" class="margin-right" data-ng-click="actionCancel('nodes')">Cancel</a>
