@@ -21,7 +21,11 @@ from datetime import timedelta
 from functools import partial
 import sys
 
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power import (
+    get_error_message,
+    PowerDriverRegistry,
+    PowerError,
+)
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
@@ -151,12 +155,9 @@ def perform_power_driver_change(system_id, hostname, power_type, power_change,
             power_driver.on(**context)
         elif power_change == 'off':
             power_driver.off(**context)
-        else:
-            raise PowerActionFail(
-                "Invalid power change %s" % power_change)
-    except PowerActionFail as error:
+    except PowerError as error:
         message = "Node could not be powered %s: %s" % (
-            power_change, error)
+            power_change, get_error_message(error))
         power_change_failure(
             system_id, hostname, power_change, message).wait(15)
         raise

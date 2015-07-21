@@ -42,7 +42,11 @@ from mock import (
     sentinel,
 )
 import provisioningserver
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power import (
+    get_error_message,
+    PowerDriverRegistry,
+    PowerError,
+)
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import (
@@ -565,18 +569,19 @@ class TestChangePowerState(MAASTestCase):
             'system_id': system_id
         }
         self.patch(power, 'is_power_driver_available', Mock(return_value=True))
-        exception_message = factory.make_name('exception')
+        exception = PowerError(factory.make_string())
         get_item = self.patch(PowerDriverRegistry, 'get_item')
-        get_item.side_effect = PowerActionFail(exception_message)
+        get_item.side_effect = exception
         power_change_failure = self.patch(power, 'power_change_failure')
 
         markNodeBroken = yield self.patch_rpc_methods()
 
-        with ExpectedException(PowerActionFail):
+        with ExpectedException(PowerError):
             yield power.change_power_state(
                 system_id, hostname, power_type, power_change, context)
 
-        error_message = "Node could not be powered on: %s" % exception_message
+        error_message = "Node could not be powered on: %s" % get_error_message(
+            exception)
         self.expectThat(
             markNodeBroken, MockCalledOnceWith(
                 ANY, system_id=system_id, error_description=error_message))
