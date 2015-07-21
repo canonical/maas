@@ -644,15 +644,25 @@ class Factory(maastesting.factory.Factory):
         fabric.save()
         return fabric
 
+    def _get_available_vid(self, fabric):
+        """Return a free vid in the given Fabric."""
+        taken_vids = set(fabric.vlan_set.all().values_list('vid', flat=True))
+        for attempt in range(1000):
+            vid = random.randint(1, 4095)
+            if vid not in taken_vids:
+                return vid
+        raise maastesting.factory.TooManyRandomRetries(
+            "Could not generate vid in fabric %s" % fabric)
+
     def make_VLAN(self, name=None, vid=None, fabric=None):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if name is None:
             name = self.make_name('vlan')
-        if vid is None:
-            # Don't create the vid=0 VLAN, it's auto-created.
-            vid = random.randint(1, 4095)
         if fabric is None:
             fabric = self.make_Fabric()
+        if vid is None:
+            # Don't create the vid=0 VLAN, it's auto-created.
+            vid = self._get_available_vid(fabric)
         vlan = VLAN(name=name, vid=vid, fabric=fabric)
         vlan.save()
         return vlan
