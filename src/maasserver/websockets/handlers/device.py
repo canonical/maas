@@ -146,6 +146,8 @@ class DeviceHandler(TimestampedModelHandler):
             "error",
             "license_key",
             "distro_series",
+            "min_hwe_kernel",
+            "hwe_kernel",
             ]
         list_fields = [
             "system_id",

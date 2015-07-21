@@ -212,6 +212,7 @@ class TestNodeHandler(MAASServerTestCase):
                 for mac_address in node.get_extra_macs()
             ],
             "fqdn": node.fqdn,
+            "hwe_kernel": node.hwe_kernel,
             "hostname": node.hostname,
             "id": node.id,
             "installation_results": [
@@ -222,6 +223,7 @@ class TestNodeHandler(MAASServerTestCase):
             "interfaces": self.dehydrate_interfaces(node),
             "license_key": node.license_key,
             "memory": node.display_memory(),
+            "min_hwe_kernel": node.min_hwe_kernel,
             "networks": list({
                 network.name
                 for mac_address in node.macaddress_set.all()
