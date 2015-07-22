@@ -17,6 +17,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
@@ -26,6 +27,7 @@ from maasserver.forms import (
 )
 from maasserver.models import (
     Node,
+    VirtualBlockDevice,
     VolumeGroup,
 )
 from maasserver.utils.converters import human_readable_bytes
@@ -196,3 +198,24 @@ class VolumeGroupHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         else:
             return form.save()
+
+    @operation(idempotent=False)
+    def delete_logical_volume(self, request, system_id, volume_group_id):
+        """Delete a logical volume in the volume group.
+
+        :param id: ID of the logical volume.
+
+        Returns 403 if no logical volume with id.
+        Returns 404 if the node or volume group is not found.
+        """
+        volume_group = VolumeGroup.objects.get_object_or_404(
+            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+        volume_id = get_mandatory_param(request.data, 'id')
+        try:
+            logical_volume = volume_group.virtual_devices.get(id=volume_id)
+        except VirtualBlockDevice.DoesNotExist:
+            # Ignore if it doesn't exists, we still return DELETED.
+            pass
+        else:
+            logical_volume.delete()
+        return rc.DELETED

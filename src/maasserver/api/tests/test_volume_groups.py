@@ -360,3 +360,61 @@ class TestVolumeGroupAPI(APITestCase):
             "uuid": Equals(vguuid),
             "size": Equals(size),
             }))
+
+    def test_delete_logical_volume_204_when_invalid_id(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        volume_group = factory.make_VolumeGroup(node=node)
+        uri = get_volume_group_uri(volume_group)
+        volume_id = random.randint(0, 100)
+        response = self.client.post(uri, {
+            "op": "delete_logical_volume",
+            "id": volume_id,
+            })
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.content)
+
+    def test_delete_logical_volume_400_when_missing_id(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        volume_group = factory.make_VolumeGroup(node=node)
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(uri, {
+            "op": "delete_logical_volume",
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_delete_logical_volume_403_when_not_owner(self):
+        volume_group = factory.make_VolumeGroup()
+        logical_volume = factory.make_VirtualBlockDevice(
+            filesystem_group=volume_group)
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(uri, {
+            "op": "delete_logical_volume",
+            "id": logical_volume.id,
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_delete_logical_volume_404_when_not_volume_group(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        not_volume_group = factory.make_FilesystemGroup(
+            node=node, group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        uri = get_volume_group_uri(not_volume_group)
+        response = self.client.post(uri, {"op": "delete_logical_volume"})
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_delete_logical_volume_deletes_logical_volume(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        volume_group = factory.make_VolumeGroup(node=node)
+        logical_volume = factory.make_VirtualBlockDevice(
+            filesystem_group=volume_group)
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(uri, {
+            "op": "delete_logical_volume",
+            "id": logical_volume.id,
+            })
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.content)
+        self.assertIsNone(reload_object(logical_volume))
