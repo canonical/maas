@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import random
 import uuid
 
 from django.core.urlresolvers import reverse
@@ -298,8 +299,7 @@ class TestVolumeGroupAPI(APITestCase):
 
     def test_delete_deletes_volume_group(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        volume_group = factory.make_FilesystemGroup(
-            node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        volume_group = factory.make_VolumeGroup(node=node)
         uri = get_volume_group_uri(volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
@@ -307,8 +307,7 @@ class TestVolumeGroupAPI(APITestCase):
         self.assertIsNone(reload_object(volume_group))
 
     def test_delete_403_when_not_owner(self):
-        volume_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        volume_group = factory.make_VolumeGroup()
         uri = get_volume_group_uri(volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
@@ -323,3 +322,41 @@ class TestVolumeGroupAPI(APITestCase):
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_create_logical_volume_403_when_not_owner(self):
+        volume_group = factory.make_VolumeGroup()
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(uri, {"op": "create_logical_volume"})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_logical_volume_404_when_not_volume_group(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        not_volume_group = factory.make_FilesystemGroup(
+            node=node, group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        uri = get_volume_group_uri(not_volume_group)
+        response = self.client.post(uri, {"op": "create_logical_volume"})
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_create_logical_volume_creates_logical_volume(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        volume_group = factory.make_VolumeGroup(node=node)
+        name = factory.make_name("lv")
+        vguuid = "%s" % uuid.uuid4()
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(uri, {
+            "op": "create_logical_volume",
+            "name": name,
+            "uuid": vguuid,
+            "size": size,
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        logical_volume = json.loads(response.content)
+        self.assertThat(logical_volume, ContainsDict({
+            "name": Equals("%s-%s" % (volume_group.name, name)),
+            "uuid": Equals(vguuid),
+            "size": Equals(size),
+            }))

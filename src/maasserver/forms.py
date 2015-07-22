@@ -3337,7 +3337,7 @@ class CreateVolumeGroupForm(Form):
         ]
 
     def clean(self):
-        """Validate the atleast one block device or partition is given."""
+        """Validate that at least one block device or partition is given."""
         cleaned_data = super(CreateVolumeGroupForm, self).clean()
         if "name" not in cleaned_data:
             return cleaned_data
@@ -3466,3 +3466,45 @@ class UpdateVolumeGroupForm(Form):
             block_devices, partitions)
         self.volume_group.save()
         return self.volume_group
+
+
+class CreateLogicalVolumeForm(Form):
+    """Form used to add a logical volume to a volume group."""
+
+    name = forms.CharField(required=True)
+    uuid = UUID4Field(required=False)
+
+    def __init__(self, volume_group, *args, **kwargs):
+        super(CreateLogicalVolumeForm, self).__init__(*args, **kwargs)
+        self.volume_group = volume_group
+        self.set_up_fields()
+
+    def set_up_fields(self):
+        """Create the `size` fields.
+
+        This needs to be done on the fly so that we can pass the maximum size.
+        """
+        self.fields['size'] = BytesField(
+            min_value=MIN_BLOCK_DEVICE_SIZE,
+            max_value=self.volume_group.get_lvm_free_space(),
+            required=True)
+
+    def clean(self):
+        """Validate that at least one block device or partition is given."""
+        cleaned_data = super(CreateLogicalVolumeForm, self).clean()
+        if self.volume_group.get_lvm_free_space() < MIN_BLOCK_DEVICE_SIZE:
+            # Remove the size errors. They are confusing because the
+            # minimum is larger than the maximum.
+            if "size" in self._errors:
+                del self._errors["size"]
+            raise ValidationError(
+                "Volume group (%s) cannot hold any more logical volumes, "
+                "because it doesn't have enough free space." % (
+                    self.volume_group.name))
+        return cleaned_data
+
+    def save(self):
+        return self.volume_group.create_logical_volume(
+            name=self.cleaned_data['name'],
+            uuid=self.cleaned_data.get('uuid'),
+            size=self.cleaned_data['size'])

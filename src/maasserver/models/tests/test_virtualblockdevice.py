@@ -32,34 +32,6 @@ from testtools.matchers import MatchesStructure
 class TestVirtualBlockDeviceManager(MAASServerTestCase):
     """Tests for the `VirtualBlockDevice` manager."""
 
-    def test_get_available_name_for_returns_next_idx(self):
-        # This will create the filesystem group and a virtual block device.
-        filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
-        filesystem_group.save()
-        prefix = filesystem_group.get_virtual_block_device_prefix()
-        virtual_block_device = filesystem_group.virtual_device
-        current_idx = int(
-            virtual_block_device.name.replace(prefix, ""))
-        self.assertEquals(
-            "%s%s" % (prefix, current_idx + 1),
-            VirtualBlockDevice.objects.get_available_name_for(
-                filesystem_group))
-
-    def test_get_available_name_for_ignores_bad_int(self):
-        # This will create the filesystem group and a virtual block device.
-        filesystem_group = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
-        filesystem_group.save()
-        prefix = filesystem_group.get_virtual_block_device_prefix()
-        virtual_block_device = filesystem_group.virtual_device
-        virtual_block_device.name = "%s%s" % (prefix, factory.make_name("bad"))
-        virtual_block_device.save()
-        self.assertEquals(
-            "%s0" % prefix,
-            VirtualBlockDevice.objects.get_available_name_for(
-                filesystem_group))
-
     def test_create_or_update_for_lvm_does_nothing(self):
         # This will create the filesystem group but not a virtual block
         # device since its a volume group.
@@ -74,14 +46,9 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
-        prefix = filesystem_group.get_virtual_block_device_prefix()
-        next_name = VirtualBlockDevice.objects.get_available_name_for(
-            filesystem_group)
-        current_idx = int(next_name.replace(prefix, ""))
-        proposed_name = "%s%s" % (prefix, current_idx - 1)
         self.assertThat(
             filesystem_group.virtual_device, MatchesStructure.byEquality(
-                name=proposed_name,
+                name=filesystem_group.name,
                 size=filesystem_group.get_size(),
                 block_size=(
                     filesystem_group.get_virtual_block_device_block_size())))
@@ -90,14 +57,9 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # This will create the filesystem group and a virtual block device.
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
-        prefix = filesystem_group.get_virtual_block_device_prefix()
-        next_name = VirtualBlockDevice.objects.get_available_name_for(
-            filesystem_group)
-        current_idx = int(next_name.replace(prefix, ""))
-        proposed_name = "%s%s" % (prefix, current_idx - 1)
         self.assertThat(
             filesystem_group.virtual_device, MatchesStructure.byEquality(
-                name=proposed_name,
+                name=filesystem_group.name,
                 size=filesystem_group.get_size(),
                 block_size=(
                     filesystem_group.get_virtual_block_device_block_size())))
@@ -142,6 +104,21 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
 
 class TestVirtualBlockDevice(MAASServerTestCase):
     """Tests for the `VirtualBlockDevice` model."""
+
+    def test_get_name_returns_concat_volume_group_name(self):
+        name = factory.make_name("lv")
+        vgname = factory.make_name("vg")
+        volume_group = factory.make_VolumeGroup(name=vgname)
+        logical_volume = factory.make_VirtualBlockDevice(
+            name=name, filesystem_group=volume_group)
+        self.assertEquals("%s-%s" % (vgname, name), logical_volume.get_name())
+
+    def test_get_name_returns_just_name(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        virtual_device = filesystem_group.virtual_device
+        self.assertEquals(virtual_device.name, virtual_device.get_name())
 
     def test_node_is_set_to_same_node_from_filesystem_group(self):
         block_device = factory.make_VirtualBlockDevice()

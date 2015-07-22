@@ -28,11 +28,15 @@ from django.db.models import (
     IntegerField,
     Manager,
 )
-from django.db.models.signals import post_save
+from django.db.models.signals import (
+    post_delete,
+    post_save,
+)
 from django.dispatch import receiver
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
+from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -131,10 +135,17 @@ class BlockDevice(CleanSave, TimestampedModel):
     tags = ArrayField(
         dbtype="text", blank=True, null=False, default=[])
 
+    def get_name(self):
+        """Return the name.
+
+        This exists so `VirtualBlockDevice` can override this method.
+        """
+        return self.name
+
     @property
     def path(self):
         # Path is persistent and set by curtin on deploy.
-        return "/dev/disk/by-dname/%s" % self.name
+        return "/dev/disk/by-dname/%s" % self.get_name()
 
     @property
     def type(self):
@@ -209,13 +220,46 @@ class BlockDevice(CleanSave, TimestampedModel):
 
 @receiver(post_save)
 def update_filesystem_group(sender, instance, **kwargs):
-    """Call save on `FilesystemGroup` when this block device is part of that
-    filesystem group.
+    """Update all filesystem groups that this block device belongs to.
+    Also if a virtual block device name has does not equal its filesystem
+    group then update its filesystem group with the new name.
     """
+    # Circular imports.
+    from maasserver.models.virtualblockdevice import VirtualBlockDevice
     if isinstance(instance, BlockDevice):
-        groups = FilesystemGroup.objects.filter_by_block_device(instance)
+        block_device = instance.actual_instance
+        groups = FilesystemGroup.objects.filter_by_block_device(block_device)
         for group in groups:
             # Re-save the group so the VirtualBlockDevice is updated. This will
             # fix the size of the VirtualBlockDevice if the size of this block
             # device has changed.
             group.save()
+
+        if isinstance(block_device, VirtualBlockDevice):
+            # When not LVM the name of the block devices should stay in sync
+            # with the name of the filesystem group.
+            filesystem_group = block_device.filesystem_group
+            if (filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG and
+                    filesystem_group.name != block_device.name):
+                filesystem_group.name = block_device.name
+                filesystem_group.save()
+
+
+@receiver(post_delete)
+def delete_filesystem_group(sender, instance, **kwargs):
+    """Delete the attached `FilesystemGroup` when it is not LVM."""
+    # Circular imports.
+    from maasserver.models.virtualblockdevice import VirtualBlockDevice
+    if isinstance(instance, BlockDevice):
+        block_device = instance.actual_instance
+        if isinstance(block_device, VirtualBlockDevice):
+            try:
+                filesystem_group = block_device.filesystem_group
+            except FilesystemGroup.DoesNotExist:
+                # Possible that it was deleted the same time this
+                # virtual block device was deleted.
+                return
+            not_volume_group = (
+                filesystem_group.group_type != FILESYSTEM_GROUP_TYPE.LVM_VG)
+            if filesystem_group.id is not None and not_volume_group:
+                filesystem_group.delete()

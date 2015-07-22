@@ -37,25 +37,6 @@ from maasserver.utils.orm import get_one
 class VirtualBlockDeviceManager(BlockDeviceManager):
     """Manager for `VirtualBlockDevice` class."""
 
-    def get_available_name_for(self, filesystem_group):
-        """Return an available name that can be used for a `VirtualBlockDevice`
-        based on the `filesystem_group`'s group_type and other block devices
-        on the node.
-        """
-        prefix = filesystem_group.get_virtual_block_device_prefix()
-        node = filesystem_group.get_node()
-        idx = -1
-        for block_device in BlockDevice.objects.filter(
-                node=node, name__startswith=prefix):
-            name = block_device.name.replace(prefix, "")
-            try:
-                bd_idx = int(name)
-            except ValueError:
-                pass
-            else:
-                idx = max(idx, bd_idx)
-        return "%s%s" % (prefix, idx + 1)
-
     def create_or_update_for(self, filesystem_group):
         """Create or update the `VirtualBlockDevice` that is linked to the
         `filesystem_group`.
@@ -70,10 +51,13 @@ class VirtualBlockDeviceManager(BlockDeviceManager):
             block_device = get_one(
                 self.filter(filesystem_group=filesystem_group))
             if block_device is None:
-                name = self.get_available_name_for(filesystem_group)
                 block_device = VirtualBlockDevice(
                     node=filesystem_group.get_node(),
-                    name=name, filesystem_group=filesystem_group)
+                    name=filesystem_group.name,
+                    filesystem_group=filesystem_group)
+            # Keep the name, size, and block_size in sync with the
+            # FilesystemGroup.
+            block_device.name = filesystem_group.name
             block_device.size = filesystem_group.get_size()
             block_device.block_size = (
                 filesystem_group.get_virtual_block_device_block_size())
@@ -95,6 +79,13 @@ class VirtualBlockDevice(BlockDevice):
     filesystem_group = ForeignKey(
         FilesystemGroup, null=False, blank=False,
         related_name="virtual_devices")
+
+    def get_name(self):
+        """Return the name."""
+        if self.filesystem_group.is_lvm():
+            return "%s-%s" % (self.filesystem_group.name, self.name)
+        else:
+            return self.name
 
     def clean(self, *args, **kwargs):
         super(VirtualBlockDevice, self).clean(*args, **kwargs)
@@ -126,6 +117,10 @@ class VirtualBlockDevice(BlockDevice):
                     human_readable_bytes(self.size),
                     self.filesystem_group.name,
                     ))
+        elif not self.filesystem_group.is_lvm():
+            # If not a volume group the size of the virtual block device
+            # must equal the size of the filesystem group.
+            assert self.size == self.filesystem_group.get_size()
 
     def save(self, *args, **kwargs):
         if not self.uuid:

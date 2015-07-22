@@ -14,16 +14,19 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 import uuid
 
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
+    CreateLogicalVolumeForm,
     CreateVolumeGroupForm,
     UpdateVolumeGroupForm,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.matchers import MatchesStructure
 
 
 class TestCreateVolumeGroupForm(MAASServerTestCase):
@@ -312,3 +315,104 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
         self.assertIsNone(partition.filesystem)
+
+
+class TestCreateLogicalVolumeForm(MAASServerTestCase):
+
+    def test_requires_no_fields(self):
+        volume_group = factory.make_VolumeGroup()
+        form = CreateLogicalVolumeForm(volume_group, data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(['name', 'size'], form.errors.keys())
+
+    def test_is_not_valid_if_invalid_uuid(self):
+        volume_group = factory.make_VolumeGroup()
+        name = factory.make_name("lv")
+        data = {
+            'name': name,
+            'uuid': factory.make_string(size=32),
+            'size': volume_group.get_size() - 1,
+            }
+        form = CreateLogicalVolumeForm(volume_group, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an invalid uuid.")
+        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+
+    def test_is_not_valid_if_size_less_than_minimum_block_size(self):
+        volume_group = factory.make_VolumeGroup()
+        name = factory.make_name("lv")
+        data = {
+            'name': name,
+            'size': MIN_BLOCK_DEVICE_SIZE - 1,
+            }
+        form = CreateLogicalVolumeForm(volume_group, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an invalid size.")
+        self.assertEquals({
+            'size': [
+                "Ensure this value is greater than or equal to %s." % (
+                    MIN_BLOCK_DEVICE_SIZE),
+                ]}, form._errors)
+
+    def test_is_not_valid_if_size_greater_than_free_space(self):
+        volume_group = factory.make_VolumeGroup()
+        volume_group.create_logical_volume(
+            factory.make_name("lv"),
+            size=volume_group.get_size() - MIN_BLOCK_DEVICE_SIZE - 1)
+        name = factory.make_name("lv")
+        data = {
+            'name': name,
+            'size': MIN_BLOCK_DEVICE_SIZE + 2,
+            }
+        form = CreateLogicalVolumeForm(volume_group, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an invalid size.")
+        self.assertEquals({
+            'size': [
+                "Ensure this value is less than or equal to %s." % (
+                    volume_group.get_lvm_free_space()),
+                ]}, form._errors)
+
+    def test_is_not_valid_if_free_space_less_than_min_size(self):
+        volume_group = factory.make_VolumeGroup()
+        volume_group.create_logical_volume(
+            factory.make_name("lv"),
+            size=volume_group.get_size())
+        name = factory.make_name("lv")
+        data = {
+            'name': name,
+            'size': MIN_BLOCK_DEVICE_SIZE,
+            }
+        form = CreateLogicalVolumeForm(volume_group, data=data)
+        self.assertFalse(
+            form.is_valid(),
+            "Should be invalid because of an no free space.")
+        self.assertEquals({
+            '__all__': [
+                "Volume group (%s) cannot hold any more logical volumes, "
+                "because it doesn't have enough free space." % (
+                    volume_group.name),
+                ]}, form._errors)
+
+    def test_creates_logical_volume(self):
+        volume_group = factory.make_VolumeGroup()
+        name = factory.make_name("lv")
+        vguuid = "%s" % uuid.uuid4()
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
+        data = {
+            'name': name,
+            'uuid': vguuid,
+            'size': size,
+            }
+        form = CreateLogicalVolumeForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        logical_volume = form.save()
+        self.assertThat(
+            logical_volume, MatchesStructure.byEquality(
+                name=name,
+                uuid=vguuid,
+                size=size,
+                ))

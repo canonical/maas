@@ -57,6 +57,7 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
+    MatchesStructure,
     Not,
 )
 
@@ -513,6 +514,34 @@ class TestManagersFilterByNode(MAASServerTestCase):
         ]
         self.assertItemsEqual(
             [filesystem_group.id], result_filesystem_group_ids)
+
+
+class TestFilesystemGroupManager(MAASServerTestCase):
+    """Tests for the `FilesystemGroupManager`."""
+
+    def test_get_available_name_for_returns_next_idx(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        filesystem_group.save()
+        prefix = filesystem_group.get_virtual_block_device_prefix()
+        current_idx = int(
+            filesystem_group.name.replace(prefix, ""))
+        self.assertEquals(
+            "%s%s" % (prefix, current_idx + 1),
+            FilesystemGroup.objects.get_available_name_for(
+                filesystem_group))
+
+    def test_get_available_name_for_ignores_bad_int(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        filesystem_group.save()
+        prefix = filesystem_group.get_virtual_block_device_prefix()
+        filesystem_group.name = "%s%s" % (prefix, factory.make_name("bad"))
+        filesystem_group.save()
+        self.assertEquals(
+            "%s0" % prefix,
+            FilesystemGroup.objects.get_available_name_for(
+                filesystem_group))
 
 
 class TestVolumeGroupManager(MAASServerTestCase):
@@ -1512,6 +1541,21 @@ class TestVolumeGroup(MAASServerTestCase):
         for device in block_devices[1:] + partitions[1:]:
             self.assertEquals(
                 volume_group.id, device.filesystem.filesystem_group.id)
+
+    def test_create_logical_volume(self):
+        volume_group = factory.make_VolumeGroup()
+        name = factory.make_name()
+        vguuid = "%s" % uuid4()
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
+        logical_volume = volume_group.create_logical_volume(
+            name=name, uuid=vguuid, size=size)
+        logical_volume = reload_object(logical_volume)
+        self.assertThat(logical_volume, MatchesStructure.byEquality(
+            name=name,
+            uuid=vguuid,
+            size=size,
+            block_size=volume_group.get_virtual_block_device_block_size(),
+            ))
 
 
 class TestRAID(MAASServerTestCase):

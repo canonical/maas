@@ -44,6 +44,7 @@ from piston.utils import rc
 DISPLAYED_BLOCKDEVICE_FIELDS = (
     'id',
     'name',
+    'uuid',
     'type',
     'path',
     'id_path',
@@ -109,6 +110,18 @@ class BlockDeviceHandler(OperationsHandler):
             block_device_id = block_device.id
             node_system_id = block_device.node.system_id
         return ('blockdevice_handler', (node_system_id, block_device_id))
+
+    @classmethod
+    def name(cls, block_device):
+        return block_device.actual_instance.get_name()
+
+    @classmethod
+    def uuid(cls, block_device):
+        block_device = block_device.actual_instance
+        if isinstance(block_device, VirtualBlockDevice):
+            return block_device.uuid
+        else:
+            return None
 
     @classmethod
     def partition_table_type(cls, block_device):

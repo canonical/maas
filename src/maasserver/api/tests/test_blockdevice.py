@@ -267,6 +267,7 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
         self.assertEquals(block_device.id, parsed_device["id"])
+        self.assertEquals(block_device.get_name(), parsed_device["name"])
         self.assertEquals("virtual", parsed_device["type"])
         self.assertEquals(
             get_blockdevice_uri(block_device), parsed_device["resource_uri"])
@@ -691,22 +692,21 @@ class TestBlockDeviceAPI(APITestCase):
         """
         self.become_admin()
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node,
-                                                       name='myblockdevice',
-                                                       size=140 * 1024,
-                                                       block_size=1024)
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        block_device = filesystem_group.virtual_device
         uri = get_blockdevice_uri(block_device)
+        name = factory.make_name("newname")
         response = self.client.put(uri, {
-            'name': 'mynewname',
-            'block_size': 4096
+            'name': name,
         })
         block_device = reload_object(block_device)
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertEqual(parsed_device['id'], block_device.id)
-        self.assertEqual('mynewname', parsed_device['name'])
-        self.assertEqual(4096, parsed_device['block_size'])
+        self.assertEqual(block_device.id, parsed_device['id'])
+        self.assertEqual(name, parsed_device['name'])
 
     def test_update_physical_block_device_as_normal_user(self):
         """Check update block device with a physical one fails for a normal
@@ -730,13 +730,13 @@ class TestBlockDeviceAPI(APITestCase):
         """Check update block device with a virtual one works with a normal
         user."""
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node,
-                                                       name='myblockdevice',
-                                                       size=140 * 1024,
-                                                       block_size=1024)
+        newname = factory.make_name("lv")
+        block_device = factory.make_VirtualBlockDevice(
+            node=node, name=newname, block_size=1024)
+        volume_group = block_device.filesystem_group
         uri = get_blockdevice_uri(block_device)
         response = self.client.put(uri, {
-            'name': 'mynewname',
+            'name': newname,
             'block_size': 4096
         })
         block_device = reload_object(block_device)
@@ -744,5 +744,6 @@ class TestBlockDeviceAPI(APITestCase):
             httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
         self.assertEqual(parsed_device['id'], block_device.id)
-        self.assertEqual('mynewname', parsed_device['name'])
+        self.assertEqual(
+            '%s-%s' % (volume_group.name, newname), parsed_device['name'])
         self.assertEqual(4096, parsed_device['block_size'])

@@ -33,6 +33,7 @@ from maasserver.models import (
     VirtualBlockDevice,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledWith
 from mock import MagicMock
@@ -325,6 +326,11 @@ class TestBlockDevice(MAASServerTestCase):
                 block_device.display_size(),
                 Equals(display_size))
 
+    def test_get_name(self):
+        name = factory.make_name("name")
+        block_device = BlockDevice(name=name)
+        self.assertEquals(name, block_device.get_name())
+
     def test_add_tag_adds_new_tag(self):
         block_device = BlockDevice()
         tag = factory.make_name('tag')
@@ -380,8 +386,8 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertIsNone(blockdevice.get_partitiontable())
 
 
-class TestBlockDevicePostSave(MAASServerTestCase):
-    """Tests for the `BlockDevice` post_save signal."""
+class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
+    """Tests for the `BlockDevice` post_save signal to call save on group."""
 
     scenarios = [
         ("BlockDevice", {"factory": factory.make_BlockDevice}),
@@ -398,3 +404,43 @@ class TestBlockDevicePostSave(MAASServerTestCase):
         ]
         self.factory()
         self.assertThat(mock_filesystem_group.save, MockCalledWith())
+
+
+class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
+    """Tests for the `BlockDevice` post_save signal to update group name."""
+
+    def test__updates_filesystem_group_name_when_not_volume_group(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        virtual_device = filesystem_group.virtual_device
+        newname = factory.make_name("name")
+        virtual_device.name = newname
+        virtual_device.save()
+        self.assertEquals(newname, reload_object(filesystem_group).name)
+
+    def test__doesnt_update_filesystem_group_name_when_volume_group(self):
+        virtual_device = factory.make_VirtualBlockDevice()
+        filesystem_group = virtual_device.filesystem_group
+        group_name = filesystem_group.name
+        newname = factory.make_name("name")
+        virtual_device.name = newname
+        virtual_device.save()
+        self.assertEquals(group_name, reload_object(filesystem_group).name)
+
+
+class TestBlockDevicePostDelete(MAASServerTestCase):
+    """Tests for the `BlockDevice` post_delete signal."""
+
+    def test__deletes_filesystem_group_when_virtual_block_device_deleted(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        filesystem_group.virtual_device.delete()
+        self.assertIsNone(reload_object(filesystem_group))
+
+    def test__doesnt_delete_volume_group(self):
+        virtual_device = factory.make_VirtualBlockDevice()
+        volume_group = virtual_device.filesystem_group
+        virtual_device.delete()
+        self.assertIsNotNone(reload_object(volume_group))

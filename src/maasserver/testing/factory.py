@@ -31,7 +31,6 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
-    FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -1265,13 +1264,6 @@ class Factory(maastesting.factory.Factory):
             num_lvm_devices=4):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
-        if name is None:
-            if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
-                name = self.make_name("vg")
-            elif group_type in FILESYSTEM_GROUP_RAID_TYPES:
-                name = self.make_name("raid")
-            elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
-                name = self.make_name("bcache")
         group = FilesystemGroup(
             uuid=uuid, group_type=group_type, name=name,
             create_params=create_params)
@@ -1377,7 +1369,7 @@ class Factory(maastesting.factory.Factory):
                 "use make_FilesystemGroup which will create a "
                 "VirtualBlockDevice automatically.")
         if name is None:
-            name = self.make_name("device")
+            name = self.make_name("lv")
         if size is None:
             size = random.randint(1, filesystem_group.get_size())
         if block_size is None:

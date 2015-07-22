@@ -13,10 +13,14 @@ str = None
 
 __metaclass__ = type
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import (
+    operation,
+    OperationsHandler,
+)
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
+    CreateLogicalVolumeForm,
     CreateVolumeGroupForm,
     UpdateVolumeGroupForm,
 )
@@ -172,3 +176,21 @@ class VolumeGroupHandler(OperationsHandler):
             system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
         volume_group.delete()
         return rc.DELETED
+
+    @operation(idempotent=False)
+    def create_logical_volume(self, request, system_id, volume_group_id):
+        """Create a logical volume in the volume group.
+
+        :param name: Name of the logical volume.
+        :param uuid: (optional) UUID of the logical volume.
+        :param size: Size of the logical volume.
+
+        Returns 404 if the node or volume group is not found.
+        """
+        volume_group = VolumeGroup.objects.get_object_or_404(
+            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+        form = CreateLogicalVolumeForm(volume_group, data=request.data)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        else:
+            return form.save()

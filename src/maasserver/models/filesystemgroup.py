@@ -40,6 +40,7 @@ from maasserver.enum import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import get_one
 
 
 class BaseFilesystemGroupManager(Manager):
@@ -103,6 +104,25 @@ class BaseFilesystemGroupManager(Manager):
         return self.filter(
             Q(filesystems__block_device__node=node) |
             partition_query).distinct()
+
+    def get_available_name_for(self, filesystem_group):
+        """Return an available name that can be used for a `VirtualBlockDevice`
+        based on the `filesystem_group`'s group_type and other block devices
+        on the node.
+        """
+        prefix = filesystem_group.get_virtual_block_device_prefix()
+        node = filesystem_group.get_node()
+        idx = -1
+        for filesystem_group in self.filter_by_node(
+                node).filter(name__startswith=prefix):
+            name = filesystem_group.name.replace(prefix, "")
+            try:
+                name_idx = int(name)
+            except ValueError:
+                pass
+            else:
+                idx = max(idx, name_idx)
+        return "%s%s" % (prefix, idx + 1)
 
 
 class FilesystemGroupManager(BaseFilesystemGroupManager):
@@ -222,7 +242,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Return the first `VirtualBlockDevice` since it is the only one.
             # Using 'all()' instead of 'first()' so that if it was precached
             # that cache will be used.
-            return self.virtual_devices.all()[0]
+            return get_one(self.virtual_devices.all())
 
     def get_node(self):
         """`Node` this filesystem group belongs to."""
@@ -505,6 +525,10 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Volume group cannot be smaller than its logical volumes.")
 
+        # Set the name correctly based on the type and generate a new UUID
+        # if needed.
+        if self.group_type is not None and self.name is None:
+            self.name = FilesystemGroup.objects.get_available_name_for(self)
         if not self.uuid:
             self.uuid = uuid4()
         super(FilesystemGroup, self).save(*args, **kwargs)
@@ -538,8 +562,14 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                         "deleted.")
         else:
             # For the other types we delete the virtual block device.
-            self.virtual_device.delete()
-        super(FilesystemGroup, self).delete()
+            virtual_device = self.virtual_device
+            if virtual_device is not None:
+                self.virtual_device.delete()
+
+        # Possible that the virtual block device has already deleted the
+        # filesystem group. Skip the call if no id is set.
+        if self.id is not None:
+            super(FilesystemGroup, self).delete()
 
     def get_virtual_block_device_prefix(self):
         """Return the prefix that should be used when creating a linked virtual
@@ -627,6 +657,16 @@ class VolumeGroup(FilesystemGroup):
             Filesystem.objects.create(
                 fstype=FILESYSTEM_TYPE.LVM_PV, partition=new_partition,
                 filesystem_group=self)
+
+    def create_logical_volume(self, name, size, uuid=None):
+        """Create a logical volume in this volume group."""
+        # Circular imports.
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+        return VirtualBlockDevice.objects.create(
+            node=self.get_node(),
+            name=name, uuid=uuid,
+            size=size, block_size=self.get_virtual_block_device_block_size(),
+            filesystem_group=self)
 
 
 class RAID(FilesystemGroup):
