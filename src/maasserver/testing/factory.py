@@ -31,6 +31,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -1266,11 +1267,13 @@ class Factory(maastesting.factory.Factory):
     def make_FilesystemGroup(
             self, uuid=None, group_type=None, name=None, create_params=None,
             filesystems=None, node=None, block_device_size=None,
-            num_lvm_devices=4):
+            cache_mode=None, num_lvm_devices=4):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
+        if group_type == FILESYSTEM_GROUP_TYPE.BCACHE and cache_mode is None:
+            cache_mode = self.pick_enum(CACHE_MODE_TYPE)
         group = FilesystemGroup(
-            uuid=uuid, group_type=group_type, name=name,
+            uuid=uuid, group_type=group_type, name=name, cache_mode=cache_mode,
             create_params=create_params)
         group.save()
         if filesystems is None:

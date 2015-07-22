@@ -33,6 +33,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    CACHE_MODE_TYPE_CHOICES,
     FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_GROUP_TYPE_CHOICES,
@@ -225,6 +226,10 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     create_params = CharField(
         max_length=255, null=True, blank=True)
+
+    cache_mode = CharField(
+        max_length=20, null=True, blank=True,
+        choices=CACHE_MODE_TYPE_CHOICES)
 
     def __unicode__(self):
         return '%s device %s %d' % (self.group_type, self.name, self.id)
@@ -513,6 +518,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if fstypes_counter != valid_counter:
             raise ValidationError(
                 "Bcache must contain one cache and one backing device.")
+        if self.cache_mode is None:
+            raise ValidationError('Cache mode must be set for Bcache groups.')
 
     def save(self, *args, **kwargs):
         # Prevent the group_type from changing. This is not supported and will

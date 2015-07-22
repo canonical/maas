@@ -13,6 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'CACHE_MODE_TYPE',
+    'CACHE_MODE_TYPE_CHOICES',
     'COMPONENT',
     'FILESYSTEM_GROUP_TYPE',
     'FILESYSTEM_GROUP_TYPE_CHOICES',
@@ -447,6 +449,22 @@ FILESYSTEM_GROUP_RAID_TYPE_CHOICES = (
 FILESYSTEM_GROUP_TYPE_CHOICES = FILESYSTEM_GROUP_RAID_TYPE_CHOICES + (
     (FILESYSTEM_GROUP_TYPE.LVM_VG, "LVM VG"),
     (FILESYSTEM_GROUP_TYPE.BCACHE, "Bcache"),
+    )
+
+
+class CACHE_MODE_TYPE:
+    """The vocabulary of possible types of cache."""
+    WRITEBACK = 'writeback'
+    WRITETHROUGH = 'writethrough'
+    WRITEAROUND = 'writearound'
+
+
+# Django choices for CACHE_MODE_TYPE: sequence of tuples (key, UI
+# representation).
+CACHE_MODE_TYPE_CHOICES = (
+    (CACHE_MODE_TYPE.WRITEBACK, 'Writeback'),
+    (CACHE_MODE_TYPE.WRITETHROUGH, 'Writethrough'),
+    (CACHE_MODE_TYPE.WRITEAROUND, 'Writearound'),
     )
 
 

@@ -24,6 +24,7 @@ from django.core.exceptions import (
 )
 from django.http import Http404
 from maasserver.enum import (
+    CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -307,6 +308,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             block_device=block_device_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
             filesystems=[filesystem_one, filesystem_two])
         filesystem_groups = (
             Bcache.objects.filter_by_block_device(
@@ -336,6 +338,7 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
             filesystems=[filesystem_one, filesystem_two])
         filesystem_groups = (
             Bcache.objects.filter_by_block_device(
@@ -476,6 +479,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             block_device=block_device_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
             filesystems=[filesystem_one, filesystem_two])
         filesystem_groups = (
             Bcache.objects.filter_by_node(node))
@@ -505,6 +509,7 @@ class TestManagersFilterByNode(MAASServerTestCase):
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK,
             filesystems=[filesystem_one, filesystem_two])
         filesystem_groups = (
             Bcache.objects.filter_by_node(node))
@@ -825,7 +830,8 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=backing_block_device),
         ]
         fsgroup = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, filesystems=filesystems)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK, filesystems=filesystems)
         self.assertEquals(backing_size, fsgroup.get_size())
 
     def test_is_lvm_returns_true_when_LVM_VG(self):
