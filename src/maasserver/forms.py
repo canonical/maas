@@ -39,7 +39,7 @@ __all__ = [
     "NodeGroupInterfaceForm",
     "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
-    "PhysicalBlockDeviceForm",
+    "CreatePhysicalBlockDeviceForm",
     "ReleaseIPForm",
     "SSHKeyForm",
     "SSLKeyForm",
@@ -2989,8 +2989,14 @@ class BytesField(forms.RegexField):
     """Validates and converts a byte value."""
 
     def __init__(self, *args, **kwargs):
-        self.min_value = kwargs.pop("min_value")
-        self.max_value = kwargs.pop("max_value")
+        if "min_value" in kwargs:
+            self.min_value = kwargs.pop("min_value")
+        else:
+            self.min_value = None
+        if "max_value" in kwargs:
+            self.max_value = kwargs.pop("max_value")
+        else:
+            self.max_value = None
         regex = r"^-?[0-9]+([KkMmGgTtPpEe]{1})?$"
         super(BytesField, self).__init__(regex, *args, **kwargs)
 
@@ -3196,38 +3202,101 @@ class MountPartitionForm(Form):
         return self.partition
 
 
-class PhysicalBlockDeviceForm(MAASModelForm):
-    """For validating and saving physical block devices"""
+class CreatePhysicalBlockDeviceForm(MAASModelForm):
+    """For creating physical block device."""
 
-    path = AbsolutePathField(required=False)
+    id_path = AbsolutePathField(required=False)
+    size = BytesField(required=True)
+    block_size = BytesField(required=True)
 
     class Meta:
         model = PhysicalBlockDevice
+        fields = [
+            "name",
+            "model",
+            "serial",
+            "id_path",
+            "size",
+            "block_size",
+        ]
 
     def __init__(self, node, *args, **kwargs):
-        super(PhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
+        super(CreatePhysicalBlockDeviceForm, self).__init__(*args, **kwargs)
         self.node = node
 
     def save(self):
-        block_device = super(PhysicalBlockDeviceForm, self).save(commit=False)
+        block_device = super(
+            CreatePhysicalBlockDeviceForm, self).save(commit=False)
         block_device.node = self.node
         block_device.save()
         return block_device
 
 
-class VirtualBlockDeviceForm(MAASModelForm):
-    """For validating and saving virtual block devices"""
+class UpdatePhysicalBlockDeviceForm(MAASModelForm):
+    """For updating physical block device."""
 
-    path = AbsolutePathField(required=False)
+    name = forms.CharField(required=False)
+    id_path = AbsolutePathField(required=False)
+    size = BytesField(required=False)
+    block_size = BytesField(required=False)
+
+    class Meta:
+        model = PhysicalBlockDevice
+        fields = [
+            "name",
+            "model",
+            "serial",
+            "id_path",
+            "size",
+            "block_size",
+        ]
+
+
+class UpdateVirtualBlockDeviceForm(MAASModelForm):
+    """For updating virtual block device."""
+
+    name = forms.CharField(required=False)
+    uuid = UUID4Field(required=False)
+    size = BytesField(required=False)
 
     class Meta:
         model = VirtualBlockDevice
+        fields = [
+            "name",
+            "uuid",
+            "size",
+        ]
+
+    def clean(self):
+        cleaned_data = super(UpdateVirtualBlockDeviceForm, self).clean()
+        is_logical_volume = self.instance.filesystem_group.is_lvm()
+        size_has_changed = (
+            'size' in self.cleaned_data and
+            self.cleaned_data['size'] and
+            self.cleaned_data['size'] != self.instance.size)
+        if not is_logical_volume and size_has_changed:
+            if 'size' in self.errors:
+                del self.errors['size']
+            raise ValidationError({
+                'size': ['Size cannot be changed on this device.']
+                })
+        return cleaned_data
+
+    def save(self):
+        block_device = super(
+            UpdateVirtualBlockDeviceForm, self).save(commit=False)
+        # blake_r: UUID field will not get set on the model for an unknown
+        # reason. Force the updating of the field here.
+        if 'uuid' in self.cleaned_data and self.cleaned_data['uuid']:
+            block_device.uuid = self.cleaned_data['uuid']
+        block_device.save()
+        return block_device
 
 
 class CreateRaidForm(Form):
     """For validating and saving a new RAID."""
 
-    name = forms.CharField(required=True)
+    name = forms.CharField(required=False)
     uuid = UUID4Field(required=False)
     level = forms.ChoiceField(
         choices=FILESYSTEM_GROUP_RAID_TYPE_CHOICES, required=True)

@@ -26,10 +26,11 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
 )
 from maasserver.forms import (
+    CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
     MountBlockDeviceForm,
-    PhysicalBlockDeviceForm,
-    VirtualBlockDeviceForm,
+    UpdatePhysicalBlockDeviceForm,
+    UpdateVirtualBlockDeviceForm,
 )
 from maasserver.models import (
     BlockDevice,
@@ -83,10 +84,22 @@ class BlockDevicesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request, system_id):
-        """Creates a PhysicalBlockDevice"""
+        """Create a physical block device.
+
+        :param name: Name of the block device.
+        :param model: Model of the block device.
+        :param serial: Serial number of the block device.
+        :param id_path: (optional) Only used if model and serial cannot be
+            provided. This should be a path that is fixed and doesn't change
+            depending on the boot order or kernel version.
+        :param size: Size of the block device.
+        :param block_size: Block size of the block device.
+
+        Returns 404 if the node is not found.
+        """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
-        form = PhysicalBlockDeviceForm(node, data=request.data)
+        form = CreatePhysicalBlockDeviceForm(node, data=request.data)
         if form.is_valid():
             return form.save()
         else:
@@ -169,24 +182,38 @@ class BlockDeviceHandler(OperationsHandler):
     def update(self, request, system_id, device_id):
         """Update block device on node.
 
+        Fields for physical block device:
+        :param name: Name of the block device.
+        :param model: Model of the block device.
+        :param serial: Serial number of the block device.
+        :param id_path: (optional) Only used if model and serial cannot be \
+            provided. This should be a path that is fixed and doesn't change \
+            depending on the boot order or kernel version.
+        :param size: Size of the block device.
+        :param block_size: Block size of the block device.
+
+        Fields for virtual block device:
+        :param name: Name of the block device.
+        :param uuid: UUID of the block device.
+        :param size: Size of the block device. (Only allowed for logical \
+            volumes.)
+
         Returns 404 if the node or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-
         if device.type == 'physical':
             if not request.user.is_superuser:
                 raise PermissionDenied()
-            form = PhysicalBlockDeviceForm(device.node,
-                                           instance=device,
-                                           data=request.data)
+            form = UpdatePhysicalBlockDeviceForm(
+                instance=device, data=request.data)
         elif device.type == 'virtual':
-            form = VirtualBlockDeviceForm(instance=device, data=request.data)
+            form = UpdateVirtualBlockDeviceForm(
+                instance=device, data=request.data)
         else:
             raise ValueError(
                 'Cannot update block device of type %s' % device.type)
-
         if form.is_valid():
             return form.save()
         else:

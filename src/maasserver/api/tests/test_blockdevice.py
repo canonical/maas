@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import random
 import uuid
 
 from django.core.urlresolvers import reverse
@@ -24,6 +25,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -732,12 +734,14 @@ class TestBlockDeviceAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         newname = factory.make_name("lv")
         block_device = factory.make_VirtualBlockDevice(
-            node=node, name=newname, block_size=1024)
+            node=node, name=newname)
         volume_group = block_device.filesystem_group
+        newsize = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
         uri = get_blockdevice_uri(block_device)
         response = self.client.put(uri, {
             'name': newname,
-            'block_size': 4096
+            'size': newsize
         })
         block_device = reload_object(block_device)
         self.assertEqual(
@@ -746,4 +750,4 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(parsed_device['id'], block_device.id)
         self.assertEqual(
             '%s-%s' % (volume_group.name, newname), parsed_device['name'])
-        self.assertEqual(4096, parsed_device['block_size'])
+        self.assertEqual(newsize, parsed_device['size'])

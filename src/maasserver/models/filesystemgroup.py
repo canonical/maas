@@ -110,7 +110,7 @@ class BaseFilesystemGroupManager(Manager):
         based on the `filesystem_group`'s group_type and other block devices
         on the node.
         """
-        prefix = filesystem_group.get_virtual_block_device_prefix()
+        prefix = filesystem_group.get_name_prefix()
         node = filesystem_group.get_node()
         idx = -1
         for filesystem_group in self.filter_by_node(
@@ -352,7 +352,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         else:
             return backing_filesystem.get_size()
 
-    def get_lvm_allocated_size(self):
+    def get_lvm_allocated_size(self, skip_volumes=[]):
         """Returns the space already allocated to virtual block devices.
 
         Calculated from the total size of all virtual block devices in this
@@ -361,11 +361,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         return sum(
             logical_volume.size
             for logical_volume in self.virtual_devices.all()
+            if logical_volume not in skip_volumes
         )
 
-    def get_lvm_free_space(self):
+    def get_lvm_free_space(self, skip_volumes=[]):
         """Returns the total unallocated space on this FilesystemGroup"""
-        return self.get_lvm_size() - self.get_lvm_allocated_size()
+        return self.get_lvm_size() - self.get_lvm_allocated_size(
+            skip_volumes=skip_volumes)
 
     def clean(self, *args, **kwargs):
         super(FilesystemGroup, self).clean(*args, **kwargs)
@@ -571,11 +573,11 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if self.id is not None:
             super(FilesystemGroup, self).delete()
 
-    def get_virtual_block_device_prefix(self):
-        """Return the prefix that should be used when creating a linked virtual
-        block device."""
+    def get_name_prefix(self):
+        """Return the prefix that should be used when setting the name of
+        this FilesystemGroup."""
         if self.is_lvm():
-            return "lv"
+            return "vg"
         elif self.is_raid():
             return "md"
         elif self.is_bcache():

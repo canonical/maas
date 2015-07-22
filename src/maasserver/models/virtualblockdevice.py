@@ -110,7 +110,8 @@ class VirtualBlockDevice(BlockDevice):
         # Check if the size of this is not larger than the free size of
         # its filesystem group if its lvm.
         if (self.filesystem_group.is_lvm() and
-                self.size > self.filesystem_group.get_lvm_free_space()):
+                self.size > self.filesystem_group.get_lvm_free_space(
+                    skip_volumes=[self])):
             raise ValidationError(
                 "There is not enough free space (%s) "
                 "on volume group %s." % (

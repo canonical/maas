@@ -29,7 +29,6 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertDictContainsSubset(
             {
                 'level': ['This field is required.'],
-                'name': ['This field is required.']
             },
             form.errors)
 

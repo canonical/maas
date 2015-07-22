@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 import uuid
 
 from maasserver.enum import (
@@ -22,14 +23,19 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
 )
 from maasserver.forms import (
+    CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
     MountBlockDeviceForm,
+    UpdatePhysicalBlockDeviceForm,
+    UpdateVirtualBlockDeviceForm,
 )
 from maasserver.models import Filesystem
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
+from testtools.matchers import MatchesStructure
 
 
 class TestFormatBlockDeviceForm(MAASServerTestCase):
@@ -251,3 +257,130 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         form.save()
         filesystem = reload_object(filesystem)
         self.assertEquals(mount_point, filesystem.mount_point)
+
+
+class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
+
+    def test_requires_fields(self):
+        node = factory.make_Node()
+        form = CreatePhysicalBlockDeviceForm(node, data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            'name': ['This field is required.'],
+            'size': ['This field is required.'],
+            'block_size': ['This field is required.'],
+            '__all__': [
+                'serial/model are required if id_path is not provided.'],
+            }, form.errors)
+
+    def test_creates_physical_block_device_with_model_serial(self):
+        node = factory.make_Node()
+        name = factory.make_name("sd")
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 10)
+        block_size = 4096
+        form = CreatePhysicalBlockDeviceForm(node, data={
+            'name': name,
+            'model': model,
+            'serial': serial,
+            'size': size,
+            'block_size': block_size,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            model=model,
+            serial=serial,
+            size=size,
+            block_size=block_size,
+            ))
+
+    def test_creates_physical_block_device_with_id_path(self):
+        node = factory.make_Node()
+        name = factory.make_name("sd")
+        id_path = factory.make_absolute_path()
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 10)
+        block_size = 4096
+        form = CreatePhysicalBlockDeviceForm(node, data={
+            'name': name,
+            'id_path': id_path,
+            'size': size,
+            'block_size': block_size,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            id_path=id_path,
+            size=size,
+            block_size=block_size,
+            ))
+
+
+class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
+
+    def test_requires_no_fields(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        form = UpdatePhysicalBlockDeviceForm(instance=block_device, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertItemsEqual([], form.errors.keys())
+
+    def test_updates_physical_block_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        name = factory.make_name("sd")
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        id_path = factory.make_absolute_path()
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 10)
+        block_size = 4096
+        form = UpdatePhysicalBlockDeviceForm(instance=block_device, data={
+            'name': name,
+            'model': model,
+            'serial': serial,
+            'id_path': id_path,
+            'size': size,
+            'block_size': block_size,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            model=model,
+            serial=serial,
+            id_path=id_path,
+            size=size,
+            block_size=block_size,
+            ))
+
+
+class TestUpdateVirtualBlockDeviceForm(MAASServerTestCase):
+
+    def test_requires_no_fields(self):
+        block_device = factory.make_VirtualBlockDevice()
+        form = UpdateVirtualBlockDeviceForm(instance=block_device, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertItemsEqual([], form.errors.keys())
+
+    def test_updates_virtual_block_device(self):
+        block_device = factory.make_VirtualBlockDevice()
+        name = factory.make_name("lv")
+        vguuid = "%s" % uuid.uuid4()
+        size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, block_device.filesystem_group.get_size())
+        form = UpdateVirtualBlockDeviceForm(instance=block_device, data={
+            'name': name,
+            'uuid': vguuid,
+            'size': size,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            uuid=vguuid,
+            size=size,
+            ))

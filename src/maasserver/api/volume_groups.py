@@ -74,6 +74,8 @@ class VolumeGroupsHandler(OperationsHandler):
         :param uuid: (optional) UUID of the volume group.
         :param block_devices: Block devices to add to the volume group.
         :param partitions: Partitions to add to the volume group.
+
+        Returns 404 if the node is not found.
         """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)

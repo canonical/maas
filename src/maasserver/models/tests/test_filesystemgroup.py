@@ -523,7 +523,7 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         filesystem_group.save()
-        prefix = filesystem_group.get_virtual_block_device_prefix()
+        prefix = filesystem_group.get_name_prefix()
         current_idx = int(
             filesystem_group.name.replace(prefix, ""))
         self.assertEquals(
@@ -535,7 +535,7 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         filesystem_group.save()
-        prefix = filesystem_group.get_virtual_block_device_prefix()
+        prefix = filesystem_group.get_name_prefix()
         filesystem_group.name = "%s%s" % (prefix, factory.make_name("bad"))
         filesystem_group.save()
         self.assertEquals(
@@ -1407,12 +1407,12 @@ class TestFilesystemGroup(MAASServerTestCase):
             "VirtualBlockDevice should have been deleted.")
 
 
-class TestFilesystemGroupGetVirtualBlockDevicePrefix(MAASServerTestCase):
+class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
 
     scenarios = [
         (FILESYSTEM_GROUP_TYPE.LVM_VG, {
             "group_type": FILESYSTEM_GROUP_TYPE.LVM_VG,
-            "prefix": "lv",
+            "prefix": "vg",
             }),
         (FILESYSTEM_GROUP_TYPE.RAID_0, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_0,
@@ -1444,7 +1444,7 @@ class TestFilesystemGroupGetVirtualBlockDevicePrefix(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=self.group_type)
         self.assertEquals(
-            self.prefix, filesystem_group.get_virtual_block_device_prefix())
+            self.prefix, filesystem_group.get_name_prefix())
 
 
 class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
