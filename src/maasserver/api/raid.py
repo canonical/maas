@@ -19,7 +19,10 @@ from maasserver.enum import (
     NODE_PERMISSION,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import CreateRaidForm
+from maasserver.forms import (
+    CreateRaidForm,
+    UpdateRaidForm,
+)
 from maasserver.models import (
     Node,
     RAID,
@@ -42,7 +45,7 @@ DISPLAYED_RAID_FIELDS = (
 
 
 class RaidsHandler(OperationsHandler):
-    """Manage RAID devices on a node."""
+    """Manage all RAID devices on a node."""
     api_doc_section_name = "RAID Devices"
     update = delete = None
     fields = DISPLAYED_RAID_FIELDS
@@ -54,6 +57,14 @@ class RaidsHandler(OperationsHandler):
 
     def create(self, request, system_id):
         """Creates a RAID
+
+        :param name: Name of the RAID.
+        :param uuid: UUID of the RAID.
+        :param level: RAID level.
+        :param block_devices: Block devices to add to the RAID.
+        :param spare_devices: Spare block devices to add to the RAID.
+        :param partitions: Partitions to add to the RAID.
+        :param spare_partitions: Spare partitions to add to the RAID.
 
         Returns 404 if the node is not found.
         """
@@ -76,9 +87,9 @@ class RaidsHandler(OperationsHandler):
 
 
 class RaidHandler(OperationsHandler):
-    """Manage RAID device on a node."""
+    """Manage a specific RAID device on a node."""
     api_doc_section_name = "RAID Device"
-    create = update = None
+    create = None
     model = RAID
     fields = DISPLAYED_RAID_FIELDS
 
@@ -139,6 +150,32 @@ class RaidHandler(OperationsHandler):
         """
         return RAID.objects.get_object_or_404(
             system_id, raid_id, request.user, NODE_PERMISSION.VIEW)
+
+    def update(self, request, system_id, raid_id):
+        """Update RAID on node.
+
+        :param name: Name of the RAID.
+        :param uuid: UUID of the RAID.
+        :param add_block_devices: Block devices to add to the RAID.
+        :param remove_block_devices: Block devices to remove from the RAID.
+        :param add_spare_devices: Spare block devices to add to the RAID.
+        :param remove_spare_devices: Spare block devices to remove
+               from the RAID.
+        :param add_partitions: Partitions to add to the RAID.
+        :param remove_partitions: Partitions to remove from the RAID.
+        :param add_spare_partitions: Spare partitions to add to the RAID.
+        :param remove_spare_partitions: Spare partitions to remove from the
+               RAID.
+
+        Returns 404 if the node or RAID is not found.
+        """
+        raid = RAID.objects.get_object_or_404(
+            system_id, raid_id, request.user, NODE_PERMISSION.EDIT)
+        form = UpdateRaidForm(raid, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, system_id, raid_id):
         """Delete RAID on node.

@@ -1214,19 +1214,24 @@ class Factory(maastesting.factory.Factory):
             node=node, name=name, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial)
 
-    def make_PartitionTable(self, table_type=None, block_device=None):
+    def make_PartitionTable(
+            self, table_type=None, block_device=None, node=None,
+            block_device_size=None):
         if table_type is None:
             table_type = self.pick_enum(PARTITION_TABLE_TYPE)
         if block_device is None:
-            block_device = self.make_PhysicalBlockDevice()
+            block_device = self.make_PhysicalBlockDevice(
+                node=node, size=block_device_size)
         return PartitionTable.objects.create(
             table_type=table_type, block_device=block_device)
 
     def make_Partition(
             self, partition_table=None, uuid=None, start_offset=None,
-            size=None, bootable=None, partition_number=None):
+            size=None, bootable=None, partition_number=None, node=None,
+            block_device_size=None):
         if partition_table is None:
-            partition_table = self.make_PartitionTable()
+            partition_table = self.make_PartitionTable(
+                node=node, block_device_size=block_device_size)
         if start_offset is None:
             start_offset = random.randint(0, partition_table.get_size() - 2)
         if size is None:

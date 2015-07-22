@@ -1810,6 +1810,305 @@ class TestRAID(MAASServerTestCase):
                 spare_devices=[],
                 spare_partitions=[])
 
+    def test_add_device_to_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
+        raid.add_device(device, FILESYSTEM_TYPE.RAID)
+        self.assertEqual(11, raid.filesystems.count())
+        self.assertEqual(10 * device_size, raid.get_size())
+
+    def test_add_spare_device_to_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
+        raid.add_device(device, FILESYSTEM_TYPE.RAID_SPARE)
+        self.assertEqual(11, raid.filesystems.count())
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_add_partition_to_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node, size=device_size)).add_partition()
+        raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
+        self.assertEqual(11, raid.filesystems.count())
+        self.assertEqual(10 * device_size, raid.get_size())
+
+    def test_add_spare_partition_to_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node, size=device_size)).add_partition()
+        raid.add_partition(partition, FILESYSTEM_TYPE.RAID_SPARE)
+        self.assertEqual(11, raid.filesystems.count())
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_add_device_from_another_node_to_array_fails(self):
+        node = factory.make_Node()
+        other_node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        device = factory.make_PhysicalBlockDevice(
+            node=other_node, size=device_size)
+        with ExpectedException(
+            ValidationError,
+            re.escape(
+                "[u'Device needs to be from the same node as the rest of the "
+                "array.']")):
+            raid.add_device(device, FILESYSTEM_TYPE.RAID)
+        self.assertEqual(10, raid.filesystems.count())  # Still 10 devices
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_add_partition_from_another_node_to_array_fails(self):
+        node = factory.make_Node()
+        other_node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=other_node, size=device_size)).add_partition()
+        with ExpectedException(
+                ValidationError,
+            re.escape(
+                "[u'Partition must be on a device from the same node as the "
+                "rest of the array.']")):
+            raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
+        self.assertEqual(10, raid.filesystems.count())  # Nothing added
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_add_already_used_device_to_array_fails(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
+        Filesystem.objects.create(
+            block_device=device, mount_point='/export/home',
+            fstype=FILESYSTEM_TYPE.EXT4)
+        with ExpectedException(
+            ValidationError,
+            re.escape(
+                "[u'There is another filesystem on this device.']")):
+            raid.add_device(device, FILESYSTEM_TYPE.RAID)
+        self.assertEqual(10, raid.filesystems.count())  # Nothing added.
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_remove_device_from_array_invalidates_array_fails(self):
+        """Checks it's not possible to remove a device from an RAID in such way
+        as to make the RAID invalid (a 1-device RAID-0/1, a 2-device RAID-5
+        etc). The goal is to make sure we trigger the RAID internal validation.
+        """
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(4)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_6,
+            uuid=uuid,
+            block_devices=block_devices)
+        fsids_before = [fs.id for fs in raid.filesystems.all()]
+        with ExpectedException(
+            ValidationError,
+            re.escape(
+                "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                "devices and any number of spares.']}")):
+            raid.remove_device(block_devices[0])
+        self.assertEqual(4, raid.filesystems.count())
+        self.assertEqual(2 * device_size, raid.get_size())
+        # Ensure the filesystems are the exact same before and after.
+        self.assertItemsEqual(
+            fsids_before, [fs.id for fs in raid.filesystems.all()])
+
+    def test_remove_partition_from_array_invalidates_array_fails(self):
+        """Checks it's not possible to remove a partition from an RAID in such
+        way as to make the RAID invalid (a 1-device RAID-0/1, a 2-device RAID-5
+        etc). The goal is to make sure we trigger the RAID internal validation.
+        """
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        partitions = [
+            factory.make_PartitionTable(
+                block_device=factory.make_PhysicalBlockDevice(
+                    node=node, size=device_size)).add_partition()
+            for _ in range(4)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_6,
+            uuid=uuid,
+            partitions=partitions)
+        fsids_before = [fs.id for fs in raid.filesystems.all()]
+        with ExpectedException(
+            ValidationError,
+            re.escape(
+                "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                "devices and any number of spares.']}")):
+            raid.remove_partition(partitions[0])
+        self.assertEqual(4, raid.filesystems.count())
+        self.assertEqual(2 * device_size, raid.get_size())
+        # Ensure the filesystems are the exact same before and after.
+        self.assertItemsEqual(
+            fsids_before, [fs.id for fs in raid.filesystems.all()])
+
+    def test_remove_device_from_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices[:-2],
+            spare_devices=block_devices[-2:])
+        raid.remove_device(block_devices[0])
+        self.assertEqual(9, raid.filesystems.count())
+        self.assertEqual(6 * device_size, raid.get_size())
+
+    def test_remove_partition_from_array(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        partitions = [
+            factory.make_PartitionTable(
+                block_device=factory.make_PhysicalBlockDevice(
+                    node=node, size=device_size)).add_partition()
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            partitions=partitions[:-2],
+            spare_partitions=partitions[-2:])
+        raid.remove_partition(partitions[0])
+        self.assertEqual(9, raid.filesystems.count())
+        self.assertEqual(6 * device_size, raid.get_size())
+
+    def test_remove_invalid_partition_from_array_fails(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        partitions = [
+            factory.make_PartitionTable(
+                block_device=factory.make_PhysicalBlockDevice(
+                    node=node, size=device_size)).add_partition()
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            partitions=partitions)
+        with ExpectedException(
+            ValidationError,
+            re.escape(
+                "[u'Partition does not belong to this array.']")):
+            raid.remove_partition(
+                factory.make_PartitionTable(
+                    block_device=factory.make_PhysicalBlockDevice(
+                        node=node, size=device_size)).add_partition())
+        self.assertEqual(10, raid.filesystems.count())
+        self.assertEqual(9 * device_size, raid.get_size())
+
+    def test_remove_device_from_array_fails(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        uuid = unicode(uuid4())
+        raid = RAID.objects.create_raid(
+            name='md0',
+            level=FILESYSTEM_GROUP_TYPE.RAID_5,
+            uuid=uuid,
+            block_devices=block_devices)
+        with ExpectedException(
+                ValidationError,
+                re.escape("[u'Device does not belong to this array.']")):
+            raid.remove_device(
+                factory.make_PhysicalBlockDevice(node=node, size=device_size))
+        self.assertEqual(10, raid.filesystems.count())
+        self.assertEqual(9 * device_size, raid.get_size())
+
 
 class TestBcache(MAASServerTestCase):
 

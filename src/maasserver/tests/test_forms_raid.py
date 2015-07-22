@@ -14,10 +14,47 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.enum import FILESYSTEM_GROUP_TYPE
-from maasserver.forms import CreateRaidForm
+import random
+from uuid import uuid4
+
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+)
+from maasserver.forms import (
+    CreateRaidForm,
+    UpdateRaidForm,
+)
+from maasserver.models.filesystemgroup import RAID
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+
+
+def _make_interesting_RAID(
+        node, level=FILESYSTEM_GROUP_TYPE.RAID_6, num_devices=10,
+        num_partitions=10, num_spare_devices=2, num_spare_partitions=2):
+    """Returns a RAID that is interesting for our tests."""
+    size = 1000 ** 4  # A Terabyte.
+    block_devices = [factory.make_BlockDevice(node=node, size=size)
+                     for _ in range(num_devices)]
+    partitions = [factory.make_Partition(node=node, block_device_size=size)
+                  for _ in range(num_partitions)]
+    spare_devices = [factory.make_BlockDevice(node=node, size=size)
+                     for _ in range(num_spare_devices)]
+    spare_partitions = [
+        factory.make_Partition(node=node, block_device_size=size)
+        for _ in range(num_spare_partitions)
+    ]
+
+    return RAID.objects.create_raid(
+        name='md%d' % random.randint(1, 1000),
+        level=level,
+        uuid=uuid4(),
+        block_devices=block_devices,
+        partitions=partitions,
+        spare_devices=spare_devices,
+        spare_partitions=spare_partitions
+    )
 
 
 class TestCreateRaidForm(MAASServerTestCase):
@@ -122,3 +159,174 @@ class TestCreateRaidForm(MAASServerTestCase):
                                  'be added to the array.']
                 },
                 form.errors)
+
+
+class TestUpdateRaidForm(MAASServerTestCase):
+
+    # Add devices and partitions
+    def test_add_valid_blockdevice(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new blockdevices to the node.
+        bd_ids = [factory.make_BlockDevice(node=raid.get_node()).id
+                  for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_block_devices': bd_ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_valid_partition(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new partitions to the node.
+        part_ids = [factory.make_Partition(node=raid.get_node()).id
+                    for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_partitions': part_ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_valid_spare_device(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new blockdevices to the node.
+        bd_ids = [factory.make_BlockDevice(node=raid.get_node()).id
+                  for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_spare_devices': bd_ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_valid_spare_partition(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new partitions to the node.
+        part_ids = [factory.make_Partition(node=raid.get_node()).id
+                    for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_spare_partitions': part_ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_invalid_blockdevice_fails(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new blockdevices to other nodes.
+        bd_ids = [factory.make_BlockDevice().id for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_block_devices': bd_ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('add_block_devices', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['add_block_devices'][0])
+
+    def test_add_invalid_spare_blockdevice_fails(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new blockdevices to other nodes.
+        bd_ids = [factory.make_BlockDevice().id for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_spare_devices': bd_ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('add_spare_devices', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['add_spare_devices'][0])
+
+    def test_add_invalid_partition_fails(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new partitions to other nodes.
+        part_ids = [factory.make_Partition().id for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_partitions': part_ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('add_partitions', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['add_partitions'][0])
+
+    def test_add_invalid_spare_partition_fails(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new partitions to other nodes.
+        part_ids = [factory.make_Partition().id for _ in range(5)]
+        form = UpdateRaidForm(raid, data={'add_spare_partitions': part_ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('add_spare_partitions', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['add_spare_partitions'][0])
+
+    # Removal tests
+
+    def test_remove_valid_blockdevice(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [
+            fs.block_device.id
+            for fs in raid.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.RAID).exclude(block_device=None)[:2]
+        ]  # Select 2 items for removal
+        form = UpdateRaidForm(raid, data={'remove_block_devices': ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_remove_valid_partition(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [
+            fs.partition.id
+            for fs in raid.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.RAID).exclude(partition=None)[:2]
+        ]  # Select 2 items for removal
+        form = UpdateRaidForm(raid, data={'remove_partitions': ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_remove_valid_spare_device(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [
+            fs.block_device.id
+            for fs in raid.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.RAID_SPARE)
+            .exclude(block_device=None)[:2]
+        ]  # Select 2 items for removal
+        form = UpdateRaidForm(raid, data={'remove_block_devices': ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_remove_valid_spare_partition(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [
+            fs.partition.id
+            for fs in raid.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.RAID_SPARE).exclude(partition=None)[:2]
+        ]  # Select 2 items for removal
+        form = UpdateRaidForm(raid, data={'remove_partitions': ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_remove_invalid_blockdevice_fails(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [factory.make_BlockDevice().id for _ in range(2)]
+        form = UpdateRaidForm(raid, data={'remove_block_devices': ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('remove_block_devices', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['remove_block_devices'][0])
+
+    def test_remove_invalid_spare_blockdevice_fails(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [factory.make_BlockDevice().id for _ in range(2)]
+        form = UpdateRaidForm(raid, data={'remove_spare_devices': ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('remove_spare_devices', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['remove_spare_devices'][0])
+
+    def test_remove_invalid_partition_fails(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [factory.make_Partition().id for _ in range(2)]
+        form = UpdateRaidForm(raid, data={'remove_partitions': ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('remove_partitions', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['remove_partitions'][0])
+
+    def test_remove_invalid_spare_partition_fails(self):
+        raid = _make_interesting_RAID(node=factory.make_Node())
+        ids = [factory.make_Partition().id for _ in range(2)]
+        form = UpdateRaidForm(raid, data={'remove_spare_partitions': ids})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn('remove_spare_partitions', form.errors)
+        self.assertIn(
+            'is not one of the available choices.',
+            form.errors['remove_spare_partitions'][0])

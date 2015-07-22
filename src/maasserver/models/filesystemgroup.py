@@ -226,6 +226,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     create_params = CharField(
         max_length=255, null=True, blank=True)
 
+    def __unicode__(self):
+        return '%s device %s %d' % (self.group_type, self.name, self.id)
+
     @property
     def virtual_device(self):
         """Return the linked `VirtualBlockDevice`.
@@ -321,7 +324,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 return min_size * (num_raid - 1)
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
                 return min_size * (num_raid - 2)
-        raise ValueError("Unknown raid type: %s" % self.group_type)
+        raise ValidationError("Unknown raid type: %s" % self.group_type)
 
     def get_bcache_backing_filesystem(self):
         """Return the filesystem that is the backing device for the Bcache."""
@@ -583,7 +586,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         elif self.is_bcache():
             return "bcache"
         else:
-            raise ValueError("Unknown group_type.")
+            raise ValidationError("Unknown group_type.")
 
     def get_virtual_block_device_block_size(self):
         """Return the block size that should be used on a created
@@ -598,7 +601,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Bcache uses the block_size of the backing device.
             return self.get_bcache_backing_filesystem().get_block_size()
         else:
-            raise ValueError("Unknown group_type.")
+            raise ValidationError("Unknown group_type.")
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy classes so that we can specialize how all the
@@ -683,6 +686,89 @@ class RAID(FilesystemGroup):
         super(RAID, self).__init__(*args, **kwargs)
         if self.group_type not in FILESYSTEM_GROUP_RAID_TYPES:
             raise ValueError("group_type must be a valid RAID type.")
+
+    def add_device(self, device, fstype):
+        """Adds a device to the array, creates the correct filesystem."""
+        # Avoid circular import.
+        from maasserver.models.filesystem import Filesystem
+        if device.node != self.get_node():
+            raise ValidationError(
+                "Device needs to be from the same node as the rest of the "
+                "array.")
+        elif device.filesystem is not None:
+            raise ValidationError(
+                "There is another filesystem on this device.")
+        else:
+            Filesystem.objects.create(
+                block_device=device, fstype=fstype, filesystem_group=self)
+        return self
+
+    def add_partition(self, partition, fstype):
+        """Adds a partition to the array, creates the correct filesystem."""
+        # Avoid circular import.
+        from maasserver.models.filesystem import Filesystem
+        if partition.get_node() != self.get_node():
+            raise ValidationError(
+                "Partition must be on a device from the same node as the rest "
+                "of the array.")
+        elif partition.filesystem is not None:
+            raise ValidationError(
+                "There is another filesystem on this partition.")
+        else:
+            Filesystem.objects.create(
+                partition=partition, fstype=fstype, filesystem_group=self)
+        return self
+
+    def remove_device(self, device):
+        """Removes the device from the RAID, removes the RAID filesystem.
+
+        Raises a ValidationError if the device is not part of the array or if
+        the array becomes invalid with the deletion.
+        """
+        if (device.filesystem is None
+                or device.filesystem.filesystem_group_id != self.id):
+            raise ValidationError("Device does not belong to this array.")
+        else:
+            # If validation passes, delete the filesystem.
+            self.filesystems.remove(device.filesystem)
+
+        try:
+            self.save()  # Force validation.
+        except ValidationError:
+            # If we had a ValidationError, we need to reattach the Filesystem
+            # to the FilesystemGroup.
+            self.filesystems.add(device.filesystem)
+            raise
+        else:
+            # If validation passes, delete the filesystem.
+            device.filesystem.delete()
+
+        return self
+
+    def remove_partition(self, partition):
+        """Removes the partition from the RAID, removes the RAID filesystem.
+
+        Raises a ValidationError if the device is not part of the array or if
+        the array becomes invalid with the deletion.
+        """
+        if (partition.filesystem is None
+                or partition.filesystem.filesystem_group_id != self.id):
+            raise ValidationError("Partition does not belong to this array.")
+        elif partition.filesystem is not None:
+            self.filesystems.remove(partition.filesystem)
+
+        try:
+            self.save()  # Force validation.
+        except ValidationError:
+            # If we had a ValidationError, we need to reattach the Filesystem
+            # to the FilesystemGroup.
+            self.filesystems.add(partition.filesystem)
+            raise
+        else:
+            # If validation passes, delete the filesystem.
+            partition.filesystem.delete()
+
+        return self
 
 
 class Bcache(FilesystemGroup):

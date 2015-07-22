@@ -23,6 +23,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
+from maasserver.models.filesystem import Filesystem
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -665,6 +666,279 @@ class TestRaidAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_rename_raid(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_5)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'name': 'raid0'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual('raid0', parsed_device['name'])
+
+    def test_change_raid_uuid(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        uuid4 = unicode(uuid.uuid4())
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'uuid': uuid4})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(uuid4, parsed_device['uuid'])
+
+    def test_add_valid_blockdevice(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'add_block_devices': [device.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is now part of the array.
+        self.assertIn(
+            device.id,
+            [
+                bd['id'] for bd in parsed_device['devices']
+                if bd['type'] == 'physical'
+                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+            ])
+
+    def test_remove_valid_blockdevice(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        Filesystem.objects.create(
+            block_device=device, filesystem_group=raid,
+            fstype=FILESYSTEM_TYPE.RAID)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'remove_block_devices': [device.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is not part of the array.
+        self.assertNotIn(
+            device.id,
+            [
+                bd['id'] for bd in parsed_device['devices']
+                if bd['type'] == 'physical'
+                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+            ])
+
+    def test_add_valid_partition(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'add_partitions': [partition.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new partition is now part of the array.
+        self.assertIn(
+            partition.id,
+            [
+                p['id'] for p in parsed_device['devices']
+                if p['type'] == 'partition'
+                and p['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+            ])
+
+    def test_remove_valid_partition(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        Filesystem.objects.create(
+            partition=partition, filesystem_group=raid,
+            fstype=FILESYSTEM_TYPE.RAID)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'remove_partitions': [partition.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is not part of the array.
+        self.assertNotIn(
+            partition.id,
+            [
+                bd['id'] for bd in parsed_device['spare_devices']
+                if bd['type'] == 'partition'
+                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+            ])
+
+    def test_add_valid_spare_device(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'add_spare_devices': [device.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is now part of the array.
+        self.assertIn(
+            device.id,
+            [
+                bd['id'] for bd in parsed_device['spare_devices']
+                if bd['type'] == 'physical'
+            ])
+
+    def test_remove_valid_spare_device(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        Filesystem.objects.create(
+            block_device=device, filesystem_group=raid,
+            fstype=FILESYSTEM_TYPE.RAID_SPARE)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'remove_spare_devices': [device.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is not part of the array.
+        self.assertNotIn(
+            device.id,
+            [
+                bd['id'] for bd in parsed_device['spare_devices']
+                if bd['type'] == 'physical'
+                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
+            ])
+
+    def test_add_valid_spare_partition(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'add_spare_partitions': [partition.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new partition is now part of the array.
+        self.assertIn(
+            partition.id,
+            [
+                p['id'] for p in parsed_device['spare_devices']
+                if p['type'] == 'partition'
+            ])
+
+    def test_remove_valid_spare_partition(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        Filesystem.objects.create(
+            partition=partition, filesystem_group=raid,
+            fstype=FILESYSTEM_TYPE.RAID_SPARE)
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'remove_spare_partitions': [partition.id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # Makes sure our new device is not part of the array.
+        self.assertNotIn(
+            partition.id,
+            [
+                bd['id'] for bd in parsed_device['spare_devices']
+                if bd['type'] == 'partition'
+                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
+            ])
+
+    def test_add_invalid_blockdevice_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice()  # From another node.
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'add_block_devices': [device.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_remove_invalid_blockdevice_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice()  # From another node.
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'remove_block_devices': [device.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_add_invalid_partition_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice()).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'add_partitions': [partition.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_remove_invalid_partition_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice()).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'remove_partitions': [partition.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_add_invalid_spare_device_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice()  # From another node.
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'add_spare_devices': [device.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_remove_invalid_spare_device_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        device = factory.make_PhysicalBlockDevice()  # From another node.
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(uri, {'remove_spare_devices': [device.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_add_invalid_spare_partition_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice()).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'add_spare_partitions': [partition.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_remove_invalid_spare_partition_fails(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        raid = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice()).add_partition()
+        uri = get_raid_device_uri(raid, node)
+        response = self.client.put(
+            uri, {'remove_spare_partitions': [partition.id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
 
     def test_delete_deletes_raid(self):
         node = factory.make_Node(owner=self.logged_in_user)
