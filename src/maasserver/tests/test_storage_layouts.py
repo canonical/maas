@@ -26,11 +26,14 @@ from maasserver.storage_layouts import (
     DEFAULT_BOOT_PARTITION_SIZE,
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
+    get_storage_layout_choices,
+    get_storage_layout_for_node,
     is_precentage,
     MIN_BOOT_PARTITION_SIZE,
     MIN_ROOT_PARTITION_SIZE,
     StorageLayoutBase,
     StorageLayoutFieldsError,
+    StorageLayoutForm,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -46,6 +49,34 @@ def round_size_by_blocks(size, block_size):
     if size % block_size > 0:
         number_of_blocks += 1
     return number_of_blocks * block_size
+
+
+class TestFormHelpers(MAASServerTestCase):
+
+    def test_get_storage_layout_choices(self):
+        self.assertItemsEqual([
+            ("flat", "Flat layout"),
+            ], get_storage_layout_choices())
+
+    def test_get_storage_layout_for_node(self):
+        node = factory.make_Node()
+        layout = get_storage_layout_for_node("flat", node)
+        self.assertIsInstance(layout, FlatStorageLayout)
+        self.assertEquals(node, layout.node)
+
+
+class TestStorageLayoutForm(MAASServerTestCase):
+
+    def test__field_is_not_required(self):
+        form = StorageLayoutForm(required=False, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test__field_is_required(self):
+        form = StorageLayoutForm(required=True, data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            'storage_layout': ['This field is required.'],
+            }, form.errors)
 
 
 class TestIsPrecentageHelper(MAASServerTestCase):

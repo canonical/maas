@@ -16,7 +16,10 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
-from django.forms import Form
+from django.forms import (
+    ChoiceField,
+    Form,
+)
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.fields_storage import (
@@ -24,8 +27,7 @@ from maasserver.fields_storage import (
     calculate_size_from_precentage,
     is_precentage,
 )
-from maasserver.models.filesystem import Filesystem
-from maasserver.models.partitiontable import PartitionTable
+from maasserver.utils.forms import compose_invalid_choice_text
 
 
 EFI_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB
@@ -159,6 +161,9 @@ class FlatStorageLayout(StorageLayoutBase):
     """
 
     def configure_storage(self):
+        # Circular imports.
+        from maasserver.models.filesystem import Filesystem
+        from maasserver.models.partitiontable import PartitionTable
         boot_disk = self.get_boot_disk()
         partition_table = PartitionTable.objects.create(
             block_device=boot_disk)
@@ -186,9 +191,9 @@ class FlatStorageLayout(StorageLayoutBase):
 
 
 # Holds all the storage layouts that can be used.
-STORAGE_LAYOUTS = [
-    ("flat", "Flat layout", FlatStorageLayout)
-    ]
+STORAGE_LAYOUTS = {
+    "flat": ("Flat layout", FlatStorageLayout),
+    }
 
 
 def get_storage_layout_choices():
@@ -198,5 +203,30 @@ def get_storage_layout_choices():
     """
     return [
         (name, title)
-        for name, title, klass in STORAGE_LAYOUTS
+        for name, (title, klass) in STORAGE_LAYOUTS.items()
     ]
+
+
+def get_storage_layout_for_node(name, node, params={}):
+    """Get the storage layout object from its name."""
+    if name in STORAGE_LAYOUTS:
+        return STORAGE_LAYOUTS[name][1](node, params=params)
+    else:
+        return None
+
+
+class StorageLayoutForm(Form):
+    """Form to validate the `storage_layout` parameter."""
+
+    def __init__(self, *args, **kwargs):
+        required = kwargs.pop('required', False)
+        super(StorageLayoutForm, self).__init__(*args, **kwargs)
+        self.setup_field(required=required)
+
+    def setup_field(self, required=False):
+        choices = get_storage_layout_choices()
+        invalid_choice_message = compose_invalid_choice_text(
+            'storage_layout', choices)
+        self.fields['storage_layout'] = ChoiceField(
+            choices=choices, required=required,
+            error_messages={'invalid_choice': invalid_choice_message})

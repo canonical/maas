@@ -46,6 +46,7 @@ from maasserver.models.user import (
     get_auth_tokens,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.testing.api import (
     APITestCase,
     MultipleUsersScenarios,
@@ -59,11 +60,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
+from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.twisted import always_succeed_with
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+)
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -1231,6 +1236,37 @@ class TestNodesAPI(APITestCase):
         node = Node.objects.get(system_id=node.system_id)
         oauth_key = self.client.token.key
         self.assertEqual(oauth_key, node.token.key)
+
+    def test_POST_acquire_raises_400_if_invalid_storage_layout(self):
+        available_status = NODE_STATUS.READY
+        factory.make_Node(status=available_status, owner=None)
+        layout = factory.make_name("layout")
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'storage_layout': layout,
+            })
+        choices = get_storage_layout_choices()
+        invalid_choice_message = compose_invalid_choice_text(
+            'storage_layout', choices)
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals({
+            "storage_layout": [
+                invalid_choice_message % {'value': layout}]
+            }, json.loads(response.content))
+
+    def test_POST_acquire_calls_acquire_with_storage_layout(self):
+        available_status = NODE_STATUS.READY
+        factory.make_Node(status=available_status, owner=None)
+        mock_acquire = self.patch(Node, "acquire")
+        self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'storage_layout': 'flat',
+            })
+        self.assertThat(
+            mock_acquire,
+            MockCalledOnceWith(
+                ANY, ANY, agent_name=ANY, storage_layout='flat'))
 
     def test_POST_accept_gets_node_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,

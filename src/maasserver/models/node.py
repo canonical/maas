@@ -109,6 +109,7 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc.monitors import TransitionMonitor
+from maasserver.storage_layouts import get_storage_layout_for_node
 from maasserver.utils import (
     get_db_state,
     strip_domain,
@@ -1445,7 +1446,7 @@ class Node(CleanSave, TimestampedModel):
                 power_type, power_params,
             )
 
-    def acquire(self, user, token=None, agent_name=''):
+    def acquire(self, user, token=None, agent_name='', storage_layout=None):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
@@ -1454,7 +1455,27 @@ class Node(CleanSave, TimestampedModel):
         self.agent_name = agent_name
         self.token = token
         self.save()
-        maaslog.info("%s allocated to user %s", self.hostname, user.username)
+        maaslog.info("%s: allocated to user %s", self.hostname, user.username)
+
+        # Set the storage layout for the node.
+        if storage_layout is not None:
+            self.set_storage_layout(storage_layout)
+
+    def set_storage_layout(self, layout, params={}):
+        """Set storage layout for this node."""
+        if self.status != NODE_STATUS.ALLOCATED:
+            raise NodeStateViolation(
+                "Cannot set the storage layout when node is %s, "
+                "it must be %s." % (
+                    NODE_STATUS_CHOICES_DICT[self.status],
+                    NODE_STATUS_CHOICES_DICT[NODE_STATUS.ALLOCATED],
+                    ))
+        storage_layout = get_storage_layout_for_node(
+            layout, self, params=params)
+        if storage_layout is not None:
+            storage_layout.configure()
+            maaslog.info(
+                "%s: storage layout was set to %s." % (self.hostname, layout))
 
     def set_zone(self, zone):
         """Set this node's zone"""

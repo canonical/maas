@@ -112,6 +112,7 @@ import mock
 from mock import (
     ANY,
     sentinel,
+    MagicMock,
 )
 from netaddr import IPAddress
 from provisioningserver.power.poweraction import UnknownPowerType
@@ -683,6 +684,33 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
+
+    def test_acquire_calls_set_storage_layout(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_User()
+        token = create_auth_token(user)
+        agent_name = factory.make_name('agent-name')
+        mock_set_storage_layout = self.patch(node, "set_storage_layout")
+        node.acquire(user, token, agent_name, storage_layout=sentinel.layout)
+        self.assertThat(
+            mock_set_storage_layout, MockCalledOnceWith(sentinel.layout))
+
+    def test_set_storage_layout_raises_NodeStateViolation_not_allocated(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        with ExpectedException(NodeStateViolation):
+            node.set_storage_layout(factory.make_name("layout"))
+
+    def test_set_storage_layout_calls_configure_on_layout(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        layout_object = MagicMock()
+        mock_get_layout.return_value = layout_object
+        node.set_storage_layout(sentinel.layout, sentinel.params)
+        self.assertThat(
+            mock_get_layout,
+            MockCalledOnceWith(sentinel.layout, node, params=sentinel.params))
+        self.assertThat(layout_object.configure, MockCalledOnceWith())
 
     def test_start_disk_erasing_changes_state_and_starts_node(self):
         agent_name = factory.make_name('agent-name')

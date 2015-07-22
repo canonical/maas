@@ -73,6 +73,7 @@ from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc import getClientFor
+from maasserver.storage_layouts import StorageLayoutForm
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 from piston.utils import rc
@@ -197,6 +198,17 @@ def filtered_nodes_list_from_request(request):
         nodes = nodes.filter(agent_name=match_agent_name)
 
     return nodes.order_by('id')
+
+
+def get_storage_layout_param(request, required=False):
+    """Return and validate the storage_layout parameter."""
+    form = StorageLayoutForm(required=required, data=request.data)
+    if not form.is_valid():
+        raise MAASAPIValidationError(form.errors)
+    storage_layout = request.data.get('storage_layout')
+    if storage_layout == '':
+        storage_layout = None
+    return storage_layout
 
 
 class NodeHandler(OperationsHandler):
@@ -718,6 +730,37 @@ class NodeHandler(OperationsHandler):
         node.abort_operation(request.user)
         return node
 
+    @operation(idempotent=False)
+    def set_storage_layout(self, request, system_id):
+        """Changes the storage layout on the node.
+
+        This can only be preformed on an allocated node.
+
+        Note: This will clear the current storage layout and any extra
+        configuration and replace it will the new layout.
+
+        :param storage_layout: New storage layout for the node.
+
+        The following are optional for all layouts:
+
+        :param boot_size: Size of the boot partition.
+        :param root_size: Size of the root partition.
+
+        Returns 400 if the node is currently not allocated.
+        Returns 404 if the node could not be found.
+        Returns 403 if the user does not have permission to abort the
+        current operation.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        if node.status != NODE_STATUS.ALLOCATED:
+            raise MAASAPIBadRequest(
+                "Cannot change the storage layout on a node that is "
+                "not allocated.")
+        storage_layout = get_storage_layout_param(request, required=True)
+        node.set_storage_layout(storage_layout, params=request.data)
+        return node
+
 
 def create_node(request):
     """Service an http request to create a node.
@@ -1168,6 +1211,9 @@ class NodesHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
+        # Get and validate the storage_layout.
+        storage_layout = get_storage_layout_param(request)
+
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
@@ -1189,7 +1235,7 @@ class NodesHandler(OperationsHandler):
             agent_name = request.data.get('agent_name', '')
             node.acquire(
                 request.user, get_oauth_token(request),
-                agent_name=agent_name)
+                agent_name=agent_name, storage_layout=storage_layout)
             node.constraint_map = constraint_map.get(node.id, {})
             return node
 

@@ -44,6 +44,7 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
+from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
@@ -1696,3 +1697,65 @@ class TestAbortOperation(APITransactionTestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestSetStorageLayout(APITestCase):
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test__400_when_node_not_allocated(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.DEPLOYING)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'set_storage_layout'})
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Cannot change the storage layout on a node that is "
+            "not allocated.", response.content)
+
+    def test__400_when_storage_layout_missing(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'set_storage_layout'})
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals({
+            "storage_layout": [
+                "This field is required."],
+            }, json.loads(response.content))
+
+    def test__400_when_invalid_optional_param(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        factory.make_PhysicalBlockDevice(node=node)
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'set_storage_layout',
+                'storage_layout': 'flat',
+                'boot_size': MIN_BOOT_PARTITION_SIZE - 1,
+                })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals({
+            "boot_size": [
+                "Size is too small. Minimum size is %s." % (
+                    MIN_BOOT_PARTITION_SIZE)],
+            }, json.loads(response.content))
+
+    def test__calls_set_storage_layout_on_node(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        mock_set_storage_layout = self.patch(Node, "set_storage_layout")
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'set_storage_layout',
+                'storage_layout': 'flat',
+                })
+        self.assertEquals(
+            httplib.OK, response.status_code, response.content)
+        self.assertThat(
+            mock_set_storage_layout, MockCalledOnceWith('flat', params=ANY))
