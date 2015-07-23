@@ -399,6 +399,18 @@ See https://launchpad.net/maas/+milestone/1.8.0 for full details.
 #1462507    BlockDevice API is not under the nodes endpoint
 
 
+1.7.6
+=====
+
+Bug Fix Update
+--------------
+
+#1470585    Accept list of forwarders for upstream_dns rather than just one.
+
+#1413388    Fix upgrade issue where it would remove custom DNS config,
+            potentially breaking DNS
+
+
 1.7.5
 =====
 
