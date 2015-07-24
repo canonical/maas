@@ -2059,8 +2059,9 @@ class TestNode(MAASServerTestCase):
 
     def test_get_pxe_mac_returns_first_macaddress_if_pxe_mac_unset(self):
         node = factory.make_Node(mac=True)
-        factory.make_MACAddress(node=node)
-        self.assertEqual(node.macaddress_set.first(), node.get_pxe_mac())
+        [factory.make_MACAddress(node=node) for _ in range(3)]
+        self.assertEqual(
+            node.macaddress_set.order_by('id').first(), node.get_pxe_mac())
 
     def test_pxe_mac_deletion_does_not_delete_node(self):
         node = factory.make_Node(mac=True)
