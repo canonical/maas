@@ -63,6 +63,7 @@ Setting up a MAAS server
    networks
    kernel-options
    installing-ubuntu
+   os-support
 
 
 ******************
