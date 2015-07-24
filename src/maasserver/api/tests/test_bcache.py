@@ -16,9 +16,11 @@ __all__ = []
 
 import httplib
 import json
+from uuid import uuid4
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
@@ -80,6 +82,72 @@ class TestBcacheDevicesAPI(APITestCase):
             for bcache in json.loads(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_create(self):
+        """Tests Bcache device creation."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        cache_device = factory.make_PhysicalBlockDevice(
+            node=node, size=cache_size)
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        uri = get_bcache_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'bcache0',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+            'cache_device': cache_device.id,
+            'backing_device': backing_device.id,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(backing_size, parsed_device['virtual_device']['size'])
+        self.assertItemsEqual('bcache0', parsed_device['name'])
+        self.assertItemsEqual(uuid, parsed_device['uuid'])
+
+    def test_create_with_missing_cache_fails(self):
+        """Tests Bcache device creation without a cache device."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        backing_size = 10 * 1000 ** 4
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        uri = get_bcache_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'bcache0',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+            'backing_device': backing_device.id,
+        })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json.loads(response.content)
+        self.assertIn(
+            'Either cache_device or cache_partition must be specified.',
+            parsed_content['__all__'])
+
+    def test_create_with_missing_backing_fails(self):
+        """Tests Bcache device creation without a backing device."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        cache_size = 1000 ** 4
+        cache_device = factory.make_PhysicalBlockDevice(
+            node=node, size=cache_size)
+        uuid = unicode(uuid4())
+        uri = get_bcache_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'bcache0',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+            'cache_device': cache_device.id,
+        })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json.loads(response.content)
+        self.assertIn(
+            'Either backing_device or backing_partition must be specified.',
+            parsed_content['__all__'])
 
 
 class TestBcacheDeviceAPI(APITestCase):

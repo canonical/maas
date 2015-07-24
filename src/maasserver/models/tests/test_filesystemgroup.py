@@ -2124,3 +2124,151 @@ class TestBcache(MAASServerTestCase):
     def test_group_type_set_to_BCACHE(self):
         obj = Bcache()
         self.assertEquals(FILESYSTEM_GROUP_TYPE.BCACHE, obj.group_type)
+
+    def test_create_bcache_with_physical_block_devices(self):
+        """Checks creation of a Bcache with physical block devices for caching
+        and backing roles."""
+        node = factory.make_Node()
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        cache_device = factory.make_PhysicalBlockDevice(
+            node=node, size=cache_size)
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        bcache = Bcache.objects.create_bcache(
+            name='bcache0',
+            uuid=uuid,
+            cache_device=cache_device,
+            backing_device=backing_device,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+
+        # Verify the filesystems were properly created on the target devices
+        self.assertEqual(backing_size, bcache.get_size())
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_CACHE, cache_device.filesystem.fstype)
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+        self.assertEqual(bcache, cache_device.filesystem.filesystem_group)
+        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+
+    def test_create_bcache_with_virtual_block_devices(self):
+        """Checks creation of a Bcache with virtual block devices for caching
+        and backing roles."""
+        node = factory.make_Node()
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        # A caching device that's ridiculously fast to read from, but slow for
+        # writing to it.
+        cache_device = RAID.objects.create_raid(
+            block_devices=[
+                factory.make_PhysicalBlockDevice(node=node, size=cache_size)
+                for _ in range(10)],
+            level=FILESYSTEM_GROUP_TYPE.RAID_1).virtual_device
+        # A ridiculously reliable backing store.
+        backing_device = RAID.objects.create_raid(
+            block_devices=[
+                factory.make_PhysicalBlockDevice(node=node, size=backing_size)
+                for _ in range(12)],  # 10 data devices, 2 checksum devices.
+            level=FILESYSTEM_GROUP_TYPE.RAID_6).virtual_device
+
+        bcache = Bcache.objects.create_bcache(
+            cache_device=cache_device,
+            backing_device=backing_device,
+            cache_mode=CACHE_MODE_TYPE.WRITEAROUND)
+
+        # Verify the filesystems were properly created on the target devices
+        self.assertEqual(10 * backing_size, bcache.get_size())
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_CACHE, cache_device.filesystem.fstype)
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+        self.assertEqual(bcache, cache_device.filesystem.filesystem_group)
+        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+
+    def test_create_bcache_with_partitions(self):
+        """Checks creation of a Bcache with partitions for caching and backing
+        roles."""
+        node = factory.make_Node()
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        cache_partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node, size=cache_size)).add_partition()
+        backing_partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node, size=backing_size)).add_partition()
+        uuid = unicode(uuid4())
+        bcache = Bcache.objects.create_bcache(
+            name='bcache0',
+            uuid=uuid,
+            cache_partition=cache_partition,
+            backing_partition=backing_partition,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+
+        # Verify the filesystems were properly created on the target devices
+        self.assertEqual(backing_size, bcache.get_size())
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            backing_partition.filesystem.fstype)
+        self.assertEqual(bcache, cache_partition.filesystem.filesystem_group)
+        self.assertEqual(bcache, backing_partition.filesystem.filesystem_group)
+
+    def test_create_bcache_with_block_devices_and_partition(self):
+        """Checks creation of a Bcache with a partition for caching and a
+        physical block device for backing."""
+        node = factory.make_Node()
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        cache_partition = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node, size=cache_size)).add_partition()
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        bcache = Bcache.objects.create_bcache(
+            name='bcache0',
+            uuid=uuid,
+            cache_partition=cache_partition,
+            backing_device=backing_device,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+
+        # Verify the filesystems were properly created on the target devices
+        self.assertEqual(backing_size, bcache.get_size())
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
+        self.assertEqual(
+            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+        self.assertEqual(bcache, cache_partition.filesystem.filesystem_group)
+        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+
+    def test_delete_bcache(self):
+        """Ensures deletion of a bcache also deletes bcache filesystems from
+        caching and backing devices."""
+        node = factory.make_Node()
+        backing_size = 10 * 1000 ** 4
+        cache_size = 1000 ** 4
+        cache_device = factory.make_PhysicalBlockDevice(
+            node=node, size=cache_size)
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        bcache = Bcache.objects.create_bcache(
+            cache_device=cache_device,
+            backing_device=backing_device,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+
+        # Save the IDs (we'll need them below).
+        caching_fs_id = cache_device.filesystem.id
+        backing_fs_id = backing_device.filesystem.id
+
+        bcache.delete()
+
+        # Verify both filesystems were deleted.
+        self.assertIsNone(cache_device.filesystem)
+        self.assertIsNone(backing_device.filesystem)
+
+        # Make sure the filesystems were actually deleted from the database.
+        self.assertEqual(0, Filesystem.objects.filter(
+            id__in=[caching_fs_id, backing_fs_id]).count())

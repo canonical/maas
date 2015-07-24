@@ -96,6 +96,7 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    CACHE_MODE_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
@@ -120,6 +121,7 @@ from maasserver.forms_settings import (
     INVALID_SETTING_MSG_TEMPLATE,
 )
 from maasserver.models import (
+    Bcache,
     BlockDevice,
     BootResource,
     BootResourceFile,
@@ -3294,6 +3296,94 @@ class UpdateVirtualBlockDeviceForm(MAASModelForm):
         return block_device
 
 
+class CreateBcacheForm(Form):
+    """For validaing and saving a new Bcache."""
+
+    name = forms.CharField(required=False)
+    uuid = UUID4Field(required=False)
+    cache_device = forms.ChoiceField(required=False)
+    backing_device = forms.ChoiceField(required=False)
+    cache_partition = forms.ChoiceField(required=False)
+    backing_partition = forms.ChoiceField(required=False)
+    cache_mode = forms.ChoiceField(
+        choices=CACHE_MODE_TYPE_CHOICES, required=True)
+
+    def __init__(self, node, *args, **kwargs):
+        super(CreateBcacheForm, self).__init__(*args, **kwargs)
+        self.node = node
+        self._set_up_field_choices()
+
+    def clean(self):
+        """Makes sure the Bcache is sensible."""
+        cleaned_data = super(CreateBcacheForm, self).clean()
+
+        Bcache.objects.validate_bcache_creation_parameters(
+            cache_mode=self.cleaned_data.get('cache_mode'),
+            cache_device=self.cleaned_data.get('cache_device'),
+            cache_partition=self.cleaned_data.get('cache_partition'),
+            backing_device=self.cleaned_data.get('backing_device'),
+            backing_partition=self.cleaned_data.get('backing_partition'),
+            validate_mode=False)  # Cache mode is validated by the field.
+
+        return cleaned_data
+
+    def save(self):
+        """Persist the bcache into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+
+        if self.cleaned_data['cache_device']:
+            cache_device = BlockDevice.objects.get(
+                id=int(self.cleaned_data['cache_device']))
+            cache_partition = None
+        elif self.cleaned_data['cache_partition']:
+            cache_partition = Partition.objects.get(
+                id=int(self.cleaned_data['cache_partition']))
+            cache_device = None
+
+        if self.cleaned_data['backing_device']:
+            backing_device = BlockDevice.objects.get(
+                id=int(self.cleaned_data['backing_device']))
+            backing_partition = None
+        elif self.cleaned_data['spare_partitions']:
+            backing_partition = Partition.objects.get(
+                id=int(self.cleaned_data['backing_partition']))
+            backing_device = None
+
+        return Bcache.objects.create_bcache(
+            name=self.cleaned_data['name'],
+            uuid=self.cleaned_data['uuid'],
+            cache_device=cache_device,
+            backing_device=backing_device,
+            cache_partition=cache_partition,
+            backing_partition=backing_partition,
+            cache_mode=self.cleaned_data['cache_mode'])
+
+    def _set_up_field_choices(self):
+        """Sets up choices for `cache_device`, `backing_device`,
+        `cache_partition` and `backing_partition` fields."""
+
+        # Select the unused, non-partitioned block devices of this node.
+        block_device_choices = [
+            (bd.id, bd.id)
+            for bd in BlockDevice.objects.get_free_block_devices_for_node(
+                self.node)
+        ]
+
+        # Select the unused partitions of this node.
+        partition_choices = [
+            (partition.id, partition.id)
+            for partition in Partition.objects.get_free_partitions_for_node(
+                self.node)
+        ]
+
+        self.fields['cache_device'].choices = block_device_choices
+        self.fields['cache_partition'].choices = partition_choices
+        self.fields['backing_device'].choices = block_device_choices
+        self.fields['backing_partition'].choices = partition_choices
+
+
 class CreateRaidForm(Form):
     """For validating and saving a new RAID."""
 
@@ -3306,7 +3396,7 @@ class CreateRaidForm(Form):
     spare_devices = forms.MultipleChoiceField(required=False)
     spare_partitions = forms.MultipleChoiceField(required=False)
 
-    def set_up_field_choices(self):
+    def _set_up_field_choices(self):
         """Sets up the `block_devices`, `partition`, `spare_devices` and
         `spare_partitions` fields.
 
@@ -3336,7 +3426,7 @@ class CreateRaidForm(Form):
     def __init__(self, node, *args, **kwargs):
         super(CreateRaidForm, self).__init__(*args, **kwargs)
         self.node = node
-        self.set_up_field_choices()
+        self._set_up_field_choices()
 
     def clean(self):
         cleaned_data = super(CreateRaidForm, self).clean()

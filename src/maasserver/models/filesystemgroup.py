@@ -33,6 +33,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
     FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_GROUP_TYPE,
@@ -158,8 +159,8 @@ class RAIDManager(BaseFilesystemGroupManager):
 
     extra_filters = {'group_type__in': FILESYSTEM_GROUP_RAID_TYPES}
 
-    def create_raid(self, name, level, uuid, block_devices=[], partitions=[],
-                    spare_devices=[], spare_partitions=[]):
+    def create_raid(self, level, name=None, uuid=None, block_devices=[],
+                    partitions=[], spare_devices=[], spare_partitions=[]):
 
         # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
@@ -196,6 +197,86 @@ class BcacheManager(BaseFilesystemGroupManager):
     """Bcache groups"""
 
     extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.BCACHE}
+
+    def validate_bcache_creation_parameters(
+            self, cache_mode, cache_device, cache_partition,
+            backing_device, backing_partition, validate_mode=True):
+        """Validate bcache creation parameters. Raises ValidationErrors as
+        needed. We don't always need to validate the mode, so, there is an
+        option for that."""
+
+        if validate_mode and cache_mode not in (
+                CACHE_MODE_TYPE.WRITEBACK, CACHE_MODE_TYPE.WRITETHROUGH,
+                CACHE_MODE_TYPE.WRITEAROUND):
+            raise ValidationError('Invalid cache mode: %s' % cache_mode)
+
+        if cache_device and cache_partition:
+            raise ValidationError(
+                'A Bcache can have either a caching device or partition.')
+
+        if backing_device and backing_partition:
+            raise ValidationError(
+                'A Bcache can have either a backing device or partition.')
+
+        if not cache_device and not cache_partition:
+            raise ValidationError(
+                'Either cache_device or cache_partition must be '
+                'specified.')
+
+        if not backing_device and not backing_partition:
+            raise ValidationError(
+                'Either backing_device or backing_partition must be '
+                'specified.')
+
+    def create_bcache(
+            self, name=None, uuid=None, cache_device=None,
+            cache_partition=None, backing_device=None,
+            backing_partition=None, cache_mode=None):
+        """Creates a bcache of type `cache_type` using the desired cache and
+        backing elements."""
+
+        self.validate_bcache_creation_parameters(
+            cache_mode, cache_device, cache_partition, backing_device,
+            backing_partition)
+
+        # Avoid circular import issues
+        from maasserver.models.filesystem import Filesystem
+
+        # Create filesystems on the target devices and partitions
+        if cache_device is not None:
+            cache_filesystem = Filesystem.objects.create(
+                block_device=cache_device,
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE)
+        elif cache_partition is not None:
+            cache_filesystem = Filesystem.objects.create(
+                partition=cache_partition,
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE)
+
+        if backing_device is not None:
+            backing_filesystem = Filesystem(
+                block_device=backing_device,
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+        elif backing_partition is not None:
+            backing_filesystem = Filesystem(
+                partition=backing_partition,
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+
+        # Setup the cache FilesystemGroup and attach the filesystems to it.
+        bcache_filesystem_group = FilesystemGroup.objects.create(
+            name=name,
+            uuid=uuid,
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=cache_mode)
+
+        cache_filesystem.filesystem_group = bcache_filesystem_group
+        cache_filesystem.save()
+
+        backing_filesystem.filesystem_group = bcache_filesystem_group
+        backing_filesystem.save()
+
+        bcache_filesystem_group.save()
+
+        return bcache_filesystem_group
 
 
 class FilesystemGroup(CleanSave, TimestampedModel):

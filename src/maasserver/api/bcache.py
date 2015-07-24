@@ -15,6 +15,8 @@ __metaclass__ = type
 
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import CreateBcacheForm
 from maasserver.models import (
     Bcache,
     Node,
@@ -38,7 +40,7 @@ DISPLAYED_BCACHE_FIELDS = (
 class BcacheDevicesHandler(OperationsHandler):
     """Manage bcache devices on a node."""
     api_doc_section_name = "Bcache Devices"
-    create = update = delete = None
+    update = delete = None
     fields = DISPLAYED_BCACHE_FIELDS
 
     @classmethod
@@ -54,6 +56,31 @@ class BcacheDevicesHandler(OperationsHandler):
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
         return Bcache.objects.filter_by_node(node)
+
+    def create(self, request, system_id):
+        """Creates a Bcache.
+
+        :param name: Name of the Bcache.
+        :param uuid: UUID of the Bcache.
+        :param cache_device: Cache block device.
+        :param cache_partition: Cache partition.
+        :param backing_device: Backing block devices.
+        :param backing_partition: Backing partition.
+        :param cache_mode: Cache mode (WRITEBACK, WRITETHROUGH, WRITEAROUND).
+
+        Specifying both a device and a partition for a given role (cache or
+        backing) is not allowed.
+
+        Returns 404 if the node is not found.
+
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.VIEW)
+        form = CreateBcacheForm(node, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
 
 class BcacheDeviceHandler(OperationsHandler):
