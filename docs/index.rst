@@ -64,6 +64,7 @@ Setting up a MAAS server
    kernel-options
    installing-ubuntu
    devices
+   os-support
 
 
 ******************
