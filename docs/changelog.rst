@@ -2,6 +2,48 @@
 Changelog
 =========
 
+
+1.8.1
+=====
+
+See https://launchpad.net/maas/+milestone/1.8.1 for full details.
+
+Bug Fix Update
+--------------
+
+#1413388    Fix upgrade issue where it would remove custom DNS config, potentially breaking DNS
+
+#1317705    Commissioning x86_64 node never completes, sitting at grub prompt, pserv py tbs
+
+#1389007    Power monitor service hits amp.TooLong errors with > ~600 nodes to a cluster
+
+#1436279    Websocket server accessed over port 5240
+
+#1469305    If hostname not set, sudo warning make maas throw 500
+
+#1470585    Can't set a list of forwarders (BIND config)
+
+#1469846    UCS chassis enlist Failed to probe and enlist UCS nodes: list index out of range
+
+#1470276    Add cisco snic to 3rd party driver
+
+#1402042    console= parameters need to be added before -- on kernel cmdline
+
+#1465722    [UI] Machine details styling
+
+#1465737    [UI] Actions design styles
+
+#1465740    [UI] Replace close "X" with correct versions
+
+#1465742    [UI] Table design styles
+
+#1470389    [UI] Make table heading hover consistant with nodes/devices tabs
+
+#1470395    [UI] adding between node name and save button inconsistent
+
+#1459710    [UI] "Set zone" label oddly placed on node listing page
+
+
 1.8.0
 =====
 
