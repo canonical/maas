@@ -159,14 +159,15 @@ class RAIDManager(BaseFilesystemGroupManager):
 
     extra_filters = {'group_type__in': FILESYSTEM_GROUP_RAID_TYPES}
 
-    def create_raid(self, level, name=None, uuid=None, block_devices=[],
-                    partitions=[], spare_devices=[], spare_partitions=[]):
-
+    def create_raid(
+            self, level, name=None, uuid=None,
+            block_devices=[], partitions=[],
+            spare_devices=[], spare_partitions=[]):
         # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
 
         # Create a FilesystemGroup for this RAID
-        raid = RAID(name=name, group_type=level, uuid=uuid)
+        raid = RAID(group_type=level, name=name, uuid=uuid)
         raid.save()
 
         for block_device in block_devices:

@@ -164,7 +164,10 @@ from maasserver.node_action import (
 )
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import machine_readable_bytes
-from maasserver.utils.forms import compose_invalid_choice_text
+from maasserver.utils.forms import (
+    compose_invalid_choice_text,
+    set_form_error,
+)
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
     make_name_from_interface,
@@ -214,17 +217,6 @@ maaslog = get_maas_logger()
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
-
-
-def set_form_error(form, field_name, error_value):
-    """Set an error on a form's field.
-
-    This utility method encapsulates Django's arguably awkward way
-    of settings errors inside a form's clean()/is_valid() method.  This
-    method will override any previously-registered error for 'field_name'.
-    """
-    # Hey Django devs, this is a crap API to set errors.
-    form.errors[field_name] = form.error_class([error_value])
 
 
 def remove_None_values(data):

@@ -1936,9 +1936,9 @@ class TestRAID(MAASServerTestCase):
                 node=other_node, size=device_size)).add_partition()
         with ExpectedException(
                 ValidationError,
-            re.escape(
-                "[u'Partition must be on a device from the same node as the "
-                "rest of the array.']")):
+                re.escape(
+                    "[u'Partition must be on a device from the same node as "
+                    "the rest of the array.']")):
             raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
         self.assertEqual(10, raid.filesystems.count())  # Nothing added
         self.assertEqual(9 * device_size, raid.get_size())

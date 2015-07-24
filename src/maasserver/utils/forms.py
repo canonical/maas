@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'compose_invalid_choice_text',
     'get_QueryDict',
+    'set_form_error',
 ]
 
 from django.http import QueryDict
@@ -49,3 +50,14 @@ def get_QueryDict(params):
         else:
             query_dict[k] = v
     return query_dict
+
+
+def set_form_error(form, field_name, error_value):
+    """Set an error on a form's field.
+
+    This utility method encapsulates Django's arguably awkward way
+    of settings errors inside a form's clean()/is_valid() method.  This
+    method will override any previously-registered error for 'field_name'.
+    """
+    # Hey Django devs, this is a crap API to set errors.
+    form.errors[field_name] = form.error_class([error_value])
