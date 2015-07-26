@@ -42,6 +42,7 @@ from maasserver.storage_layouts import (
     StorageLayoutBase,
     StorageLayoutFieldsError,
     StorageLayoutForm,
+    StorageLayoutMissingBootDiskError,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -196,12 +197,11 @@ class TestStorageLayoutBase(MAASServerTestCase):
     def test_raises_error_when_no_block_devices(self):
         node = factory.make_Node()
         layout = StorageLayoutBase(node)
-        error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
-        self.assertEquals({
-            "__all__": [
-                "%s: doesn't have any storage devices to configure." % (
-                    node.fqdn)],
-            }, error.error_dict)
+        error = self.assertRaises(
+            StorageLayoutMissingBootDiskError, layout.configure)
+        self.assertEquals(
+            "Node doesn't have any storage devices to configure.",
+            error.message)
 
     def test_raises_error_when_precentage_to_low_for_boot_disk(self):
         node = factory.make_Node()
@@ -401,7 +401,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         mock_configure_storage = self.patch(
             StorageLayoutBase, "configure_storage")
         layout.configure()
-        self.assertThat(mock_configure_storage, MockCalledOnceWith())
+        self.assertThat(mock_configure_storage, MockCalledOnceWith(True))
 
 
 class LayoutHelpersMixin:

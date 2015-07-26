@@ -41,6 +41,14 @@ DEFAULT_BOOT_PARTITION_SIZE = 1 * 1024 * 1024 * 1024  # 1 GiB
 MIN_ROOT_PARTITION_SIZE = 3 * 1024 * 1024 * 1024  # 3 GiB
 
 
+class StorageLayoutError(Exception):
+    """Error raised when layout cannot be used on node."""
+
+
+class StorageLayoutMissingBootDiskError(StorageLayoutError):
+    """Error raised when a node is missing a boot disk to configure."""
+
+
 class StorageLayoutFieldsError(MAASAPIValidationError):
     """Error raised when fields from a storage layout are invalid."""
 
@@ -110,9 +118,8 @@ class StorageLayoutBase(Form):
         """Validate the data."""
         cleaned_data = super(StorageLayoutBase, self).clean()
         if len(self.block_devices) == 0:
-            raise ValidationError(
-                "%s: doesn't have any storage devices to configure." % (
-                    self.node.fqdn))
+            raise StorageLayoutMissingBootDiskError(
+                "Node doesn't have any storage devices to configure.")
         disk_size = self.get_boot_disk().size
         total_size = (
             EFI_PARTITION_SIZE + self.get_boot_size())
@@ -169,14 +176,14 @@ class StorageLayoutBase(Form):
             mount_point="/boot")
         return root_partition
 
-    def configure(self):
+    def configure(self, allow_fallback=True):
         """Configure the storage for the node."""
         if not self.is_valid():
             raise StorageLayoutFieldsError(self.errors)
         self.node._clear_storage_configuration()
-        self.configure_storage()
+        return self.configure_storage(allow_fallback)
 
-    def configure_storage(self):
+    def configure_storage(self, allow_fallback):
         """Configure the storage of the node.
 
         Sub-classes should override this method not `configure`.
@@ -194,7 +201,7 @@ class FlatStorageLayout(StorageLayoutBase):
       sda2      98.5G       part    ext4           /
     """
 
-    def configure_storage(self):
+    def configure_storage(self, allow_fallback):
         """Create the flat configuration."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
@@ -204,6 +211,7 @@ class FlatStorageLayout(StorageLayoutBase):
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
             mount_point="/")
+        return "flat"
 
 
 class LVMStorageLayout(StorageLayoutBase):
@@ -282,7 +290,7 @@ class LVMStorageLayout(StorageLayoutBase):
             cleaned_data['lv_size'] = lv_size
         return cleaned_data
 
-    def configure_storage(self):
+    def configure_storage(self, allow_fallback):
         """Create the LVM configuration."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
@@ -297,6 +305,7 @@ class LVMStorageLayout(StorageLayoutBase):
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
             mount_point="/")
+        return "lvm"
 
 
 class BcacheStorageLayoutBase(StorageLayoutBase):
@@ -436,15 +445,21 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         super(BcacheStorageLayout, self).__init__(node, params=params)
         self.setup_cache_device_field()
 
-    def configure_storage(self):
+    def configure_storage(self, allow_fallback):
         """Create the Bcache configuration."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.filesystemgroup import Bcache
         cache_block_device = self.get_cache_device()
         if cache_block_device is None:
-            # No cache device so just configure using the flat layout.
-            return super(BcacheStorageLayout, self).configure_storage()
+            if allow_fallback:
+                # No cache device so just configure using the flat layout.
+                return super(BcacheStorageLayout, self).configure_storage(
+                    allow_fallback)
+            else:
+                raise StorageLayoutError(
+                    "Node doesn't have an available cache device to "
+                    "setup bcache.")
 
         root_partition = self.create_basic_layout()
         cache_device = self.create_cache_device()
@@ -462,6 +477,7 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
             mount_point="/")
+        return "bcache"
 
 
 class BcacheLVMStorageLayout(LVMStorageLayout, BcacheStorageLayoutBase):
@@ -483,7 +499,7 @@ class BcacheLVMStorageLayout(LVMStorageLayout, BcacheStorageLayoutBase):
         super(BcacheLVMStorageLayout, self).__init__(node, params=params)
         self.setup_cache_device_field()
 
-    def configure_storage(self):
+    def configure_storage(self, allow_fallback):
         """Create the Bcache+LVM configuration."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
@@ -493,8 +509,14 @@ class BcacheLVMStorageLayout(LVMStorageLayout, BcacheStorageLayoutBase):
             )
         cache_block_device = self.get_cache_device()
         if cache_block_device is None:
-            # No cache device so just configure using the lvm layout.
-            return super(BcacheLVMStorageLayout, self).configure_storage()
+            if allow_fallback:
+                # No cache device so just configure using the lvm layout.
+                return super(BcacheLVMStorageLayout, self).configure_storage(
+                    allow_fallback)
+            else:
+                raise StorageLayoutError(
+                    "Node doesn't have an available cache device to "
+                    "setup bcache.")
 
         root_partition = self.create_basic_layout()
         volume_group = VolumeGroup.objects.create_volume_group(
@@ -516,6 +538,7 @@ class BcacheLVMStorageLayout(LVMStorageLayout, BcacheStorageLayoutBase):
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
             mount_point="/")
+        return "bcache+lvm"
 
 
 # Holds all the storage layouts that can be used.

@@ -51,6 +51,7 @@ def get_default_config():
         'commissioning_osystem': DEFAULT_OS.name,
         'commissioning_distro_series':
         DEFAULT_OS.get_default_commissioning_release(),
+        'default_storage_layout': 'lvm',
         # Network section configuration.
         'maas_name': gethostname(),
         'default_osystem': DEFAULT_OS.name,

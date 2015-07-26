@@ -73,7 +73,11 @@ from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc import getClientFor
-from maasserver.storage_layouts import StorageLayoutForm
+from maasserver.storage_layouts import (
+    StorageLayoutError,
+    StorageLayoutForm,
+    StorageLayoutMissingBootDiskError,
+)
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 from piston.utils import rc
@@ -788,7 +792,17 @@ class NodeHandler(OperationsHandler):
                 "Cannot change the storage layout on a node that is "
                 "not allocated.")
         storage_layout = get_storage_layout_param(request, required=True)
-        node.set_storage_layout(storage_layout, params=request.data)
+        try:
+            node.set_storage_layout(
+                storage_layout, params=request.data, allow_fallback=False)
+        except StorageLayoutMissingBootDiskError:
+            raise MAASAPIBadRequest(
+                "Node is missing a boot disk; no storage layout can be "
+                "applied.")
+        except StorageLayoutError as e:
+            raise MAASAPIBadRequest(
+                "Failed to configure storage layout '%s': %s" % (
+                    request.data.get('storage_layout'), e.message))
         return node
 
 

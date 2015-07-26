@@ -32,6 +32,7 @@ from maasserver.models.config import (
     DEFAULT_OS,
     DNSSEC_VALIDATION_CHOICES,
 )
+from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
@@ -233,6 +234,17 @@ CONFIG_ITEMS = {
             'required': False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
+        }
+    },
+    'default_storage_layout': {
+        'default': 'lvm',
+        'form': forms.ChoiceField,
+        'form_kwargs': {
+            'label': "Default storage layout",
+            'choices': get_storage_layout_choices(),
+            'help_text': (
+                "Storage layout that is applied to a node when it is acquired."
+            )
         }
     },
     'commissioning_distro_series': {

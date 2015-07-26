@@ -109,7 +109,11 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc.monitors import TransitionMonitor
-from maasserver.storage_layouts import get_storage_layout_for_node
+from maasserver.storage_layouts import (
+    get_storage_layout_for_node,
+    StorageLayoutError,
+    StorageLayoutMissingBootDiskError,
+)
 from maasserver.utils import (
     get_db_state,
     strip_domain,
@@ -1458,10 +1462,17 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s: allocated to user %s", self.hostname, user.username)
 
         # Set the storage layout for the node.
-        if storage_layout is not None:
+        if storage_layout is None:
+            storage_layout = Config.objects.get_config(
+                "default_storage_layout")
+        try:
             self.set_storage_layout(storage_layout)
+        except StorageLayoutError:
+            # Catch all storage errors setting up the layout.
+            # `set_storage_layout` handles the logging of error messages.
+            pass
 
-    def set_storage_layout(self, layout, params={}):
+    def set_storage_layout(self, layout, params={}, allow_fallback=True):
         """Set storage layout for this node."""
         if self.status != NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
@@ -1473,9 +1484,27 @@ class Node(CleanSave, TimestampedModel):
         storage_layout = get_storage_layout_for_node(
             layout, self, params=params)
         if storage_layout is not None:
-            storage_layout.configure()
-            maaslog.info(
-                "%s: storage layout was set to %s." % (self.hostname, layout))
+            try:
+                used_layout = storage_layout.configure(
+                    allow_fallback=allow_fallback)
+                maaslog.info(
+                    "%s: storage layout was set to %s.",
+                    self.hostname, used_layout)
+            except StorageLayoutMissingBootDiskError:
+                maaslog.error(
+                    "%s: missing boot disk; no storage layout can be "
+                    "applied.", self.hostname)
+                raise
+            except StorageLayoutError as e:
+                maaslog.error(
+                    "%s: failed to configure storage layout: %s",
+                    self.hostname, e)
+                raise
+        else:
+            maaslog.error(
+                "%s: unable to configure storage layout; unknown storage "
+                "layout '%s'.", self.hostname, layout)
+            raise StorageLayoutError("Unknown storage layout: %s" % layout)
 
     def set_zone(self, zone):
         """Set this node's zone"""

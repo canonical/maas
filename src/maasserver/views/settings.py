@@ -44,11 +44,11 @@ from maasserver.forms import (
     BootSourceSettingsForm,
     CommissioningForm,
     DeployForm,
-    DiskErasingOnReleaseForm,
     EditUserForm,
     GlobalKernelOptsForm,
     MAASAndNetworkForm,
     NewUserCreationForm,
+    StorageSettingsForm,
     ThirdPartyDriversForm,
     UbuntuForm,
     WindowsForm,
@@ -214,9 +214,9 @@ def settings(request):
         return response
 
     # Process disk erasing on release form.
-    disk_erasing_on_release_form, response = process_form(
-        request, DiskErasingOnReleaseForm, reverse('settings'),
-        'disk_erasing_on_release', "Configuration updated.")
+    storage_settings_form, response = process_form(
+        request, StorageSettingsForm, reverse('settings'),
+        'storage_settings', "Configuration updated.")
     if response is not None:
         return response
 
@@ -283,7 +283,7 @@ def settings(request):
             'show_boot_source': show_boot_source,
             'boot_source_form': boot_source_form,
             'third_party_drivers_form': third_party_drivers_form,
-            'disk_erasing_on_release_form': disk_erasing_on_release_form,
+            'storage_settings_form': storage_settings_form,
             'commissioning_form': commissioning_form,
             'deploy_form': deploy_form,
             'ubuntu_form': ubuntu_form,

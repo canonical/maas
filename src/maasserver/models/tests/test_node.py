@@ -76,6 +76,10 @@ from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
     RunningClusterRPCFixture,
 )
+from maasserver.storage_layouts import (
+    StorageLayoutError,
+    StorageLayoutMissingBootDiskError,
+)
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
@@ -706,11 +710,84 @@ class TestNode(MAASServerTestCase):
             node_module, "get_storage_layout_for_node")
         layout_object = MagicMock()
         mock_get_layout.return_value = layout_object
-        node.set_storage_layout(sentinel.layout, sentinel.params)
+        allow_fallback = factory.pick_bool()
+        node.set_storage_layout(
+            sentinel.layout, sentinel.params, allow_fallback=allow_fallback)
         self.assertThat(
             mock_get_layout,
             MockCalledOnceWith(sentinel.layout, node, params=sentinel.params))
-        self.assertThat(layout_object.configure, MockCalledOnceWith())
+        self.assertThat(
+            layout_object.configure,
+            MockCalledOnceWith(allow_fallback=allow_fallback))
+
+    def test_set_storage_layout_logs_success(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        used_layout = factory.make_name("layout")
+        layout_object = MagicMock()
+        layout_object.configure.return_value = used_layout
+        mock_get_layout.return_value = layout_object
+        node.set_storage_layout(
+            sentinel.layout, sentinel.params)
+        self.assertThat(
+            maaslog.info,
+            MockCalledOnceWith(
+                "%s: storage layout was set to %s.",
+                node.hostname, used_layout))
+
+    def test_set_storage_layout_logs_error_when_missing_boot_disk(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        layout_object = MagicMock()
+        layout_object.configure.side_effect = (
+            StorageLayoutMissingBootDiskError())
+        mock_get_layout.return_value = layout_object
+        with ExpectedException(StorageLayoutMissingBootDiskError):
+            node.set_storage_layout(
+                sentinel.layout, sentinel.params)
+        self.assertThat(
+            maaslog.error,
+            MockCalledOnceWith(
+                "%s: missing boot disk; no storage layout can be "
+                "applied.", node.hostname))
+
+    def test_set_storage_layout_logs_error_when_layout_fails(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        layout_object = MagicMock()
+        exception = StorageLayoutError(factory.make_name("error"))
+        layout_object.configure.side_effect = exception
+        mock_get_layout.return_value = layout_object
+        with ExpectedException(StorageLayoutError):
+            node.set_storage_layout(
+                sentinel.layout, sentinel.params)
+        self.assertThat(
+            maaslog.error,
+            MockCalledOnceWith(
+                "%s: failed to configure storage layout: %s",
+                node.hostname, exception))
+
+    def test_set_storage_layout_logs_error_when_unknown_layout(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        mock_get_layout.return_value = None
+        unknown_layout = factory.make_name("layout")
+        with ExpectedException(StorageLayoutError):
+            node.set_storage_layout(
+                unknown_layout, sentinel.params)
+        self.assertThat(
+            maaslog.error,
+            MockCalledOnceWith(
+                "%s: unable to configure storage layout; unknown storage "
+                "layout '%s'.", node.hostname, unknown_layout))
 
     def test_start_disk_erasing_changes_state_and_starts_node(self):
         agent_name = factory.make_name('agent-name')

@@ -28,7 +28,7 @@ __all__ = [
     "get_node_edit_form",
     "get_node_create_form",
     "list_all_usable_architectures",
-    "DiskErasingOnReleaseForm",
+    "StorageSettingsForm",
     "MAASAndNetworkForm",
     "MACAddressForm",
     "NetworkConnectMACsForm",
@@ -1355,8 +1355,9 @@ class ThirdPartyDriversForm(ConfigForm):
     enable_third_party_drivers = get_config_field('enable_third_party_drivers')
 
 
-class DiskErasingOnReleaseForm(ConfigForm):
-    """Settings page, Disk Erasing on Release section."""
+class StorageSettingsForm(ConfigForm):
+    """Settings page, storage section."""
+    default_storage_layout = get_config_field('default_storage_layout')
     enable_disk_erasing_on_release = get_config_field(
         'enable_disk_erasing_on_release')
 

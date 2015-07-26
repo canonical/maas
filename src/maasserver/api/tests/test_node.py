@@ -44,7 +44,10 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
+from maasserver.storage_layouts import (
+    MIN_BOOT_PARTITION_SIZE,
+    StorageLayoutError,
+)
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
@@ -1746,6 +1749,53 @@ class TestSetStorageLayout(APITestCase):
                     MIN_BOOT_PARTITION_SIZE)],
             }, json.loads(response.content))
 
+    def test__400_when_no_boot_disk(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'set_storage_layout',
+                'storage_layout': 'flat',
+                })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Node is missing a boot disk; no storage layout can be applied.",
+            response.content)
+
+    def test__400_when_layout_error(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        mock_set_storage_layout = self.patch(Node, "set_storage_layout")
+        error_msg = factory.make_name("error")
+        mock_set_storage_layout.side_effect = StorageLayoutError(error_msg)
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'set_storage_layout',
+                'storage_layout': 'flat',
+                })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Failed to configure storage layout 'flat': %s" % error_msg,
+            response.content)
+
+    def test__400_when_layout_not_supported(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        factory.make_PhysicalBlockDevice(node=node)
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'set_storage_layout',
+                'storage_layout': 'bcache',
+                })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Failed to configure storage layout 'bcache': Node doesn't "
+            "have an available cache device to setup bcache.",
+            response.content)
+
     def test__calls_set_storage_layout_on_node(self):
         node = factory.make_Node(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
@@ -1758,4 +1808,5 @@ class TestSetStorageLayout(APITestCase):
         self.assertEquals(
             httplib.OK, response.status_code, response.content)
         self.assertThat(
-            mock_set_storage_layout, MockCalledOnceWith('flat', params=ANY))
+            mock_set_storage_layout,
+            MockCalledOnceWith('flat', params=ANY, allow_fallback=False))

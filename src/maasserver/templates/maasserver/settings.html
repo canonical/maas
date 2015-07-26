@@ -191,14 +191,14 @@
         </div>
     </div>
     <div class="twelve-col">
-        <div id="disk_erasing_on_release" class="eight-col">
-            <h2>Disk Erasing on Release</h2>
+        <div id="storage_settings" class="eight-col">
+            <h2>Storage</h2>
             <form action="{% url 'settings' %}" method="post">
                 {% csrf_token %}
                 <ul>
-                    {% for field in disk_erasing_on_release_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                    {% for field in storage_settings_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
-                <input type="hidden" name="disk_erasing_on_release_submit" value="1" />
+                <input type="hidden" name="storage_settings_submit" value="1" />
                 <input type="submit" class="cta-ubuntu right" value="Save" />
             </form>
         </div>

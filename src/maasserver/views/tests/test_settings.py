@@ -29,6 +29,7 @@ from maasserver.models import (
     Config,
     UserProfile,
 )
+from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.testing import (
     extract_redirect,
     get_prefixed_form_data,
@@ -178,14 +179,16 @@ class SettingsTest(MAASServerTestCase):
                 Config.objects.get_config('enable_third_party_drivers'),
             ))
 
-    def test_settings_disk_erasing_on_release_POST(self):
+    def test_settings_storage_POST(self):
         self.client_log_in(as_admin=True)
+        new_storage_layout = factory.pick_choice(get_storage_layout_choices())
         new_enable_disk_erasing_on_release = factory.pick_bool()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
-                prefix='disk_erasing_on_release',
+                prefix='storage_settings',
                 data={
+                    'default_storage_layout': new_storage_layout,
                     'enable_disk_erasing_on_release': (
                         new_enable_disk_erasing_on_release),
                 }))
@@ -193,9 +196,11 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             (
+                new_storage_layout,
                 new_enable_disk_erasing_on_release,
             ),
             (
+                Config.objects.get_config('default_storage_layout'),
                 Config.objects.get_config('enable_disk_erasing_on_release'),
             ))
 
