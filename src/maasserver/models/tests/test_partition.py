@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import random
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
@@ -28,8 +27,10 @@ from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     Partition,
 )
+from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.matchers import Equals
 
 
 class TestPartitionManager(MAASServerTestCase):
@@ -38,7 +39,8 @@ class TestPartitionManager(MAASServerTestCase):
     def test_get_free_partitions_for_node(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=MIN_BLOCK_DEVICE_SIZE * 4)
+            node=node,
+            size=(MIN_BLOCK_DEVICE_SIZE * 4) + INITIAL_PARTITION_OFFSET)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         free_partitions = [
@@ -53,26 +55,6 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertItemsEqual(
             free_partitions,
             Partition.objects.get_free_partitions_for_node(node))
-
-    def test_get_next_partition_number_for_table_returns_next_free_id(self):
-        block_device = factory.make_PhysicalBlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 3)
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device)
-        factory.make_Partition(
-            partition_table=partition_table, start_offset=0,
-            size=MIN_PARTITION_SIZE, partition_number=1)
-        factory.make_Partition(
-            partition_table=partition_table, start_offset=MIN_PARTITION_SIZE,
-            size=MIN_PARTITION_SIZE, partition_number=2)
-        factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=MIN_PARTITION_SIZE * 2,
-            size=MIN_PARTITION_SIZE, partition_number=4)
-        self.assertEquals(
-            3,
-            Partition.objects.get_next_partition_number_for_table(
-                partition_table))
 
     def test_get_partitions_in_filesystem_group(self):
         node = factory.make_Node()
@@ -133,144 +115,47 @@ class TestPartition(MAASServerTestCase):
         partition.save()
         self.assertEquals('%s' % uuid, partition.uuid)
 
-    def test_set_partition_number_if_missing(self):
-        table = factory.make_PartitionTable()
-        partition = factory.make_Partition(partition_table=table)
-        self.assertIsNotNone(partition.partition_number)
-
-    def test_set_partition_number_to_next_available(self):
-        table = factory.make_PartitionTable()
-        table.add_partition(
-            size=MIN_PARTITION_SIZE, partition_number=1)
-        partition_two = table.add_partition()
-        self.assertEquals(2, partition_two.partition_number)
-
-    def test_save_doesnt_overwrite_partition_number(self):
-        partition_number = random.randint(1, 100)
-        table = factory.make_PartitionTable()
-        partition = factory.make_Partition(
-            partition_table=table, partition_number=partition_number)
+    def test_size_is_rounded_to_next_block(self):
+        partition = factory.make_Partition()
+        partition.size = partition.get_block_size() * 4096
+        partition.size += 1
         partition.save()
-        self.assertEquals(partition_number, partition.partition_number)
+        self.assertEquals(4097, partition.size / partition.get_block_size())
 
-    def test_start_end_block(self):
-        """Tests the start_block, size_blocks and end_block helpers."""
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3, block_size=4096)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        # A partition that takes up blocks 0-35.
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=0, size=4096 * 35)
-        self.assertEqual(partition.start_block, 0)
-        self.assertEqual(partition.size_blocks, 35)
-        self.assertEqual(partition.end_block, 34)
+    def test_validate_enough_space_for_new_partition(self):
+        partition_table = factory.make_PartitionTable()
+        partition_table.add_partition()
+        error = self.assertRaises(
+            ValidationError, factory.make_Partition,
+            partition_table=partition_table, size=MIN_PARTITION_SIZE)
+        self.assertEquals({
+            "size": [
+                "Partition cannot be saved; not enough free space "
+                "on the block device."],
+            }, error.error_dict)
 
-    def test_block_sizing(self):
-        """Ensure start_block and  and size are rounded to block boundaries."""
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3, block_size=4096)
-        # A billion bytes slightly misaligned.
-        partition_size = 1 * 1000 ** 3
-        partition_offset = device.block_size * 3 + 50
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=partition_offset, size=partition_size)
+    def test_validate_enough_space_for_resize_partition(self):
+        partition_table = factory.make_PartitionTable()
+        partition = partition_table.add_partition()
+        partition.size += partition_table.get_block_size() * 2
+        error = self.assertRaises(ValidationError, partition.save)
+        self.assertEquals({
+            "size": [
+                "Partition %s cannot be resized to fit on the "
+                "block device; not enough free space." % partition.id],
+            }, error.error_dict)
 
-        # Size should be larger than the desired.
-        self.assertGreaterEqual(
-            partition.size_blocks * device.block_size, partition_size)
-        # But not more than one block larger.
-        self.assertLessEqual(
-            (partition.size_blocks - 1) * device.block_size, partition_size)
-        # Partition should start on the 4th block (we count from zero).
-        self.assertEqual(partition.start_block, 3)
-
-    def test_clean(self):
-        """Ensure size and offset are rounded on save."""
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3, block_size=4096)
-        # A billion bytes slightly misaligned.
-        partition_size = 1 * 1000 ** 3
-        partition_offset = device.block_size * 3 + 50
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=partition_offset,
-            size=partition_size)
-
-        # Start should be slightly less than desired start.
-        self.assertLessEqual(partition.start_offset, partition_offset)
-        self.assertLess(
-            partition_offset - partition.start_offset, device.block_size)
-        # Size should be no more than one block larger.
-        self.assertLess(partition.size - partition_size, device.block_size)
-
-    def test_size_validator(self):
-        """Checks impossible values for size and offset"""
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3, block_size=4096)
-        partition_table = factory.make_PartitionTable(block_device=device)
-
-        # Should not be able to make a partition with zero blocks.
-        self.assertRaises(
-            ValidationError, factory.make_Partition, **{
-                'partition_table': partition_table,
-                'start_offset': 0,
-                'size': 0})
-        # Should not be able to make a partition starting on block -1
-        self.assertRaises(
-            ValidationError, factory.make_Partition, **{
-                'partition_table': partition_table,
-                'start_offset': -1,
-                'size': 10})
-
-    def test_overlap_prevention(self):
-        """Checks whether overlap prevention works."""
-        block_size = 4096
-        device = factory.make_BlockDevice(size=10 * 1000 ** 3,
-                                          block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-
-        # Create a partition occupying blocks 35-70.
-        factory.make_Partition(
-            partition_table=partition_table, start_offset=35 * block_size,
-            size=35 * block_size)
-        # Uses blocks 33-68.
-        self.assertRaises(
-            ValidationError, factory.make_Partition, **{
-                'partition_table': partition_table,
-                'start_offset': 33 * block_size,
-                'size': 35 * block_size})
-        # Uses blocks 68-103.
-        self.assertRaises(
-            ValidationError, factory.make_Partition, **{
-                'partition_table': partition_table,
-                'start_offset': 68 * block_size,
-                'size': 35 * block_size})
-        # Should succeed - uses blocks 0-35.
-        factory.make_Partition(
-            partition_table=partition_table, start_offset=0,
-            size=35 * block_size)
-
-    def test_partition_past_end_of_device(self):
-        """Attempt to allocate a partition past the end of the device."""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-
-        # Should not make a partition larger than the device
-        self.assertRaises(
-            ValidationError, factory.make_Partition, **{
-                'partition_table': partition_table,
-                'start_offset': 0,
-                'size': device.size + device.block_size})
-        # Create a partition the size of the device
-        partition = factory.make_Partition(partition_table=partition_table,
-                                           start_offset=0,
-                                           size=device.size)
-        self.assertEqual(partition.size, device.size)
+    def test_validate_enough_space_will_round_down_a_block(self):
+        partition_table = factory.make_PartitionTable()
+        partition = partition_table.add_partition()
+        prev_size = partition.size
+        partition.size += partition_table.get_block_size()
+        partition.save()
+        self.assertEquals(prev_size, partition.size)
 
     def test_partition_add_filesystem(self):
         """Add a file system to a partition"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         filesystem = partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
         self.assertEquals(filesystem.partition_id, partition.id)
@@ -278,9 +163,7 @@ class TestPartition(MAASServerTestCase):
 
     def test_partition_add_second_filesystem(self):
         """Adding a second file system to a partition should fail"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
 
@@ -290,9 +173,7 @@ class TestPartition(MAASServerTestCase):
 
     def test_partition_remove_filesystem(self):
         """Tests filesystem removal from a partition"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
         # After removal, partition.filesystem should be None
@@ -301,70 +182,53 @@ class TestPartition(MAASServerTestCase):
 
     def test_partition_remove_absent_filesystem(self):
         """Tests whether attempting to remove a non-existent FS fails"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         # Removal should do nothing
         self.assertIsNone(partition.remove_filesystem())
 
-    def test_get_filesystem_returns_filesystem(self):
+    def test_filesystem_returns_filesystem(self):
         """Checks that the get_filesystem method returns the filesystem that's
         on the partition"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
         fs = factory.make_Filesystem(partition=partition)
-
         self.assertEqual(partition.filesystem.id, fs.id)
 
-    def test_get_filesystem_returns_none(self):
+    def test_filesystem_returns_none(self):
         """Checks that the get_filesystem method returns none when there is no
         filesystem on the partition"""
-        block_size = 1024
-        device = factory.make_BlockDevice(size=10000 * block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+        partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
-
         self.assertIsNone(partition.filesystem)
 
-    def test_get_partition_number_returns_partition_number_for_GPT(self):
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT)
-        partition_number = random.randint(1, 100)
-        partition = factory.make_Partition(
-            partition_table=table, partition_number=partition_number)
-        self.assertEquals(partition_number, partition.get_partition_number())
-
-    def test_get_partition_number_returns_3_MBR(self):
+    def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
         block_device = factory.make_PhysicalBlockDevice(
-            size=4 * MIN_PARTITION_SIZE)
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=block_device)
-        for _ in range(2):
-            table.add_partition(size=MIN_PARTITION_SIZE)
-        partition = table.add_partition(size=MIN_PARTITION_SIZE)
-        self.assertEquals(3, partition.get_partition_number())
+            size=(MIN_BLOCK_DEVICE_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(4)
+        ]
+        idx = 1
+        for partition in partitions:
+            self.expectThat(idx, Equals(partition.get_partition_number()))
+            idx += 1
 
-    def test_get_partition_number_returns_4_MBR(self):
+    def test_get_partition_number_returns_correct_numbering_for_mbr(self):
         block_device = factory.make_PhysicalBlockDevice(
-            size=4 * MIN_PARTITION_SIZE)
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=block_device)
-        for _ in range(3):
-            table.add_partition(size=MIN_PARTITION_SIZE)
-        partition = table.add_partition(size=MIN_PARTITION_SIZE)
-        self.assertEquals(4, partition.get_partition_number())
-
-    def test_get_partition_number_skips_4_for_MBR(self):
-        block_device = factory.make_PhysicalBlockDevice(
-            size=5 * MIN_PARTITION_SIZE)
-        table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.MBR, block_device=block_device)
-        for _ in range(3):
-            table.add_partition(size=MIN_PARTITION_SIZE)
-        partition_five = table.add_partition(size=MIN_PARTITION_SIZE)
-        partition_six = table.add_partition(size=MIN_PARTITION_SIZE)
-        self.assertEquals(5, partition_five.get_partition_number())
-        self.assertEquals(6, partition_six.get_partition_number())
+            size=(MIN_BLOCK_DEVICE_SIZE * 6) + INITIAL_PARTITION_OFFSET)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(6)
+        ]
+        idx = 1
+        for partition in partitions:
+            self.expectThat(idx, Equals(partition.get_partition_number()))
+            idx += 1
+            if idx == 4:
+                # Skip the extended partition.
+                idx += 1

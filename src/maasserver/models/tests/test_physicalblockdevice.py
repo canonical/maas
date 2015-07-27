@@ -18,6 +18,7 @@ import random
 
 from django.core.exceptions import ValidationError
 from maasserver.models import PhysicalBlockDevice
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -27,10 +28,11 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
 
     def test_model_serial_and_no_id_path_requirements_should_save(self):
         node = factory.make_Node()
-        blockdevice = PhysicalBlockDevice(node=node, name='sda',
-                                          path='/dev/sda', block_size=512,
-                                          size=143360, model='A2M0003',
-                                          serial='001')
+        blockdevice = PhysicalBlockDevice(
+            node=node, name='sda',
+            path='/dev/sda', block_size=512,
+            size=MIN_BLOCK_DEVICE_SIZE, model='A2M0003',
+            serial='001')
         # Should work without issue
         blockdevice.save()
 
@@ -38,7 +40,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
             node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, id_path='/dev/disk/by-id/A2M0003-001')
+            size=MIN_BLOCK_DEVICE_SIZE, id_path='/dev/disk/by-id/A2M0003-001')
         # Should work without issue
         blockdevice.save()
 
@@ -46,14 +48,14 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
             node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, model='A2M0003')
+            size=MIN_BLOCK_DEVICE_SIZE, model='A2M0003')
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_no_id_path_and_no_model(self):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
             node=node, name='sda', path='/dev/sda', block_size=512,
-            size=143360, serial='001')
+            size=MIN_BLOCK_DEVICE_SIZE, serial='001')
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_number_of_physical_devices_for_returns_correct_count(self):

@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import random
 import uuid
 
 from maasserver.enum import (
@@ -41,66 +40,9 @@ class TestAddPartitionForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(['size'], form.errors.keys())
 
-    def test_is_not_valid_if_offset_less_than_zero(self):
-        block_device = factory.make_PhysicalBlockDevice()
-        data = {
-            'offset': random.randint(-100, -1),
-            'size': block_device.size,
-            }
-        form = AddPartitionForm(block_device, data=data)
-        self.assertFalse(
-            form.is_valid(),
-            "Should be invalid because offset below zero.")
-        self.assertEquals({
-            'offset': [
-                "Ensure this value is greater than or equal to 0.",
-            ]},
-            form._errors)
-
-    def test_is_not_valid_if_offset_greater_than_block_size(self):
-        block_device = factory.make_PhysicalBlockDevice()
-        data = {
-            'offset': block_device.size - MIN_BLOCK_DEVICE_SIZE + 1,
-            'size': MIN_BLOCK_DEVICE_SIZE,
-            }
-        form = AddPartitionForm(block_device, data=data)
-        self.assertFalse(
-            form.is_valid(),
-            "Should be invalid because offset is to large.")
-        self.assertEquals({
-            'offset': [
-                "Ensure this value is less than or equal to %s." % (
-                    block_device.size - MIN_BLOCK_DEVICE_SIZE),
-            ]},
-            form._errors)
-
-    def test_is_valid_if_offset_a_string(self):
-        block_device = factory.make_PhysicalBlockDevice()
-        data = {
-            'offset': "0M",
-            'size': MIN_BLOCK_DEVICE_SIZE,
-            }
-        form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(
-            form.is_valid(),
-            "Should be valid because offset is zero and a string.")
-
-    def test_offset_rounded_down_and_placed_on_block_boundry(self):
-        block_size = 4096
-        block_device = factory.make_PhysicalBlockDevice(block_size=block_size)
-        data = {
-            'offset': "8k",
-            'size': MIN_BLOCK_DEVICE_SIZE,
-            }
-        form = AddPartitionForm(block_device, data=data)
-        self.assertTrue(form.is_valid())
-        partition = form.save()
-        self.assertEquals(block_size, partition.start_offset)
-
     def test_is_not_valid_if_size_less_than_min_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         data = {
-            'offset': 0,
             'size': MIN_BLOCK_DEVICE_SIZE - 1,
             }
         form = AddPartitionForm(block_device, data=data)
@@ -117,7 +59,6 @@ class TestAddPartitionForm(MAASServerTestCase):
     def test_is_not_valid_if_size_greater_than_block_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         data = {
-            'offset': 0,
             'size': block_device.size + 1,
             }
         form = AddPartitionForm(block_device, data=data)
@@ -136,7 +77,6 @@ class TestAddPartitionForm(MAASServerTestCase):
         k_size = (MIN_BLOCK_DEVICE_SIZE / 1000) + 1
         size = "%sk" % k_size
         data = {
-            'offset': 0,
             'size': size,
             }
         form = AddPartitionForm(block_device, data=data)
@@ -154,7 +94,6 @@ class TestAddPartitionForm(MAASServerTestCase):
             block_count += 1
         rounded_size = block_count * block_size
         data = {
-            'offset': 0,
             'size': size,
             }
         form = AddPartitionForm(block_device, data=data)
@@ -166,7 +105,6 @@ class TestAddPartitionForm(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         part_uuid = "%s" % uuid.uuid4()
         data = {
-            'offset': 0,
             'size': MIN_BLOCK_DEVICE_SIZE,
             'uuid': part_uuid,
             }
@@ -178,7 +116,6 @@ class TestAddPartitionForm(MAASServerTestCase):
     def test_bootable_is_set_on_partition(self):
         block_device = factory.make_PhysicalBlockDevice()
         data = {
-            'offset': 0,
             'size': MIN_BLOCK_DEVICE_SIZE,
             'bootable': True,
             }

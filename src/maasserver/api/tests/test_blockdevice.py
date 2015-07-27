@@ -214,7 +214,7 @@ class TestBlockDevices(APITestCase):
         response = self.client.post(uri, {
             'name': 'sda',
             'block_size': 1024,
-            'size': 140 * 1024,
+            'size': MIN_BLOCK_DEVICE_SIZE,
             'path': '/dev/sda',
             'model': 'A2M0003',
             'serial': '42',
@@ -225,7 +225,7 @@ class TestBlockDevices(APITestCase):
         self.assertEqual(pbd.node_id, node.id)
         self.assertEqual(pbd.name, 'sda')
         self.assertEqual(pbd.block_size, 1024)
-        self.assertEqual(pbd.size, 140 * 1024)
+        self.assertEqual(pbd.size, MIN_BLOCK_DEVICE_SIZE)
         self.assertEqual(pbd.path, '/dev/disk/by-dname/sda')
         self.assertEqual(pbd.model, 'A2M0003')
         self.assertEqual(pbd.serial, '42')
@@ -305,22 +305,16 @@ class TestBlockDeviceAPI(APITestCase):
             parsed_device['partitions'][0],
             ContainsDict({
                 'bootable': Equals(partition1.bootable),
-                'end_block': Equals(partition1.end_block),
                 'id': Equals(partition1.id),
                 'size': Equals(partition1.size),
-                'start_block': Equals(partition1.start_block),
-                'start_offset': Equals(partition1.start_offset),
                 'uuid': Equals(partition1.uuid),
                 }))
         self.assertThat(
             parsed_device['partitions'][1],
             ContainsDict({
                 'bootable': Equals(partition2.bootable),
-                'end_block': Equals(partition2.end_block),
                 'id': Equals(partition2.id),
                 'size': Equals(partition2.size),
-                'start_block': Equals(partition2.start_block),
-                'start_offset': Equals(partition2.start_offset),
                 'uuid': Equals(partition2.uuid),
                 }))
 
@@ -672,7 +666,7 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             name='myblockdevice',
-            size=140 * 1024,
+            size=MIN_BLOCK_DEVICE_SIZE,
             block_size=1024)
         uri = get_blockdevice_uri(block_device)
         response = self.client.put(uri, {
@@ -717,7 +711,7 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             name='myblockdevice',
-            size=140 * 1024,
+            size=MIN_BLOCK_DEVICE_SIZE,
             block_size=1024)
         uri = get_blockdevice_uri(block_device)
         response = self.client.put(uri, {

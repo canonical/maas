@@ -21,10 +21,12 @@ from uuid import uuid4
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
-from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import MIN_PARTITION_SIZE
+from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import round_size_to_nearest_block
 
 
 def get_partitions_uri(block_device):
@@ -43,78 +45,60 @@ def get_partition_uri(partition):
         args=[node.system_id, block_device.id, partition.id])
 
 
-def get_size_on_block_boundry(size, block_size):
-    num_of_blocks = size / block_size
-    if size % block_size > 0:
-        num_of_blocks += 1
-    return num_of_blocks * block_size
-
-
 class TestPartitions(APITestCase):
+
+    def make_partition(self, node):
+        device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        return factory.make_Partition(
+            partition_table=partition_table,
+            size=MIN_PARTITION_SIZE)
 
     def test_create_partition(self):
         """
         Tests creation of a partition on a block device.
 
         Create partition on block device
-        - Offset
         - Size
         POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions
         """
         node = factory.make_Node(owner=self.logged_in_user)
         block_size = 1024
         device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET,
+            block_size=block_size)
+        factory.make_PartitionTable(block_device=device)
         uri = get_partitions_uri(device)
 
         # Add a partition to the start of the drive.
-        size = MIN_BLOCK_DEVICE_SIZE
-        partition_one_end_size = get_size_on_block_boundry(size, block_size)
+        size = round_size_to_nearest_block(
+            random.randint(
+                MIN_PARTITION_SIZE, MIN_PARTITION_SIZE * 2),
+            block_size)
         response = self.client.post(
             uri, {
-                'offset': '800',
                 'size': size,
             })
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
-
-        partition = json.loads(response.content)
-        partition_from_db = partition_table.partitions.get()
-        self.assertEqual(
-            partition_from_db.start_offset, partition['start_offset'])
-        self.assertEqual(partition_from_db.size, partition['size'])
-
-        # Add a second partition (which should start on the block after the
-        # first partition).
-        response = self.client.post(
-            uri, {'size': MIN_BLOCK_DEVICE_SIZE})
-        self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        partition = json.loads(response.content)
-
-        partition_from_db = partition_table.partitions.get(id=partition['id'])
-        self.assertEqual(
-            partition_one_end_size,
-            partition_from_db.start_offset)
-        self.assertEqual(
-            MIN_BLOCK_DEVICE_SIZE, partition_from_db.size)
 
     def test_list_partitions(self):
         """Lists all partitions on a given device
 
         GET /nodes/{system_id}/blockdevice/{id}/partitions
         """
-        block_size = 1024
-        device = factory.make_PhysicalBlockDevice(size=8192 * block_size)
+        device = factory.make_PhysicalBlockDevice(
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition1 = factory.make_Partition(
             partition_table=partition_table,
-            start_offset=0, size=4096 * block_size)
+            size=MIN_PARTITION_SIZE)
         partition2 = factory.make_Partition(
             partition_table=partition_table,
-            start_offset=4096 * block_size,
-            size=4096 * block_size)
+            size=MIN_PARTITION_SIZE)
         uri = get_partitions_uri(device)
         response = self.client.get(uri)
         self.assertEqual(
@@ -123,11 +107,10 @@ class TestPartitions(APITestCase):
         partitions = json.loads(response.content)
         p1 = [p for p in partitions if p['id'] == partition1.id][0]
         p2 = [p for p in partitions if p['id'] == partition2.id][0]
-
-        self.assertEqual(partition1.start_offset, p1['start_offset'])
         self.assertEqual(partition1.size, p1['size'])
-        self.assertEqual(partition2.start_offset, p2['start_offset'])
+        self.assertEqual(partition1.uuid, p1['uuid'])
         self.assertEqual(partition2.size, p2['size'])
+        self.assertEqual(partition2.uuid, p2['uuid'])
 
     def test_read_partition(self):
         """Tests reading metadata about a partition
@@ -135,14 +118,12 @@ class TestPartitions(APITestCase):
         Read partition on block device
         GET /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
         """
-        block_size = 4096
         device = factory.make_PhysicalBlockDevice(
-            size=8192 * block_size, block_size=block_size)
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition = factory.make_Partition(
             partition_table=partition_table,
-            start_offset=10 * block_size,
-            size=4096 * block_size,
+            size=MIN_PARTITION_SIZE,
             bootable=True)
         uri = get_partition_uri(partition)
         response = self.client.get(uri)
@@ -153,8 +134,6 @@ class TestPartitions(APITestCase):
         self.assertTrue(parsed_partition['bootable'])
         self.assertEqual(partition.id, parsed_partition['id'])
         self.assertEqual(partition.size, parsed_partition['size'])
-        self.assertEqual(
-            partition.start_offset, parsed_partition['start_offset'])
 
     def test_delete_partition(self):
         """Tests deleting a partition
@@ -163,14 +142,7 @@ class TestPartitions(APITestCase):
         DELETE /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
         """
         node = factory.make_Node(owner=self.logged_in_user)
-        block_size = 4096
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.delete(uri)
 
@@ -185,15 +157,8 @@ class TestPartitions(APITestCase):
         POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
              ?op=format
         """
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = unicode(uuid4())
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
@@ -216,10 +181,10 @@ class TestPartitions(APITestCase):
         POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
              ?op=format
         """
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
         device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
         factory.make_PartitionTable(block_device=device)
         partition_id = random.randint(1, 1000)  # Most likely a bogus one
         uri = reverse(
@@ -243,15 +208,8 @@ class TestPartitions(APITestCase):
         POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
              ?op=format
         """
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {
             'op': 'format',
@@ -266,14 +224,8 @@ class TestPartitions(APITestCase):
     def test_unformat_partition_as_admin(self):
         """Unformatting a partition as the administrator succeeds and returns
         an OK status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
@@ -281,21 +233,14 @@ class TestPartitions(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         partition = json.loads(response.content)
-        self.assertIsNone(partition.get('filesystem'),
-                          'Partition still has a filesystem.')
+        self.assertIsNone(
+            partition.get('filesystem'), 'Partition still has a filesystem.')
 
     def test_unformat_partition_as_node_owner(self):
         """Unformatting a partition on a node the user is allowed to edit
         succeeds and returns an OK status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table,
-            start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
@@ -308,14 +253,8 @@ class TestPartitions(APITestCase):
     def test_unformat_partition_as_other_user(self):
         """Unformatting a partition on a node the user is not allowed to edit
         fails with a FORBIDDEN status."""
-        block_size = 4096
         node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
@@ -326,14 +265,8 @@ class TestPartitions(APITestCase):
     def test_unformat_missing_filesystem(self):
         """Unformatting a partition that does not contain a filesystem  fails
         with a BAD_REQUEST status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
         self.assertEqual(
@@ -342,10 +275,10 @@ class TestPartitions(APITestCase):
     def test_unformat_missing_partition(self):
         """Unformatting a partition that does not exist fails with a NOT_FOUND
         status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
         device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
         factory.make_PartitionTable(block_device=device)
         partition_id = random.randint(1, 1000)  # Most likely a bogus one
         partition_id = random.randint(1, 1000)  # Most likely a bogus one
@@ -378,10 +311,7 @@ class TestPartitions(APITestCase):
 
     def test_mount_returns_400_on_missing_mount_point(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node)
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device)
-        partition = partition_table.add_partition()
+        partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'mount'})
@@ -394,10 +324,7 @@ class TestPartitions(APITestCase):
 
     def test_unmount_returns_400_if_not_formatted(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node)
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device)
-        partition = partition_table.add_partition()
+        partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unmount'})
         self.assertEqual(
@@ -407,10 +334,7 @@ class TestPartitions(APITestCase):
 
     def test_unmount_returns_400_if_already_unmounted(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node)
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device)
-        partition = partition_table.add_partition()
+        partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unmount'})
@@ -421,10 +345,7 @@ class TestPartitions(APITestCase):
 
     def test_unmount_unmounts_filesystem(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node)
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device)
-        partition = partition_table.add_partition()
+        partition = self.make_partition(node)
         filesystem = factory.make_Filesystem(
             partition=partition, mount_point="/mnt")
         uri = get_partition_uri(partition)
@@ -438,14 +359,8 @@ class TestPartitions(APITestCase):
 
     def test_unformat_mounted_partition(self):
         """Unformatting a mounted partition fails with a BAD_REQUEST status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=4096 * block_size,
-            size=4096 * block_size)
+        partition = self.make_partition(node)
         factory.make_Filesystem(
             partition=partition, mount_point='/mnt/cantdeleteme')
         uri = get_partition_uri(partition)
@@ -457,15 +372,9 @@ class TestPartitions(APITestCase):
     def test_unformat_filesystemgroup_partition(self):
         """Unformatting a partition that's part of a filesystem group fails
         with a BAD_REQUEST status."""
-        block_size = 4096
         node = factory.make_Node(owner=self.logged_in_user)
-        device = factory.make_PhysicalBlockDevice(
-            node=node, size=8192 * block_size, block_size=block_size)
-        partition_table = factory.make_PartitionTable(block_device=device)
-        partition = factory.make_Partition(
-            partition_table=partition_table, start_offset=4096 * block_size,
-            size=4096 * block_size)
-        filesystem_group = factory.make_FilesystemGroup(node=device.node)
+        partition = self.make_partition(node)
+        filesystem_group = factory.make_FilesystemGroup(node=node)
         factory.make_Filesystem(
             partition=partition, filesystem_group=filesystem_group)
         uri = get_partition_uri(partition)

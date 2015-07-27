@@ -26,6 +26,7 @@ from maasserver.forms import (
     UpdateRaidForm,
 )
 from maasserver.models.filesystemgroup import RAID
+from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -102,8 +103,9 @@ class TestCreateRaidForm(MAASServerTestCase):
 
     def test_raid_creation_on_save(self):
         node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
         ]
         for bd in bds[5:]:
@@ -117,6 +119,8 @@ class TestCreateRaidForm(MAASServerTestCase):
             bd.get_partitiontable().add_partition().id
             for bd in bds[5:]
         ]
+        # Partition size will be smaller than the disk, because of overhead.
+        partition_size = device_size - INITIAL_PARTITION_OFFSET
         form = CreateRaidForm(node=node, data={
             'name': 'md1',
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
@@ -126,7 +130,7 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         self.assertEqual('md1', raid.name)
-        self.assertEqual(8 * 10 * 1000 ** 4, raid.get_size())
+        self.assertEqual(8 * partition_size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertItemsEqual(
             block_devices,

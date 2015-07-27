@@ -1097,9 +1097,8 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_storage(self):
         """Storage label is returned alongside node data"""
         node = factory.make_Node(status=NODE_STATUS.READY)
-        factory.make_PhysicalBlockDevice(node=node,
-                                         size=11 * (1000 ** 3),
-                                         tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node, size=11 * (1000 ** 3), tags=['ssd'])
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'storage': 'needed:10(ssd)',

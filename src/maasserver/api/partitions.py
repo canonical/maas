@@ -39,12 +39,10 @@ from piston.utils import rc
 DISPLAYED_PARTITION_FIELDS = (
     'id',
     'uuid',
+    'path',
     'type',
     'size',
-    'start_offset',
     'bootable',
-    'start_block',
-    'end_block',
     ('filesystem', (
         'fstype',
         'label',
@@ -83,8 +81,6 @@ class PartitionTableHandler(OperationsHandler):
     def create(self, request, system_id, device_id):
         """Create a partition on the block device.
 
-        :param offset: The starting offset of the partition from the
-            beginning of the block device.
         :param size: The size of the partition.
         :param uuid: UUID for the partition. Only used if the partition table
             type for the block device is GPT.

@@ -19,6 +19,7 @@ from textwrap import dedent
 from maasserver.utils.converters import (
     human_readable_bytes,
     machine_readable_bytes,
+    round_size_to_nearest_block,
     XMLToYAML,
 )
 from maastesting.testcase import MAASTestCase
@@ -109,3 +110,22 @@ class TestMachineReadableBytes(MAASTestCase):
         self.assertEqual(machine_readable_bytes('987e'), 987000000000000000000)
 
         self.assertRaises(ValueError, machine_readable_bytes, '987Z')
+
+
+class TestRoundSizeToNearestBlock(MAASTestCase):
+
+    def test__adds_extra_block(self):
+        block_size = 4096
+        size = block_size + 1
+        self.assertEquals(
+            2 * block_size,
+            round_size_to_nearest_block(size, block_size),
+            "Should add another block to the size.")
+
+    def test__doesnt_add_extra_block(self):
+        block_size = 4096
+        size = block_size
+        self.assertEquals(
+            size,
+            round_size_to_nearest_block(size, block_size),
+            "Shouldn't add another block to the size.")

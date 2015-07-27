@@ -3110,15 +3110,10 @@ class AddPartitionForm(Form):
         self.set_up_fields()
 
     def set_up_fields(self):
-        """Create the `offset` and `size` fields.
+        """Create the `size` field.
 
-        This needs to be done on the fly so that we can pass the maximum offset
-        and size.
+        This needs to be done on the fly so that we can pass the maximum size.
         """
-        self.fields['offset'] = BytesField(
-            min_value=0,
-            max_value=self.block_device.size - MIN_BLOCK_DEVICE_SIZE,
-            required=False)
         self.fields['size'] = BytesField(
             min_value=MIN_BLOCK_DEVICE_SIZE,
             max_value=self.block_device.size,
@@ -3129,7 +3124,6 @@ class AddPartitionForm(Form):
             block_device=self.block_device)
         return partition_table.add_partition(
             size=self.cleaned_data['size'],
-            start_offset=self.cleaned_data.get('offset'),
             uuid=self.cleaned_data.get('uuid'),
             bootable=self.cleaned_data.get('bootable'))
 

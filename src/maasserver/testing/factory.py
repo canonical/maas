@@ -86,6 +86,7 @@ from maasserver.models import (
     VolumeGroup,
     Zone,
 )
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
     INSTALL_SET,
@@ -99,6 +100,7 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import round_size_to_nearest_block
 import maastesting.factory
 from maastesting.factory import NO_VALUE
 from metadataserver.enum import RESULT_TYPE
@@ -1187,7 +1189,10 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000, 1000 * 1000) * block_size
+            size = round_size_to_nearest_block(
+                random.randint(
+                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
+                block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         return BlockDevice.objects.create(
@@ -1204,7 +1209,10 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000 ** 2, 1000 ** 3) * block_size
+            size = round_size_to_nearest_block(
+                random.randint(
+                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
+                block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         if model is None:
@@ -1227,24 +1235,21 @@ class Factory(maastesting.factory.Factory):
             table_type=table_type, block_device=block_device)
 
     def make_Partition(
-            self, partition_table=None, uuid=None, start_offset=None,
-            size=None, bootable=None, partition_number=None, node=None,
-            block_device_size=None):
+            self, partition_table=None, uuid=None, size=None, bootable=None,
+            node=None, block_device_size=None):
         if partition_table is None:
             partition_table = self.make_PartitionTable(
                 node=node, block_device_size=block_device_size)
-        if start_offset is None:
-            start_offset = random.randint(0, partition_table.get_size() - 2)
         if size is None:
-            size = random.randint(
-                MIN_PARTITION_SIZE,
-                partition_table.get_size() - start_offset)
+            size = round_size_to_nearest_block(
+                random.randint(
+                    MIN_PARTITION_SIZE, partition_table.get_available_size()),
+                partition_table.get_block_size())
         if bootable is None:
             bootable = random.choice([True, False])
         return Partition.objects.create(
             partition_table=partition_table, uuid=uuid,
-            start_offset=start_offset, size=size, bootable=bootable,
-            partition_number=partition_number)
+            size=size, bootable=bootable)
 
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
@@ -1360,7 +1365,10 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
-            size = random.randint(1000, 1000 * 1000) * block_size
+            size = round_size_to_nearest_block(
+                random.randint(
+                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
+                block_size)
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:

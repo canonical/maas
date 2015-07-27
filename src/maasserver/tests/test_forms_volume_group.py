@@ -146,7 +146,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
     def test_creates_volume_group_with_partitions(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 3)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partitions = [
@@ -181,7 +181,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             for block_device in block_devices
         ]
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+            node=node, size=MIN_BLOCK_DEVICE_SIZE * 3)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partitions = [

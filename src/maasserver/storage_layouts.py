@@ -159,11 +159,11 @@ class StorageLayoutBase(Form):
         partition_table = PartitionTable.objects.create(
             block_device=boot_disk)
         efi_partition = partition_table.add_partition(
-            size=EFI_PARTITION_SIZE, bootable=True, partition_number=15)
+            size=EFI_PARTITION_SIZE, bootable=True)
         boot_partition = partition_table.add_partition(
-            size=self.get_boot_size(), bootable=True, partition_number=1)
+            size=self.get_boot_size(), bootable=True)
         root_partition = partition_table.add_partition(
-            size=self.get_root_size(), partition_number=2)
+            size=self.get_root_size())
         Filesystem.objects.create(
             partition=efi_partition,
             fstype=FILESYSTEM_TYPE.FAT32,
@@ -395,7 +395,7 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
             cache_partition_table = PartitionTable.objects.create(
                 block_device=cache_block_device)
             cache_device = cache_partition_table.add_partition(
-                size=self.get_cache_size(), partition_number=1)
+                size=self.get_cache_size())
         return cache_device
 
     def clean(self):

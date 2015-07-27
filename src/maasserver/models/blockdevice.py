@@ -44,7 +44,7 @@ from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
 
 
-MIN_BLOCK_DEVICE_SIZE = 143360  # The size of an Apple II disk
+MIN_BLOCK_DEVICE_SIZE = 2 * 1024 * 1024  # 2MiB
 MIN_BLOCK_DEVICE_BLOCK_SIZE = 512  # A ProDOS block
 
 

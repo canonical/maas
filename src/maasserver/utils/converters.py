@@ -98,3 +98,14 @@ def machine_readable_bytes(humanized):
         return int(humanized[:-1]) * 1000000000000000000
     else:
         return int(humanized)
+
+
+def round_size_to_nearest_block(size, block_size):
+    """Round the size to the nearest block returning the new size.
+
+    :param round_up: Round the size to fill an entire block.
+    """
+    number_of_blocks = size / block_size
+    if size % block_size > 0:
+        number_of_blocks += 1
+    return block_size * number_of_blocks
