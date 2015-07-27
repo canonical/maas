@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 from base64 import b64decode
+import re
 
 import bson
 import crochet
@@ -99,6 +100,8 @@ DISPLAYED_NODE_FIELDS = (
     ('macaddress_set', ('mac_address',)),
     'pxe_mac',
     'architecture',
+    'min_hwe_kernel',
+    'hwe_kernel',
     'cpu_count',
     'memory',
     'swap_size',
@@ -290,6 +293,9 @@ class NodeHandler(OperationsHandler):
         :type hostname: unicode
         :param architecture: The new architecture for this node.
         :type architecture: unicode
+        :param min_hwe_kernel: A string containing the minimum kernel version
+            allowed to be ran on this node.
+        :type min_hwe_kernel: unicode
         :param power_type: The new power type for this node. If you use the
             default value, power_parameters will be set to the empty string.
             Available to admin users.
@@ -397,6 +403,9 @@ class NodeHandler(OperationsHandler):
         :param distro_series: If present, this parameter specifies the
             OS release the node will use.
         :type distro_series: unicode
+        :param hwe_kernel: If present, this parameter specified the kernel to
+            be used on the node
+        :type hwe_kernel: unicode
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -412,6 +421,7 @@ class NodeHandler(OperationsHandler):
         user_data = request.POST.get('user_data', None)
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
+        hwe_kernel = request.POST.get('hwe_kernel', None)
 
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -422,13 +432,15 @@ class NodeHandler(OperationsHandler):
                 "Can't start node: it hasn't been allocated.")
         if user_data is not None:
             user_data = b64decode(user_data)
-        if series is not None or license_key is not None:
+        if (series, license_key, hwe_kernel) != (None, None, None):
             Form = get_node_edit_form(request.user)
             form = Form(instance=node)
             if series is not None:
                 form.set_distro_series(series=series)
             if license_key is not None:
                 form.set_license_key(license_key=license_key)
+            if hwe_kernel is not None:
+                form.set_hwe_kernel(hwe_kernel=hwe_kernel)
             if form.is_valid():
                 form.save()
             else:
@@ -824,6 +836,7 @@ def create_node(request):
     #     architecture with a '/' and a subarchitecture: error
     given_arch = request.data.get('architecture', None)
     given_subarch = request.data.get('subarchitecture', None)
+    given_min_hwe_kernel = request.data.get('min_hwe_kernel', None)
     altered_query_data = request.data.copy()
     if given_arch and '/' in given_arch:
         if given_subarch:
@@ -842,6 +855,22 @@ def create_node(request):
             # Architecture without a '/' and no subarchitecture:
             # assume 'generic'.
             altered_query_data['architecture'] += '/generic'
+
+    hwe_regex = re.compile('hwe-.+')
+    has_arch_with_hwe = (
+        given_arch and hwe_regex.search(given_arch) is not None)
+    has_subarch_with_hwe = (
+        given_subarch and hwe_regex.search(given_subarch) is not None)
+    if has_arch_with_hwe or has_subarch_with_hwe:
+        raise MAASAPIValidationError(
+            'hwe kernel must be specified using the min_hwe_kernel argument.')
+
+    # XXX ltrager 2015/07/27: We should ensure that the specified kernel is
+    # available to MAAS
+    if given_min_hwe_kernel:
+        if hwe_regex.search(given_min_hwe_kernel) is None:
+            raise MAASAPIValidationError(
+                'min_hwe_kernel must be in the form of hwe-<LETTER>.')
 
     if 'nodegroup' not in altered_query_data:
         # If 'nodegroup' is not explicitly specified, get the origin of the
@@ -901,6 +930,8 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         :param architecture: A string containing the architecture type of
             the node. (For example, "i386", or "amd64".) To determine the
             supported architectures, use the boot-resources endpoint.
+        :param min_hwe_kernel: A string containing the minimum kernel version
+            allowed to be ran on this node.
         :param subarchitecture: A string containing the subarchitecture type
             of the node. (For example, "generic" or "hwe-t".) To determine
             the supported subarchitectures, use the boot-resources endpoint.
@@ -980,6 +1011,8 @@ class NodesHandler(OperationsHandler):
         :param architecture: A string containing the architecture type of
             the node. (For example, "i386", or "amd64".) To determine the
             supported architectures, use the boot-resources endpoint.
+        :param min_hwe_kernel: A string containing the minimum kernel version
+            allowed to be ran on this node.
         :param subarchitecture: A string containing the subarchitecture type
             of the node. (For example, "generic" or "hwe-t".) To determine
             the supported subarchitectures, use the boot-resources endpoint.

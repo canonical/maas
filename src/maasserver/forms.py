@@ -656,6 +656,11 @@ class NodeForm(MAASModelForm):
         self.is_bound = True
         self.data['license_key'] = license_key
 
+    def set_hwe_kernel(self, hwe_kernel=''):
+        """Sets the hwe_kernel."""
+        self.is_bound = True
+        self.data['hwe_kernel'] = hwe_kernel
+
     hostname = forms.CharField(
         label="Host name", required=False, help_text=(
             "The FQDN (Fully Qualified Domain Name) is derived from the "
@@ -689,6 +694,8 @@ class NodeForm(MAASModelForm):
             'disable_ipv4',
             'swap_size',
             'boot_type',
+            'min_hwe_kernel',
+            'hwe_kernel'
             )
 
 

@@ -255,11 +255,12 @@ class Factory(maastesting.factory.Factory):
 
     def make_Node(
             self, mac=False, hostname=None, status=None,
-            architecture="i386/generic", installable=True, updated=None,
-            created=None, nodegroup=None, routers=None, zone=None,
-            networks=None, boot_type=None, sortable_name=False,
-            power_type=None, power_parameters=None, power_state=None,
-            power_state_updated=undefined, disable_ipv4=None, **kwargs):
+            architecture="i386/generic", min_hwe_kernel=None, hwe_kernel=None,
+            installable=True, updated=None, created=None, nodegroup=None,
+            routers=None, zone=None, networks=None, boot_type=None,
+            sortable_name=False, power_type=None, power_parameters=None,
+            power_state=None, power_state_updated=undefined, disable_ipv4=None,
+            **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -296,11 +297,12 @@ class Factory(maastesting.factory.Factory):
             boot_type = self.pick_enum(NODE_BOOT)
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
+            min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             installable=installable, nodegroup=nodegroup, routers=routers,
             zone=zone, boot_type=boot_type, power_type=power_type,
             power_parameters=power_parameters, power_state=power_state,
-            power_state_updated=power_state_updated,
-            disable_ipv4=disable_ipv4, **kwargs)
+            power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,
+            **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to

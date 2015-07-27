@@ -1724,6 +1724,7 @@ class Node(CleanSave, TimestampedModel):
         self.osystem = ''
         self.distro_series = ''
         self.license_key = ''
+        self.hwe_kernel = None
         self.save()
 
         # Avoid circular imports

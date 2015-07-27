@@ -70,6 +70,8 @@ class TestNodeForm(MAASServerTestCase):
                 'disable_ipv4',
                 'swap_size',
                 'boot_type',
+                'min_hwe_kernel',
+                'hwe_kernel',
                 'nodegroup',
             ], list(form.fields))
 
@@ -487,6 +489,8 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'disable_ipv4',
                 'swap_size',
                 'boot_type',
+                'min_hwe_kernel',
+                'hwe_kernel',
                 'power_type',
                 'power_parameters',
                 'cpu_count',

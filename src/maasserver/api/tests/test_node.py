@@ -305,6 +305,23 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
+    def test_GET_returns_min_hwe_kernel_and_hwe_kernel(self):
+        node = factory.make_Node()
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(None, parsed_result['min_hwe_kernel'])
+        self.assertEqual(None, parsed_result['hwe_kernel'])
+
+    def test_GET_returns_min_hwe_kernel(self):
+        node = factory.make_Node(min_hwe_kernel="hwe-v")
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
+
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()
         node_stop = self.patch(node, 'stop')
@@ -507,6 +524,18 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
+    def test_POST_start_sets_hwe_kernel(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, mac=True, power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'start',
+                'hwe_kernel': 'hwe-v',
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual('hwe-v', reload_object(node).hwe_kernel)
+
     def test_POST_release_releases_owned_node(self):
         self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
@@ -634,6 +663,19 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(node_uri, {'op': 'release'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
+
+    def test_POST_release_frees_hwe_kernel(self):
+        self.patch(node_module, 'power_off_node')
+        self.patch(node_module.Node, 'start_transition_monitor')
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            power_type='ipmi', power_state=POWER_STATE.ON,
+            hwe_kernel='hwe-v')
+        self.assertEqual('hwe-v', reload_object(node).hwe_kernel)
+        response = self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
+        self.assertEqual(None, reload_object(node).hwe_kernel)
 
     def test_POST_commission_commissions_node(self):
         node = factory.make_Node(
