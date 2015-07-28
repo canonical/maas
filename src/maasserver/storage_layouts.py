@@ -63,10 +63,23 @@ class StorageLayoutBase(Form):
         super(StorageLayoutBase, self).__init__(data=params)
         self.node = node
         self.block_devices = self._load_physical_block_devices()
+        self.setup_root_device_field()
 
     def _load_physical_block_devices(self):
         """Load all the `PhysicalBlockDevice`'s for node."""
         return list(self.node.physicalblockdevice_set.order_by('id').all())
+
+    def setup_root_device_field(self):
+        """Setup the possible root devices."""
+        choices = [
+            (block_device.id, block_device.id)
+            for block_device in self.block_devices
+        ]
+        invalid_choice_message = compose_invalid_choice_text(
+            'root_device', choices)
+        self.fields['root_device'] = forms.ChoiceField(
+            choices=choices, required=False,
+            error_messages={'invalid_choice': invalid_choice_message})
 
     def get_boot_disk(self):
         """Return the boot disk for the node."""
@@ -130,6 +143,17 @@ class StorageLayoutBase(Form):
                 "than the available space on the boot disk.")
         return cleaned_data
 
+    def get_root_device(self):
+        """Get the device that should be the root partition.
+
+        Return of None means to use the boot disk.
+        """
+        if self.cleaned_data.get('root_device'):
+            root_id = self.cleaned_data['root_device']
+            return self.node.physicalblockdevice_set.get(id=root_id)
+        else:
+            return None
+
     def get_boot_size(self):
         """Get the size of the boot partition."""
         if self.cleaned_data.get('boot_size'):
@@ -156,14 +180,21 @@ class StorageLayoutBase(Form):
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.partitiontable import PartitionTable
         boot_disk = self.get_boot_disk()
-        partition_table = PartitionTable.objects.create(
+        boot_partition_table = PartitionTable.objects.create(
             block_device=boot_disk)
-        efi_partition = partition_table.add_partition(
+        efi_partition = boot_partition_table.add_partition(
             size=EFI_PARTITION_SIZE, bootable=True)
-        boot_partition = partition_table.add_partition(
+        boot_partition = boot_partition_table.add_partition(
             size=self.get_boot_size(), bootable=True)
-        root_partition = partition_table.add_partition(
-            size=self.get_root_size())
+        root_device = self.get_root_device()
+        if root_device is None or root_device == boot_disk:
+            root_partition = boot_partition_table.add_partition(
+                size=self.get_root_size())
+        else:
+            root_partition_table = PartitionTable.objects.create(
+                block_device=root_device)
+            root_partition = root_partition_table.add_partition(
+                size=self.get_root_size())
         Filesystem.objects.create(
             partition=efi_partition,
             fstype=FILESYSTEM_TYPE.FAT32,

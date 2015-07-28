@@ -762,6 +762,7 @@ class NodeHandler(OperationsHandler):
 
         :param boot_size: Size of the boot partition.
         :param root_size: Size of the root partition.
+        :param root_device: Physical block device to place the root partition.
 
         The following are optional for LVM:
 

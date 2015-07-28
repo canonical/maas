@@ -373,6 +373,27 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertTrue(layout.is_valid(), layout.errors)
         self.assertEquals(boot_size, layout.get_boot_size())
 
+    def test_get_root_device_returns_None_if_not_set(self):
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = StorageLayoutBase(node, {
+            })
+        self.assertTrue(layout.is_valid(), layout.errors)
+        self.assertIsNone(layout.get_root_device())
+
+    def test_get_root_device_returns_root_device_if_set(self):
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        root_device = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = StorageLayoutBase(node, {
+            'root_device': root_device.id,
+            })
+        self.assertTrue(layout.is_valid(), layout.errors)
+        self.assertEquals(root_device, layout.get_root_device())
+
     def test_get_root_size_returns_None_if_not_set(self):
         node = factory.make_Node()
         factory.make_PhysicalBlockDevice(
@@ -428,6 +449,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = FlatStorageLayout(node)
         self.assertItemsEqual([
+            'root_device',
             'root_size',
             'boot_size',
             ], layout.fields.keys())
@@ -625,6 +647,61 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 mount_point="/",
                 ))
 
+    def test__creates_layout_with_root_device_and_root_size(self):
+        node = factory.make_Node()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        root_device = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        root_size = random.randint(
+            MIN_ROOT_PARTITION_SIZE, MIN_ROOT_PARTITION_SIZE * 2)
+        layout = FlatStorageLayout(node, {
+            'root_device': root_device.id,
+            'root_size': root_size,
+            })
+        layout.configure()
+
+        # Validate boot partition table.
+        boot_partition_table = boot_disk.get_partitiontable()
+        self.assertEquals(
+            PARTITION_TABLE_TYPE.GPT, boot_partition_table.table_type)
+
+        # Validate efi partition.
+        boot_partitions = boot_partition_table.partitions.order_by('id').all()
+        efi_partition = boot_partitions[0]
+        self.assertEFIPartition(efi_partition, boot_disk)
+
+        # Validate boot partition.
+        boot_partition = boot_partitions[1]
+        self.assertIsNotNone(boot_partition)
+        self.assertEquals(
+            round_size_by_blocks(
+                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
+            boot_partition.size)
+        self.assertThat(
+            boot_partition.filesystem, MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot",
+                ))
+
+        # Validate the root device partition table and partition.
+        root_partition_table = root_device.get_partitiontable()
+        self.assertEquals(
+            PARTITION_TABLE_TYPE.GPT, boot_partition_table.table_type)
+        root_partition = root_partition_table.partitions.order_by(
+            'id').all()[0]
+        self.assertIsNotNone(root_partition)
+        self.assertEquals(
+            round_size_by_blocks(root_size, root_device.block_size),
+            root_partition.size)
+        self.assertThat(
+            root_partition.filesystem, MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+                ))
+
 
 class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
@@ -634,6 +711,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node)
         self.assertItemsEqual([
+            'root_device',
             'root_size',
             'boot_size',
             'vg_name',
@@ -1188,6 +1266,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheStorageLayout(node)
         self.assertItemsEqual([
+            'root_device',
             'root_size',
             'boot_size',
             'cache_device',
@@ -1329,6 +1408,7 @@ class TestBcacheLVMStorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheLVMStorageLayout(node)
         self.assertItemsEqual([
+            'root_device',
             'root_size',
             'boot_size',
             'vg_name',

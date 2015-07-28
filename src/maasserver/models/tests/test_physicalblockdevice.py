@@ -81,7 +81,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
     def test_total_size_of_physical_devices_for_returns_sum_of_size(self):
         node = factory.make_Node()
         sizes = [
-            random.randint(1000 * 1000, 1000 * 1000 * 1000)
+            random.randint(MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 2)
             for _ in range(3)
             ]
         for size in sizes:
@@ -94,7 +94,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
     def test_total_size_of_physical_devices_for_filters_on_node(self):
         node = factory.make_Node()
         sizes = [
-            random.randint(1000 * 1000, 1000 * 1000 * 1000)
+            random.randint(MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 2)
             for _ in range(3)
             ]
         for size in sizes:
