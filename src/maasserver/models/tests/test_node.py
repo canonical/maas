@@ -2258,6 +2258,22 @@ class TestNode(MAASServerTestCase):
             "Filesystem on partition on virtual block device should have "
             "been removed.")
 
+    def test_pxe_mac_displays_error_if_not_hosts_mac(self):
+        node0 = factory.make_Node()
+        factory.make_MACAddress(node=node0)
+        node1 = factory.make_Node()
+        mac1 = factory.make_MACAddress(node=node1)
+        node0.pxe_mac = mac1
+        exception = self.assertRaises(ValidationError, node0.save)
+        msg = {'pxe_mac': ["Must be one of the node's mac addresses."]}
+        self.assertEqual(msg, exception.message_dict)
+
+    def test_pxe_mac_accepts_valid_mac(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        node.pxe_mac = mac
+        node.save()
+
 
 class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
 

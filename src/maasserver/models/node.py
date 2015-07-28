@@ -768,6 +768,18 @@ class Node(CleanSave, TimestampedModel):
         # (very limited) RawQuerySet.
         return Interface.objects.filter(id__in=ids)
 
+    def clean_pxe_mac(self):
+        """Check that this Node's PXE MAC (if present) belongs to this Node.
+
+        It's possible, though very unlikely, that the PXE MAC we are seeing
+        is already assigned to another Node. If this happens, we need to
+        catch the failure as early as possible.
+        """
+        if (self.pxe_mac is not None and self.id is not None and
+                self.id != self.pxe_mac.node_id):
+                raise ValidationError(
+                    {'pxe_mac': ["Must be one of the node's mac addresses."]})
+
     def clean_status(self):
         """Check a node's status transition against the node-status FSM."""
         old_status = get_db_state(self, 'status')
@@ -800,6 +812,7 @@ class Node(CleanSave, TimestampedModel):
         super(Node, self).clean(*args, **kwargs)
         self.clean_status()
         self.clean_architecture()
+        self.clean_pxe_mac()
 
     def display_status(self):
         """Return status text as displayed to the user."""
