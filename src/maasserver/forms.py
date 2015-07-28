@@ -3327,23 +3327,21 @@ class CreateBcacheForm(Form):
         This implementation of `save` does not support the `commit` argument.
         """
 
+        cache_partition = cache_device = None
         if self.cleaned_data['cache_device']:
             cache_device = BlockDevice.objects.get(
                 id=int(self.cleaned_data['cache_device']))
-            cache_partition = None
         elif self.cleaned_data['cache_partition']:
             cache_partition = Partition.objects.get(
                 id=int(self.cleaned_data['cache_partition']))
-            cache_device = None
 
+        backing_partition = backing_device = None
         if self.cleaned_data['backing_device']:
             backing_device = BlockDevice.objects.get(
                 id=int(self.cleaned_data['backing_device']))
-            backing_partition = None
-        elif self.cleaned_data['spare_partitions']:
+        elif self.cleaned_data['backing_partition']:
             backing_partition = Partition.objects.get(
                 id=int(self.cleaned_data['backing_partition']))
-            backing_device = None
 
         return Bcache.objects.create_bcache(
             name=self.cleaned_data['name'],
@@ -3370,6 +3368,112 @@ class CreateBcacheForm(Form):
             (partition.id, partition.id)
             for partition in Partition.objects.get_free_partitions_for_node(
                 self.node)
+        ]
+
+        self.fields['cache_device'].choices = block_device_choices
+        self.fields['cache_partition'].choices = partition_choices
+        self.fields['backing_device'].choices = block_device_choices
+        self.fields['backing_partition'].choices = partition_choices
+
+
+class UpdateBcacheForm(Form):
+    """For validaing and saving an existing Bcache."""
+
+    name = forms.CharField(required=False)
+    uuid = UUID4Field(required=False)
+    cache_device = forms.ChoiceField(required=False)
+    backing_device = forms.ChoiceField(required=False)
+    cache_partition = forms.ChoiceField(required=False)
+    backing_partition = forms.ChoiceField(required=False)
+    cache_mode = forms.ChoiceField(
+        choices=CACHE_MODE_TYPE_CHOICES, required=False)
+
+    def __init__(self, bcache, *args, **kwargs):
+        super(UpdateBcacheForm, self).__init__(*args, **kwargs)
+        self.bcache = bcache
+        self.node = bcache.get_node()
+        self._set_up_field_choices()
+
+    def save(self):
+        """Persist the bcache into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+
+        if self.cleaned_data['cache_device']:
+            device = BlockDevice.objects.get(
+                id=int(self.cleaned_data['cache_device']), node=self.node)
+            # Remove previous cache
+            self.bcache.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE).delete()
+            # Create a new one on this device.
+            self.bcache.filesystems.add(Filesystem.objects.create(
+                block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_CACHE))
+        elif self.cleaned_data['cache_partition']:
+            partition = Partition.objects.get(
+                id=int(self.cleaned_data['cache_partition']))
+            # Remove previous cache
+            self.bcache.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE).delete()
+            # Create a new one on this partition.
+            self.bcache.filesystems.add(Filesystem.objects.create(
+                partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_CACHE))
+
+        if self.cleaned_data['backing_device']:
+            device = BlockDevice.objects.get(
+                id=int(self.cleaned_data['backing_device']))
+            # Remove previous cache
+            self.bcache.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING).delete()
+            # Create a new one on this device.
+            self.bcache.filesystems.add(Filesystem.objects.create(
+                block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
+        elif self.cleaned_data['backing_partition']:
+            partition = Partition.objects.get(
+                id=int(self.cleaned_data['backing_partition']))
+            # Remove previous cache
+            self.bcache.filesystems.filter(
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING).delete()
+            # Create a new one on this partition.
+            self.bcache.filesystems.add(Filesystem.objects.create(
+                partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
+
+        if self.cleaned_data['name']:
+            self.bcache.name = self.cleaned_data['name']
+        if self.cleaned_data['uuid']:
+            self.bcache.uuid = self.cleaned_data['uuid']
+        if self.cleaned_data['cache_mode']:
+            self.bcache.cache_mode = self.cleaned_data['cache_mode']
+
+        self.bcache.save()
+
+        return self.bcache
+
+    def _set_up_field_choices(self):
+        """Sets up choices for `cache_device`, `backing_device`,
+        `cache_partition` and `backing_partition` fields."""
+
+        # Select the unused, non-partitioned block devices of this node, append
+        # the ones currently used by bcache and exclude the virtual block
+        # device created by the cache.
+        block_device_choices = [
+            (bd.id, bd.id)
+            for bd in BlockDevice.objects.get_free_block_devices_for_node(
+                self.node).exclude(id=self.bcache.virtual_device.id)
+        ] + [
+            (fs.block_device_id, fs.block_device_id)
+            for fs in self.bcache.filesystems.exclude(block_device=None)
+        ]
+
+        # Select the unused partitions of this node, append the bcache ones (if
+        # they exist).
+        partition_choices = [
+            (partition.id, partition.id)
+            for partition in Partition.objects.get_free_partitions_for_node(
+                self.node)
+        ] + [
+            (fs.partition_id, fs.partition_id)
+            for fs in self.bcache.filesystems.exclude(partition=None)
         ]
 
         self.fields['cache_device'].choices = block_device_choices

@@ -16,7 +16,10 @@ __metaclass__ = type
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import CreateBcacheForm
+from maasserver.forms import (
+    CreateBcacheForm,
+    UpdateBcacheForm,
+)
 from maasserver.models import (
     Bcache,
     Node,
@@ -34,6 +37,7 @@ DISPLAYED_BCACHE_FIELDS = (
     'size',
     'human_size',
     'virtual_device',
+    'cache_mode',
 )
 
 
@@ -64,7 +68,7 @@ class BcacheDevicesHandler(OperationsHandler):
         :param uuid: UUID of the Bcache.
         :param cache_device: Cache block device.
         :param cache_partition: Cache partition.
-        :param backing_device: Backing block devices.
+        :param backing_device: Backing block device.
         :param backing_partition: Backing partition.
         :param cache_mode: Cache mode (WRITEBACK, WRITETHROUGH, WRITEAROUND).
 
@@ -142,3 +146,27 @@ class BcacheDeviceHandler(OperationsHandler):
             system_id, bcache_id, request.user, NODE_PERMISSION.EDIT)
         bcache.delete()
         return rc.DELETED
+
+    def update(self, request, system_id, bcache_id):
+        """Delete bcache on node.
+
+        :param name: Name of the Bcache.
+        :param uuid: UUID of the Bcache.
+        :param cache_device: Cache block device to replace current one.
+        :param cache_partition: Cache partition to replace current one.
+        :param backing_device: Backing block device to replace current one.
+        :param backing_partition: Backing partition to replace current one.
+        :param cache_mode: Cache mode (writeback, writethrough, writearound).
+
+        Specifying both a device and a partition for a given role (cache or
+        backing) is not allowed.
+
+        Returns 404 if the node or the cacheis not found.
+        """
+        bcache = Bcache.objects.get_object_or_404(
+            system_id, bcache_id, request.user, NODE_PERMISSION.EDIT)
+        form = UpdateBcacheForm(bcache, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)

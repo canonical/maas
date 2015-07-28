@@ -234,3 +234,92 @@ class TestBcacheDeviceAPI(APITestCase):
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_update_bcache(self):
+        """Tests update bcache method by changing the name, UUID and cache
+        mode of a bcache."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        uuid = unicode(uuid4())
+        filesystem_ids = [fs.id for fs in bcache.filesystems.all()]
+        response = self.client.put(uri, {
+            'name': 'new_name',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual('new_name', parsed_device['name'])
+        self.assertEqual(uuid, parsed_device['uuid'])
+        self.assertEqual(
+            CACHE_MODE_TYPE.WRITEAROUND, parsed_device['cache_mode'])
+        # Ensure the filesystems were not changed.
+        self.assertListEqual(
+            filesystem_ids, [fs.id for fs in bcache.filesystems.all()])
+
+    def test_change_storages_bcache(self):
+        """Tests update bcache method by changing the name, UUID and cache
+        mode of a bcache."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        new_cache = factory.make_PhysicalBlockDevice(node=node)
+        new_backing = factory.make_PhysicalBlockDevice(node=node)
+        response = self.client.put(uri, {
+            'cache_device': new_cache.id,
+            'backing_device': new_backing.id
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(new_cache.id, parsed_device['cache_device']['id'])
+        self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
+        self.assertEqual('physical', parsed_device['cache_device']['type'])
+        self.assertEqual('physical', parsed_device['backing_device']['type'])
+
+    def test_change_storages_to_partitions_bcache(self):
+        """Tests update bcache method by changing the name, UUID and cache
+        mode of a bcache."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        new_cache = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        new_backing = factory.make_PartitionTable(
+            block_device=factory.make_PhysicalBlockDevice(
+                node=node)).add_partition()
+        response = self.client.put(uri, {
+            'cache_partition': new_cache.id,
+            'backing_partition': new_backing.id
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEqual(new_cache.id, parsed_device['cache_device']['id'])
+        self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
+        self.assertEqual('partition', parsed_device['cache_device']['type'])
+        self.assertEqual('partition', parsed_device['backing_device']['type'])
+
+    def test_invalid_change_fails(self):
+        """Tests changing the backing of a bcache device to None fails."""
+        node = factory.make_Node(owner=self.logged_in_user)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        new_cache = factory.make_PhysicalBlockDevice()  # On other node.
+        response = self.client.put(uri, {
+            'cache_device': new_cache.id,
+        })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json.loads(response.content)
+        self.assertIn(
+            'Select a valid choice.',
+            parsed_content['cache_device'][0])

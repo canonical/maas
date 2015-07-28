@@ -1193,7 +1193,8 @@ class Factory(maastesting.factory.Factory):
         if size is None:
             size = round_size_to_nearest_block(
                 random.randint(
-                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
+                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE),
+                    MIN_BLOCK_DEVICE_SIZE * 1024),
                 block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
