@@ -38,7 +38,6 @@ from maasserver.utils.osystems import (
     list_all_usable_releases,
     list_commissioning_choices,
     list_osystem_choices,
-    list_release_choices,
 )
 
 
@@ -73,13 +72,35 @@ def make_default_osystem_field(*args, **kwargs):
     return field
 
 
+def get_default_usable_osystem(default_osystem):
+    """Return the osystem from the clusters that matches the default_osystem.
+    """
+    usable_oses = list_all_usable_osystems()
+    for usable_os in usable_oses:
+        if usable_os["name"] == default_osystem:
+            return usable_os
+    return None
+
+
+def list_choices_for_releases(releases):
+    """List all the release choices."""
+    return [
+        (release['name'], release['title'])
+        for release in releases
+    ]
+
+
 def make_default_distro_series_field(*args, **kwargs):
     """Build and return the default_distro_series field."""
-    usable_oses = list_all_usable_osystems()
-    release_choices = list_release_choices(
-        list_all_usable_releases(usable_oses), include_default=False)
-    if len(release_choices) == 0:
-        release_choices = [('---', '--- No Usable Release ---')]
+    default_osystem = Config.objects.get_config('default_osystem')
+    default_usable_os = get_default_usable_osystem(default_osystem)
+    release_choices = [('---', '--- No Usable Release ---')]
+    if default_usable_os is not None:
+        releases = list_all_usable_releases(
+            [default_usable_os])[default_osystem]
+        valid_release_choices = list_choices_for_releases(releases)
+        if len(valid_release_choices) > 0:
+            release_choices = valid_release_choices
     field = forms.ChoiceField(
         initial=Config.objects.get_config('default_distro_series'),
         choices=release_choices,
