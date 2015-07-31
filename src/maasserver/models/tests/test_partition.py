@@ -27,7 +27,7 @@ from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     Partition,
 )
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import Equals
@@ -40,7 +40,7 @@ class TestPartitionManager(MAASServerTestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_BLOCK_DEVICE_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_BLOCK_DEVICE_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         free_partitions = [
@@ -204,7 +204,7 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
         block_device = factory.make_PhysicalBlockDevice(
-            size=(MIN_BLOCK_DEVICE_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_BLOCK_DEVICE_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
         partitions = [
@@ -218,7 +218,7 @@ class TestPartition(MAASServerTestCase):
 
     def test_get_partition_number_returns_correct_numbering_for_mbr(self):
         block_device = factory.make_PhysicalBlockDevice(
-            size=(MIN_BLOCK_DEVICE_SIZE * 6) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_BLOCK_DEVICE_SIZE * 6) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
         partitions = [

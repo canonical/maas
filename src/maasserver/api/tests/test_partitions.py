@@ -22,7 +22,7 @@ from uuid import uuid4
 from django.core.urlresolvers import reverse
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -50,7 +50,7 @@ class TestPartitions(APITestCase):
     def make_partition(self, node):
         device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
         return factory.make_Partition(
             partition_table=partition_table,
@@ -68,7 +68,7 @@ class TestPartitions(APITestCase):
         block_size = 1024
         device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET,
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         factory.make_PartitionTable(block_device=device)
         uri = get_partitions_uri(device)
@@ -91,7 +91,7 @@ class TestPartitions(APITestCase):
         GET /nodes/{system_id}/blockdevice/{id}/partitions
         """
         device = factory.make_PhysicalBlockDevice(
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition1 = factory.make_Partition(
             partition_table=partition_table,
@@ -119,7 +119,7 @@ class TestPartitions(APITestCase):
         GET /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
         """
         device = factory.make_PhysicalBlockDevice(
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition = factory.make_Partition(
             partition_table=partition_table,
@@ -184,7 +184,7 @@ class TestPartitions(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         factory.make_PartitionTable(block_device=device)
         partition_id = random.randint(1, 1000)  # Most likely a bogus one
         uri = reverse(
@@ -278,7 +278,7 @@ class TestPartitions(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_PARTITION_SIZE * 4) + INITIAL_PARTITION_OFFSET)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         factory.make_PartitionTable(block_device=device)
         partition_id = random.randint(1, 1000)  # Most likely a bogus one
         partition_id = random.randint(1, 1000)  # Most likely a bogus one

@@ -15,7 +15,7 @@ __metaclass__ = type
 __all__ = []
 from django.core.exceptions import ValidationError
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
@@ -32,7 +32,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_size_returns_block_device_size_minus_initial_offset(self):
         partition_table = factory.make_PartitionTable()
         self.assertEquals(
-            partition_table.block_device.size - INITIAL_PARTITION_OFFSET,
+            partition_table.block_device.size - PARTITION_TABLE_EXTRA_SPACE,
             partition_table.get_size())
 
     def test_get_block_size_returns_block_device_block_size(self):
@@ -46,7 +46,7 @@ class TestPartitionTable(MAASServerTestCase):
         device block size."""
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 2 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 2 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition = partition_table.add_partition(
@@ -61,7 +61,7 @@ class TestPartitionTable(MAASServerTestCase):
         end of the device"""
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 2 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 2 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition = partition_table.add_partition()
@@ -74,7 +74,7 @@ class TestPartitionTable(MAASServerTestCase):
         device."""
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 3 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
@@ -86,7 +86,7 @@ class TestPartitionTable(MAASServerTestCase):
         """
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 3 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition()
@@ -96,7 +96,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_available_size(self):
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 3 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
@@ -106,7 +106,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_available_size_skips_partitions(self):
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=MIN_BLOCK_DEVICE_SIZE * 3 + INITIAL_PARTITION_OFFSET,
+            size=MIN_BLOCK_DEVICE_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE,
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         ignore_partitions = [

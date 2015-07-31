@@ -25,6 +25,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -115,7 +116,8 @@ class TestVolumeGroups(APITestCase):
             for block_device in block_devices
         ]
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=MIN_BLOCK_DEVICE_SIZE * 3)
+            node=node,
+            size=(MIN_BLOCK_DEVICE_SIZE * 3) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partitions = [

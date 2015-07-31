@@ -26,7 +26,7 @@ from maasserver.forms import (
     UpdateRaidForm,
 )
 from maasserver.models.filesystemgroup import RAID
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -120,7 +120,7 @@ class TestCreateRaidForm(MAASServerTestCase):
             for bd in bds[5:]
         ]
         # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - INITIAL_PARTITION_OFFSET
+        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         form = CreateRaidForm(node=node, data={
             'name': 'md1',
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,

@@ -26,7 +26,7 @@ from maasserver.enum import (
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -123,7 +123,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         bds = [
             factory.make_PhysicalBlockDevice(
-                node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+                node=node,
+                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -166,7 +167,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         bds = [
             factory.make_PhysicalBlockDevice(
-                node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+                node=node,
+                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -200,7 +202,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         bds = [
             factory.make_PhysicalBlockDevice(
-                node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+                node=node,
+                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -242,7 +245,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         bds = [
             factory.make_PhysicalBlockDevice(
-                node=node, size=MIN_BLOCK_DEVICE_SIZE * 2)
+                node=node,
+                size=(MIN_BLOCK_DEVICE_SIZE * 2) + PARTITION_TABLE_EXTRA_SPACE)
             for i in range(10)
         ]
         for bd in bds[5:]:
@@ -330,7 +334,7 @@ class TestRaidsAPI(APITestCase):
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 7 devices of 9 TB each.
         self.assertEqual(
-            7 * ((9 * 1000 ** 4) - INITIAL_PARTITION_OFFSET),
+            7 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
             parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
@@ -376,7 +380,7 @@ class TestRaidsAPI(APITestCase):
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 6 devices of 9 TB each.
         self.assertEqual(
-            6 * ((9 * 1000 ** 4) - INITIAL_PARTITION_OFFSET),
+            6 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
             parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)

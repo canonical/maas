@@ -2204,7 +2204,7 @@ class TestNode(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=[filesystem_on_vbd1])
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup_on_vgroup, size=2 * 1000 ** 3)
+            filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3)
         partition_table_on_vbd2 = factory.make_PartitionTable(
             block_device=vbd2)
         partition_on_vbd2 = factory.make_Partition(

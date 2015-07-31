@@ -44,6 +44,10 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
 
+# Number of sectors of metadata that is stored on each block device in a
+# volume group.
+LVM_METADATA_SECTORS = 256
+
 
 class BaseFilesystemGroupManager(Manager):
     """A utility to manage the collection of FilesystemGroup."""
@@ -365,10 +369,19 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
         Note: Should only be called when the `group_type` is LVM_VG.
         """
-        return sum(
-            filesystem.get_size()
-            for filesystem in self.filesystems.all()
-            )
+        filesystems = list(self.filesystems.all())
+        if len(filesystems) == 0:
+            return 0
+        else:
+            largest_block_size = max(
+                filesystem.get_block_size()
+                for filesystem in filesystems
+                )
+            lvm_header_size = LVM_METADATA_SECTORS * largest_block_size
+            return sum(
+                filesystem.get_size() - lvm_header_size
+                for filesystem in filesystems
+                )
 
     def get_smallest_filesystem_size(self):
         """Return the smallest filesystem size."""

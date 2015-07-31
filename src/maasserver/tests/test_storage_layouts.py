@@ -25,7 +25,7 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.storage_layouts import (
     BcacheLVMStorageLayout,
     BcacheStorageLayout,
@@ -490,7 +490,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(
             round_size_by_blocks(
                 boot_disk.size - DEFAULT_BOOT_PARTITION_SIZE -
-                EFI_PARTITION_SIZE - INITIAL_PARTITION_OFFSET,
+                EFI_PARTITION_SIZE - PARTITION_TABLE_EXTRA_SPACE,
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
@@ -540,7 +540,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(
             round_size_by_blocks(
                 boot_disk.size - boot_partition.size -
-                EFI_PARTITION_SIZE - INITIAL_PARTITION_OFFSET,
+                EFI_PARTITION_SIZE - PARTITION_TABLE_EXTRA_SPACE,
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(

@@ -1193,7 +1193,7 @@ class Factory(maastesting.factory.Factory):
         if size is None:
             size = round_size_to_nearest_block(
                 random.randint(
-                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE),
+                    MIN_BLOCK_DEVICE_SIZE * 4,
                     MIN_BLOCK_DEVICE_SIZE * 1024),
                 block_size)
         if tags is None:
@@ -1214,7 +1214,7 @@ class Factory(maastesting.factory.Factory):
         if size is None:
             size = round_size_to_nearest_block(
                 random.randint(
-                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
+                    MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024),
                 block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
@@ -1244,9 +1244,13 @@ class Factory(maastesting.factory.Factory):
             partition_table = self.make_PartitionTable(
                 node=node, block_device_size=block_device_size)
         if size is None:
+            available_size = partition_table.get_available_size()
+            if available_size < MIN_PARTITION_SIZE:
+                raise ValueError(
+                    "Cannot make another partition on partition_table not "
+                    "enough free space.")
             size = round_size_to_nearest_block(
-                random.randint(
-                    MIN_PARTITION_SIZE, partition_table.get_available_size()),
+                random.randint(MIN_PARTITION_SIZE, available_size),
                 partition_table.get_block_size())
         if bootable is None:
             bootable = random.choice([True, False])
@@ -1367,19 +1371,25 @@ class Factory(maastesting.factory.Factory):
             node = factory.make_Node()
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
-        if size is None:
-            size = round_size_to_nearest_block(
-                random.randint(
-                    MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 1024),
-                block_size)
-        if tags is None:
-            tags = [self.make_name("tag") for _ in range(3)]
         if filesystem_group is None:
             filesystem_group = self.make_FilesystemGroup(
                 node=node,
                 group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
                 block_device_size=size,
                 num_lvm_devices=2)
+        if size is None:
+            available_size = filesystem_group.get_lvm_free_space()
+            if available_size < MIN_BLOCK_DEVICE_SIZE:
+                raise ValueError(
+                    "Cannot make a virtual block device in filesystem_group; "
+                    "not enough space.")
+            size = round_size_to_nearest_block(
+                random.randint(
+                    MIN_BLOCK_DEVICE_SIZE, available_size),
+                block_size)
+        if tags is None:
+            tags = [self.make_name("tag") for _ in range(3)]
+
         elif not filesystem_group.is_lvm():
             raise RuntimeError(
                 "make_VirtualBlockDevice should only be used with "

@@ -32,9 +32,17 @@ from maasserver.models.partition import Partition
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import round_size_to_nearest_block
 
-# The first partition on the disk must start at 1MiB, as all previous bytes
+# The first partition on the disk must start at 2MiB, as all previous bytes
 # will be used by the partition table and grub.
-INITIAL_PARTITION_OFFSET = 1 * 1024 * 1024
+INITIAL_PARTITION_OFFSET = 2 * 1024 * 1024
+
+# An additional 1MiB of space is left open at the end of the disk to allow for
+# the extra MBR table.
+END_OF_PARTITION_TABLE_SPACE = 1 * 1024 * 1024
+
+# The amount of extra space a partition table will use.
+PARTITION_TABLE_EXTRA_SPACE = (
+    INITIAL_PARTITION_OFFSET + END_OF_PARTITION_TABLE_SPACE)
 
 
 class PartitionTable(CleanSave, TimestampedModel):
@@ -63,7 +71,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         return (
             self.block_device.size -
             round_size_to_nearest_block(
-                INITIAL_PARTITION_OFFSET, self.get_block_size()))
+                PARTITION_TABLE_EXTRA_SPACE, self.get_block_size()))
 
     def get_block_size(self):
         """Block size of partition table."""
