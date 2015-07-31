@@ -395,6 +395,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar error_description: A human-readable description of why a node is
         marked broken.  Only meaningful when the node is in the state 'BROKEN'.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
+    :ivar bios_boot_method: The boot method used by the cluster to allow
+        this node to boot. E.g. "pxe".
     :ivar boot_type: This `Node`'s booting method. See the vocabulary
         :class:`NODE_BOOT`.
     :ivar osystem: This `Node`'s booting operating system, if it's blank then
@@ -427,6 +429,8 @@ class Node(CleanSave, TimestampedModel):
 
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
+
+    bios_boot_method = CharField(max_length=31, blank=True, null=True)
 
     boot_type = CharField(
         max_length=20, choices=NODE_BOOT_CHOICES, default=NODE_BOOT.FASTPATH)

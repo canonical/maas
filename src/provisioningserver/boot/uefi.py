@@ -119,6 +119,7 @@ def download_grubnet(main_url, destination):
 class UEFIBootMethod(BootMethod):
 
     name = "uefi"
+    bios_boot_method = "uefi"
     template_subdir = "uefi"
     bootloader_arches = ['amd64']
     bootloader_path = "bootx64.efi"

@@ -154,6 +154,10 @@ class BootMethod:
         """Name of the boot method."""
 
     @abstractproperty
+    def bios_boot_method(self):
+        """Method used by the bios to boot. E.g. `pxe`."""
+
+    @abstractproperty
     def template_subdir(self):
         """Name of template sub-directory."""
 

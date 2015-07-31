@@ -198,6 +198,7 @@ class Bcd:
 class WindowsPXEBootMethod(BootMethod):
 
     name = "windows"
+    bios_boot_method = "pxe"
     template_subdir = "windows"
     bootloader_path = "pxeboot.0"
     arch_octet = None

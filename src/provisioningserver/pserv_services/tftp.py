@@ -147,6 +147,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         for _, method in BootMethodRegistry:
             params = yield maybeDeferred(method.match_path, self, file_name)
             if params is not None:
+                params["bios_boot_method"] = method.bios_boot_method
                 returnValue((method, params))
         returnValue((None, None))
 

@@ -168,6 +168,7 @@ def pxeconfig(request):
     """
     request_mac = request.GET.get('mac', None)
     request_ip = request.GET.get('remote', None)
+    bios_boot_method = request.GET.get('bios_boot_method', None)
     node = get_node_from_mac_string(request_mac)
 
     if node is not None:
@@ -176,6 +177,11 @@ def pxeconfig(request):
         if (node.pxe_mac is None or
                 node.pxe_mac.mac_address != request_mac):
             node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
+            node.save()
+
+        # Only update the bios boot method if its changed.
+        if node.bios_boot_method != bios_boot_method:
+            node.bios_boot_method = bios_boot_method
             node.save()
 
         # Update the record of the cluster interface this node uses

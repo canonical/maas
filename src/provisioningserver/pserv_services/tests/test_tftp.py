@@ -293,6 +293,7 @@ class TestTFTPBackend(MAASTestCase):
             "local": call_context["local"][0],  # address only.
             "remote": call_context["remote"][0],  # address only.
             "cluster_uuid": cluster_uuid,
+            "bios_boot_method": "pxe",
             }
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)

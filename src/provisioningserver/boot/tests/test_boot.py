@@ -48,6 +48,7 @@ from twisted.python import context
 class FakeBootMethod(BootMethod):
 
     name = "fake"
+    bios_boot_method = "fake"
     template_subdir = "fake"
     bootloader_path = "fake.efi"
     arch_octet = "00:00"

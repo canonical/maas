@@ -48,6 +48,7 @@ CONFIG_FILE_ARM64 = dedent("""
 class UEFIARM64BootMethod(UEFIBootMethod):
 
     name = "uefi_arm64"
+    bios_boot_method = "uefi"
     template_subdir = "uefi"
     bootloader_arches = ['arm64']
     bootloader_path = "grubaa64.efi"

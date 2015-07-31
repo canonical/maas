@@ -543,6 +543,28 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.client.get(reverse('pxeconfig'), params)
         self.assertThat(mock_save, MockNotCalled())
 
+    def test_pxeconfig_updates_bios_boot_method(self):
+        node = factory.make_Node(mac=True)
+        mac = node.macaddress_set.first()
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        params['bios_boot_method'] = 'pxe'
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual('pxe', node.bios_boot_method)
+
+    def test_pxeconfig_deosnt_update_bios_boot_method_when_same(self):
+        node = factory.make_Node(mac=True, bios_boot_method='uefi')
+        mac = node.macaddress_set.first()
+        node.pxe_mac = mac
+        node.save()
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        params['bios_boot_method'] = 'uefi'
+        mock_save = self.patch(Node, 'save')
+        self.client.get(reverse('pxeconfig'), params)
+        self.assertThat(mock_save, MockNotCalled())
+
     def test_pxeconfig_returns_commissioning_os_series_for_other_oses(self):
         osystem = Config.objects.get_config('default_osystem')
         release = Config.objects.get_config('default_distro_series')
