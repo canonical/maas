@@ -53,7 +53,7 @@ class RaidsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('raid_devices_handler', ["node_system_id"])
+        return ('raid_devices_handler', ["system_id"])
 
     def create(self, request, system_id):
         """Creates a RAID
@@ -96,14 +96,14 @@ class RaidHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, raid=None):
         # See the comment in NodeHandler.resource_uri.
-        node_system_id = "node_system_id"
+        system_id = "system_id"
         raid_id = "raid_id"
         if raid is not None:
             raid_id = raid.id
             node = raid.get_node()
             if node is not None:
-                node_system_id = node.system_id
-        return ('raid_device_handler', (node_system_id, raid_id))
+                system_id = node.system_id
+        return ('raid_device_handler', (system_id, raid_id))
 
     @classmethod
     def level(cls, raid):

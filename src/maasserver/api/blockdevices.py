@@ -71,7 +71,7 @@ class BlockDevicesHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
-        return ('blockdevices_handler', ["node_system_id"])
+        return ('blockdevices_handler', ["system_id"])
 
     def read(self, request, system_id):
         """List all block devices belonging to node.
@@ -117,12 +117,12 @@ class BlockDeviceHandler(OperationsHandler):
     def resource_uri(cls, block_device=None):
         # See the comment in NodeHandler.resource_uri.
         if block_device is None:
-            node_system_id = "node_system_id"
-            block_device_id = "block_device_id"
+            system_id = "system_id"
+            device_id = "device_id"
         else:
-            block_device_id = block_device.id
-            node_system_id = block_device.node.system_id
-        return ('blockdevice_handler', (node_system_id, block_device_id))
+            device_id = block_device.id
+            system_id = block_device.node.system_id
+        return ('blockdevice_handler', (system_id, device_id))
 
     @classmethod
     def name(cls, block_device):

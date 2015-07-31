@@ -61,9 +61,7 @@ class PartitionTableHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return (
-            'partition_table_handler',
-            ["node_system_id", "block_device_id"],
-            )
+            'partition_table_handler', ["system_id", "device_id"])
 
     def read(self, request, system_id, device_id):
         """List all partitions on the block device.
@@ -108,18 +106,16 @@ class PartitionHandler(OperationsHandler):
     def resource_uri(cls, partition=None):
         # See the comment in NodeHandler.resource_uri.
         if partition is None:
-            node_system_id = "node_system_id"
-            block_device_id = "block_device_id"
+            system_id = "system_id"
+            device_id = "device_id"
             partition_id = "partition_id"
         else:
             partition_id = partition.id
             block_device = partition.partition_table.block_device
-            block_device_id = block_device.id
-            node_system_id = block_device.node.system_id
+            device_id = block_device.id
+            system_id = block_device.node.system_id
         return (
-            'partition_handler',
-            (node_system_id, block_device_id, partition_id),
-            )
+            'partition_handler', (system_id, device_id, partition_id))
 
     def read(self, request, system_id, device_id, partition_id):
         """Read partition.

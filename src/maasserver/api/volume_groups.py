@@ -58,7 +58,7 @@ class VolumeGroupsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('volume_groups_handler', ["node_system_id"])
+        return ('volume_groups_handler', ["system_id"])
 
     def read(self, request, system_id):
         """List all volume groups belonging to node.
@@ -98,14 +98,14 @@ class VolumeGroupHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, volume_group=None):
         # See the comment in NodeHandler.resource_uri.
-        node_system_id = "node_system_id"
+        system_id = "system_id"
         volume_group_id = "volume_group_id"
         if volume_group is not None:
             volume_group_id = volume_group.id
             node = volume_group.get_node()
             if node is not None:
-                node_system_id = node.system_id
-        return ('volume_group_handler', (node_system_id, volume_group_id))
+                system_id = node.system_id
+        return ('volume_group_handler', (system_id, volume_group_id))
 
     @classmethod
     def size(cls, filesystem_group):

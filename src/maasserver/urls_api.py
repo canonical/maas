@@ -21,8 +21,8 @@ from django.conf.urls import (
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.bcache import (
-    BcacheDeviceHandler,
-    BcacheDevicesHandler,
+    BcacheHandler,
+    BcachesHandler,
 )
 from maasserver.api.blockdevices import (
     BlockDeviceHandler,
@@ -169,9 +169,9 @@ raid_device_handler = RestrictedResource(
 raid_devices_handler = RestrictedResource(
     RaidsHandler, authentication=api_auth)
 bcache_device_handler = RestrictedResource(
-    BcacheDeviceHandler, authentication=api_auth)
+    BcacheHandler, authentication=api_auth)
 bcache_devices_handler = RestrictedResource(
-    BcacheDevicesHandler, authentication=api_auth)
+    BcachesHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(

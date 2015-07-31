@@ -41,7 +41,7 @@ DISPLAYED_BCACHE_FIELDS = (
 )
 
 
-class BcacheDevicesHandler(OperationsHandler):
+class BcachesHandler(OperationsHandler):
     """Manage bcache devices on a node."""
     api_doc_section_name = "Bcache Devices"
     update = delete = None
@@ -50,7 +50,7 @@ class BcacheDevicesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('bcache_devices_handler', ["node_system_id"])
+        return ('bcache_devices_handler', ["system_id"])
 
     def read(self, request, system_id):
         """List all bcache devices belonging to node.
@@ -87,7 +87,7 @@ class BcacheDevicesHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
 
-class BcacheDeviceHandler(OperationsHandler):
+class BcacheHandler(OperationsHandler):
     """Manage bcache device on a node."""
     api_doc_section_name = "Bcache Device"
     create = update = None
@@ -97,14 +97,14 @@ class BcacheDeviceHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, bcache=None):
         # See the comment in NodeHandler.resource_uri.
-        node_system_id = "node_system_id"
+        system_id = "system_id"
         bcache_id = "bcache_id"
         if bcache is not None:
             bcache_id = bcache.id
             node = bcache.get_node()
             if node is not None:
-                node_system_id = node.system_id
-        return ('bcache_device_handler', (node_system_id, bcache_id))
+                system_id = node.system_id
+        return ('bcache_device_handler', (system_id, bcache_id))
 
     @classmethod
     def size(cls, bcache):
