@@ -119,6 +119,7 @@ from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
     INVALID_SETTING_MSG_TEMPLATE,
+    validate_missing_boot_images,
 )
 from maasserver.models import (
     Bcache,
@@ -1389,9 +1390,30 @@ class DeployForm(ConfigForm):
         # don't want _load_initial called until the field has been added.
         Form.__init__(self, *args, **kwargs)
         self.fields['default_osystem'] = get_config_field('default_osystem')
-        self.fields['default_distro_series'] = get_config_field(
-            'default_distro_series')
+        self.fields['default_distro_series'] = (
+            self._get_default_distro_series_field_for_ui())
         self._load_initials()
+
+    def _get_default_distro_series_field_for_ui(self):
+        """This create the field with os/release. This is needed by the UI
+        to filter the releases based on the OS selection. The API uses the
+        field defined in forms_settings.py"""
+        usable_oses = list_all_usable_osystems()
+        release_choices = list_release_choices(
+            list_all_usable_releases(usable_oses), include_default=False)
+        if len(release_choices) == 0:
+            release_choices = [('---', '--- No Usable Release ---')]
+        field = forms.ChoiceField(
+            initial=Config.objects.get_config('default_distro_series'),
+            choices=release_choices,
+            validators=[validate_missing_boot_images],
+            error_messages={
+                'invalid_choice': compose_invalid_choice_text(
+                    'release', release_choices)
+            },
+            label="Default OS release used for deployment",
+            required=False)
+        return field
 
     def _load_initials(self):
         super(DeployForm, self)._load_initials()
