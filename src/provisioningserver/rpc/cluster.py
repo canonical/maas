@@ -40,6 +40,7 @@ from provisioningserver.power.poweraction import (
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     Bytes,
+    CompressedAmpList,
     ParsedURL,
     StructureAsJSON,
     )
@@ -58,7 +59,7 @@ class ListBootImages(amp.Command):
 
     arguments = []
     response = [
-        (b"images", amp.AmpList(
+        (b"images", CompressedAmpList(
             [(b"osystem", amp.Unicode()),
              (b"architecture", amp.Unicode()),
              (b"subarchitecture", amp.Unicode()),
