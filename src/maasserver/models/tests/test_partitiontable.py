@@ -13,7 +13,9 @@ str = None
 
 __metaclass__ = type
 __all__ = []
+
 from django.core.exceptions import ValidationError
+from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
@@ -118,3 +120,56 @@ class TestPartitionTable(MAASServerTestCase):
             MIN_BLOCK_DEVICE_SIZE * 2,
             partition_table.get_available_size(
                 ignore_partitions=ignore_partitions))
+
+    def test_save_sets_table_type_to_mbr_for_pxe_boot(self):
+        node = factory.make_Node(bios_boot_method="pxe")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+
+    def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
+        node = factory.make_Node(bios_boot_method="uefi")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+    def test_save_sets_table_type_to_gpt_for_none_boot_disk(self):
+        node = factory.make_Node(bios_boot_method="pxe")
+        factory.make_PhysicalBlockDevice(node=node)
+        other_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=other_disk)
+        self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+    def test_save_force_mbr_on_boot_disk_pxe(self):
+        node = factory.make_Node(bios_boot_method="pxe")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        error = self.assertRaises(
+            ValidationError,
+            factory.make_PartitionTable,
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        self.assertEquals({
+            "table_type": [
+                "Partition table on this node's boot disk must "
+                "be using 'MBR'."],
+            }, error.error_dict)
+
+    def test_save_force_mbr_on_boot_disk_pxe_force_gpt_on_boot_disk_uefi(self):
+        node = factory.make_Node(bios_boot_method="uefi")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        error = self.assertRaises(
+            ValidationError,
+            factory.make_PartitionTable,
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk)
+        self.assertEquals({
+            "table_type": [
+                "Partition table on this node's boot disk must "
+                "be using 'GPT'."],
+            }, error.error_dict)
+
+    def test_save_no_force_on_none_boot_disk(self):
+        node = factory.make_Node(bios_boot_method="uefi")
+        factory.make_PhysicalBlockDevice(node=node)
+        other_disk = factory.make_PhysicalBlockDevice(node=node)
+        # No error should be raised.
+        factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=other_disk)

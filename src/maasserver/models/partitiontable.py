@@ -16,6 +16,7 @@ __all__ = [
     'PartitionTable',
     ]
 
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -56,8 +57,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
 
     table_type = CharField(
-        max_length=20, choices=PARTITION_TABLE_TYPE_CHOICES,
-        default=PARTITION_TABLE_TYPE.GPT)
+        max_length=20, choices=PARTITION_TABLE_TYPE_CHOICES, default=None)
 
     block_device = ForeignKey(
         BlockDevice, null=False, blank=False)
@@ -111,3 +111,44 @@ class PartitionTable(CleanSave, TimestampedModel):
     def __unicode__(self):
         return "Partition table for {bd}".format(
             bd=self.block_device.__unicode__())
+
+    def save(self, *args, **kwargs):
+        self._set_and_validate_table_type_for_boot_disk()
+        return super(PartitionTable, self).save(*args, **kwargs)
+
+    def _set_and_validate_table_type_for_boot_disk(self):
+        """Validates or set the table type if this partition table is on the
+        boot disk for a node."""
+        if (self.block_device is not None and
+                self.block_device.node is not None):
+            node = self.block_device.node
+            boot_disk = node.get_boot_disk()
+            if boot_disk is not None and self.block_device == boot_disk:
+                bios_boot_method = node.get_bios_boot_method()
+                if bios_boot_method == "uefi":
+                    # UEFI must always use a GPT table.
+                    if not self.table_type:
+                        self.table_type = PARTITION_TABLE_TYPE.GPT
+                    elif self.table_type != PARTITION_TABLE_TYPE.GPT:
+                        raise ValidationError({
+                            "table_type": [
+                                "Partition table on this node's boot disk "
+                                "must be using '%s'." % (
+                                    PARTITION_TABLE_TYPE.GPT)]
+                            })
+                else:
+                    # Don't even check if its 'pxe', because we always fallback
+                    # to MBR.
+                    if not self.table_type:
+                        self.table_type = PARTITION_TABLE_TYPE.MBR
+                    elif self.table_type != PARTITION_TABLE_TYPE.MBR:
+                        raise ValidationError({
+                            "table_type": [
+                                "Partition table on this node's boot disk "
+                                "must be using '%s'." % (
+                                    PARTITION_TABLE_TYPE.MBR)]
+                            })
+
+        # Force GPT for everything else.
+        if not self.table_type:
+            self.table_type = PARTITION_TABLE_TYPE.GPT

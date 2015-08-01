@@ -22,6 +22,7 @@ from maasserver.enum import (
     CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
     FILESYSTEM_TYPE,
+    PARTITION_TABLE_TYPE,
 )
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.fields_storage import (
@@ -182,10 +183,21 @@ class StorageLayoutBase(Form):
         boot_disk = self.get_boot_disk()
         boot_partition_table = PartitionTable.objects.create(
             block_device=boot_disk)
-        efi_partition = boot_partition_table.add_partition(
-            size=EFI_PARTITION_SIZE, bootable=True)
+        if boot_partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
+            efi_partition = boot_partition_table.add_partition(
+                size=EFI_PARTITION_SIZE, bootable=True)
+            Filesystem.objects.create(
+                partition=efi_partition,
+                fstype=FILESYSTEM_TYPE.FAT32,
+                label="efi",
+                mount_point="/boot/efi")
         boot_partition = boot_partition_table.add_partition(
             size=self.get_boot_size(), bootable=True)
+        Filesystem.objects.create(
+            partition=boot_partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            label="boot",
+            mount_point="/boot")
         root_device = self.get_root_device()
         if root_device is None or root_device == boot_disk:
             root_partition = boot_partition_table.add_partition(
@@ -195,16 +207,6 @@ class StorageLayoutBase(Form):
                 block_device=root_device)
             root_partition = root_partition_table.add_partition(
                 size=self.get_root_size())
-        Filesystem.objects.create(
-            partition=efi_partition,
-            fstype=FILESYSTEM_TYPE.FAT32,
-            label="efi",
-            mount_point="/boot/efi")
-        Filesystem.objects.create(
-            partition=boot_partition,
-            fstype=FILESYSTEM_TYPE.EXT4,
-            label="boot",
-            mount_point="/boot")
         return root_partition
 
     def configure(self, allow_fallback=True):

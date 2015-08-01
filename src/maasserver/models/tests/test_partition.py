@@ -203,7 +203,9 @@ class TestPartition(MAASServerTestCase):
         self.assertIsNone(partition.filesystem)
 
     def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
+        node = factory.make_Node(bios_boot_method="uefi")
         block_device = factory.make_PhysicalBlockDevice(
+            node=node,
             size=(MIN_BLOCK_DEVICE_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)

@@ -61,6 +61,11 @@ def round_size_by_blocks(size, block_size):
     return number_of_blocks * block_size
 
 
+def make_Node_with_uefi_boot_method(*args, **kwargs):
+    kwargs['bios_boot_method'] = "uefi"
+    return factory.make_Node(*args, **kwargs)
+
+
 class TestFormHelpers(MAASServerTestCase):
 
     def test_get_storage_layout_choices(self):
@@ -72,7 +77,7 @@ class TestFormHelpers(MAASServerTestCase):
             ], get_storage_layout_choices())
 
     def test_get_storage_layout_for_node(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = get_storage_layout_for_node("flat", node)
         self.assertIsInstance(layout, FlatStorageLayout)
         self.assertEquals(node, layout.node)
@@ -182,12 +187,12 @@ class TestStorageLayoutBase(MAASServerTestCase):
     """Tests for `StorageLayoutBase`."""
 
     def test__init__sets_node(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = StorageLayoutBase(node)
         self.assertEquals(node, layout.node)
 
     def test__init__loads_the_physical_block_devices(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
@@ -196,7 +201,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(block_devices, layout.block_devices)
 
     def test_raises_error_when_no_block_devices(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = StorageLayoutBase(node)
         error = self.assertRaises(
             StorageLayoutMissingBootDiskError, layout.configure)
@@ -205,7 +210,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             error.message)
 
     def test_raises_error_when_precentage_to_low_for_boot_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -219,7 +224,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_low_for_boot_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -233,7 +238,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_precentage_to_high_for_boot_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
@@ -250,7 +255,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_high_for_boot_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
@@ -265,7 +270,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_precentage_to_low_for_root_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -279,7 +284,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_low_for_root_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -293,7 +298,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_precentage_to_high_for_root_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
@@ -310,7 +315,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_high_for_root_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
@@ -325,7 +330,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_boot_and_root_to_big(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -340,7 +345,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_doesnt_error_if_boot_and_root_valid(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -352,7 +357,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         layout.configure()
 
     def test_get_boot_size_returns_default_size_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -362,7 +367,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(DEFAULT_BOOT_PARTITION_SIZE, layout.get_boot_size())
 
     def test_get_boot_size_returns_boot_size_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         boot_size = random.randint(
@@ -374,7 +379,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(boot_size, layout.get_boot_size())
 
     def test_get_root_device_returns_None_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -383,7 +388,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertIsNone(layout.get_root_device())
 
     def test_get_root_device_returns_root_device_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         root_device = factory.make_PhysicalBlockDevice(
@@ -395,7 +400,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(root_device, layout.get_root_device())
 
     def test_get_root_size_returns_None_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {
@@ -404,7 +409,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertIsNone(layout.get_root_size())
 
     def test_get_root_size_returns_root_size_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         root_size = random.randint(
@@ -416,7 +421,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(root_size, layout.get_root_size())
 
     def test_configure_calls_configure_storage(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node)
@@ -444,7 +449,7 @@ class LayoutHelpersMixin:
 class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
     def test__init_sets_up_all_fields(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = FlatStorageLayout(node)
@@ -454,8 +459,50 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             'boot_size',
             ], layout.fields.keys())
 
-    def test__creates_layout_with_defaults(self):
+    def test__creates_layout_with_mbr_defaults(self):
         node = factory.make_Node()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = FlatStorageLayout(node)
+        layout.configure()
+
+        # Validate partition table.
+        partition_table = boot_disk.get_partitiontable()
+        self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+
+        # Validate boot partition.
+        partitions = partition_table.partitions.order_by('id').all()
+        boot_partition = partitions[0]
+        self.assertIsNotNone(boot_partition)
+        self.assertEquals(
+            round_size_by_blocks(
+                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
+            boot_partition.size)
+        self.assertThat(
+            boot_partition.filesystem, MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot",
+                ))
+
+        # Validate root partition.
+        root_partition = partitions[1]
+        self.assertIsNotNone(root_partition)
+        self.assertEquals(
+            round_size_by_blocks(
+                boot_disk.size - DEFAULT_BOOT_PARTITION_SIZE -
+                PARTITION_TABLE_EXTRA_SPACE,
+                boot_disk.block_size),
+            root_partition.size)
+        self.assertThat(
+            root_partition.filesystem, MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+                ))
+
+    def test__creates_layout_with_uefi_defaults(self):
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = FlatStorageLayout(node)
@@ -501,7 +548,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_boot_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         boot_size = random.randint(
@@ -551,7 +598,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_root_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         root_size = random.randint(
@@ -598,7 +645,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_boot_size_and_root_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         boot_size = random.randint(
@@ -648,7 +695,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_root_device_and_root_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         root_device = factory.make_PhysicalBlockDevice(
@@ -706,7 +753,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
     def test__init_sets_up_all_fields(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node)
@@ -720,7 +767,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ], layout.fields.keys())
 
     def test_get_vg_name_returns_default_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -729,7 +776,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(layout.DEFAULT_VG_NAME, layout.get_vg_name())
 
     def test_get_vg_name_returns_vg_name_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         vg_name = factory.make_name("vg")
@@ -740,7 +787,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(vg_name, layout.get_vg_name())
 
     def test_get_lv_name_returns_default_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -749,7 +796,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(layout.DEFAULT_LV_NAME, layout.get_lv_name())
 
     def test_get_lv_name_returns_lv_name_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         lv_name = factory.make_name("lv")
@@ -760,7 +807,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(lv_name, layout.get_lv_name())
 
     def test_get_lv_size_returns_None_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -769,7 +816,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertIsNone(layout.get_lv_size())
 
     def test_get_lv_size_returns_lv_size_if_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         lv_size = random.randint(
@@ -781,7 +828,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(lv_size, layout.get_lv_size())
 
     def test_get_calculated_lv_size_returns_set_lv_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         lv_size = random.randint(
@@ -794,7 +841,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(lv_size, layout.get_calculated_lv_size(volume_group))
 
     def test_get_calculated_lv_size_returns_size_of_volume_group(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -806,7 +853,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             layout.get_calculated_lv_size(volume_group))
 
     def test_raises_error_when_precentage_to_low_for_logical_volume(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -820,7 +867,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_low_for_logical_volume(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node, {
@@ -834,7 +881,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             }, error.error_dict)
 
     def test_raises_error_when_precentage_to_high_for_logical_volume(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         root_size = random.randint(
@@ -850,7 +897,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_high_for_logical_volume(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
@@ -865,7 +912,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             }, error.error_dict)
 
     def test__creates_layout_with_defaults(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = LVMStorageLayout(node)
@@ -895,7 +942,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_vg_name_and_lv_name(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         vg_name = factory.make_name("vg")
@@ -930,7 +977,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_lv_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         lv_size = random.randint(
@@ -967,13 +1014,13 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 class TestBcacheStorageLayoutBase(MAASServerTestCase):
 
     def test_setup_cache_device_field_does_nothing_if_no_boot_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         layout.setup_cache_device_field()
         self.assertNotIn('cache_device', layout.fields.keys())
 
     def test_setup_cache_device_field_doesnt_include_boot_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         other_disks = [
@@ -991,12 +1038,12 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             valid_choices, layout.fields['cache_device'].choices)
 
     def test__find_best_cache_device_returns_None_if_not_boot_disk(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         self.assertIsNone(layout._find_best_cache_device())
 
     def test__find_best_cache_device_returns_smallest_ssd_first(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         # Small SSD
@@ -1012,7 +1059,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(smallest_ssd, layout._find_best_cache_device())
 
     def test__find_best_cache_device_returns_None_if_no_ssd(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         # Small Rotary
@@ -1025,7 +1072,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertIsNone(layout._find_best_cache_device())
 
     def test_get_cache_device_returns_set_cache_device_over_find(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         # Small SSD
@@ -1041,7 +1088,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(small_ssd, layout.get_cache_device())
 
     def test_get_cache_device_returns_the_best_cache_device_if_not_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         # Small SSD
@@ -1055,7 +1102,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(smallest_ssd, layout.get_cache_device())
 
     def test_get_cache_mode_returns_set_cache_mode(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
         layout.cleaned_data = {
@@ -1064,7 +1111,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(cache_mode, layout.get_cache_mode())
 
     def test_get_cache_mode_returns_default_if_blank(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         layout.cleaned_data = {
             'cache_mode': '',
@@ -1072,7 +1119,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(layout.DEFAULT_CACHE_MODE, layout.get_cache_mode())
 
     def test_get_cache_size_returns_set_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         cache_size = random.randint(
             MIN_ROOT_PARTITION_SIZE, MIN_ROOT_PARTITION_SIZE * 2)
@@ -1082,7 +1129,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(cache_size, layout.get_cache_size())
 
     def test_get_cache_size_returns_None_if_blank(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         layout.cleaned_data = {
             'cache_size': '',
@@ -1090,7 +1137,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertIsNone(layout.get_cache_size())
 
     def test_get_cache_no_part_returns_boolean(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         layout = BcacheStorageLayoutBase(node)
         cache_no_part = factory.pick_bool()
         layout.cleaned_data = {
@@ -1099,7 +1146,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(cache_no_part, layout.get_cache_no_part())
 
     def test_create_cache_device_setups_up_cache_device_with_partition(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1115,7 +1162,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(partition, cache_partition)
 
     def test_create_cache_device_setups_up_cache_device_without_part(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1128,7 +1175,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(ssd, cache_device)
 
     def test_create_cache_device_setups_up_cache_device_with_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1151,7 +1198,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals(cache_size, partition.size)
 
     def test_raises_error_when_invalid_cache_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1168,7 +1215,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             }, layout.errors)
 
     def test_raises_error_when_cache_size_and_cache_no_part_set(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheStorageLayoutBase(node, {
@@ -1185,7 +1232,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             }, layout.errors)
 
     def test_raises_error_when_precentage_to_low_for_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         factory.make_PhysicalBlockDevice(
@@ -1202,7 +1249,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_low_for_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         factory.make_PhysicalBlockDevice(
@@ -1219,7 +1266,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_precentage_to_high_for_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1235,7 +1282,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             }, error.error_dict)
 
     def test_raises_error_when_value_to_high_for_cache_size(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1254,14 +1301,14 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
 class TestBcacheStorageLayout(MAASServerTestCase):
 
     def test__init_sets_up_cache_device_field(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheStorageLayout(node)
         self.assertIn('cache_device', layout.fields.keys())
 
     def test__init_sets_up_all_fields(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheStorageLayout(node)
@@ -1276,7 +1323,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             ], layout.fields.keys())
 
     def test_configure_storage_creates_flat_layout_if_no_cache_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheStorageLayout(node)
@@ -1294,7 +1341,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
                 ))
 
     def test_configure_storage_creates_bcache_layout_with_ssd(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1328,7 +1375,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
                 ))
 
     def test_configure_storage_creates_bcache_layout_without_partition(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1359,7 +1406,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
                 ))
 
     def test_configure_storage_creates_bcache_layout_with_cache_mode(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(
@@ -1396,14 +1443,14 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 class TestBcacheLVMStorageLayout(MAASServerTestCase):
 
     def test__init_sets_up_cache_device_field(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheLVMStorageLayout(node)
         self.assertIn('cache_device', layout.fields.keys())
 
     def test__init_sets_up_all_fields(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheLVMStorageLayout(node)
@@ -1421,7 +1468,7 @@ class TestBcacheLVMStorageLayout(MAASServerTestCase):
             ], layout.fields.keys())
 
     def test_configure_storage_creates_lvm_layout_if_no_cache_device(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = BcacheLVMStorageLayout(node)
@@ -1444,7 +1491,7 @@ class TestBcacheLVMStorageLayout(MAASServerTestCase):
                 ))
 
     def test_configure_storage_creates_bcache_layout_with_lvm(self):
-        node = factory.make_Node()
+        node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         ssd = factory.make_PhysicalBlockDevice(

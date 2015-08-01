@@ -225,6 +225,28 @@ class TestNode(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(node=node, size=2000 * (1000 ** 2))
         self.assertEqual('2', node.display_storage())
 
+    def test_get_boot_disk_returns_first(self):
+        node = factory.make_Node()
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_PhysicalBlockDevice(node=node)
+        self.assertEquals(boot_disk, node.get_boot_disk())
+
+    def test_get_boot_disk_returns_None(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.get_boot_disk())
+
+    def test_get_bios_boot_method_returns_pxe(self):
+        node = factory.make_Node(bios_boot_method="pxe")
+        self.assertEquals("pxe", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_returns_uefi(self):
+        node = factory.make_Node(bios_boot_method="uefi")
+        self.assertEquals("uefi", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_fallback_to_pxe(self):
+        node = factory.make_Node(bios_boot_method=factory.make_name("boot"))
+        self.assertEquals("pxe", node.get_bios_boot_method())
+
     def test_add_node_with_token(self):
         user = factory.make_User()
         token = create_auth_token(user)

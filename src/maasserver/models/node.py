@@ -148,6 +148,14 @@ from twisted.internet.threads import deferToThread
 maaslog = get_maas_logger("node")
 
 
+# Holds the known `bios_boot_methods`. If `bios_boot_method` is not in this
+# list then it will fallback to `DEFAULT_BIOS_BOOT_METHOD`.
+KNOWN_BIOS_BOOT_METHODS = ["pxe", "uefi"]
+
+# Default `bios_boot_method`. See `KNOWN_BIOS_BOOT_METHOD` above for usage.
+DEFAULT_BIOS_BOOT_METHOD = "pxe"
+
+
 def generate_node_system_id():
     return 'node-%s' % uuid1()
 
@@ -864,6 +872,29 @@ class Node(CleanSave, TimestampedModel):
         if self.storage < 1000:
             return '%.1f' % (self.storage / 1000.0)
         return '%d' % (self.storage / 1000)
+
+    def get_boot_disk(self):
+        """Return the boot disk for this node."""
+        # For now we make the assumtion that the first block device added to
+        # the node is the boot disk. This should be improved to allow a user
+        # to set which disk is the boot disk and commissioning should do a
+        # a better job of identifing which disk is the boot disk.
+        return self.physicalblockdevice_set.order_by('id').first()
+
+    def get_bios_boot_method(self):
+        """Return the boot method the node's BIOS booted."""
+        if self.bios_boot_method not in KNOWN_BIOS_BOOT_METHODS:
+            if self.bios_boot_method:
+                maaslog.warning(
+                    "%s: Has a unknown BIOS boot method '%s'; "
+                    "defaulting to '%s'." % (
+                        self.hostname,
+                        self.bios_boot_method,
+                        DEFAULT_BIOS_BOOT_METHOD,
+                        ))
+            return DEFAULT_BIOS_BOOT_METHOD
+        else:
+            return self.bios_boot_method
 
     def add_mac_address(self, mac_address):
         """Add a new MAC address to this `Node`.

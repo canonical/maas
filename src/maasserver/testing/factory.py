@@ -1229,9 +1229,12 @@ class Factory(maastesting.factory.Factory):
     def make_PartitionTable(
             self, table_type=None, block_device=None, node=None,
             block_device_size=None):
-        if table_type is None:
-            table_type = self.pick_enum(PARTITION_TABLE_TYPE)
         if block_device is None:
+            if node is None:
+                if table_type == PARTITION_TABLE_TYPE.GPT:
+                    node = factory.make_Node(bios_boot_method="uefi")
+                else:
+                    node = factory.make_Node()
             block_device = self.make_PhysicalBlockDevice(
                 node=node, size=block_device_size)
         return PartitionTable.objects.create(
