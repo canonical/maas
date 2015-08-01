@@ -963,6 +963,37 @@ class TestGetCurtinUserData(
                 disable_ipv4=node.disable_ipv4))
         self.assertIn("PREFIX='curtin'", user_data)
 
+    def test_get_curtin_userdata_calls_compose_curtin_storage_config(self):
+        node = factory.make_Node(
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
+            mac=True)
+        factory.make_NodeGroupInterface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        arch, subarch = node.architecture.split('/')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_compose_storage = self.patch(
+            preseed_module, "compose_curtin_storage_config")
+
+        user_data = get_curtin_userdata(node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+
+    def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
+        node = factory.make_Node(
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
+            mac=True)
+        factory.make_NodeGroupInterface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        arch, subarch = node.architecture.split('/')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_supports_storage = self.patch(
+            preseed_module, "curtin_supports_custom_storage")
+        mock_supports_storage.return_value = False
+
+        user_data = get_curtin_userdata(node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_supports_storage, MockCalledOnceWith())
+
 
 class TestGetCurtinUserDataOS(
         PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):

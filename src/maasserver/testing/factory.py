@@ -1204,7 +1204,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_PhysicalBlockDevice(
             self, node=None, name=None, size=None, block_size=None,
-            tags=None, model=None, serial=None):
+            tags=None, model=None, serial=None, id_path=None):
         if node is None:
             node = self.make_Node()
         if name is None:
@@ -1218,13 +1218,17 @@ class Factory(maastesting.factory.Factory):
                 block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
-        if model is None:
-            model = self.make_name('model')
-        if serial is None:
-            serial = self.make_name('serial')
+        if id_path is None:
+            if model is None:
+                model = self.make_name('model')
+            if serial is None:
+                serial = self.make_name('serial')
+        else:
+            model = ""
+            serial = ""
         return PhysicalBlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size,
-            tags=tags, model=model, serial=serial)
+            tags=tags, model=model, serial=serial, id_path=id_path)
 
     def make_PartitionTable(
             self, table_type=None, block_device=None, node=None,
@@ -1263,8 +1267,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
-            filesystem_group=None, create_params=None, mount_point=None,
-            mount_params=None, block_device_size=None):
+            filesystem_group=None, label=None, create_params=None,
+            mount_point=None, mount_params=None, block_device_size=None):
         if fstype is None:
             fstype = self.pick_enum(FILESYSTEM_TYPE)
         if partition is None and block_device is None:
@@ -1276,7 +1280,7 @@ class Factory(maastesting.factory.Factory):
         return Filesystem.objects.create(
             uuid=uuid, fstype=fstype, partition=partition,
             block_device=block_device, filesystem_group=filesystem_group,
-            create_params=create_params, mount_point=mount_point,
+            label=label, create_params=create_params, mount_point=mount_point,
             mount_params=mount_params)
 
     def make_FilesystemGroup(

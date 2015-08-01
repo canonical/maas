@@ -118,7 +118,7 @@ class Filesystem(CleanSave, TimestampedModel):
         if self.block_device is None:
             return self.partition
         else:
-            return self.block_device
+            return self.block_device.actual_instance
 
     def clean(self, *args, **kwargs):
         super(Filesystem, self).clean(*args, **kwargs)

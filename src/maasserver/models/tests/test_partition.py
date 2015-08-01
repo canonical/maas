@@ -91,6 +91,13 @@ class TestPartition(MAASServerTestCase):
         partition = factory.make_Partition(partition_table=table)
         self.assertEquals("%s-part1" % block_device.path, partition.path)
 
+    def test_get_name(self):
+        block_device_name = factory.make_name("bd")
+        block_device = factory.make_PhysicalBlockDevice(name=block_device_name)
+        table = factory.make_PartitionTable(block_device=block_device)
+        partition = factory.make_Partition(partition_table=table)
+        self.assertEquals("%s-part1" % block_device_name, partition.get_name())
+
     def test_get_node_returns_partition_table_node(self):
         partition = factory.make_Partition()
         self.assertEquals(

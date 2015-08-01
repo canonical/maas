@@ -86,9 +86,7 @@ class Partition(CleanSave, TimestampedModel):
 
     @property
     def name(self):
-        return "%s-part%s" % (
-            self.partition_table.block_device.name,
-            self.get_partition_number())
+        return self.get_name()
 
     @property
     def path(self):
@@ -105,6 +103,12 @@ class Partition(CleanSave, TimestampedModel):
     def filesystem(self):
         """Returns the filesystem that's using this partition."""
         return get_one(self.filesystem_set.all())
+
+    def get_name(self):
+        """Return the name of the partition."""
+        return "%s-part%s" % (
+            self.partition_table.block_device.get_name(),
+            self.get_partition_number())
 
     def get_node(self):
         """`Node` this partition belongs to."""

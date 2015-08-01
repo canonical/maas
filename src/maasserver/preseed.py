@@ -29,6 +29,7 @@ from urllib import urlencode
 from urlparse import urlparse
 
 from crochet import TimeoutError
+from curtin.commands import block_meta
 from curtin.pack import pack_install
 from django.conf import settings
 from maasserver import logger
@@ -54,6 +55,7 @@ from maasserver.models import (
 )
 from maasserver.networking_preseed import compose_curtin_network_preseed_for
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
+from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
@@ -61,6 +63,7 @@ from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from netaddr import IPAddress
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import read_text_file
@@ -69,11 +72,20 @@ import tempita
 import yaml
 
 
+maaslog = get_maas_logger("preseed")
+
+
 GENERIC_FILENAME = 'generic'
 
 
 # Node operating systems which we can deploy with IPv6 networking.
 OS_WITH_IPv6_SUPPORT = ['ubuntu']
+
+
+def curtin_supports_custom_storage():
+    """Return True if the installed curtin supports custom storage."""
+    # Check that the block_meta command defines the CUSTOM storage mode.
+    return hasattr(block_meta, "CUSTOM")
 
 
 def get_enlist_preseed(nodegroup=None):
@@ -225,8 +237,21 @@ def get_curtin_userdata(node):
     reporter_config = compose_curtin_maas_reporter(node)
     network_config = compose_curtin_network_preseed_for(node)
     swap_config = compose_curtin_swap_preseed(node)
+
+    # Get the storage configration if curtin supports custom storage.
+    storage_config = compose_curtin_storage_config(node)
+    if not curtin_supports_custom_storage():
+        maaslog.error(
+            "%s: cannot deploy with custom storage config; missing support "
+            "from curtin." % node.hostname)
+        storage_config = []
+
+    # Pack the curtin and the configuration into a script to execute on the
+    # deploying node.
     return pack_install(
-        configs=[main_config] + reporter_config + network_config + swap_config,
+        configs=(
+            [main_config] + reporter_config + storage_config +
+            network_config + swap_config),
         args=[installer_url])
 
 
