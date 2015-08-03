@@ -11,6 +11,8 @@ See https://launchpad.net/maas/+milestone/1.8.1 for full details.
 Bug Fix Update
 --------------
 
+#1470591    Fix setting the default_distro_series over the API.
+
 #1413388    Fix upgrade issue where it would remove custom DNS config, potentially breaking DNS
 
 #1317705    Commissioning x86_64 node never completes, sitting at grub prompt, pserv py tbs
