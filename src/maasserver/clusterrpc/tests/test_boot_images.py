@@ -16,6 +16,7 @@ __all__ = []
 
 import os
 
+from maasserver.clusterrpc import boot_images as boot_images_module
 from maasserver.clusterrpc.boot_images import (
     get_available_boot_images,
     get_boot_images,
@@ -29,9 +30,24 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
 )
 from maasserver.rpc import getAllClients
-from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
+from maasserver.rpc.testing.fixtures import (
+    MockLiveRegionToClusterRPCFixture,
+    RunningClusterRPCFixture,
+)
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
+from mock import (
+    call,
+    MagicMock,
+)
 from provisioningserver.boot.tests import test_tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
@@ -41,11 +57,16 @@ from provisioningserver.rpc import (
     boot_images,
     clusterservice,
 )
+from provisioningserver.rpc.cluster import (
+    ListBootImages,
+    ListBootImagesV2,
+)
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
 )
 from twisted.internet.defer import succeed
+from twisted.protocols.amp import UnhandledCommand
 
 
 def make_image_dir(image_params, tftproot):
@@ -164,6 +185,28 @@ class TestGetBootImages(MAASServerTestCase):
             ],
             get_boot_images(nodegroup))
 
+    def test_calls_ListBootImagesV2_before_ListBootImages(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        mock_client = MagicMock()
+        self.patch_autospec(
+            boot_images_module, "getClientFor").return_value = mock_client
+        get_boot_images(nodegroup)
+        self.assertThat(mock_client, MockCalledOnceWith(ListBootImagesV2))
+
+    def test_calls_ListBootImages_if_raised_UnhandledCommand(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        mock_client = MagicMock()
+        self.patch_autospec(
+            boot_images_module, "getClientFor").return_value = mock_client
+        mock_client.return_value.wait.side_effect = [
+            UnhandledCommand(),
+            {"images": []},
+            ]
+        get_boot_images(nodegroup)
+        self.assertThat(mock_client, MockCallsMatch(
+            call(ListBootImagesV2),
+            call(ListBootImages)))
+
 
 class TestGetAvailableBootImages(MAASServerTestCase):
     """Tests for `get_available_boot_images`."""
@@ -238,6 +281,37 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         self.assertItemsEqual(
             images,
             get_available_boot_images())
+
+    def test_fallback_to_ListBootImages_on_old_clusters(self):
+        nodegroup_1 = factory.make_NodeGroup()
+        nodegroup_1.accept()
+        nodegroup_2 = factory.make_NodeGroup()
+        nodegroup_2.accept()
+        nodegroup_3 = factory.make_NodeGroup()
+        nodegroup_3.accept()
+
+        images = [make_rpc_boot_image() for _ in range(3)]
+
+        # Limit the region's event loop to only the "rpc" service.
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        # Now start the region's event loop.
+        self.useFixture(RunningEventLoopFixture())
+        # This fixture allows us to simulate mock clusters.
+        rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+        # This simulates an older cluster, one without ListBootImagesV2.
+        cluster_1 = rpc.makeCluster(nodegroup_1, ListBootImages)
+        cluster_1.ListBootImages.return_value = succeed({'images': images})
+
+        # This simulates a newer cluster, one with ListBootImagesV2.
+        cluster_2 = rpc.makeCluster(nodegroup_2, ListBootImagesV2)
+        cluster_2.ListBootImagesV2.return_value = succeed({'images': images})
+
+        # This simulates a broken cluster.
+        cluster_3 = rpc.makeCluster(nodegroup_3, ListBootImagesV2)
+        cluster_3.ListBootImagesV2.side_effect = ZeroDivisionError
+
+        self.assertItemsEqual(images, get_available_boot_images())
 
     def test_returns_empty_list_when_all_clusters_fail(self):
         factory.make_NodeGroup().accept()
