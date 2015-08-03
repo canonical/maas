@@ -59,6 +59,30 @@ class ListBootImages(amp.Command):
 
     arguments = []
     response = [
+        (b"images", amp.AmpList(
+            [(b"osystem", amp.Unicode()),
+             (b"architecture", amp.Unicode()),
+             (b"subarchitecture", amp.Unicode()),
+             (b"release", amp.Unicode()),
+             (b"label", amp.Unicode()),
+             (b"purpose", amp.Unicode()),
+             (b"xinstall_type", amp.Unicode()),
+             (b"xinstall_path", amp.Unicode())]))
+    ]
+    errors = []
+
+
+class ListBootImagesV2(amp.Command):
+    """List the boot images available on this cluster controller.
+
+    This command compresses the images list to allow more images in the
+    response and to remove the amp.TooLong error.
+
+    :since: 1.7.6
+    """
+
+    arguments = []
+    response = [
         (b"images", CompressedAmpList(
             [(b"osystem", amp.Unicode()),
              (b"architecture", amp.Unicode()),

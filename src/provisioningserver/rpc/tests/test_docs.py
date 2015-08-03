@@ -70,6 +70,7 @@ class TestDocs(MAASTestCase):
             self.since_clause_missing_message, Contains(":since:"))
         since_clause_contains_version = Annotate(
             self.since_clause_version_not_recognised, MatchesRegex(
-                ".*^:since: *[1-9][.][0-9]+$", re.DOTALL | re.MULTILINE))
+                ".*^:since: *[1-9][.][0-9]+([.][0-9]+)?$",
+                re.DOTALL | re.MULTILINE))
         self.assertThat(getdoc(self.command), MatchesAll(
             contains_since_clause, since_clause_contains_version))
