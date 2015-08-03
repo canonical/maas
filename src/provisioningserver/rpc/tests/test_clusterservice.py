@@ -215,14 +215,19 @@ class TestClusterProtocol_StartTLS(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestClusterProtocol_ListBootImages(MAASTestCase):
+class TestClusterProtocol_ListBootImages_and_ListBootImagesV2(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("ListBootImages", {"rpc_call": cluster.ListBootImages}),
+        ("ListBootImagesV2", {"rpc_call": cluster.ListBootImagesV2}),
+        )
 
     def test_list_boot_images_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ListBootImages.commandName)
+            self.rpc_call.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
@@ -232,7 +237,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
 
-        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
+        response = yield call_responder(Cluster(), self.rpc_call, {})
 
         self.assertEqual({"images": []}, response)
 
@@ -282,7 +287,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
                 expected_image['xinstall_path'] = ''
                 expected_image['xinstall_type'] = ''
 
-        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
+        response = yield call_responder(Cluster(), self.rpc_call, {})
 
         self.assertThat(response, KeysEqual("images"))
         self.assertItemsEqual(expected_images, response["images"])

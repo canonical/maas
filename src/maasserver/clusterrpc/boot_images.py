@@ -32,8 +32,10 @@ from maasserver.utils import async
 from provisioningserver.rpc.cluster import (
     IsImportBootImagesRunning,
     ListBootImages,
+    ListBootImagesV2,
 )
 from provisioningserver.utils.twisted import synchronous
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 
@@ -91,16 +93,34 @@ def get_boot_images(nodegroup):
         30 seconds.
     """
     client = getClientFor(nodegroup.uuid, timeout=1)
-    call = client(ListBootImages)
-    return call.wait(30).get("images")
+    try:
+        call = client(ListBootImagesV2)
+        return call.wait(30).get("images")
+    except UnhandledCommand:
+        call = client(ListBootImages)
+        return call.wait(30).get("images")
 
 
 @synchronous
 def _get_available_boot_images():
     """Obtain boot images available on connected clusters."""
-    listimages = lambda client: partial(client, ListBootImages)
-    responses = async.gather(imap(listimages, getAllClients()))
-    for response in suppress_failures(responses):
+    listimages_v1 = lambda client: partial(client, ListBootImages)
+    listimages_v2 = lambda client: partial(client, ListBootImagesV2)
+    clients_v2 = getAllClients()
+    responses_v2 = async.gather(imap(listimages_v2, clients_v2))
+    clients_v1 = []
+    for i, response in enumerate(responses_v2):
+        if (isinstance(response, Failure) and
+                response.check(UnhandledCommand) is not None):
+            clients_v1.append(clients_v2[i])
+        elif not isinstance(response, Failure):
+            # Convert each image to a frozenset of its items.
+            yield frozenset(
+                frozenset(image.viewitems())
+                for image in response["images"]
+            )
+    responses_v1 = async.gather(imap(listimages_v1, clients_v1))
+    for response in suppress_failures(responses_v1):
         # Convert each image to a frozenset of its items.
         yield frozenset(
             frozenset(image.viewitems())

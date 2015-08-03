@@ -86,7 +86,10 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.cluster import ListBootImages
+from provisioningserver.rpc.cluster import (
+    ListBootImages,
+    ListBootImagesV2,
+)
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -103,6 +106,7 @@ from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList
 from twisted.internet.threads import deferToThread
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
 
@@ -1122,7 +1126,14 @@ class ImportResourcesProgressService(TimerService, object):
         clients = getAllClients()
 
         def get_images(client):
-            return client(ListBootImages).addCallback(itemgetter("images"))
+            def fallback_v1(failure):
+                failure.trap(UnhandledCommand)
+                return client(ListBootImages)
+
+            d = client(ListBootImagesV2)
+            d.addErrback(fallback_v1)
+            d.addCallback(itemgetter("images"))
+            return d
 
         d = DeferredList(imap(get_images, clients), consumeErrors=True)
 

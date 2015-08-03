@@ -85,7 +85,10 @@ from mock import (
 )
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
-from provisioningserver.rpc.cluster import ListBootImages
+from provisioningserver.rpc.cluster import (
+    ListBootImages,
+    ListBootImagesV2,
+)
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
@@ -100,6 +103,7 @@ from twisted.internet.defer import (
     fail,
     succeed,
 )
+from twisted.protocols.amp import UnhandledCommand
 
 
 def make_boot_resource_file_with_stream():
@@ -1460,7 +1464,7 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         factory.make_BootResource()
         self.assertTrue(service.are_boot_images_available_in_the_region())
 
-    def test__are_boot_images_available_in_any_cluster(self):
+    def test__are_boot_images_available_in_any_cluster_v2(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and
@@ -1481,7 +1485,45 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         self.assertFalse(service.are_boot_images_available_in_any_cluster())
 
         # Connect a cluster to the region via RPC.
-        cluster_rpc = region_rpc.makeCluster(cluster, ListBootImages)
+        cluster_rpc = region_rpc.makeCluster(cluster, ListBootImagesV2)
+
+        # are_boot_images_available_in_the_region() returns False when none of
+        # the clusters have any images.
+        cluster_rpc.ListBootImagesV2.return_value = succeed({"images": []})
+        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+
+        # are_boot_images_available_in_the_region() returns True when a
+        # cluster has an imported boot image.
+        response = {"images": [make_rpc_boot_image()]}
+        cluster_rpc.ListBootImagesV2.return_value = succeed(response)
+        self.assertTrue(service.are_boot_images_available_in_any_cluster())
+
+    def test__are_boot_images_available_in_any_cluster_v1(self):
+        # Import the websocket handlers now: merely defining DeviceHandler,
+        # e.g., causes a database access, which will crash if it happens
+        # inside the reactor thread where database access is forbidden and
+        # prevented. My own opinion is that a class definition should not
+        # cause a database access and we ought to fix that.
+        import maasserver.websockets.handlers  # noqa
+
+        cluster = factory.make_NodeGroup()
+        service = bootresources.ImportResourcesProgressService()
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        region_rpc = MockLiveRegionToClusterRPCFixture()
+        self.useFixture(region_rpc)
+
+        # are_boot_images_available_in_the_region() returns False when there
+        # are no clusters connected.
+        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+
+        # Connect a cluster to the region via RPC.
+        cluster_rpc = region_rpc.makeCluster(
+            cluster, ListBootImagesV2, ListBootImages)
+
+        # All calls to ListBootImagesV2 raises a UnhandledCommand.
+        cluster_rpc.ListBootImagesV2.side_effect = UnhandledCommand
 
         # are_boot_images_available_in_the_region() returns False when none of
         # the clusters have any images.
