@@ -40,7 +40,7 @@ command line.
 To obtain the key through the command line, run this command on the region
 controller (it requires root access)::
 
- $ sudo maas-region-admin apikey my-username
+ $ sudo maas-region-admin apikey --username=my-username
 
 (Substitute your MAAS user name for my-username).
 
