@@ -27,7 +27,6 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.storage_layouts import (
-    BcacheLVMStorageLayout,
     BcacheStorageLayout,
     BcacheStorageLayoutBase,
     calculate_size_from_precentage,
@@ -72,7 +71,6 @@ class TestFormHelpers(MAASServerTestCase):
             ("flat", "Flat layout"),
             ("lvm", "LVM layout"),
             ("bcache", "Bcache layout"),
-            ("bcache+lvm", "Bcache+LVM layout"),
             ], get_storage_layout_choices())
 
     def test_get_storage_layout_for_node(self):
@@ -1374,97 +1372,6 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             ssd.filesystem.filesystem_group)
         bcache = root_partition.filesystem.filesystem_group
         self.assertEquals(cache_mode, bcache.cache_mode)
-        self.assertThat(
-            bcache.virtual_device.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="root",
-                mount_point="/",
-                ))
-
-
-class TestBcacheLVMStorageLayout(MAASServerTestCase):
-
-    def test__init_sets_up_cache_device_field(self):
-        node = make_Node_with_uefi_boot_method()
-        factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
-        layout = BcacheLVMStorageLayout(node)
-        self.assertIn('cache_device', layout.fields.keys())
-
-    def test__init_sets_up_all_fields(self):
-        node = make_Node_with_uefi_boot_method()
-        factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
-        layout = BcacheLVMStorageLayout(node)
-        self.assertItemsEqual([
-            'root_device',
-            'root_size',
-            'boot_size',
-            'vg_name',
-            'lv_name',
-            'lv_size',
-            'cache_device',
-            'cache_mode',
-            'cache_size',
-            'cache_no_part',
-            ], layout.fields.keys())
-
-    def test_configure_storage_creates_lvm_layout_if_no_cache_device(self):
-        node = make_Node_with_uefi_boot_method()
-        boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
-        layout = BcacheLVMStorageLayout(node)
-        layout.configure()
-
-        partition_table = boot_disk.get_partitiontable()
-        partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[1]
-        self.assertEquals(
-            FILESYSTEM_TYPE.LVM_PV, root_partition.filesystem.fstype)
-        volume_group = root_partition.filesystem.filesystem_group
-        self.assertEquals(
-            FILESYSTEM_GROUP_TYPE.LVM_VG, volume_group.group_type)
-        logical_volume = volume_group.virtual_devices.first()
-        self.assertThat(
-            logical_volume.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="root",
-                mount_point="/",
-                ))
-
-    def test_configure_storage_creates_bcache_layout_with_lvm(self):
-        node = make_Node_with_uefi_boot_method()
-        boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE)
-        ssd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE, tags=['ssd'])
-        layout = BcacheLVMStorageLayout(node)
-        layout.configure()
-
-        partition_table = boot_disk.get_partitiontable()
-        partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[1]
-        cache_partition_table = ssd.get_partitiontable()
-        cache_partition = cache_partition_table.partitions.order_by(
-            'id').all()[0]
-        self.assertEquals(
-            FILESYSTEM_TYPE.LVM_PV, root_partition.filesystem.fstype)
-        volume_group = root_partition.filesystem.filesystem_group
-        self.assertEquals(
-            FILESYSTEM_GROUP_TYPE.LVM_VG, volume_group.group_type)
-        logical_volume = volume_group.virtual_devices.first()
-        self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_BACKING, logical_volume.filesystem.fstype)
-        self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
-        self.assertEquals(
-            FILESYSTEM_GROUP_TYPE.BCACHE,
-            logical_volume.filesystem.filesystem_group.group_type)
-        self.assertEquals(
-            logical_volume.filesystem.filesystem_group,
-            cache_partition.filesystem.filesystem_group)
-        bcache = logical_volume.filesystem.filesystem_group
-        self.assertIsNotNone(bcache)
         self.assertThat(
             bcache.virtual_device.filesystem, MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,

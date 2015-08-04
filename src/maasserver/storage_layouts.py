@@ -514,73 +514,11 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         return "bcache"
 
 
-class BcacheLVMStorageLayout(LVMStorageLayout, BcacheStorageLayoutBase):
-    """Bcache+LVM layout.
-
-    NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
-    sda         100G        disk
-      sda15     512M        part    fat32          /boot/efi
-      sda1      1G          part    ext4           /boot
-      sda2      98.5G       part    lvm-pv(vgroot)
-    sdb         50G         disk
-      sdb1      50G         part    bc-cache
-    vgroot      98.5G       lvm
-      lvroot    98.5G       lvm     bc-backing
-    bcache0     98.5G       disk    ext4           /
-    """
-
-    def __init__(self, node, params={}):
-        super(BcacheLVMStorageLayout, self).__init__(node, params=params)
-        self.setup_cache_device_field()
-
-    def configure_storage(self, allow_fallback):
-        """Create the Bcache+LVM configuration."""
-        # Circular imports.
-        from maasserver.models.filesystem import Filesystem
-        from maasserver.models.filesystemgroup import (
-            Bcache,
-            VolumeGroup,
-            )
-        cache_block_device = self.get_cache_device()
-        if cache_block_device is None:
-            if allow_fallback:
-                # No cache device so just configure using the lvm layout.
-                return super(BcacheLVMStorageLayout, self).configure_storage(
-                    allow_fallback)
-            else:
-                raise StorageLayoutError(
-                    "Node doesn't have an available cache device to "
-                    "setup bcache.")
-
-        root_partition = self.create_basic_layout()
-        volume_group = VolumeGroup.objects.create_volume_group(
-            self.get_vg_name(), block_devices=[], partitions=[root_partition])
-        logical_volume = volume_group.create_logical_volume(
-            self.get_lv_name(), self.get_calculated_lv_size(volume_group))
-        cache_device = self.create_cache_device()
-        create_kwargs = {
-            "backing_device": logical_volume,
-            "cache_mode": self.get_cache_mode(),
-        }
-        if cache_device.type == "partition":
-            create_kwargs['cache_partition'] = cache_device
-        else:
-            create_kwargs['cache_device'] = cache_device
-        bcache = Bcache.objects.create_bcache(**create_kwargs)
-        Filesystem.objects.create(
-            block_device=bcache.virtual_device,
-            fstype=FILESYSTEM_TYPE.EXT4,
-            label="root",
-            mount_point="/")
-        return "bcache+lvm"
-
-
 # Holds all the storage layouts that can be used.
 STORAGE_LAYOUTS = {
     "flat": ("Flat layout", FlatStorageLayout),
     "lvm": ("LVM layout", LVMStorageLayout),
     "bcache": ("Bcache layout", BcacheStorageLayout),
-    "bcache+lvm": ("Bcache+LVM layout", BcacheLVMStorageLayout),
     }
 
 

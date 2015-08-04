@@ -755,8 +755,8 @@ class NodeHandler(OperationsHandler):
         Note: This will clear the current storage layout and any extra
         configuration and replace it will the new layout.
 
-        :param storage_layout: Storage layout for the node. (flat, lvm,
-            bcache, bcache+lvm)
+        :param storage_layout: Storage layout for the node. (flat, lvm
+            and bcache)
 
         The following are optional for all layouts:
 
@@ -772,19 +772,6 @@ class NodeHandler(OperationsHandler):
 
         The following are optional for Bcache:
 
-        :param cache_device: Physical block device to use as the cache device.
-        :param cache_mode: Cache mode for bcache device. (writeback,
-            writethrough, writearound)
-        :param cache_size: Size of the cache partition to create on the cache
-            device.
-        :param cache_no_part: Don't create a partition on the cache device.
-            Use the entire disk as the cache device.
-
-        The following are optional for Bcache+LVM:
-
-        :param vg_name: Name of created volume group.
-        :param lv_name: Name of created logical volume.
-        :param lv_size: Size of created logical volume.
         :param cache_device: Physical block device to use as the cache device.
         :param cache_mode: Cache mode for bcache device. (writeback,
             writethrough, writearound)
