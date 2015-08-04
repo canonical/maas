@@ -38,7 +38,6 @@ from maasserver.utils.forms import (
 
 EFI_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB
 MIN_BOOT_PARTITION_SIZE = 512 * 1024 * 1024  # 512 GiB
-DEFAULT_BOOT_PARTITION_SIZE = 1 * 1024 * 1024 * 1024  # 1 GiB
 MIN_ROOT_PARTITION_SIZE = 3 * 1024 * 1024 * 1024  # 3 GiB
 
 
@@ -160,7 +159,7 @@ class StorageLayoutBase(Form):
         if self.cleaned_data.get('boot_size'):
             return self.cleaned_data['boot_size']
         else:
-            return DEFAULT_BOOT_PARTITION_SIZE
+            return 0
 
     def get_root_size(self):
         """Get the size of the root partition.
@@ -191,13 +190,15 @@ class StorageLayoutBase(Form):
                 fstype=FILESYSTEM_TYPE.FAT32,
                 label="efi",
                 mount_point="/boot/efi")
-        boot_partition = boot_partition_table.add_partition(
-            size=self.get_boot_size(), bootable=True)
-        Filesystem.objects.create(
-            partition=boot_partition,
-            fstype=FILESYSTEM_TYPE.EXT4,
-            label="boot",
-            mount_point="/boot")
+        boot_size = self.get_boot_size()
+        if boot_size > 0:
+            boot_partition = boot_partition_table.add_partition(
+                size=self.get_boot_size(), bootable=True)
+            Filesystem.objects.create(
+                partition=boot_partition,
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot")
         root_device = self.get_root_device()
         if root_device is None or root_device == boot_disk:
             root_partition = boot_partition_table.add_partition(

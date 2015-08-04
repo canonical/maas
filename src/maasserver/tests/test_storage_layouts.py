@@ -31,7 +31,6 @@ from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BcacheStorageLayoutBase,
     calculate_size_from_precentage,
-    DEFAULT_BOOT_PARTITION_SIZE,
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
     get_storage_layout_choices,
@@ -356,7 +355,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         # This should not raise an exception.
         layout.configure()
 
-    def test_get_boot_size_returns_default_size_if_not_set(self):
+    def test_get_boot_size_returns_0_if_not_set(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -364,7 +363,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             'root_size': "50%",
             })
         self.assertTrue(layout.is_valid(), layout.errors)
-        self.assertEquals(DEFAULT_BOOT_PARTITION_SIZE, layout.get_boot_size())
+        self.assertEquals(0, layout.get_boot_size())
 
     def test_get_boot_size_returns_boot_size_if_set(self):
         node = make_Node_with_uefi_boot_method()
@@ -470,28 +469,13 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         partition_table = boot_disk.get_partitiontable()
         self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
-        # Validate boot partition.
-        partitions = partition_table.partitions.order_by('id').all()
-        boot_partition = partitions[0]
-        self.assertIsNotNone(boot_partition)
-        self.assertEquals(
-            round_size_by_blocks(
-                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
-            boot_partition.size)
-        self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="boot",
-                mount_point="/boot",
-                ))
-
         # Validate root partition.
-        root_partition = partitions[1]
+        partitions = partition_table.partitions.order_by('id').all()
+        root_partition = partitions[0]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
             round_size_by_blocks(
-                boot_disk.size - DEFAULT_BOOT_PARTITION_SIZE -
-                PARTITION_TABLE_EXTRA_SPACE,
+                boot_disk.size - PARTITION_TABLE_EXTRA_SPACE,
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
@@ -517,27 +501,13 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         efi_partition = partitions[0]
         self.assertEFIPartition(efi_partition, boot_disk)
 
-        # Validate boot partition.
-        boot_partition = partitions[1]
-        self.assertIsNotNone(boot_partition)
-        self.assertEquals(
-            round_size_by_blocks(
-                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
-            boot_partition.size)
-        self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="boot",
-                mount_point="/boot",
-                ))
-
         # Validate root partition.
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
             round_size_by_blocks(
-                boot_disk.size - DEFAULT_BOOT_PARTITION_SIZE -
-                EFI_PARTITION_SIZE - PARTITION_TABLE_EXTRA_SPACE,
+                boot_disk.size - EFI_PARTITION_SIZE -
+                PARTITION_TABLE_EXTRA_SPACE,
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
@@ -617,22 +587,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         efi_partition = partitions[0]
         self.assertEFIPartition(efi_partition, boot_disk)
 
-        # Validate boot partition.
-        boot_partition = partitions[1]
-        self.assertIsNotNone(boot_partition)
-        self.assertEquals(
-            round_size_by_blocks(
-                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
-            boot_partition.size)
-        self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="boot",
-                mount_point="/boot",
-                ))
-
         # Validate root partition.
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
             round_size_by_blocks(root_size, boot_disk.block_size),
@@ -717,20 +673,6 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         boot_partitions = boot_partition_table.partitions.order_by('id').all()
         efi_partition = boot_partitions[0]
         self.assertEFIPartition(efi_partition, boot_disk)
-
-        # Validate boot partition.
-        boot_partition = boot_partitions[1]
-        self.assertIsNotNone(boot_partition)
-        self.assertEquals(
-            round_size_by_blocks(
-                DEFAULT_BOOT_PARTITION_SIZE, boot_disk.block_size),
-            boot_partition.size)
-        self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="boot",
-                mount_point="/boot",
-                ))
 
         # Validate the root device partition table and partition.
         root_partition_table = root_device.get_partitiontable()
@@ -901,7 +843,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
-            boot_disk.size - EFI_PARTITION_SIZE - DEFAULT_BOOT_PARTITION_SIZE)
+            boot_disk.size - EFI_PARTITION_SIZE)
         layout = LVMStorageLayout(node, {
             'lv_size': max_size + 1,
             })
@@ -921,7 +863,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         # Validate the volume group on root partition.
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         volume_group = VolumeGroup.objects.get(
             filesystems__partition=root_partition)
         self.assertIsNotNone(volume_group)
@@ -956,7 +898,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         # Validate the volume group on root partition.
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         volume_group = VolumeGroup.objects.get(
             filesystems__partition=root_partition)
         self.assertIsNotNone(volume_group)
@@ -990,7 +932,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         # Validate the volume group on root partition.
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         volume_group = VolumeGroup.objects.get(
             filesystems__partition=root_partition)
         self.assertIsNotNone(volume_group)
@@ -1331,7 +1273,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertThat(
             root_partition.filesystem, MatchesStructure.byEquality(
@@ -1351,7 +1293,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         cache_partition_table = ssd.get_partitiontable()
         cache_partition = cache_partition_table.partitions.order_by(
             'id').all()[0]
@@ -1387,7 +1329,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertEquals(
             FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
         self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)
@@ -1420,7 +1362,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertEquals(
             FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
         self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)
@@ -1476,7 +1418,7 @@ class TestBcacheLVMStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         self.assertEquals(
             FILESYSTEM_TYPE.LVM_PV, root_partition.filesystem.fstype)
         volume_group = root_partition.filesystem.filesystem_group
@@ -1501,7 +1443,7 @@ class TestBcacheLVMStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[2]
+        root_partition = partitions[1]
         cache_partition_table = ssd.get_partitiontable()
         cache_partition = cache_partition_table.partitions.order_by(
             'id').all()[0]
