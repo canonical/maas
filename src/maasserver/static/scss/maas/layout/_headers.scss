@@ -364,6 +364,10 @@ header.banner {
                 color: $ubuntu-orange;
                 margin-right: 20px;
                 cursor: pointer;
+
+                &:hover {
+                  text-decoration: underline;
+                }
             }
         }
     }
@@ -376,12 +380,14 @@ header.banner {
         max-height: 1000px;
         transition: max-height 0.3s ease-in;
         overflow: hidden;
+        border-color: #888 !important;
 
         &.ng-hide {
             display: block !important;
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease-out;
+            border-top: none;
         }
 
         // Feedback style, mainly used for actions feedback
