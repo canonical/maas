@@ -543,6 +543,12 @@ class Node(CleanSave, TimestampedModel):
         MACAddress, default=None, blank=True, null=True, editable=False,
         related_name='+', on_delete=SET_NULL)
 
+    # Record the PhysicalBlockDevice that this node uses as its boot disk.
+    # This will be used to make sure GRUB is installed to this device.
+    boot_disk = ForeignKey(
+        PhysicalBlockDevice, default=None, blank=True, null=True,
+        editable=False, related_name='+', on_delete=SET_NULL)
+
     # Note that the ordering of the managers is meaningul.  More precisely, the
     # first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -875,11 +881,12 @@ class Node(CleanSave, TimestampedModel):
 
     def get_boot_disk(self):
         """Return the boot disk for this node."""
-        # For now we make the assumtion that the first block device added to
-        # the node is the boot disk. This should be improved to allow a user
-        # to set which disk is the boot disk and commissioning should do a
-        # a better job of identifing which disk is the boot disk.
-        return self.physicalblockdevice_set.order_by('id').first()
+        if self.boot_disk is not None:
+            return self.boot_disk
+        else:
+            # Fallback to using the first created physical block device as
+            # the boot disk.
+            return self.physicalblockdevice_set.order_by('id').first()
 
     def get_bios_boot_method(self):
         """Return the boot method the node's BIOS booted."""

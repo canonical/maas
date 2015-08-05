@@ -33,7 +33,7 @@ class CurtinStorageGenerator:
 
     def __init__(self, node):
         self.node = node
-        self.boot_disk = None
+        self.boot_disk = node.get_boot_disk()
         self.operations = {
             "disk": [],
             "partition": [],
@@ -88,8 +88,6 @@ class CurtinStorageGenerator:
         for block_device in self.node.blockdevice_set.order_by('id'):
             block_device = block_device.actual_instance
             if isinstance(block_device, PhysicalBlockDevice):
-                if self.boot_disk is None:
-                    self.boot_disk = block_device
                 self.operations["disk"].append(block_device)
             elif isinstance(block_device, VirtualBlockDevice):
                 filesystem_group = block_device.filesystem_group

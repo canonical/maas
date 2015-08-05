@@ -63,6 +63,7 @@ class StorageLayoutBase(Form):
         super(StorageLayoutBase, self).__init__(data=params)
         self.node = node
         self.block_devices = self._load_physical_block_devices()
+        self.boot_disk = node.get_boot_disk()
         self.setup_root_device_field()
 
     def _load_physical_block_devices(self):
@@ -81,13 +82,6 @@ class StorageLayoutBase(Form):
             choices=choices, required=False,
             error_messages={'invalid_choice': invalid_choice_message})
 
-    def get_boot_disk(self):
-        """Return the boot disk for the node."""
-        if len(self.block_devices) > 0:
-            return self.block_devices[0]
-        else:
-            return None
-
     def _clean_size(self, field, min_size=None, max_size=None):
         """Clean a size field."""
         size = self.cleaned_data[field]
@@ -96,7 +90,7 @@ class StorageLayoutBase(Form):
         if is_precentage(size):
             # Calculate the precentage not counting the EFI partition.
             size = calculate_size_from_precentage(
-                self.get_boot_disk().size - EFI_PARTITION_SIZE, size)
+                self.boot_disk.size - EFI_PARTITION_SIZE, size)
         if min_size is not None and size < min_size:
             raise ValidationError(
                 "Size is too small. Minimum size is %s." % min_size)
@@ -107,22 +101,20 @@ class StorageLayoutBase(Form):
 
     def clean_boot_size(self):
         """Clean the boot_size field."""
-        boot_disk = self.get_boot_disk()
-        if boot_disk is not None:
+        if self.boot_disk is not None:
             return self._clean_size(
                 'boot_size', MIN_BOOT_PARTITION_SIZE, (
-                    boot_disk.size - EFI_PARTITION_SIZE -
+                    self.boot_disk.size - EFI_PARTITION_SIZE -
                     MIN_ROOT_PARTITION_SIZE))
         else:
             return None
 
     def clean_root_size(self):
         """Clean the root_size field."""
-        boot_disk = self.get_boot_disk()
-        if boot_disk is not None:
+        if self.boot_disk is not None:
             return self._clean_size(
                 'root_size', MIN_ROOT_PARTITION_SIZE, (
-                    boot_disk.size - EFI_PARTITION_SIZE -
+                    self.boot_disk.size - EFI_PARTITION_SIZE -
                     MIN_BOOT_PARTITION_SIZE))
         else:
             return None
@@ -133,7 +125,7 @@ class StorageLayoutBase(Form):
         if len(self.block_devices) == 0:
             raise StorageLayoutMissingBootDiskError(
                 "Node doesn't have any storage devices to configure.")
-        disk_size = self.get_boot_disk().size
+        disk_size = self.boot_disk.size
         total_size = (
             EFI_PARTITION_SIZE + self.get_boot_size())
         root_size = self.get_root_size()
@@ -179,9 +171,8 @@ class StorageLayoutBase(Form):
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.partitiontable import PartitionTable
-        boot_disk = self.get_boot_disk()
         boot_partition_table = PartitionTable.objects.create(
-            block_device=boot_disk)
+            block_device=self.boot_disk)
         if boot_partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
             efi_partition = boot_partition_table.add_partition(
                 size=EFI_PARTITION_SIZE, bootable=True)
@@ -200,7 +191,7 @@ class StorageLayoutBase(Form):
                 label="boot",
                 mount_point="/boot")
         root_device = self.get_root_device()
-        if root_device is None or root_device == boot_disk:
+        if root_device is None or root_device == self.boot_disk:
             root_partition = boot_partition_table.add_partition(
                 size=self.get_root_size())
         else:
@@ -307,7 +298,7 @@ class LVMStorageLayout(StorageLayoutBase):
             root_size = self.get_root_size()
             if root_size is None:
                 root_size = (
-                    self.get_boot_disk().size - EFI_PARTITION_SIZE -
+                    self.boot_disk.size - EFI_PARTITION_SIZE -
                     self.get_boot_size())
             if is_precentage(lv_size):
                 lv_size = calculate_size_from_precentage(
@@ -357,13 +348,12 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
 
     def setup_cache_device_field(self):
         """Setup the possible cache devices."""
-        boot_disk = self.get_boot_disk()
-        if boot_disk is None:
+        if self.boot_disk is None:
             return
         choices = [
             (block_device.id, block_device.id)
             for block_device in self.block_devices
-            if block_device != boot_disk
+            if block_device != self.boot_disk
         ]
         invalid_choice_message = compose_invalid_choice_text(
             'cache_device', choices)
@@ -373,11 +363,10 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
 
     def _find_best_cache_device(self):
         """Return the best possible cache device on the node."""
-        boot_disk = self.get_boot_disk()
-        if boot_disk is None:
+        if self.boot_disk is None:
             return None
         block_devices = self.node.physicalblockdevice_set.exclude(
-            id__in=[boot_disk.id]).order_by('size')
+            id__in=[self.boot_disk.id]).order_by('size')
         for block_device in block_devices:
             if "ssd" in block_device.tags:
                 return block_device

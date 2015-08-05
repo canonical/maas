@@ -127,6 +127,7 @@ class DeviceHandler(TimestampedModelHandler):
             "id",
             "installable",
             "pxe_mac",
+            "boot_disk",
             "token",
             "netboot",
             "agent_name",

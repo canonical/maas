@@ -225,9 +225,20 @@ class TestNode(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(node=node, size=2000 * (1000 ** 2))
         self.assertEqual('2', node.display_storage())
 
+    def test_get_boot_disk_returns_set_boot_disk(self):
+        node = factory.make_Node()
+        # First disk.
+        factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        node.boot_disk = boot_disk
+        node.save()
+        self.assertEquals(boot_disk, node.get_boot_disk())
+
     def test_get_boot_disk_returns_first(self):
         node = factory.make_Node()
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        # Second disk.
+        factory.make_PhysicalBlockDevice(node=node)
         factory.make_PhysicalBlockDevice(node=node)
         self.assertEquals(boot_disk, node.get_boot_disk())
 
