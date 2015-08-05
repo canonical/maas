@@ -578,3 +578,17 @@ class TestAdminNodeForm(MAASServerTestCase):
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
+
+    def test__release_a_newer_than_b(self):
+        form = AdminNodeForm()
+        # Since we wrap around 'p' we want to use 'p' as our starting point
+        alphabet = ([chr(i) for i in xrange(ord('p'), ord('z') + 1)] +
+                    [chr(i) for i in xrange(ord('a'), ord('p'))])
+        previous_true = 0
+        for i in alphabet:
+            true_count = 0
+            for j in alphabet:
+                if form._release_a_newer_than_b(i, j):
+                    true_count += 1
+            previous_true += 1
+            self.assertEqual(previous_true, true_count)

@@ -510,6 +510,73 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
 
+class TestGetUsableKernels(MAASServerTestCase):
+    """Tests for `get_usable_kernels`."""
+
+    scenarios = (
+        ("ubuntu/trusty", {
+            "name": "ubuntu/trusty",
+            "arch": "amd64",
+            "subarch": "generic",
+            "kernels": ["hwe-t", "hwe-u", "hwe-v"],
+            }),
+        ("ubuntu/vivid", {
+            "name": "ubuntu/vivid",
+            "arch": "i386",
+            "subarch": "generic",
+            "kernels": ["hwe-v"],
+            }),
+        ("ubuntu/precise", {
+            "name": "ubuntu/precise",
+            "arch": "armfh",
+            "subarch": "generic",
+            "kernels": ["hwe-p", "hwe-t", "hwe-v"],
+            }),
+        ("ubuntu/wily", {
+            "name": "ubuntu/wily",
+            "arch": "armfh",
+            "subarch": "hardbank",
+            "kernels": [],
+        }))
+
+    def test__returns_usable_kernels(self):
+        if self.subarch == "generic":
+            for i in self.kernels:
+                factory.make_usable_boot_resource(
+                    name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                    architecture="%s/%s" % (self.arch, i))
+        else:
+            factory.make_usable_boot_resource(
+                name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                architecture="%s/%s" % (self.arch, self.subarch))
+        self.assertEqual(
+            set(self.kernels),
+            BootResource.objects.get_usable_kernels(
+                self.name, self.arch),
+            "%s should return %s as its usable kernel" % (
+                self.name, set(self.kernels)))
+
+
+class TestGetKpackageForNode(MAASServerTestCase):
+    """Tests for `get_kpackage_for_node`."""
+
+    def test__returns_kpackage(self):
+        resource = factory.make_BootResource(
+            name="ubuntu/trusty", architecture="amd64/hwe-t",
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(
+            resource_set, filename="boot-kernel", filetype="boot-kernel",
+            extra={"kpackage": "linux-image-generic-lts-trusty"})
+        node = factory.make_Node(
+            mac=True, power_type='ether_wake', osystem='ubuntu',
+            distro_series='trusty', architecture='amd64/generic',
+            hwe_kernel='hwe-t')
+        self.assertEqual(
+            "linux-image-generic-lts-trusty",
+            BootResource.objects.get_kpackage_for_node(node))
+
+
 class TestBootResource(MAASServerTestCase):
     """Tests for the `BootResource` model."""
 

@@ -35,8 +35,12 @@ from maasserver.exceptions import (
     MissingBootImage,
     PreseedError,
 )
-from maasserver.models import Config
+from maasserver.models import (
+    BootResource,
+    Config,
+)
 from maasserver.preseed import (
+    compose_curtin_kernel_preseed,
     compose_curtin_maas_reporter,
     compose_curtin_network_preseed,
     compose_curtin_swap_preseed,
@@ -835,6 +839,28 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         node.swap_size = 10 * 1000 ** 3
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, ['swap: {size: 10000000000B}\n'])
+
+
+class TestComposeCurtinKernel(MAASServerTestCase):
+
+    def test__returns_null_kernel(self):
+        node = factory.make_Node()
+        self.assertEqual(node.hwe_kernel, None)
+        kernel_preseed = compose_curtin_kernel_preseed(node)
+        self.assertEqual(kernel_preseed, [])
+
+    def test__returns_set_kernel(self):
+        self.patch(
+            BootResource.objects, 'get_kpackage_for_node').return_value = (
+            'linux-image-generic-lts-vivid')
+        node = factory.make_Node(hwe_kernel='hwe-v')
+        self.assertEqual(node.hwe_kernel, 'hwe-v')
+        kernel_preseed = compose_curtin_kernel_preseed(node)
+        self.assertEqual(kernel_preseed,
+                         ['kernel:\n' +
+                          '  mapping: {}\n' +
+                          '  package: linux-image-generic-lts-vivid\n'
+                          ])
 
 
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):

@@ -50,6 +50,7 @@ from maasserver.exceptions import (
     PreseedError,
 )
 from maasserver.models import (
+    BootResource,
     Config,
     DHCPLease,
 )
@@ -225,6 +226,24 @@ def compose_curtin_swap_preseed(node):
         return []
 
 
+def compose_curtin_kernel_preseed(node):
+    """Return the curtin preseed for installing a kernel other than default.
+
+    The BootResourceFile table contains a mapping between hwe kernels and
+    Ubuntu package names. If this mapping is missing we fall back to letting
+    Curtin figure out which kernel should be installed"""
+    kpackage = BootResource.objects.get_kpackage_for_node(node)
+    if kpackage:
+        kernel_config = {
+            'kernel': {
+                'package': kpackage,
+                'mapping': {},
+                },
+            }
+        return [yaml.safe_dump(kernel_config)]
+    return []
+
+
 def get_curtin_userdata(node):
     """Return the curtin user-data.
 
@@ -237,6 +256,7 @@ def get_curtin_userdata(node):
     reporter_config = compose_curtin_maas_reporter(node)
     network_config = compose_curtin_network_preseed_for(node)
     swap_config = compose_curtin_swap_preseed(node)
+    kernel_config = compose_curtin_kernel_preseed(node)
 
     # Get the storage configration if curtin supports custom storage.
     storage_config = compose_curtin_storage_config(node)
@@ -251,7 +271,7 @@ def get_curtin_userdata(node):
     return pack_install(
         configs=(
             [main_config] + reporter_config + storage_config +
-            network_config + swap_config),
+            network_config + swap_config + kernel_config),
         args=[installer_url])
 
 

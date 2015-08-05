@@ -388,6 +388,96 @@ class CheckboxInputTrueDefault(CheckboxInput):
 
 class NodeForm(MAASModelForm):
 
+    def _release_a_newer_than_b(self, a, b):
+        """ Compare two Ubuntu releases and return true if a >= b
+
+        The release names can be the full release name(e.g Precise, Trusty), or
+        a hardware enablement(e.g hwe-p, hwe-t). The function wraps around the
+        letter 'p' as Precise was the first version of Ubuntu MAAS supported
+        """
+        def get_release_num(release):
+            release = release.lower()
+            if 'hwe-' in release:
+                release = release.lstrip('hwe-')
+            return ord(release[0])
+
+        # Compare release versions based off of the first letter of their
+        # release name or the letter in hwe-<letter>. Wrap around the letter
+        # 'p' as that is the first version of Ubuntu MAAS supported.
+        num_a = get_release_num(a)
+        num_b = get_release_num(b)
+        num_wrap = ord('p')
+
+        if((num_a >= num_wrap and num_b >= num_wrap and num_a >= num_b) or
+           (num_a < num_wrap and num_b >= num_wrap and num_a < num_b) or
+           (num_a < num_wrap and num_b < num_wrap and num_a >= num_b)):
+            return True
+        else:
+            return False
+
+    def _clean_hwe_kernel(self):
+        hwe_kernel = self.cleaned_data.get('hwe_kernel')
+        min_hwe_kernel = self.cleaned_data.get('min_hwe_kernel')
+        architecture = self.cleaned_data.get('architecture')
+        osystem = self.cleaned_data.get('osystem')
+        distro_series = self.cleaned_data.get('distro_series')
+
+        # The hwe_kernel feature is only supported on Ubuntu
+        if((osystem and "ubuntu" not in osystem.lower()) or
+           (not architecture or architecture == '') or
+           (not distro_series or distro_series == '')):
+            return hwe_kernel
+
+        arch, subarch = architecture.split('/')
+
+        if (subarch != 'generic' and
+            (hwe_kernel.startswith('hwe-') or
+             min_hwe_kernel.startswith('hwe-'))):
+            set_form_error(
+                self, 'hwe_kernel',
+                'Subarchitecture(%s) must be generic when setting hwe_kernel.'
+                % subarch)
+            return
+
+        os_release = osystem + '/' + distro_series
+        usable_kernels = BootResource.objects.get_usable_kernels(
+            os_release, arch)
+
+        if hwe_kernel.startswith('hwe-'):
+            if hwe_kernel not in usable_kernels:
+                set_form_error(
+                    self, 'hwe_kernel',
+                    '%s is not avaliable for %s on %s.' %
+                    (hwe_kernel, os_release, architecture))
+                return
+            if not self._release_a_newer_than_b(hwe_kernel, distro_series):
+                set_form_error(
+                    self, 'hwe_kernel',
+                    '%s is too old to use on %s.' % (hwe_kernel, os_release))
+                return
+
+        if(hwe_kernel.startswith('hwe-') and
+           min_hwe_kernel.startswith('hwe-') and
+           not self._release_a_newer_than_b(hwe_kernel, min_hwe_kernel)):
+            set_form_error(
+                self, 'hwe_kernel',
+                'hwe_kernel(%s) is older than min_hwe_kernel(%s).' %
+                (hwe_kernel, min_hwe_kernel))
+            return
+        elif(min_hwe_kernel.startswith('hwe-')):
+            for i in usable_kernels:
+                if self._release_a_newer_than_b(i, min_hwe_kernel):
+                    return i
+            set_form_error(
+                self, 'hwe_kernel',
+                '%s has no kernels availible which meet min_hwe_kernel(%s).' %
+                (distro_series, min_hwe_kernel))
+            return
+        elif hwe_kernel.strip() == '':
+            return 'hwe-' + distro_series[0]
+
+        return hwe_kernel
+
     def __init__(self, request=None, *args, **kwargs):
         super(NodeForm, self).__init__(*args, **kwargs)
         # Even though it doesn't need it and doesn't use it, this form accepts
@@ -574,6 +664,7 @@ class NodeForm(MAASModelForm):
             # Take the default value from the node's cluster.
             nodegroup = cleaned_data['nodegroup']
             cleaned_data['disable_ipv4'] = nodegroup.default_disable_ipv4
+        cleaned_data['hwe_kernel'] = self._clean_hwe_kernel()
         return cleaned_data
 
     def is_valid(self):

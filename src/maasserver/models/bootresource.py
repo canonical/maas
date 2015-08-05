@@ -24,6 +24,7 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
@@ -222,6 +223,45 @@ class BootResourceManager(Manager):
             # If not all resources have been matched then there is a mismatch.
             return False
         return True
+
+    def get_usable_kernels(self, name, architecture):
+        """Return the set of usable kernels for architecture and release."""
+        kernels = set()
+        for resource in self.filter(
+                architecture__startswith=architecture, name=name):
+            resource_set = resource.get_latest_set()
+            if(resource_set is None or
+               not resource_set.commissionable or
+               not resource_set.installable):
+                continue
+            subarch = resource.split_arch()[1]
+            if subarch.startswith("hwe-"):
+                kernels.add(subarch)
+            if "subarches" in resource.extra:
+                for subarch in resource.extra["subarches"].split(","):
+                    if subarch.startswith("hwe-"):
+                        kernels.add(subarch)
+        return kernels
+
+    def get_kpackage_for_node(self, node):
+        """Return the kernel package name for the kernel specified."""
+        if not node.hwe_kernel:
+            return None
+        arch = node.split_arch()[0]
+        os_release = node.get_osystem() + '/' + node.get_distro_series()
+        # Before hwe_kernel was introduced the subarchitecture was the
+        # hwe_kernel simple stream still uses this convention
+        hwe_arch = arch + '/' + node.hwe_kernel
+
+        resource = self.filter(name=os_release, architecture=hwe_arch).first()
+        if resource:
+            latest_set = resource.get_latest_set()
+            if latest_set:
+                kernel = latest_set.files.filter(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).first()
+                if kernel and 'kpackage' in kernel.extra:
+                    return kernel.extra['kpackage']
+        return None
 
 
 def validate_architecture(value):

@@ -203,6 +203,17 @@ def pxeconfig(request):
         hostname = strip_domain(node.hostname)
         nodegroup = node.nodegroup
         domain = nodegroup.name
+
+        # Pre MAAS-1.9 the subarchitecture defined any kernel the node needed
+        # to be able to boot. This could be a hardware enablement kernel(e.g
+        # hwe-t) or something like highbank. With MAAS-1.9 any hardware
+        # enablement kernel must be specifed in the hwe_kernel field, any other
+        # kernel, such as highbank, is still specifed as a
+        # subarchitecture. Since Ubuntu does not support architecture specific
+        # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
+        # we give precedence to any kernel defined in the subarchitecture field
+        if subarch == "generic" and node.hwe_kernel:
+            subarch = node.hwe_kernel
     else:
         nodegroup = find_nodegroup_for_pxeconfig_request(request)
         preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
