@@ -594,6 +594,20 @@ def get_tags_from_block_info(block_info):
     return tags
 
 
+def get_matching_block_device(block_devices, serial=None, id_path=None):
+    """Return the matching block device based on `serial` or `id_path` from
+    the provided list of `block_devices`."""
+    if serial:
+        for block_device in block_devices:
+            if block_device.serial == serial:
+                return block_device
+    elif id_path:
+        for block_device in block_devices:
+            if block_device.id_path == id_path:
+                return block_device
+    return None
+
+
 def update_node_physical_block_devices(node, output, exit_status):
     """Process the results of `gather_physical_block_devices`.
 
@@ -609,25 +623,65 @@ def update_node_physical_block_devices(node, output, exit_status):
         blockdevs = json.loads(output)
     except ValueError as e:
         raise ValueError(e.message + ': ' + output)
-    PhysicalBlockDevice.objects.filter(node=node).delete()
+    previous_block_devices = list(
+        PhysicalBlockDevice.objects.filter(node=node).all())
     for block_info in blockdevs:
         # Skip the read-only devices. We keep them in the output for
         # the user to view but they do not get an entry in the database.
         if block_info["RO"] == "1":
             continue
+        name = block_info["NAME"]
         model = block_info.get("MODEL", "")
         serial = block_info.get("SERIAL", "")
+        id_path = block_info.get("ID_PATH", "")
+        size = long(block_info["SIZE"])
+        block_size = int(block_info["BLOCK_SIZE"])
         tags = get_tags_from_block_info(block_info)
-        PhysicalBlockDevice.objects.create(
-            node=node,
-            name=block_info["NAME"],
-            id_path=block_info.get("ID_PATH"),
-            size=long(block_info["SIZE"]),
-            block_size=int(block_info["BLOCK_SIZE"]),
-            tags=tags,
-            model=model,
-            serial=serial,
-            )
+        block_device = get_matching_block_device(
+            previous_block_devices, serial, id_path)
+        if block_device is not None:
+            # Already exists for the node. Keep the original object so the
+            # ID doesn't change and if its set to the boot_disk that FK will
+            # not need to be updated.
+            previous_block_devices.remove(block_device)
+            block_device.name = name
+            block_device.model = model
+            block_device.serial = serial
+            block_device.id_path = id_path
+            block_device.size = size
+            block_device.block_size = block_size
+            block_device.tags = tags
+            block_device.save()
+        else:
+            # New block device. Create it on the node.
+            PhysicalBlockDevice.objects.create(
+                node=node,
+                name=name,
+                id_path=id_path,
+                size=size,
+                block_size=block_size,
+                tags=tags,
+                model=model,
+                serial=serial,
+                )
+
+    # Clear boot_disk if it is being removed.
+    boot_disk = node.boot_disk
+    if boot_disk is not None and boot_disk in previous_block_devices:
+        boot_disk = None
+    if node.boot_disk != boot_disk:
+        node.boot_disk = boot_disk
+        node.save()
+
+    # Delete all the previous block devices that are no longer present
+    # on the commissioned node.
+    delete_block_device_ids = [
+        bd.id
+        for bd in previous_block_devices
+    ]
+    if len(delete_block_device_ids) > 0:
+        PhysicalBlockDevice.objects.filter(
+            id__in=delete_block_device_ids).delete()
 
 
 def null_hook(node, output, exit_status):

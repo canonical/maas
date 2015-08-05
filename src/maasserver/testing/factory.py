@@ -1251,7 +1251,7 @@ class Factory(maastesting.factory.Factory):
             partition_table = self.make_PartitionTable(
                 node=node, block_device_size=block_device_size)
         if size is None:
-            available_size = partition_table.get_available_size()
+            available_size = partition_table.get_available_size() / 2
             if available_size < MIN_PARTITION_SIZE:
                 raise ValueError(
                     "Cannot make another partition on partition_table not "

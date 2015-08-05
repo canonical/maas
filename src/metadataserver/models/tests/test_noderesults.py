@@ -982,7 +982,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         update_node_physical_block_devices(node, b"garbage", exit_status=1)
         self.assertIsNotNone(reload_object(block_device))
 
-    def test__clears_previous_physical_block_devices(self):
+    def test__removes_previous_physical_block_devices(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         update_node_physical_block_devices(node, b"[]", 0)
@@ -999,6 +999,42 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             for device in PhysicalBlockDevice.objects.filter(node=node)
             ]
         self.assertItemsEqual(device_names, created_names)
+
+    def test__only_updates_physical_block_devices(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        created_ids_one = [
+            device.id
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        update_node_physical_block_devices(node, json_output, 0)
+        created_ids_two = [
+            device.id
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        self.assertItemsEqual(created_ids_two, created_ids_one)
+
+    def test__doesnt_reset_boot_disk(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
+        node.boot_disk = boot_disk
+        node.save()
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertEquals(boot_disk, reload_object(node).boot_disk)
+
+    def test__clears_boot_disk(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        update_node_physical_block_devices(
+            node, json.dumps([]).encode('utf-8'), 0)
+        self.assertIsNone(reload_object(node).boot_disk)
 
     def test__creates_physical_block_devices_in_order(self):
         devices = [self.make_block_device() for _ in range(3)]
