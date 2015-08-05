@@ -11,6 +11,11 @@ See https://launchpad.net/maas/+milestone/1.8.1 for full details.
 Bug Fix Update
 --------------
 
+#1481118    Add --username to maas-region-admin apikey command docs.
+
+#1472707    Add ListBootImagesV2 RPC command. Fallback to using ListBootImages RPC
+            when the ListBootImagesV2 is not handled on the cluster.
+
 #1470591    Fix setting the default_distro_series over the API.
 
 #1413388    Fix upgrade issue where it would remove custom DNS config, potentially breaking DNS
