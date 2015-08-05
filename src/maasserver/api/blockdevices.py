@@ -48,6 +48,8 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'uuid',
     'type',
     'path',
+    'model',
+    'serial',
     'id_path',
     'size',
     'block_size',
@@ -133,6 +135,29 @@ class BlockDeviceHandler(OperationsHandler):
         block_device = block_device.actual_instance
         if isinstance(block_device, VirtualBlockDevice):
             return block_device.uuid
+        else:
+            return None
+
+    @classmethod
+    def _model(cls, block_device):
+        """Return the model for the block device.
+
+        This is method is named `_model` because to Piston model is reserved
+        because of the model attribute on the handler.
+        See `maasserver.api.support.method_fields_reserved_fields_patch" for
+        how this is handled.
+        """
+        block_device = block_device.actual_instance
+        if isinstance(block_device, PhysicalBlockDevice):
+            return block_device.model
+        else:
+            return None
+
+    @classmethod
+    def serial(cls, block_device):
+        block_device = block_device.actual_instance
+        if isinstance(block_device, PhysicalBlockDevice):
+            return block_device.serial
         else:
             return None
 
@@ -339,6 +364,23 @@ class BlockDeviceHandler(OperationsHandler):
         filesystem.mount_point = None
         filesystem.save()
         return device
+
+    @operation(idempotent=False)
+    def set_boot_disk(self, request, system_id, device_id):
+        """Set this block device as the boot disk for the node.
+
+        Returns 400 if the block device is a virtual block device.
+        Returns 404 if the node or block device is not found.
+        Returns 403 if the user is not allowed to update the block device.
+        """
+        device = BlockDevice.objects.get_block_device_or_404(
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        if not isinstance(device, PhysicalBlockDevice):
+            raise MAASAPIBadRequest(
+                "Cannot set a %s block device as the boot disk." % device.type)
+        device.node.boot_disk = device
+        device.node.save()
+        return rc.ALL_OK
 
 
 class PhysicalBlockDeviceHandler(BlockDeviceHandler):

@@ -275,6 +275,8 @@ class CurtinStorageGenerator:
             block_or_partition = filesystem.get_parent()
             volume_group_operation["devices"].append(
                 block_or_partition.get_name())
+        volume_group_operation["devices"] = sorted(
+            volume_group_operation["devices"])
         self.storage_config.append(volume_group_operation)
 
     def _generate_logical_volume_operations(self):
@@ -317,6 +319,9 @@ class CurtinStorageGenerator:
             elif filesystem.fstype == FILESYSTEM_TYPE.RAID_SPARE:
                 raid_operation["spare_devices"].append(
                     block_or_partition.get_name())
+        raid_operation["devices"] = sorted(raid_operation["devices"])
+        raid_operation["spare_devices"] = sorted(
+            raid_operation["spare_devices"])
         block_device = filesystem_group.virtual_device
         partition_table = block_device.get_partitiontable()
         if partition_table is not None:

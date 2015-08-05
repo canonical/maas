@@ -40,6 +40,7 @@ from fixtures import FakeLogger
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import MAC
 from maasserver.models import Interface
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
@@ -952,7 +953,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         if id_path is None:
             id_path = '/dev/disk/by-id/deviceid'
         if size is None:
-            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+            size = random.randint(
+                MIN_BLOCK_DEVICE_SIZE * 2, MIN_BLOCK_DEVICE_SIZE * 4)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if model is None:

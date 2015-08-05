@@ -120,17 +120,10 @@ DISPLAYED_NODE_FIELDS = (
     'zone',
     'disable_ipv4',
     'constraint_map',
-    ('physicalblockdevice_set', (
-        'id',
-        'name',
-        'path',
-        'id_path',
-        'size',
-        'block_size',
-        'model',
-        'serial',
-        'tags',
-    )),
+    'boot_disk',
+    'blockdevice_set',
+    'physicalblockdevice_set',
+    'virtualblockdevice_set',
 )
 
 

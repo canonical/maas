@@ -25,6 +25,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from maasserver.api.doc import get_api_description_hash
 from maasserver.exceptions import MAASAPIBadRequest
+from piston.emitters import Emitter
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
@@ -232,3 +233,29 @@ class AnonymousOperationsHandler(
     """Anonymous base handler that supports operation dispatch."""
 
     __metaclass__ = OperationsHandlerType
+
+
+def method_fields_reserved_fields_patch(self, handler, fields):
+    """Return the field callables that map to a handler.
+
+    Piston by default does not allow the ability to use names of fields
+    that are the same as other class attributes.
+
+    This overrides this ability and prefixes any `RESERVED_FIELDS` with "_"
+    to allow handlers to still use that field.
+
+    E.g. "model" classmethod on the `BlockDeviceHandler`.
+    """
+    if not handler:
+        return {}
+    ret = dict()
+    for field in fields:
+        field_method = field
+        if field in Emitter.RESERVED_FIELDS:
+            field_method = "_%s" % field_method
+        t = getattr(handler, unicode(field_method), None)
+        if t and callable(t):
+            ret[field] = t
+    return ret
+
+Emitter.method_fields = method_fields_reserved_fields_patch

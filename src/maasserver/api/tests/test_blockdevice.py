@@ -100,6 +100,18 @@ class TestBlockDevices(APITestCase):
         result_device_ids = [d["id"] for d in devices]
         self.assertItemsEqual(expected_device_ids, result_device_ids)
 
+    def test_read_returns_model(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevices_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_devices = json.loads(response.content)
+        self.assertDictContainsSubset({
+            "model": block_device.model,
+            }, parsed_devices[0])
+
     def test_read_returns_filesystem(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
@@ -745,3 +757,50 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             '%s-%s' % (volume_group.name, newname), parsed_device['name'])
         self.assertEqual(newsize, parsed_device['size'])
+
+    def test_set_boot_disk_returns_400_for_virtual_device(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(uri, {
+            'op': "set_boot_disk",
+        })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Cannot set a virtual block device as the boot disk.",
+            response.content)
+
+    def test_set_boot_disk_returns_403_for_normal_user(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(uri, {
+            'op': "set_boot_disk",
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_set_boot_disk_returns_404_for_block_device_not_on_node(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice()
+        uri = get_blockdevice_uri(block_device, node=node)
+        response = self.client.post(uri, {
+            'op': "set_boot_disk",
+        })
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_set_boot_disk_sets_boot_disk_for_admin(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(uri, {
+            'op': "set_boot_disk",
+        })
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertEquals(block_device, node.boot_disk)

@@ -556,6 +556,10 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'routers',
                 'zone',
                 'disable_ipv4',
+                'boot_disk',
+                'blockdevice_set',
+                'physicalblockdevice_set',
+                'virtualblockdevice_set',
             ],
             list(parsed_result))
 
@@ -658,6 +662,10 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'routers',
                 'zone',
                 'disable_ipv4',
+                'boot_disk',
+                'blockdevice_set',
+                'physicalblockdevice_set',
+                'virtualblockdevice_set',
             ],
             list(parsed_result))
 
@@ -814,6 +822,10 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'routers',
                 'zone',
                 'disable_ipv4',
+                'boot_disk',
+                'blockdevice_set',
+                'physicalblockdevice_set',
+                'virtualblockdevice_set',
             ],
             list(parsed_result))
 

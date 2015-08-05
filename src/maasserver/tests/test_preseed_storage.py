@@ -457,12 +457,12 @@ class TestComplexDiskLayout(
             type: raid
             raidlevel: 5
             devices:
-              - sde
-              - sdd
               - sdc
+              - sdd
+              - sde
             spare_devices:
-              - sdg
               - sdf
+              - sdg
             ptable: gpt
           - id: sda-part1
             name: sda-part1
