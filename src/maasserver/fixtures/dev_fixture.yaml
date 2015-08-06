@@ -208,28 +208,28 @@
       off, level: 20, name: NODE_POWERED_OFF, updated: !!timestamp '2015-03-23 16:48:00.943738'}
   model: maasserver.eventtype
   pk: 17
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 1
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 3
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 5
 - fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 6
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 7
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 8
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 9
-- fields: {model: '', serial: ''}
+- fields: {model: QEMU HARDDISK, serial: QM00001}
   model: maasserver.physicalblockdevice
   pk: 10
 - fields: {comment: '', created: !!timestamp '2015-03-23 16:28:10.104874', definition: '',

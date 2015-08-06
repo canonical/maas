@@ -634,6 +634,9 @@ def update_node_physical_block_devices(node, output, exit_status):
         model = block_info.get("MODEL", "")
         serial = block_info.get("SERIAL", "")
         id_path = block_info.get("ID_PATH", "")
+        if not id_path:
+            # Fallback to the dev path if id_path missing.
+            id_path = block_info["PATH"]
         size = long(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])
         tags = get_tags_from_block_info(block_info)
