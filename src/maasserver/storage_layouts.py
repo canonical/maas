@@ -221,9 +221,8 @@ class FlatStorageLayout(StorageLayoutBase):
 
     NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
     sda         100G        disk
-      sda15     512M        part    fat32          /boot/efi
-      sda1      1G          part    ext4           /boot
-      sda2      98.5G       part    ext4           /
+      sda1      512M        part    fat32          /boot/efi
+      sda2      99.5G       part    ext4           /
     """
 
     def configure_storage(self, allow_fallback):
@@ -244,11 +243,10 @@ class LVMStorageLayout(StorageLayoutBase):
 
     NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
     sda         100G        disk
-      sda15     512M        part    fat32          /boot/efi
-      sda1      1G          part    ext4           /boot
-      sda2      98.5G       part    lvm-pv(vgroot)
-    vgroot      98.5G       lvm
-      lvroot    98.5G       lvm     ext4           /
+      sda1      512M        part    fat32          /boot/efi
+      sda2      99.5G       part    lvm-pv(vgroot)
+    vgroot      99.5G       lvm
+      lvroot    99.5G       lvm     ext4           /
     """
 
     DEFAULT_VG_NAME = "vgroot"
@@ -456,12 +454,11 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
 
     NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
     sda         100G        disk
-      sda15     512M        part    fat32          /boot/efi
-      sda1      1G          part    ext4           /boot
-      sda2      98.5G       part    bc-backing
+      sda1      512M        part    fat32          /boot/efi
+      sda2      99.5G       part    bc-backing
     sdb         50G         disk
       sdb1      50G         part    bc-cache
-    bcache0     98.5G       disk    ext4           /
+    bcache0     99.5G       disk    ext4           /
     """
 
     def __init__(self, node, params={}):

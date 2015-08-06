@@ -53,3 +53,9 @@ the version when creating a client application.
 ``devices-management``
   Management of devices (non-installable nodes).  Available since version 1.8.
   See :ref:`devices` for more about this feature.
+
+.. _cap-storage-deployment:
+
+``storage-deployment``
+  Deploy nodes with custom storage layout and configuration. Available since
+  version 1.9. See :ref:`storage` for more about this feature.

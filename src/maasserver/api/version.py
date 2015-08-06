@@ -22,17 +22,19 @@ from django.http import HttpResponse
 from maasserver.api.support import AnonymousOperationsHandler
 from maasserver.utils.version import get_maas_version_subversion
 
-# MAAS capabilities. See docs/capabilities.rst for documentation.
+# MAAS capabilities. See docs/version.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = 'networks-management'
 CAP_STATIC_IPADDRESSES = 'static-ipaddresses'
 CAP_IPv6_DEPLOYMENT_UBUNTU = 'ipv6-deployment-ubuntu'
 CAP_DEVICES_MANAGEMENT = 'devices-management'
+CAP_STORAGE_DEPLOYMENT = 'storage-deployment'
 
 API_CAPABILITIES_LIST = [
     CAP_NETWORKS_MANAGEMENT,
     CAP_STATIC_IPADDRESSES,
     CAP_IPv6_DEPLOYMENT_UBUNTU,
     CAP_DEVICES_MANAGEMENT,
+    CAP_STORAGE_DEPLOYMENT
     ]
 
 
