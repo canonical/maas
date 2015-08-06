@@ -173,3 +173,14 @@ class TestPartitionTable(MAASServerTestCase):
         # No error should be raised.
         factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.MBR, block_device=other_disk)
+
+    def test_clean_no_partition_table_on_logical_volume(self):
+        node = factory.make_Node()
+        virtual_device = factory.make_VirtualBlockDevice(node=node)
+        error = self.assertRaises(
+            ValidationError,
+            factory.make_PartitionTable, block_device=virtual_device)
+        self.assertEquals({
+            "block_device": [
+                "Cannot create a partition table on a logical volume."],
+            }, error.error_dict)

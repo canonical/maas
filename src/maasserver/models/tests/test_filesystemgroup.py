@@ -1190,6 +1190,25 @@ class TestFilesystemGroup(MAASServerTestCase):
                 group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
                 filesystems=filesystems)
 
+    def test_cannot_save_bcache_with_logical_volume_as_backing(self):
+        node = factory.make_Node()
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+                block_device=factory.make_PhysicalBlockDevice(node=node)),
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+                block_device=factory.make_VirtualBlockDevice(node=node)),
+        ]
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'Bcache cannot use a logical volume as a "
+                    "backing device.']}")):
+            factory.make_FilesystemGroup(
+                group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                filesystems=filesystems)
+
     def test_can_save_bcache_with_cache_and_backing(self):
         node = factory.make_Node()
         filesystems = [

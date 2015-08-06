@@ -491,22 +491,6 @@ class TestComplexDiskLayout(
             size: 6976176128B
             device: sda
             wipe: superblock
-          - id: vgroot
-            name: vgroot
-            type: lvm_volgroup
-            uuid: 1793be1b-890a-44cb-9322-057b0d53b53c
-            devices:
-              - sda-part3
-          - id: vgroot-lvextra
-            name: lvextra
-            type: lvm_partition
-            volgroup: vgroot
-            size: 3221225472B
-          - id: vgroot-lvroot
-            name: lvroot
-            type: lvm_partition
-            volgroup: vgroot
-            size: 3221225472B
           - id: sdb-part1
             name: sdb-part1
             type: partition
@@ -519,7 +503,7 @@ class TestComplexDiskLayout(
           - id: bcache0
             name: bcache0
             type: bcache
-            backing_device: vgroot-lvroot
+            backing_device: sda-part3
             cache_device: sdb-part1
             cache_mode: writethrough
             ptable: gpt
@@ -529,9 +513,25 @@ class TestComplexDiskLayout(
             number: 1
             offset: 2097152B
             uuid: 17270be2-0db6-41b5-80c9-78a20cbf968e
-            size: 3218079744B
+            size: 6973030400B
             wipe: superblock
             device: bcache0
+          - id: vgroot
+            name: vgroot
+            type: lvm_volgroup
+            uuid: 1793be1b-890a-44cb-9322-057b0d53b53c
+            devices:
+              - bcache0-part1
+          - id: vgroot-lvextra
+            name: lvextra
+            type: lvm_partition
+            volgroup: vgroot
+            size: 3221225472B
+          - id: vgroot-lvroot
+            name: lvroot
+            type: lvm_partition
+            volgroup: vgroot
+            size: 3221225472B
           - id: md0-part1
             name: md0-part1
             type: partition
@@ -553,22 +553,22 @@ class TestComplexDiskLayout(
             label: boot
             uuid: f98e5b7b-cbb1-437e-b4e5-1769f81f969f
             volume: sda-part2
-          - id: bcache0-part1_format
+          - id: vgroot-lvroot_format
             type: format
             fstype: ext4
             label: root
             uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
-            volume: bcache0-part1
+            volume: vgroot-lvroot
           - id: md0-part1_format
             type: format
             fstype: ext4
             label: data
             uuid: a8ad29a3-6083-45af-af8b-06ead59f108b
             volume: md0-part1
-          - id: bcache0-part1_mount
+          - id: vgroot-lvroot_mount
             type: mount
             path: /
-            device: bcache0-part1_format
+            device: vgroot-lvroot_format
           - id: sda-part2_mount
             type: mount
             path: /boot
@@ -632,15 +632,6 @@ class TestComplexDiskLayout(
             partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
             mount_point="/boot")
-        vgroot = VolumeGroup.objects.create_volume_group(
-            name="vgroot", uuid="1793be1b-890a-44cb-9322-057b0d53b53c",
-            block_devices=[], partitions=[root_partition])
-        lvroot = vgroot.create_logical_volume(
-            name="lvroot", uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
-            size=3 * 1024 ** 3)
-        vgroot.create_logical_volume(
-            name="lvextra", uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
-            size=3 * 1024 ** 3)
         cache_partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.GPT, block_device=ssd_disk)
         cache_partition = factory.make_Partition(
@@ -650,7 +641,7 @@ class TestComplexDiskLayout(
             bootable=False)
         bcache0 = Bcache.objects.create_bcache(
             name="bcache0", uuid="9e7bdc2d-1567-4e1c-a89a-4e20df099458",
-            backing_device=lvroot, cache_partition=cache_partition,
+            backing_partition=root_partition, cache_partition=cache_partition,
             cache_mode=CACHE_MODE_TYPE.WRITETHROUGH)
         bcache0_partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.GPT,
@@ -658,10 +649,19 @@ class TestComplexDiskLayout(
         bcache0_partition = factory.make_Partition(
             partition_table=bcache0_partition_table,
             uuid="17270be2-0db6-41b5-80c9-78a20cbf968e",
-            size=(3 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=bcache0_partition_table.get_size(),
             bootable=False)
+        vgroot = VolumeGroup.objects.create_volume_group(
+            name="vgroot", uuid="1793be1b-890a-44cb-9322-057b0d53b53c",
+            block_devices=[], partitions=[bcache0_partition])
+        lvroot = vgroot.create_logical_volume(
+            name="lvroot", uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
+            size=3 * 1024 ** 3)
+        vgroot.create_logical_volume(
+            name="lvextra", uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
+            size=3 * 1024 ** 3)
         factory.make_Filesystem(
-            partition=bcache0_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            block_device=lvroot, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
             mount_point="/")
         raid_5 = RAID.objects.create_raid(

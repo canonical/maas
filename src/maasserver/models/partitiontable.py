@@ -152,3 +152,18 @@ class PartitionTable(CleanSave, TimestampedModel):
         # Force GPT for everything else.
         if not self.table_type:
             self.table_type = PARTITION_TABLE_TYPE.GPT
+
+    def clean(self, *args, **kwargs):
+        super(PartitionTable, self).clean(*args, **kwargs)
+        # Circular imports.
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
+        # Cannot place a partition table on a logical volume.
+        if self.block_device is not None:
+            block_device = self.block_device.actual_instance
+            if isinstance(block_device, VirtualBlockDevice):
+                if block_device.filesystem_group.is_lvm():
+                    raise ValidationError({
+                        "block_device": [
+                            "Cannot create a partition table on a "
+                            "logical volume."]
+                        })

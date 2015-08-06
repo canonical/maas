@@ -433,6 +433,19 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 return filesystem
         return None
 
+    def get_bcache_backing_block_device(self):
+        """Return the block_device that is the backing device for the Bcache.
+
+        This will return the block device even if the backing is a partition.
+        """
+        filesystem = self.get_bcache_backing_filesystem()
+        if filesystem is not None:
+            if filesystem.block_device is not None:
+                return filesystem.block_device
+            else:
+                return filesystem.partition.partition_table.block_device
+        return None
+
     def get_bcache_cache_filesystem(self):
         """Return the filesystem that is the cache device for the Bcache."""
         for filesystem in self.filesystems.all():
@@ -606,6 +619,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         """
         if not self.is_bcache():
             return
+        # Circular imports.
+        from maasserver.models.virtualblockdevice import VirtualBlockDevice
         fstypes_counter = Counter(
             self._get_all_fstypes(filesystems=filesystems))
         valid_counter = Counter(
@@ -613,8 +628,14 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if fstypes_counter != valid_counter:
             raise ValidationError(
                 "Bcache must contain one cache and one backing device.")
+        backing_block_device = self.get_bcache_backing_block_device()
+        backing_block_device = backing_block_device.actual_instance
+        if isinstance(backing_block_device, VirtualBlockDevice):
+            if backing_block_device.filesystem_group.is_lvm():
+                raise ValidationError(
+                    "Bcache cannot use a logical volume as a backing device.")
         if self.cache_mode is None:
-            raise ValidationError('Cache mode must be set for Bcache groups.')
+            raise ValidationError("Bcache requires cache mode to be set.")
 
     def save(self, *args, **kwargs):
         # Prevent the group_type from changing. This is not supported and will

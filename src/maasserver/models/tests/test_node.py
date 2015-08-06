@@ -2238,12 +2238,6 @@ class TestNode(MAASServerTestCase):
             filesystems=[filesystem_on_vbd1])
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
             filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3)
-        partition_table_on_vbd2 = factory.make_PartitionTable(
-            block_device=vbd2)
-        partition_on_vbd2 = factory.make_Partition(
-            partition_table=partition_table_on_vbd2)
-        filesystem_on_partition = factory.make_Filesystem(
-            partition=partition_on_vbd2)
         node._clear_storage_configuration()
         for pbd in physical_block_devices:
             self.expectThat(
@@ -2279,16 +2273,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(
             reload_object(vbd3_on_vbd1), Is(None),
             "Virtual block device on another virtual block device should have "
-            "been removed.")
-        self.expectThat(
-            reload_object(partition_table_on_vbd2), Is(None),
-            "PartitionTable on virtual block device should have been removed.")
-        self.expectThat(
-            reload_object(partition_on_vbd2), Is(None),
-            "Partition on virtual block device should have been removed.")
-        self.expectThat(
-            reload_object(filesystem_on_partition), Is(None),
-            "Filesystem on partition on virtual block device should have "
             "been removed.")
 
     def test_pxe_mac_displays_error_if_not_hosts_mac(self):

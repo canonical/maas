@@ -292,7 +292,7 @@ class TestPartitions(APITestCase):
 
     def test_mount_sets_mount_path_on_filesystem(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        block_device = factory.make_VirtualBlockDevice(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partition = partition_table.add_partition()
