@@ -3091,7 +3091,7 @@ class AbsolutePathField(forms.RegexField):
     """Validates an absolute path."""
 
     def __init__(self, *args, **kwargs):
-        regex = r"^(?:/[^/]+)*$"
+        regex = r"^(?:/[^/]*)*$"
         kwargs['min_length'] = 1
 
         # This size comes from linux/limits.h where it defines PATH_MAX = 4096.

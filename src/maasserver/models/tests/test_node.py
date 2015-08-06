@@ -713,7 +713,7 @@ class TestNode(MAASServerTestCase):
             (tag2, tag2.kernel_opts), node.get_effective_kernel_options())
 
     def test_acquire(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
         token = create_auth_token(user)
         agent_name = factory.make_name('agent-name')
@@ -723,19 +723,17 @@ class TestNode(MAASServerTestCase):
             (node.owner, node.status, node.agent_name))
 
     def test_acquire_calls_set_storage_layout(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
         token = create_auth_token(user)
         agent_name = factory.make_name('agent-name')
         mock_set_storage_layout = self.patch(node, "set_storage_layout")
-        node.acquire(user, token, agent_name, storage_layout=sentinel.layout)
+        node.acquire(
+            user, token, agent_name, storage_layout=sentinel.layout,
+            storage_layout_params=sentinel.params)
         self.assertThat(
-            mock_set_storage_layout, MockCalledOnceWith(sentinel.layout))
-
-    def test_set_storage_layout_raises_NodeStateViolation_not_allocated(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        with ExpectedException(NodeStateViolation):
-            node.set_storage_layout(factory.make_name("layout"))
+            mock_set_storage_layout,
+            MockCalledOnceWith(sentinel.layout, params=sentinel.params))
 
     def test_set_storage_layout_calls_configure_on_layout(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -2904,7 +2902,7 @@ class TestNode_Start(MAASServerTestCase):
 
     def make_acquired_node_with_mac(self, user, nodegroup=None):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            nodegroup=nodegroup, status=NODE_STATUS.READY)
+            nodegroup=nodegroup, status=NODE_STATUS.READY, with_boot_disk=True)
         self.prepare_rpc_to_cluster(node.nodegroup)
         node.acquire(user)
         return node
@@ -3203,7 +3201,7 @@ class TestNode_Stop(MAASServerTestCase):
     def make_node_with_mac(self, user, nodegroup=None, power_type="virsh"):
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.READY,
-            power_type=power_type)
+            power_type=power_type, with_boot_disk=True)
         node.acquire(user)
         return node
 

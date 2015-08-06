@@ -200,15 +200,26 @@ def filtered_nodes_list_from_request(request):
     return nodes.order_by('id')
 
 
-def get_storage_layout_param(request, required=False):
+def get_storage_layout_params(request, required=False, extract_params=False):
     """Return and validate the storage_layout parameter."""
     form = StorageLayoutForm(required=required, data=request.data)
     if not form.is_valid():
         raise MAASAPIValidationError(form.errors)
-    storage_layout = request.data.get('storage_layout')
-    if storage_layout == '':
+    storage_layout = request.data.pop('storage_layout', None)
+    if not storage_layout:
         storage_layout = None
-    return storage_layout
+    else:
+        storage_layout = storage_layout[0]
+    params = {}
+    # Grab all the storage layout parameters.
+    if extract_params:
+        for key, value in request.data.items():
+            if key.startswith("storage_layout_"):
+                params[key.replace("storage_layout_", "")] = value
+        # Remove the storage_layout_ parameters from the request.
+        for key in params.keys():
+            request.data.pop("storage_layout_%s" % key)
+    return storage_layout, params
 
 
 class NodeHandler(OperationsHandler):
@@ -784,7 +795,7 @@ class NodeHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Cannot change the storage layout on a node that is "
                 "not allocated.")
-        storage_layout = get_storage_layout_param(request, required=True)
+        storage_layout, _ = get_storage_layout_params(request, required=True)
         try:
             node.set_storage_layout(
                 storage_layout, params=request.data, allow_fallback=False)
@@ -795,7 +806,7 @@ class NodeHandler(OperationsHandler):
         except StorageLayoutError as e:
             raise MAASAPIBadRequest(
                 "Failed to configure storage layout '%s': %s" % (
-                    request.data.get('storage_layout'), e.message))
+                    storage_layout, e.message))
         return node
 
 
@@ -1270,7 +1281,8 @@ class NodesHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
         # Get and validate the storage_layout.
-        storage_layout = get_storage_layout_param(request)
+        storage_layout, storage_layout_params = get_storage_layout_params(
+            request, extract_params=True)
 
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
@@ -1291,9 +1303,20 @@ class NodesHandler(OperationsHandler):
                         % constraints)
                 raise NodesNotAvailable(message)
             agent_name = request.data.get('agent_name', '')
-            node.acquire(
-                request.user, get_oauth_token(request),
-                agent_name=agent_name, storage_layout=storage_layout)
+            try:
+                node.acquire(
+                    request.user, get_oauth_token(request),
+                    agent_name=agent_name,
+                    storage_layout=storage_layout,
+                    storage_layout_params=storage_layout_params)
+            except StorageLayoutMissingBootDiskError:
+                raise MAASAPIBadRequest(
+                    "Failed to acquire node; missing a boot disk (no storage "
+                    "layout can be applied).")
+            except StorageLayoutError as e:
+                raise MAASAPIBadRequest(
+                    "Failed to acquire node; failed to configure storage "
+                    "layout '%s': %s" % (storage_layout, e.message))
             node.constraint_map = constraint_map.get(node.id, {})
             return node
 

@@ -52,7 +52,7 @@ DISPLAYED_PARTITION_FIELDS = (
 )
 
 
-class PartitionTableHandler(OperationsHandler):
+class PartitionsHandler(OperationsHandler):
     """Manage partitions on a block device."""
     api_doc_section_name = "Partitions"
     update = delete = None
@@ -61,7 +61,7 @@ class PartitionTableHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return (
-            'partition_table_handler', ["system_id", "device_id"])
+            'partitions_handler', ["system_id", "device_id"])
 
     def read(self, request, system_id, device_id):
         """List all partitions on the block device.

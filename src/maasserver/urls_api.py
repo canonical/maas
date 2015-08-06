@@ -92,7 +92,7 @@ from maasserver.api.nodes import (
 from maasserver.api.not_found import not_found_handler
 from maasserver.api.partitions import (
     PartitionHandler,
-    PartitionTableHandler,
+    PartitionsHandler,
 )
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.raid import (
@@ -158,8 +158,8 @@ blockdevice_handler = RestrictedResource(
     BlockDeviceHandler, authentication=api_auth)
 partition_handler = RestrictedResource(
     PartitionHandler, authentication=api_auth)
-partition_table_handler = RestrictedResource(
-    PartitionTableHandler, authentication=api_auth)
+partitions_handler = RestrictedResource(
+    PartitionsHandler, authentication=api_auth)
 volume_group_handler = RestrictedResource(
     VolumeGroupHandler, authentication=api_auth)
 volume_groups_handler = RestrictedResource(
@@ -250,7 +250,7 @@ urlpatterns += patterns(
         blockdevice_handler, name='blockdevice_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partitions/$',
-        partition_table_handler, name='partition_table_handler'),
+        partitions_handler, name='partitions_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partition/(?P<partition_id>[^/]+)$',
         partition_handler, name='partition_handler'),

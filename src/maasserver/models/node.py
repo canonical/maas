@@ -1505,10 +1505,20 @@ class Node(CleanSave, TimestampedModel):
                 power_type, power_params,
             )
 
-    def acquire(self, user, token=None, agent_name='', storage_layout=None):
+    def acquire(
+            self, user, token=None, agent_name='',
+            storage_layout=None, storage_layout_params={}):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
+        # Configure the storage first that way if it fails the node is
+        # never allocated and the log information is never written.
+        if storage_layout is None:
+            storage_layout = Config.objects.get_config(
+                "default_storage_layout")
+        self.set_storage_layout(storage_layout, params=storage_layout_params)
+
+        # Now allocate the node since the storage layout is setup correctly.
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
@@ -1516,26 +1526,8 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         maaslog.info("%s: allocated to user %s", self.hostname, user.username)
 
-        # Set the storage layout for the node.
-        if storage_layout is None:
-            storage_layout = Config.objects.get_config(
-                "default_storage_layout")
-        try:
-            self.set_storage_layout(storage_layout)
-        except StorageLayoutError:
-            # Catch all storage errors setting up the layout.
-            # `set_storage_layout` handles the logging of error messages.
-            pass
-
     def set_storage_layout(self, layout, params={}, allow_fallback=True):
         """Set storage layout for this node."""
-        if self.status != NODE_STATUS.ALLOCATED:
-            raise NodeStateViolation(
-                "Cannot set the storage layout when node is %s, "
-                "it must be %s." % (
-                    NODE_STATUS_CHOICES_DICT[self.status],
-                    NODE_STATUS_CHOICES_DICT[NODE_STATUS.ALLOCATED],
-                    ))
         storage_layout = get_storage_layout_for_node(
             layout, self, params=params)
         if storage_layout is not None:

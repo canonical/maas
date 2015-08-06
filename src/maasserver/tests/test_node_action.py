@@ -368,7 +368,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
     def test_Acquire_acquires_node(self):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.READY,
-            power_type='ether_wake')
+            power_type='ether_wake', with_boot_disk=True)
         user = factory.make_User()
         Acquire(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -377,7 +377,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
     def test_Acquire_uses_node_acquire_lock(self):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.READY,
-            power_type='ether_wake')
+            power_type='ether_wake', with_boot_disk=True)
         user = factory.make_User()
         node_acquire = self.patch(locks, 'node_acquire')
         Acquire(node, user).execute()
@@ -471,7 +471,7 @@ class TestDeployAction(MAASServerTestCase):
 
     def test_Deploy_allocates_node_if_node_not_already_allocated(self):
         user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         self.patch(node, 'start')
         action = Deploy(node, user)
         action.execute()

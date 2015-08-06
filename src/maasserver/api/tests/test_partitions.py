@@ -32,7 +32,7 @@ from maasserver.utils.converters import round_size_to_nearest_block
 def get_partitions_uri(block_device):
     """Return a BlockDevice's partitions URI on the API."""
     return reverse(
-        'partition_table_handler',
+        'partitions_handler',
         args=[block_device.node.system_id, block_device.id])
 
 

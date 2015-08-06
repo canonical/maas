@@ -820,7 +820,7 @@ class TestNodeAPI(APITestCase):
         self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
-            power_state=POWER_STATE.ON)
+            power_state=POWER_STATE.ON, with_boot_disk=True)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)

@@ -68,7 +68,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
     def test_changing_to_allocated_includes_user_name(self):
         old_status = NODE_STATUS.READY
         user = factory.make_User()
-        node = factory.make_Node(status=old_status)
+        node = factory.make_Node(status=old_status, with_boot_disk=True)
         node.acquire(user)
 
         latest_event = Event.objects.filter(node=node).last()

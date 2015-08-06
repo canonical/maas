@@ -757,7 +757,8 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_returns_available_node(self):
         # The "acquire" operation returns an available node.
         available_status = NODE_STATUS.READY
-        node = factory.make_Node(status=available_status, owner=None)
+        node = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -767,7 +768,8 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node(self):
         # The "acquire" operation allocates the node it returns.
         available_status = NODE_STATUS.READY
-        node = factory.make_Node(status=available_status, owner=None)
+        node = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(self.logged_in_user, node.owner)
@@ -775,7 +777,8 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_uses_node_acquire_lock(self):
         # The "acquire" operation allocates the node it returns.
         available_status = NODE_STATUS.READY
-        factory.make_Node(status=available_status, owner=None)
+        factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         node_acquire = self.patch(nodes_module.locks, 'node_acquire')
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         self.assertThat(node_acquire.__enter__, MockCalledOnceWith())
@@ -786,7 +789,7 @@ class TestNodesAPI(APITestCase):
         available_status = NODE_STATUS.READY
         node = factory.make_Node(
             status=available_status, owner=None,
-            agent_name=factory.make_name('agent-name'))
+            agent_name=factory.make_name('agent-name'), with_boot_disk=True)
         agent_name = factory.make_name('agent-name')
         self.client.post(
             reverse('nodes_handler'),
@@ -798,7 +801,8 @@ class TestNodesAPI(APITestCase):
         available_status = NODE_STATUS.READY
         agent_name = factory.make_name('agent-name')
         node = factory.make_Node(
-            status=available_status, owner=None, agent_name=agent_name)
+            status=available_status, owner=None, agent_name=agent_name,
+            with_boot_disk=True)
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual('', node.agent_name)
@@ -831,7 +835,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_ignores_already_allocated_node(self):
         factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
+            with_boot_disk=True)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(httplib.CONFLICT, response.status_code)
@@ -843,7 +848,8 @@ class TestNodesAPI(APITestCase):
         # (Creating lots of nodes here to minimize the chances of this
         # passing by accident).
         available_nodes = [
-            factory.make_Node(status=NODE_STATUS.READY, owner=None)
+            factory.make_Node(
+                status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
             for counter in range(20)]
         desired_node = random.choice(available_nodes)
         response = self.client.post(reverse('nodes_handler'), {
@@ -861,7 +867,8 @@ class TestNodesAPI(APITestCase):
         # If "acquire" is passed a constraint, it won't return a node
         # that does not meet that constraint.  Even if it means that it
         # can't meet the request.
-        factory.make_Node(status=NODE_STATUS.READY, owner=None)
+        factory.make_Node(
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
         desired_node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(reverse('nodes_handler'), {
@@ -871,7 +878,8 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
     def test_POST_acquire_ignores_unknown_constraint(self):
-        node = factory.make_Node(status=NODE_STATUS.READY, owner=None)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             factory.make_string(): factory.make_string(),
@@ -884,7 +892,8 @@ class TestNodesAPI(APITestCase):
         # Positive test for name constraint.
         # If a name constraint is given, "acquire" attempts to allocate
         # a node of that name.
-        node = factory.make_Node(status=NODE_STATUS.READY, owner=None)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': node.hostname,
@@ -902,7 +911,8 @@ class TestNodesAPI(APITestCase):
         # disappeared.
         # Certainly it's not a 404, since the resource named in the URL
         # is "nodes/," which does exist.
-        factory.make_Node(status=NODE_STATUS.READY, owner=None)
+        factory.make_Node(
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': factory.make_string(),
@@ -912,7 +922,8 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_arch(self):
         # Asking for a particular arch acquires a node with that arch.
         arch = make_usable_architecture(self)
-        node = factory.make_Node(status=NODE_STATUS.READY, architecture=arch)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, architecture=arch, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'arch': arch,
@@ -923,7 +934,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_treats_unknown_arch_as_bad_request(self):
         # Asking for an unknown arch returns an HTTP "400 Bad Request"
-        factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'arch': 'sparc',
@@ -932,7 +944,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_cpu(self):
         # Asking for enough cpu acquires a node with at least that.
-        node = factory.make_Node(status=NODE_STATUS.READY, cpu_count=3)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, cpu_count=3, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': 2,
@@ -943,7 +956,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_float_cpu(self):
         # Asking for a needlessly precise number of cpus works.
-        node = factory.make_Node(status=NODE_STATUS.READY, cpu_count=1)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, cpu_count=1, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': '1.0',
@@ -954,7 +968,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_fails_with_invalid_cpu(self):
         # Asking for an invalid amount of cpu returns a bad request.
-        factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': 'plenty',
@@ -963,7 +978,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_mem(self):
         # Asking for enough memory acquires a node with at least that.
-        node = factory.make_Node(status=NODE_STATUS.READY, memory=1024)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, memory=1024, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'mem': 1024,
@@ -974,7 +990,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_fails_with_invalid_mem(self):
         # Asking for an invalid amount of memory returns a bad request.
-        factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'mem': 'bags',
@@ -982,7 +999,8 @@ class TestNodesAPI(APITestCase):
         self.assertResponseCode(httplib.BAD_REQUEST, response)
 
     def test_POST_acquire_allocates_node_by_tags(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
@@ -995,8 +1013,10 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_negated_tags(self):
-        tagged_node = factory.make_Node(status=NODE_STATUS.READY)
-        partially_tagged_node = factory.make_Node(status=NODE_STATUS.READY)
+        tagged_node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
+        partially_tagged_node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         tags = [factory.make_Tag(t) for t in node_tag_names]
         tagged_node.tags = tags
@@ -1015,9 +1035,11 @@ class TestNodesAPI(APITestCase):
             node_tag_names[:-1], response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_zone(self):
-        factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         zone = factory.make_Zone()
-        node = factory.make_Node(status=NODE_STATUS.READY, zone=zone)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, zone=zone, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'zone': zone.name,
@@ -1027,7 +1049,8 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_zone_fails_if_no_node(self):
-        factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         zone = factory.make_Zone()
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1043,7 +1066,8 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
@@ -1056,7 +1080,8 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_space_separated(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using space-separated tags.
@@ -1069,7 +1094,8 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_comma_space_separated(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-and-space-separated tags.
@@ -1082,7 +1108,8 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_mixed_input(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Mixed call using comma-separated tags in a list.
@@ -1111,9 +1138,11 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_fails_without_all_tags(self):
         # Asking for particular tags does not acquire if no node has all tags.
-        node1 = factory.make_Node(status=NODE_STATUS.READY)
+        node1 = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node1.tags = [factory.make_Tag(t) for t in ("fast", "stable", "cute")]
-        node2 = factory.make_Node(status=NODE_STATUS.READY)
+        node2 = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node2.tags = [factory.make_Tag("cheap")]
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1123,7 +1152,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_fails_with_unknown_tags(self):
         # Asking for a tag that does not exist gives a specific error.
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         node.tags = [factory.make_Tag("fast")]
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1136,8 +1166,9 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_connected_to_routers(self):
         macs = [factory.make_MAC() for counter in range(3)]
-        node = factory.make_Node(routers=macs, status=NODE_STATUS.READY)
-        factory.make_Node(routers=[])
+        node = factory.make_Node(
+            routers=macs, status=NODE_STATUS.READY, with_boot_disk=True)
+        factory.make_Node(routers=[], with_boot_disk=True)
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1150,10 +1181,13 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_not_connected_to_routers(self):
         macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        factory.make_Node(routers=macs, status=NODE_STATUS.READY)
         factory.make_Node(
-            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY)
-        node = factory.make_Node(status=NODE_STATUS.READY)
+            routers=macs, status=NODE_STATUS.READY, with_boot_disk=True)
+        factory.make_Node(
+            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY,
+            with_boot_disk=True)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1168,7 +1202,8 @@ class TestNodesAPI(APITestCase):
         networks = factory.make_Networks(5)
         macs = [
             factory.make_MACAddress_with_Node(
-                node=factory.make_Node(status=NODE_STATUS.READY),
+                node=factory.make_Node(
+                    status=NODE_STATUS.READY, with_boot_disk=True),
                 networks=[network])
             for network in networks
         ]
@@ -1188,9 +1223,11 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_not_network(self):
         networks = factory.make_Networks(5)
         for network in networks:
-            node = factory.make_Node(status=NODE_STATUS.READY)
+            node = factory.make_Node(
+                status=NODE_STATUS.READY, with_boot_disk=True)
             factory.make_MACAddress(node=node, networks=[network])
-        right_node = factory.make_Node(status=NODE_STATUS.READY)
+        right_node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
         factory.make_MACAddress(node=node, networks=[factory.make_Network()])
 
         response = self.client.post(reverse('nodes_handler'), {
@@ -1206,7 +1243,9 @@ class TestNodesAPI(APITestCase):
         # Zone we don't want to acquire from.
         not_in_zone = factory.make_Zone()
         nodes = [
-            factory.make_Node(status=NODE_STATUS.READY, zone=not_in_zone)
+            factory.make_Node(
+                status=NODE_STATUS.READY, zone=not_in_zone,
+                with_boot_disk=True)
             for _ in range(5)
         ]
         # Pick a node in the middle to avoid false negatives if acquire()
@@ -1230,7 +1269,8 @@ class TestNodesAPI(APITestCase):
         # "acquire" should set the Token being used in the request on
         # the Node that is allocated.
         available_status = NODE_STATUS.READY
-        node = factory.make_Node(status=available_status, owner=None)
+        node = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         oauth_key = self.client.token.key
@@ -1238,7 +1278,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_raises_400_if_invalid_storage_layout(self):
         available_status = NODE_STATUS.READY
-        factory.make_Node(status=available_status, owner=None)
+        factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         layout = factory.make_name("layout")
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -1254,18 +1295,52 @@ class TestNodesAPI(APITestCase):
                 invalid_choice_message % {'value': layout}]
             }, json.loads(response.content))
 
-    def test_POST_acquire_calls_acquire_with_storage_layout(self):
+    def test_POST_acquire_raises_400_if_invalid_storage_layout_param(self):
         available_status = NODE_STATUS.READY
-        factory.make_Node(status=available_status, owner=None)
+        node = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        boot_disk = node.get_boot_disk()
+        root_size = boot_disk.size + 1
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'name': node.hostname,
+            'storage_layout': 'flat',
+            'storage_layout_root_size': root_size,
+            })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(['root_size'], json.loads(response.content).keys())
+        self.assertEquals(available_status, node.status)
+
+    def test_POST_acquire_raises_400_if_no_boot_disk(self):
+        available_status = NODE_STATUS.READY
+        node = factory.make_Node(status=available_status, owner=None)
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'name': node.hostname,
+            })
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            "Failed to acquire node; missing a boot disk (no storage "
+            "layout can be applied).", response.content)
+        self.assertEquals(available_status, node.status)
+
+    def test_POST_acquire_calls_acquire_with_storage_layout_and_params(self):
+        available_status = NODE_STATUS.READY
+        factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
         mock_acquire = self.patch(Node, "acquire")
         self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'storage_layout': 'flat',
+            'storage_layout_root_size': '50%',
             })
         self.assertThat(
             mock_acquire,
             MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY, storage_layout='flat'))
+                ANY, ANY, agent_name=ANY, storage_layout='flat',
+                storage_layout_params={'root_size': '50%'}))
 
     def test_POST_accept_gets_node_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,

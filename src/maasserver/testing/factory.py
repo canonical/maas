@@ -260,7 +260,7 @@ class Factory(maastesting.factory.Factory):
             routers=None, zone=None, networks=None, boot_type=None,
             sortable_name=False, power_type=None, power_parameters=None,
             power_state=None, power_state_updated=undefined, disable_ipv4=None,
-            **kwargs):
+            with_boot_disk=False, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -311,6 +311,8 @@ class Factory(maastesting.factory.Factory):
             node.networks.add(*networks)
         if mac:
             self.make_MACAddress(node=node)
+        if with_boot_disk:
+            self.make_PhysicalBlockDevice(node=node)
 
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
