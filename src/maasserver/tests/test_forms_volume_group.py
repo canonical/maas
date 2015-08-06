@@ -144,6 +144,29 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
         ]
         self.assertItemsEqual(block_devices, block_devices_in_vg)
 
+    def test_creates_volume_group_with_block_devices_by_name(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+        ]
+        block_device_names = [
+            block_device.name
+            for block_device in block_devices
+        ]
+        data = {
+            'name': factory.make_name("vg"),
+            'block_devices': block_device_names,
+        }
+        form = CreateVolumeGroupForm(node, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        block_devices_in_vg = [
+            filesystem.block_device.actual_instance
+            for filesystem in volume_group.filesystems.all()
+        ]
+        self.assertItemsEqual(block_devices, block_devices_in_vg)
+
     def test_creates_volume_group_with_partitions(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
@@ -162,6 +185,34 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
         data = {
             'name': factory.make_name("vg"),
             'partitions': partition_ids,
+        }
+        form = CreateVolumeGroupForm(node, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        partitions_in_vg = [
+            filesystem.partition
+            for filesystem in volume_group.filesystems.all()
+        ]
+        self.assertItemsEqual(partitions, partitions_in_vg)
+
+    def test_creates_volume_group_with_partitions_by_name(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(MIN_BLOCK_DEVICE_SIZE * 3) + PARTITION_TABLE_EXTRA_SPACE)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(2)
+        ]
+        partition_names = [
+            partition.name
+            for partition in partitions
+        ]
+        data = {
+            'name': factory.make_name("vg"),
+            'partitions': partition_names,
         }
         form = CreateVolumeGroupForm(node, data=data)
         self.assertTrue(form.is_valid(), form._errors)
@@ -270,6 +321,19 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertEquals(
             volume_group.id, block_device.filesystem.filesystem_group.id)
 
+    def test_adds_block_device_by_name(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        data = {
+            'add_block_devices': [block_device.name],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(
+            volume_group.id, block_device.filesystem.filesystem_group.id)
+
     def test_removes_block_device(self):
         node = factory.make_Node()
         volume_group = factory.make_VolumeGroup(node=node)
@@ -279,6 +343,21 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
             filesystem_group=volume_group)
         data = {
             'remove_block_devices': [block_device.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertIsNone(block_device.filesystem)
+
+    def test_removes_block_device_by_name(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device,
+            filesystem_group=volume_group)
+        data = {
+            'remove_block_devices': [block_device.name],
             }
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
@@ -301,6 +380,22 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertEquals(
             volume_group.id, partition.filesystem.filesystem_group.id)
 
+    def test_adds_partition_by_name(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        data = {
+            'add_partitions': [partition.name],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertEquals(
+            volume_group.id, partition.filesystem.filesystem_group.id)
+
     def test_removes_partition(self):
         node = factory.make_Node()
         volume_group = factory.make_VolumeGroup(node=node)
@@ -313,6 +408,24 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
             filesystem_group=volume_group)
         data = {
             'remove_partitions': [partition.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        self.assertIsNone(partition.filesystem)
+
+    def test_removes_partition_by_name(self):
+        node = factory.make_Node()
+        volume_group = factory.make_VolumeGroup(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition,
+            filesystem_group=volume_group)
+        data = {
+            'remove_partitions': [partition.name],
             }
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)

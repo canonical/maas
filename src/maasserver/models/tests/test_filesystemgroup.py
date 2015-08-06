@@ -113,6 +113,17 @@ class TestManagersGetObjectOr404(MAASServerTestCase):
             node.system_id, filesystem_group.id, user,
             NODE_PERMISSION.VIEW)
 
+    def test__view_returns_device_by_name(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=self.type)
+        self.assertEquals(
+            filesystem_group.id,
+            self.model.objects.get_object_or_404(
+                node.system_id, filesystem_group.name, user,
+                NODE_PERMISSION.VIEW).id)
+
     def test__view_returns_device_when_no_owner(self):
         user = factory.make_User()
         node = factory.make_Node()

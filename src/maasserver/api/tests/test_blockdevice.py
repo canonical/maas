@@ -41,12 +41,15 @@ def get_blockdevices_uri(node):
         'blockdevices_handler', args=[node.system_id])
 
 
-def get_blockdevice_uri(device, node=None):
+def get_blockdevice_uri(device, node=None, by_name=False):
     """Return a BlockDevice's URI on the API."""
     if node is None:
         node = device.node
+    device_id = device.id
+    if by_name:
+        device_id = device.name
     return reverse(
-        'blockdevice_handler', args=[node.system_id, device.id])
+        'blockdevice_handler', args=[node.system_id, device_id])
 
 
 class TestBlockDevices(APITestCase):
@@ -272,6 +275,15 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEquals("physical", parsed_device["type"])
         self.assertEquals(
             get_blockdevice_uri(block_device), parsed_device["resource_uri"])
+
+    def test_read_block_device_by_name(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        uri = get_blockdevice_uri(block_device, by_name=True)
+        response = self.client.get(uri)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEquals(block_device.id, parsed_device["id"])
 
     def test_read_virtual_block_device(self):
         block_device = factory.make_VirtualBlockDevice()

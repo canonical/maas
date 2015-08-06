@@ -60,6 +60,14 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
             node.system_id, random.randint(0, 100), user,
             NODE_PERMISSION.VIEW)
 
+    def test__return_block_device_by_name(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        device = factory.make_PhysicalBlockDevice(node=node)
+        self.assertEquals(
+            device.id, BlockDevice.objects.get_block_device_or_404(
+                node.system_id, device.name, user, NODE_PERMISSION.VIEW).id)
+
     def test__view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())

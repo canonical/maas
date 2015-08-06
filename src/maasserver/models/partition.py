@@ -57,6 +57,17 @@ class PartitionManager(Manager):
         """Return `Partition`s for the belong to the filesystem group."""
         return self.filter(filesystem__filesystem_group=filesystem_group)
 
+    def get_partitions_by_device_name_and_number(
+            self, device_name, partition_number):
+        """Return `Partition` for the block device and partition_number."""
+        partitions = self.filter(
+            partition_table__block_device__name=device_name).prefetch_related(
+            'partition_table__partitions').all()
+        for partition in partitions:
+            if partition.get_partition_number() == partition_number:
+                return partition
+        raise self.model.DoesNotExist()
+
 
 class Partition(CleanSave, TimestampedModel):
     """A partition in a partition table.

@@ -3403,6 +3403,97 @@ class UpdateVirtualBlockDeviceForm(MAASModelForm):
         return block_device
 
 
+def convert_block_device_name_to_id(value):
+    """Convert a block device value from an input field into the block device
+    id.
+
+    This is used when the user can provide either the ID or the name of the
+    block device.
+
+    :param value: User input value.
+    :return: The block device ID or original input value if invalid.
+    """
+    if not value:
+        return value
+    try:
+        value = int(value)
+    except ValueError:
+        try:
+            value = BlockDevice.objects.get(name=value).id
+        except BlockDevice.DoesNotExist:
+            pass
+    return value
+
+
+def clean_block_device_name_to_id(field):
+    """Helper to clean a block device input field.
+    See `convert_block_device_name_to_id`."""
+    def _convert(self):
+        return convert_block_device_name_to_id(self.cleaned_data[field])
+    return _convert
+
+
+def clean_block_device_names_to_ids(field):
+    """Helper to clean a block device multi choice input field.
+    See `convert_block_device_name_to_id`."""
+    def _convert(self):
+        return [
+            convert_block_device_name_to_id(block_device)
+            for block_device in self.cleaned_data[field]
+            ]
+    return _convert
+
+
+def convert_partition_name_to_id(value):
+    """Convert a partition value from an input field into the partition id.
+
+    This is used when the user can provide either the ID or the name of the
+    partition.
+
+    :param value: User input value.
+    :return: The partition ID or original input value if invalid.
+    """
+    if not value:
+        return value
+    try:
+        value = int(value)
+    except ValueError:
+        value_split = value.split('-part')
+        if len(value_split) != 2:
+            return value
+        device_name, partition_number = value_split
+        try:
+            partition_number = int(partition_number)
+        except ValueError:
+            return value
+        try:
+            value = (
+                Partition.objects.get_partitions_by_device_name_and_number(
+                    device_name, partition_number).id)
+        except Partition.DoesNotExist:
+            pass
+    return value
+
+
+def clean_partition_name_to_id(field):
+    """Helper to clean a partition input field.
+    See `convert_partition_name_to_id`."""
+    def _convert(self):
+        return convert_partition_name_to_id(self.cleaned_data[field])
+    return _convert
+
+
+def clean_partition_names_to_ids(field):
+    """Helper to clean a partition multi choice input field.
+    See `convert_partition_name_to_id`."""
+    def _convert(self):
+        return [
+            convert_partition_name_to_id(partition)
+            for partition in self.cleaned_data[field]
+            ]
+    return _convert
+
+
 class CreateBcacheForm(Form):
     """For validaing and saving a new Bcache."""
 
@@ -3414,6 +3505,11 @@ class CreateBcacheForm(Form):
     backing_partition = forms.ChoiceField(required=False)
     cache_mode = forms.ChoiceField(
         choices=CACHE_MODE_TYPE_CHOICES, required=True)
+
+    clean_cache_device = clean_block_device_name_to_id('cache_device')
+    clean_backing_device = clean_block_device_name_to_id('backing_device')
+    clean_cache_partition = clean_partition_name_to_id('cache_partition')
+    clean_backing_partition = clean_partition_name_to_id('backing_partition')
 
     def __init__(self, node, *args, **kwargs):
         super(CreateBcacheForm, self).__init__(*args, **kwargs)
@@ -3443,18 +3539,18 @@ class CreateBcacheForm(Form):
         cache_partition = cache_device = None
         if self.cleaned_data['cache_device']:
             cache_device = BlockDevice.objects.get(
-                id=int(self.cleaned_data['cache_device']))
+                id=self.cleaned_data['cache_device'])
         elif self.cleaned_data['cache_partition']:
             cache_partition = Partition.objects.get(
-                id=int(self.cleaned_data['cache_partition']))
+                id=self.cleaned_data['cache_partition'])
 
         backing_partition = backing_device = None
         if self.cleaned_data['backing_device']:
             backing_device = BlockDevice.objects.get(
-                id=int(self.cleaned_data['backing_device']))
+                id=self.cleaned_data['backing_device'])
         elif self.cleaned_data['backing_partition']:
             backing_partition = Partition.objects.get(
-                id=int(self.cleaned_data['backing_partition']))
+                id=self.cleaned_data['backing_partition'])
 
         return Bcache.objects.create_bcache(
             name=self.cleaned_data['name'],
@@ -3470,17 +3566,25 @@ class CreateBcacheForm(Form):
         `cache_partition` and `backing_partition` fields."""
 
         # Select the unused, non-partitioned block devices of this node.
+        free_block_devices = list(
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
         block_device_choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(
-                self.node)
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
         ]
 
         # Select the unused partitions of this node.
+        free_partitions = list(
+            Partition.objects.get_free_partitions_for_node(self.node))
         partition_choices = [
-            (partition.id, partition.id)
-            for partition in Partition.objects.get_free_partitions_for_node(
-                self.node)
+            (partition.id, partition.name)
+            for partition in free_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in free_partitions
         ]
 
         self.fields['cache_device'].choices = block_device_choices
@@ -3500,6 +3604,11 @@ class UpdateBcacheForm(Form):
     backing_partition = forms.ChoiceField(required=False)
     cache_mode = forms.ChoiceField(
         choices=CACHE_MODE_TYPE_CHOICES, required=False)
+
+    clean_cache_device = clean_block_device_name_to_id('cache_device')
+    clean_backing_device = clean_block_device_name_to_id('backing_device')
+    clean_cache_partition = clean_partition_name_to_id('cache_partition')
+    clean_backing_partition = clean_partition_name_to_id('backing_partition')
 
     def __init__(self, bcache, *args, **kwargs):
         super(UpdateBcacheForm, self).__init__(*args, **kwargs)
@@ -3569,24 +3678,42 @@ class UpdateBcacheForm(Form):
         # Select the unused, non-partitioned block devices of this node, append
         # the ones currently used by bcache and exclude the virtual block
         # device created by the cache.
+        free_block_devices = (
+            BlockDevice.objects.get_free_block_devices_for_node(
+                self.node).exclude(id=self.bcache.virtual_device.id))
+        current_block_devices = self.bcache.filesystems.exclude(
+            block_device=None)
         block_device_choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(
-                self.node).exclude(id=self.bcache.virtual_device.id)
+            (bd.id, bd.name)
+            for bd in free_block_devices
         ] + [
-            (fs.block_device_id, fs.block_device_id)
-            for fs in self.bcache.filesystems.exclude(block_device=None)
+            (bd.name, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (fs.block_device_id, fs.block_device.name)
+            for fs in current_block_devices
+        ] + [
+            (fs.block_device.name, fs.block_device.name)
+            for fs in current_block_devices
         ]
 
         # Select the unused partitions of this node, append the bcache ones (if
         # they exist).
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            self.node)
+        current_partitions = self.bcache.filesystems.exclude(partition=None)
         partition_choices = [
-            (partition.id, partition.id)
-            for partition in Partition.objects.get_free_partitions_for_node(
-                self.node)
+            (partition.id, partition.name)
+            for partition in free_partitions
         ] + [
-            (fs.partition_id, fs.partition_id)
-            for fs in self.bcache.filesystems.exclude(partition=None)
+            (partition.name, partition.name)
+            for partition in free_partitions
+        ] + [
+            (fs.partition_id, fs.partition.name)
+            for fs in current_partitions
+        ] + [
+            (fs.partition.name, fs.partition.name)
+            for fs in current_partitions
         ]
 
         self.fields['cache_device'].choices = block_device_choices
@@ -3607,6 +3734,11 @@ class CreateRaidForm(Form):
     spare_devices = forms.MultipleChoiceField(required=False)
     spare_partitions = forms.MultipleChoiceField(required=False)
 
+    clean_block_devices = clean_block_device_names_to_ids('block_devices')
+    clean_partitions = clean_partition_names_to_ids('partitions')
+    clean_spare_devices = clean_block_device_names_to_ids('spare_devices')
+    clean_spare_partitions = clean_partition_names_to_ids('spare_partitions')
+
     def _set_up_field_choices(self):
         """Sets up the `block_devices`, `partition`, `spare_devices` and
         `spare_partitions` fields.
@@ -3616,17 +3748,26 @@ class CreateRaidForm(Form):
 
         """
         # Select the unused, non-partitioned block devices of this node.
+        free_block_devices = (
+            BlockDevice.objects.get_free_block_devices_for_node(
+                self.node))
         block_device_choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(
-                self.node)
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
         ]
 
         # Select the unused partitions of this node.
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            self.node)
         partition_choices = [
-            (partition.id, partition.id)
-            for partition in Partition.objects.get_free_partitions_for_node(
-                self.node)
+            (partition.id, partition.name)
+            for partition in free_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in free_partitions
         ]
 
         self.fields['block_devices'].choices = block_device_choices
@@ -3660,13 +3801,13 @@ class CreateRaidForm(Form):
         """
 
         block_devices = BlockDevice.objects.filter(
-            id__in=[int(i) for i in self.cleaned_data['block_devices']])
+            id__in=self.cleaned_data['block_devices'])
         partitions = Partition.objects.filter(
-            id__in=[int(i) for i in self.cleaned_data['partitions']])
+            id__in=self.cleaned_data['partitions'])
         spare_devices = BlockDevice.objects.filter(
-            id__in=[int(i) for i in self.cleaned_data['spare_devices']])
+            id__in=self.cleaned_data['spare_devices'])
         spare_partitions = Partition.objects.filter(
-            id__in=[int(i) for i in self.cleaned_data['spare_partitions']])
+            id__in=self.cleaned_data['spare_partitions'])
 
         return RAID.objects.create_raid(
             name=self.cleaned_data['name'],
@@ -3695,6 +3836,24 @@ class UpdateRaidForm(Form):
     remove_spare_devices = forms.MultipleChoiceField(required=False)
     remove_spare_partitions = forms.MultipleChoiceField(required=False)
 
+    clean_add_block_devices = clean_block_device_names_to_ids(
+        'add_block_devices')
+    clean_add_partitions = clean_partition_names_to_ids(
+        'add_partitions')
+    clean_add_spare_devices = clean_block_device_names_to_ids(
+        'add_spare_devices')
+    clean_add_spare_partitions = clean_partition_names_to_ids(
+        'add_spare_partitions')
+
+    clean_remove_block_devices = clean_block_device_names_to_ids(
+        'remove_block_devices')
+    clean_remove_partitions = clean_partition_names_to_ids(
+        'remove_partitions')
+    clean_remove_spare_devices = clean_block_device_names_to_ids(
+        'remove_spare_devices')
+    clean_remove_spare_partitions = clean_partition_names_to_ids(
+        'remove_spare_partitions')
+
     def __init__(self, raid, *args, **kwargs):
         super(UpdateRaidForm, self).__init__(*args, **kwargs)
         self.raid = raid
@@ -3713,42 +3872,61 @@ class UpdateRaidForm(Form):
         node = self.raid.get_node()
 
         # Select the unused, non-partitioned block devices of this node.
-        block_device_choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(node)
+        free_block_devices = (
+            BlockDevice.objects.get_free_block_devices_for_node(node))
+        add_block_device_choices = [
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
         ]
 
         # Select the unused partitions of this node.
-        partition_choices = [
-            (p.id, p.id)
-            for p in Partition.objects.get_free_partitions_for_node(node)
+        free_partitions = Partition.objects.get_free_partitions_for_node(node)
+        add_partition_choices = [
+            (p.id, p.name)
+            for p in free_partitions
+        ] + [
+            (p.name, p.name)
+            for p in free_partitions
         ]
 
         # Select the used block devices of this RAID.
+        current_block_devices = self.raid.filesystems.exclude(
+            block_device=None)
         remove_block_device_choices = [
-            (fs.block_device.id, fs.block_device.id)
-            for fs in self.raid.filesystems.exclude(block_device=None)]
+            (fs.block_device.id, fs.block_device.name)
+            for fs in current_block_devices
+        ] + [
+            (fs.block_device.name, fs.block_device.name)
+            for fs in current_block_devices
+        ]
 
         # Select the used partitions of this RAID.
+        current_partitions = self.raid.filesystems.exclude(partition=None)
         remove_partition_choices = [
-            (fs.partition.id, fs.partition.id)
-            for fs in self.raid.filesystems.exclude(partition=None)
+            (fs.partition.id, fs.partition.name)
+            for fs in current_partitions
+        ] + [
+            (fs.partition.name, fs.partition.name)
+            for fs in current_partitions
         ]
 
         # Sets up the choices for additive fields.
-        self.fields['add_block_devices'].choices = block_device_choices
-        self.fields['add_partitions'].choices = partition_choices
-        self.fields['add_spare_devices'].choices = block_device_choices
-        self.fields['add_spare_partitions'].choices = partition_choices
+        self.fields['add_block_devices'].choices = add_block_device_choices
+        self.fields['add_partitions'].choices = add_partition_choices
+        self.fields['add_spare_devices'].choices = add_block_device_choices
+        self.fields['add_spare_partitions'].choices = add_partition_choices
 
         # Sets up the choices for removal fields.
-        self.fields['remove_block_devices'].choices = \
-            remove_block_device_choices
+        self.fields['remove_block_devices'].choices = (
+            remove_block_device_choices)
         self.fields['remove_partitions'].choices = remove_partition_choices
-        self.fields['remove_spare_devices'].choices = \
-            remove_block_device_choices
-        self.fields['remove_spare_partitions'].choices = \
-            remove_partition_choices
+        self.fields['remove_spare_devices'].choices = (
+            remove_block_device_choices)
+        self.fields['remove_spare_partitions'].choices = (
+            remove_partition_choices)
 
     def save(self):
         """Save updates to the RAID.
@@ -3773,41 +3951,40 @@ class UpdateRaidForm(Form):
                 fstype=FILESYSTEM_TYPE.RAID_SPARE).exclude(partition=None)
         ]
 
-        for device_id in map(
-                int, self.cleaned_data['remove_block_devices']
-                + self.cleaned_data['remove_spare_devices']):
+        for device_id in (
+                self.cleaned_data['remove_block_devices'] +
+                self.cleaned_data['remove_spare_devices']):
             if (device_id in current_block_device_ids
                     + current_spare_device_ids):
                 self.raid.remove_device(BlockDevice.objects.get(id=device_id))
 
-        for partition_id in map(
-                int, self.cleaned_data['remove_partitions']
-                + self.cleaned_data['remove_spare_partitions']):
+        for partition_id in (
+                self.cleaned_data['remove_partitions'] +
+                self.cleaned_data['remove_spare_partitions']):
             if (partition_id in current_partition_ids
                     + current_spare_partition_ids):
                 self.raid.remove_partition(
                     Partition.objects.get(id=partition_id))
 
-        for device_id in map(int, self.cleaned_data['add_block_devices']):
+        for device_id in self.cleaned_data['add_block_devices']:
             if device_id not in current_block_device_ids:
                 self.raid.add_device(
                     BlockDevice.objects.get(id=device_id),
                     FILESYSTEM_TYPE.RAID)
 
-        for device_id in map(int, self.cleaned_data['add_spare_devices']):
+        for device_id in self.cleaned_data['add_spare_devices']:
             if device_id not in current_block_device_ids:
                 self.raid.add_device(
                     BlockDevice.objects.get(id=device_id),
                     FILESYSTEM_TYPE.RAID_SPARE)
 
-        for partition_id in map(int, self.cleaned_data['add_partitions']):
+        for partition_id in self.cleaned_data['add_partitions']:
             if partition_id not in current_partition_ids:
                 self.raid.add_partition(
                     Partition.objects.get(id=partition_id),
                     FILESYSTEM_TYPE.RAID)
 
-        for partition_id in map(
-                int, self.cleaned_data['add_spare_partitions']):
+        for partition_id in self.cleaned_data['add_spare_partitions']:
             if partition_id not in current_partition_ids:
                 self.raid.add_partition(
                     Partition.objects.get(id=partition_id),
@@ -3832,6 +4009,9 @@ class CreateVolumeGroupForm(Form):
     block_devices = forms.MultipleChoiceField(required=False)
     partitions = forms.MultipleChoiceField(required=False)
 
+    clean_block_devices = clean_block_device_names_to_ids('block_devices')
+    clean_partitions = clean_partition_names_to_ids('partitions')
+
     def __init__(self, node, *args, **kwargs):
         super(CreateVolumeGroupForm, self).__init__(*args, **kwargs)
         self.node = node
@@ -3844,16 +4024,25 @@ class CreateVolumeGroupForm(Form):
         partitions and block devices that fit this node.
         """
         # Select the unused, non-partitioned block devices of this node.
+        free_block_devices = (
+            BlockDevice.objects.get_free_block_devices_for_node(
+                self.node))
         self.fields['block_devices'].choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(
-                self.node)
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
         ]
         # Select the unused partitions of this node.
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            self.node)
         self.fields['partitions'].choices = [
-            (partition.id, partition.id)
-            for partition in Partition.objects.get_free_partitions_for_node(
-                self.node)
+            (partition.id, partition.name)
+            for partition in free_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in free_partitions
         ]
 
     def clean(self):
@@ -3881,8 +4070,8 @@ class CreateVolumeGroupForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        block_device_ids = map(int, self.cleaned_data['block_devices'])
-        partition_ids = map(int, self.cleaned_data['partitions'])
+        block_device_ids = self.cleaned_data['block_devices']
+        partition_ids = self.cleaned_data['partitions']
         return VolumeGroup.objects.create_volume_group(
             name=self.cleaned_data['name'],
             uuid=self.cleaned_data.get('uuid'),
@@ -3900,6 +4089,15 @@ class UpdateVolumeGroupForm(Form):
     add_partitions = forms.MultipleChoiceField(required=False)
     remove_partitions = forms.MultipleChoiceField(required=False)
 
+    clean_add_block_devices = clean_block_device_names_to_ids(
+        'add_block_devices')
+    clean_remove_block_devices = clean_block_device_names_to_ids(
+        'remove_block_devices')
+    clean_add_partitions = clean_partition_names_to_ids(
+        'add_partitions')
+    clean_remove_partitions = clean_partition_names_to_ids(
+        'remove_partitions')
+
     def __init__(self, volume_group, *args, **kwargs):
         super(UpdateVolumeGroupForm, self).__init__(*args, **kwargs)
         self.volume_group = volume_group
@@ -3913,30 +4111,47 @@ class UpdateVolumeGroupForm(Form):
         """
         node = self.volume_group.get_node()
         # Select the unused, non-partitioned block devices of this node.
+        free_block_devices = (
+            BlockDevice.objects.get_free_block_devices_for_node(
+                node))
         self.fields['add_block_devices'].choices = [
-            (bd.id, bd.id)
-            for bd in BlockDevice.objects.get_free_block_devices_for_node(
-                node)
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
         ]
         # Select the unused partitions of this node.
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            node)
         self.fields['add_partitions'].choices = [
-            (partition.id, partition.id)
-            for partition in Partition.objects.get_free_partitions_for_node(
-                node)
+            (partition.id, partition.name)
+            for partition in free_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in free_partitions
         ]
         # Select the block devices in the volume group.
+        used_block_devices = (
+            BlockDevice.objects.get_block_devices_in_filesystem_group(
+                self.volume_group))
         self.fields['remove_block_devices'].choices = [
-            (bd.id, bd.id)
-            for bd in (
-                BlockDevice.objects.get_block_devices_in_filesystem_group(
-                    self.volume_group))
+            (bd.id, bd.name)
+            for bd in used_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in used_block_devices
         ]
         # Select the current partitions in the volume group.
+        used_partitions = (
+            Partition.objects.get_partitions_in_filesystem_group(
+                self.volume_group))
         self.fields['remove_partitions'].choices = [
-            (partition.id, partition.id)
-            for partition in (
-                Partition.objects.get_partitions_in_filesystem_group(
-                    self.volume_group))
+            (partition.id, partition.name)
+            for partition in used_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in used_partitions
         ]
 
     def save(self):
@@ -3950,10 +4165,8 @@ class UpdateVolumeGroupForm(Form):
             self.volume_group.uuid = self.cleaned_data['uuid']
 
         # Create the new list of block devices.
-        add_block_device_ids = map(
-            int, self.cleaned_data['add_block_devices'])
-        remove_block_device_ids = map(
-            int, self.cleaned_data['remove_block_devices'])
+        add_block_device_ids = self.cleaned_data['add_block_devices']
+        remove_block_device_ids = self.cleaned_data['remove_block_devices']
         block_devices = (
             BlockDevice.objects.get_block_devices_in_filesystem_group(
                 self.volume_group))
@@ -3966,10 +4179,8 @@ class UpdateVolumeGroupForm(Form):
             BlockDevice.objects.filter(id__in=add_block_device_ids))
 
         # Create the new list of partitions.
-        add_partition_ids = map(
-            int, self.cleaned_data['add_partitions'])
-        remove_partition_ids = map(
-            int, self.cleaned_data['remove_partitions'])
+        add_partition_ids = self.cleaned_data['add_partitions']
+        remove_partition_ids = self.cleaned_data['remove_partitions']
         partitions = (
             Partition.objects.get_partitions_in_filesystem_group(
                 self.volume_group))

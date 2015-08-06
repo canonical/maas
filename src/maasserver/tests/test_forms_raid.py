@@ -78,27 +78,38 @@ class TestCreateRaidForm(MAASServerTestCase):
         ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
-        block_devices = [
+        block_devices_choices = [
             bd.id
+            for bd in bds
+            if bd.get_partitiontable() is None
+        ] + [
+            bd.name
             for bd in bds
             if bd.get_partitiontable() is None
         ]
         partitions = [
-            bd.get_partitiontable().add_partition().id
+            bd.get_partitiontable().add_partition()
             for bd in bds[5:]
+        ]
+        partitions_choices = [
+            part.id
+            for part in partitions
+        ] + [
+            part.name
+            for part in partitions
         ]
         form = CreateRaidForm(node=node, data={})
         self.assertItemsEqual(
-            block_devices,
+            block_devices_choices,
             [k for (k, v) in form.fields['block_devices'].choices])
         self.assertItemsEqual(
-            partitions,
+            partitions_choices,
             [k for (k, v) in form.fields['partitions'].choices])
         self.assertItemsEqual(
-            block_devices,
+            block_devices_choices,
             [k for (k, v) in form.fields['spare_devices'].choices])
         self.assertItemsEqual(
-            partitions,
+            partitions_choices,
             [k for (k, v) in form.fields['spare_partitions'].choices])
 
     def test_raid_creation_on_save(self):
@@ -141,6 +152,63 @@ class TestCreateRaidForm(MAASServerTestCase):
             [fs.partition.id
              for fs in raid.filesystems.exclude(partition=None)])
 
+    def test_raid_creation_with_names(self):
+        node = factory.make_Node()
+        device_size = 10 * 1000 ** 4
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
+        for bd in bds[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        block_devices_ids = [
+            bd.id
+            for bd in bds
+            if bd.get_partitiontable() is None
+        ]
+        block_device_names = [
+            bd.name
+            for bd in bds
+            if bd.get_partitiontable() is None
+        ]
+        partitions = [
+            bd.get_partitiontable().add_partition()
+            for bd in bds[5:]
+        ]
+        partition_ids = [
+            part.id
+            for part in partitions
+        ]
+        partition_names = [
+            part.name
+            for part in partitions
+        ]
+        # Partition size will be smaller than the disk, because of overhead.
+        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
+        form = CreateRaidForm(node=node, data={
+            'name': 'md1',
+            'level': FILESYSTEM_GROUP_TYPE.RAID_6,
+            'block_devices': block_device_names,
+            'partitions': partition_names,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        raid = form.save()
+        self.assertEqual('md1', raid.name)
+        self.assertEqual(8 * partition_size, raid.get_size())
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
+        self.assertItemsEqual(
+            block_devices_ids,
+            [
+                fs.block_device.id
+                for fs in raid.filesystems.exclude(block_device=None)
+            ])
+        self.assertItemsEqual(
+            partition_ids,
+            [
+                fs.partition.id
+                for fs in raid.filesystems.exclude(partition=None)
+            ])
+
     def test_raid_creation_without_storage_fails(self):
         node = factory.make_Node()
         for level in [
@@ -175,6 +243,17 @@ class TestUpdateRaidForm(MAASServerTestCase):
         bd_ids = [factory.make_BlockDevice(node=raid.get_node()).id
                   for _ in range(5)]
         form = UpdateRaidForm(raid, data={'add_block_devices': bd_ids})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_valid_blockdevice_by_name(self):
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Add 5 new blockdevices to the node.
+        bd_names = [
+            factory.make_BlockDevice(node=raid.get_node()).name
+            for _ in range(5)
+            ]
+        form = UpdateRaidForm(raid, data={'add_block_devices': bd_names})
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_add_valid_partition(self):

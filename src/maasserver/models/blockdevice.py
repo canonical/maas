@@ -73,8 +73,18 @@ class BlockDeviceManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        block_device = get_object_or_404(
-            BlockDevice, id=blockdevice_id, node__system_id=system_id)
+        kwargs = {
+            "node__system_id": system_id,
+        }
+        try:
+            blockdevice_id = int(blockdevice_id)
+        except ValueError:
+            # Not an integer, we will use the name of the device instead.
+            kwargs["name"] = blockdevice_id
+        else:
+            # It is an integer use it for the block device id.
+            kwargs["id"] = blockdevice_id
+        block_device = get_object_or_404(BlockDevice, **kwargs)
         block_device = block_device.actual_instance
         if user.has_perm(perm, block_device):
             return block_device

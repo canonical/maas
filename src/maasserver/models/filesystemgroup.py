@@ -83,7 +83,14 @@ class BaseFilesystemGroupManager(Manager):
            #the-http404-exception
         """
         params = self.extra_filters.copy()
-        params["id"] = filesystem_group_id
+        try:
+            filesystem_group_id = int(filesystem_group_id)
+        except ValueError:
+            # Not an integer, we will use the name of the group instead.
+            params["name"] = filesystem_group_id
+        else:
+            # It is an integer use it for the block device id.
+            params["id"] = filesystem_group_id
         filesystem_group = get_object_or_404(self.model, **params)
         node = filesystem_group.get_node()
         if node.system_id != system_id:
