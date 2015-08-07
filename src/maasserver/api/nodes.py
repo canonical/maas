@@ -205,6 +205,9 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     form = StorageLayoutForm(required=required, data=request.data)
     if not form.is_valid():
         raise MAASAPIValidationError(form.errors)
+    # The request data needs to be mutable so replace the immutable QueryDict
+    # with a mutable one.
+    request.data = request.data.copy()
     storage_layout = request.data.pop('storage_layout', None)
     if not storage_layout:
         storage_layout = None

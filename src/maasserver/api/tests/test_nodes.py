@@ -21,6 +21,7 @@ import random
 import crochet
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
+from django.test import RequestFactory
 from maasserver import forms
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
@@ -79,6 +80,20 @@ from testtools.matchers import (
     HasLength,
     MatchesListwise,
 )
+
+
+class TestGetStorageLayoutParams(MAASServerTestCase):
+
+    def test_sets_request_data_to_mutable(self):
+        data = {
+            'op': 'acquire',
+            'storage_layout': 'flat',
+        }
+        request = RequestFactory().post(reverse('nodes_handler'), data)
+        request.data = request.POST.copy()
+        request.data._mutable = False
+        nodes_module.get_storage_layout_params(request)
+        self.assertTrue(request.data._mutable)
 
 
 class NodeHostnameTest(MultipleUsersScenarios,
