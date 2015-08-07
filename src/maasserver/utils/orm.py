@@ -309,6 +309,22 @@ def retry_on_serialization_failure(func, reset=noop):
     return retrier
 
 
+def gen_description_of_hooks(hooks):
+    """Generate lines describing the given hooks.
+
+    :param hooks: An iterable of :class:`Deferred` instances.
+    """
+    for index, hook in enumerate(hooks):
+        yield "== Hook %d: %r ==" % (index + 1, hook)
+        for cb, eb in hook.callbacks:
+            yield " +- callback: %r" % (cb[0],)
+            yield " |      args: %r" % (cb[1],)
+            yield " |    kwargs: %r" % (cb[2],)
+            yield " |   errback: %r" % (eb[0],)
+            yield " |      args: %r" % (eb[1],)
+            yield " +--- kwargs: %r" % (eb[2],)
+
+
 class PostCommitHooks(DeferredHooks):
     """A specialised set of `DeferredHooks` for post-commit tasks.
 
@@ -318,13 +334,16 @@ class PostCommitHooks(DeferredHooks):
 
     def __enter__(self):
         if len(self.hooks) > 0:
+            # Capture a textual description of the hooks to help us understand
+            # why this is about to blow oodles of egg custard in our faces.
+            description = "\n".join(gen_description_of_hooks(self.hooks))
             # Crash when there are orphaned post-commit hooks. These might
             # only turn up in testing, where transactions are managed by the
             # test framework instead of this decorator. We need to fail hard
             # -- not just warn about it -- to ensure it gets fixed.
             self.reset()
             raise TransactionManagementError(
-                "Orphaned post-commit hooks found.")
+                "Orphaned post-commit hooks found:\n" + description)
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         if exc_value is None:
@@ -480,6 +499,8 @@ def validate_in_transaction(connection):
     """
     if not in_transaction(connection):
         raise TransactionManagementError(
+            # XXX: GavinPanella 2015-08-07 bug=1482563: This error message is
+            # specific to lobjects, but this lives in a general utils module.
             "PostgreSQL's large object support demands that all interactions "
             "are done in a transaction. Further, lobject() has been known to "
             "segfault when used outside of a transaction. This assertion has "

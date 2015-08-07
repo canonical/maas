@@ -19,6 +19,7 @@ __all__ = [
     ]
 
 from maasserver.utils.orm import (
+    gen_description_of_hooks,
     get_one,
     post_commit_hooks,
 )
@@ -75,10 +76,12 @@ class PostCommitHooksTestMixin(testtools.TestCase):
     def setUp(self):
         try:
             super(PostCommitHooksTestMixin, self).setUp()
+            description_of_hooks = "\n".join(
+                gen_description_of_hooks(post_commit_hooks.hooks))
             self.expectThat(
                 post_commit_hooks.hooks, HasLength(0),
-                "One or more post-commit tasks were "
-                "present before commencing this test.")
+                "One or more post-commit tasks were present before "
+                "commencing this test:\n" + description_of_hooks)
         finally:
             # By this point we will have reported the leaked post-commit
             # tasks, so always reset them; we don't want to report them again,
@@ -87,10 +90,12 @@ class PostCommitHooksTestMixin(testtools.TestCase):
 
     def tearDown(self):
         try:
+            description_of_hooks = "\n".join(
+                gen_description_of_hooks(post_commit_hooks.hooks))
             self.expectThat(
                 post_commit_hooks.hooks, HasLength(0),
-                "One or more post-commit tasks were "
-                "present at the end of this test.")
+                "One or more post-commit tasks were present at the end of "
+                "this test." + description_of_hooks)
             super(PostCommitHooksTestMixin, self).tearDown()
         finally:
             # By this point we will have reported the leaked post-commit
