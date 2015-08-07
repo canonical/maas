@@ -31,6 +31,7 @@ from maasserver.models import (
     FilesystemGroup,
     PhysicalBlockDevice,
     VirtualBlockDevice,
+    VolumeGroup,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -392,6 +393,20 @@ class TestBlockDevice(MAASServerTestCase):
     def test_get_partition_table_returns_none_for_non_partitioned_device(self):
         blockdevice = BlockDevice()
         self.assertIsNone(blockdevice.get_partitiontable())
+
+    def test_delete_not_allowed_if_part_of_filesystem_group(self):
+        block_device = factory.make_BlockDevice()
+        VolumeGroup.objects.create_volume_group(
+            factory.make_name("vg"), [block_device], [])
+        error = self.assertRaises(ValidationError, block_device.delete)
+        self.assertEquals(
+            "Cannot delete block device because its part of a volume group.",
+            error.message)
+
+    def test_delete(self):
+        block_device = factory.make_BlockDevice()
+        block_device.delete()
+        self.assertIsNone(reload_object(block_device))
 
 
 class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):

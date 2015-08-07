@@ -706,6 +706,20 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if self.id is not None:
             super(FilesystemGroup, self).delete()
 
+    def get_nice_name(self):
+        """Return the nice name for the filesystem group.
+
+        This is used when showing error or log messages.
+        """
+        if self.is_lvm():
+            return "volume group"
+        elif self.is_raid():
+            return "RAID"
+        elif self.is_bcache():
+            return "Bcache"
+        else:
+            raise ValueError("Unknown group_type.")
+
     def get_name_prefix(self):
         """Return the prefix that should be used when setting the name of
         this FilesystemGroup."""

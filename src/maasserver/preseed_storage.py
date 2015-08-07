@@ -75,7 +75,10 @@ class CurtinStorageGenerator:
             "partitioning_commands": {
                 "builtin": ["curtin", "block-meta", "custom"],
             },
-            "storage": self.storage_config,
+            "storage": {
+                "version": 1,
+                "config": self.storage_config,
+            },
         }
         return yaml.safe_dump(storage_config)
 

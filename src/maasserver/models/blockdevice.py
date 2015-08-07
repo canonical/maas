@@ -18,7 +18,10 @@ __all__ = [
 
 from collections import Iterable
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
@@ -226,6 +229,20 @@ class BlockDevice(CleanSave, TimestampedModel):
         return '{size} attached to {node}'.format(
             size=human_readable_bytes(self.size),
             node=self.node)
+
+    def delete(self):
+        """Delete the block device.
+
+        If this block device is part of a filesystem group then it cannot be
+        deleted.
+        """
+        if self.filesystem is not None:
+            filesystem_group = self.filesystem.filesystem_group
+            if filesystem_group is not None:
+                raise ValidationError(
+                    "Cannot delete block device because its part of "
+                    "a %s." % filesystem_group.get_nice_name())
+        super(BlockDevice, self).delete()
 
 
 @receiver(post_save)

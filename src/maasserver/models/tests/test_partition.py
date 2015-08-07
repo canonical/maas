@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
@@ -23,12 +24,14 @@ from maasserver.enum import (
     PARTITION_TABLE_TYPE,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     Partition,
 )
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import Equals
 
@@ -73,6 +76,77 @@ class TestPartitionManager(MAASServerTestCase):
                 filesystem_group))
         self.assertItemsEqual(
             [partition], partitions_in_filesystem_group)
+
+    def test_get_partition_by_id_or_name_returns_valid_with_id(self):
+        partition = factory.make_Partition()
+        self.assertEquals(
+            partition,
+            Partition.objects.get_partition_by_id_or_name(partition.id))
+
+    def test_get_partition_by_id_or_name_returns_valid_with_name(self):
+        partition = factory.make_Partition()
+        self.assertEquals(
+            partition,
+            Partition.objects.get_partition_by_id_or_name(partition.name))
+
+    def test_get_partition_by_id_or_name_invalid_id(self):
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            random.randint(1000, 5000))
+
+    def test_get_partition_by_id_or_name_empty_string(self):
+        factory.make_Partition()
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name, "")
+
+    def test_get_partition_by_id_or_name_invalid_part_seperator(self):
+        partition = factory.make_Partition()
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            "%spart%s" % (
+                partition.partition_table.block_device.get_name(),
+                partition.get_partition_number()
+                ))
+
+    def test_get_partition_by_id_or_name_invalid_part_number(self):
+        partition = factory.make_Partition()
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            "%spartX" % (
+                partition.partition_table.block_device.get_name()))
+
+    def test_get_partition_by_id_or_name_by_id_invalid_table(self):
+        partition_table = factory.make_PartitionTable()
+        other_table = factory.make_PartitionTable()
+        partition = factory.make_Partition(partition_table=partition_table)
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            partition.id, other_table)
+
+    def test_get_partition_by_id_or_name_by_name_invalid_table(self):
+        partition_table = factory.make_PartitionTable()
+        other_table = factory.make_PartitionTable()
+        partition = factory.make_Partition(partition_table=partition_table)
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            partition.name, other_table)
+
+    def test_get_partition_by_device_name_and_number(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        factory.make_Partition(partition_table=partition_table)
+        partition_two = factory.make_Partition(partition_table=partition_table)
+        self.assertEquals(
+            partition_two,
+            Partition.objects.get_partition_by_device_name_and_number(
+                block_device.get_name(), partition_two.get_partition_number()))
 
 
 class TestPartition(MAASServerTestCase):
@@ -241,3 +315,17 @@ class TestPartition(MAASServerTestCase):
             if idx == 4:
                 # Skip the extended partition.
                 idx += 1
+
+    def test_delete_not_allowed_if_part_of_filesystem_group(self):
+        partition = factory.make_Partition()
+        VolumeGroup.objects.create_volume_group(
+            factory.make_name("vg"), [], [partition])
+        error = self.assertRaises(ValidationError, partition.delete)
+        self.assertEquals(
+            "Cannot delete partition because its part of a volume group.",
+            error.message)
+
+    def test_delete(self):
+        partition = factory.make_Partition()
+        partition.delete()
+        self.assertIsNone(reload_object(partition))

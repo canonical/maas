@@ -3456,23 +3456,10 @@ def convert_partition_name_to_id(value):
     if not value:
         return value
     try:
-        value = int(value)
-    except ValueError:
-        value_split = value.split('-part')
-        if len(value_split) != 2:
-            return value
-        device_name, partition_number = value_split
-        try:
-            partition_number = int(partition_number)
-        except ValueError:
-            return value
-        try:
-            value = (
-                Partition.objects.get_partitions_by_device_name_and_number(
-                    device_name, partition_number).id)
-        except Partition.DoesNotExist:
-            pass
-    return value
+        partition = Partition.objects.get_partition_by_id_or_name(value)
+    except Partition.DoesNotExist:
+        return value
+    return partition.id
 
 
 def clean_partition_name_to_id(field):

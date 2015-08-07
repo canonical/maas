@@ -1427,6 +1427,46 @@ class TestFilesystemGroup(MAASServerTestCase):
             "VirtualBlockDevice should have been deleted.")
 
 
+class TestFilesystemGroupGetNiceName(MAASServerTestCase):
+
+    scenarios = [
+        (FILESYSTEM_GROUP_TYPE.LVM_VG, {
+            "group_type": FILESYSTEM_GROUP_TYPE.LVM_VG,
+            "name": "volume group",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_0, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_0,
+            "name": "RAID",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_1, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
+            "name": "RAID",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_4, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
+            "name": "RAID",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_5, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_5,
+            "name": "RAID",
+            }),
+        (FILESYSTEM_GROUP_TYPE.RAID_6, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
+            "name": "RAID",
+            }),
+        (FILESYSTEM_GROUP_TYPE.BCACHE, {
+            "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
+            "name": "Bcache",
+            }),
+    ]
+
+    def test__returns_prefix(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=self.group_type)
+        self.assertEquals(
+            self.name, filesystem_group.get_nice_name())
+
+
 class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
 
     scenarios = [

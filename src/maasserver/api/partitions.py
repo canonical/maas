@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
@@ -50,6 +51,19 @@ DISPLAYED_PARTITION_FIELDS = (
         'mount_point',
     )),
 )
+
+
+def get_partition_by_id_or_name__or_404(partition_id, partition_table):
+    """Get the partition by its partition_id or its name.
+
+    :raise Http404: If the partition does not exist.
+    """
+    try:
+        partition = Partition.objects.get_partition_by_id_or_name(
+            partition_id, partition_table)
+    except Partition.DoesNotExist:
+        raise Http404()
+    return partition
 
 
 class PartitionsHandler(OperationsHandler):
@@ -126,8 +140,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.VIEW)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        return get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        return get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
 
     def delete(self, request, system_id, device_id, partition_id):
         """Delete partition.
@@ -138,8 +152,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        partition = get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        partition = get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
         partition.delete()
         return rc.DELETED
 
@@ -159,8 +173,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        partition = get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        partition = get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
         form = FormatPartitionForm(partition, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -174,8 +188,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        partition = get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        partition = get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
         filesystem = partition.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
@@ -205,8 +219,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        partition = get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        partition = get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
         form = MountPartitionForm(partition, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -227,8 +241,8 @@ class PartitionHandler(OperationsHandler):
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
-        partition = get_object_or_404(
-            Partition, partition_table=partition_table, id=partition_id)
+        partition = get_partition_by_id_or_name__or_404(
+            partition_id, partition_table)
         filesystem = partition.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")

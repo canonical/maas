@@ -51,11 +51,14 @@ class AssertStorageConfigMixin:
             "partitioning_commands": MatchesDict({
                 "builtin": Equals(["curtin", "block-meta", "custom"]),
             }),
-            "storage": IsInstance(list),
+            "storage": MatchesDict({
+                "version": Equals(1),
+                "config": IsInstance(list),
+            }),
         }))
         expected = yaml.load(expected)
-        output_storage = output["storage"]
-        expected_storage = expected["storage"]
+        output_storage = output["storage"]["config"]
+        expected_storage = expected["config"]
         expected_equals = map(Equals, expected_storage)
         self.assertThat(output_storage, MatchesListwise(expected_equals))
 
@@ -63,7 +66,7 @@ class AssertStorageConfigMixin:
 class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent("""\
-        storage:
+        config:
           - id: sda
             name: sda
             type: disk
@@ -173,7 +176,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent("""\
-        storage:
+        config:
           - id: sda
             name: sda
             type: disk
@@ -344,7 +347,7 @@ class TestSimpleWithEmptyDiskLayout(
         MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent("""\
-        storage:
+        config:
           - id: sda
             name: sda
             type: disk
@@ -406,7 +409,7 @@ class TestComplexDiskLayout(
         MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent("""\
-        storage:
+        config:
           - id: sda
             name: sda
             type: disk

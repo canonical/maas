@@ -36,13 +36,16 @@ def get_partitions_uri(block_device):
         args=[block_device.node.system_id, block_device.id])
 
 
-def get_partition_uri(partition):
+def get_partition_uri(partition, by_name=False):
     """Return a BlockDevice's partition URI on the API."""
     block_device = partition.partition_table.block_device
     node = block_device.node
+    partition_id = partition.id
+    if by_name:
+        partition_id = partition.name
     return reverse(
         'partition_handler',
-        args=[node.system_id, block_device.id, partition.id])
+        args=[node.system_id, block_device.id, partition_id])
 
 
 class TestPartitions(APITestCase):
@@ -126,6 +129,29 @@ class TestPartitions(APITestCase):
             size=MIN_PARTITION_SIZE,
             bootable=True)
         uri = get_partition_uri(partition)
+        response = self.client.get(uri)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+
+        parsed_partition = json.loads(response.content)
+        self.assertTrue(parsed_partition['bootable'])
+        self.assertEqual(partition.id, parsed_partition['id'])
+        self.assertEqual(partition.size, parsed_partition['size'])
+
+    def test_read_partition_by_name(self):
+        """Tests reading metadata about a partition
+
+        Read partition on block device
+        GET /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
+        """
+        device = factory.make_PhysicalBlockDevice(
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = factory.make_Partition(
+            partition_table=partition_table,
+            size=MIN_PARTITION_SIZE,
+            bootable=True)
+        uri = get_partition_uri(partition, by_name=True)
         response = self.client.get(uri)
         self.assertEqual(
             httplib.OK, response.status_code, response.content)

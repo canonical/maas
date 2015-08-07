@@ -57,7 +57,37 @@ class PartitionManager(Manager):
         """Return `Partition`s for the belong to the filesystem group."""
         return self.filter(filesystem__filesystem_group=filesystem_group)
 
-    def get_partitions_by_device_name_and_number(
+    def get_partition_by_id_or_name(
+            self, partition_id_or_name, partition_table=None):
+        """Return `Partition` based on its ID or name."""
+        try:
+            partition_id = int(partition_id_or_name)
+        except ValueError:
+            name_split = partition_id_or_name.split('-part')
+            if len(name_split) != 2:
+                # Invalid name.
+                raise self.model.DoesNotExist()
+            device_name, partition_number = name_split
+            try:
+                partition_number = int(partition_number)
+            except ValueError:
+                # Invalid partition number.
+                raise self.model.DoesNotExist()
+            partition = self.get_partition_by_device_name_and_number(
+                device_name, partition_number)
+            if (partition_table is not None and
+                    partition.partition_table_id != partition_table.id):
+                # No partition with that name on that partition table.
+                raise self.model.DoesNotExist()
+            return partition
+        kwargs = {
+            "id": partition_id,
+        }
+        if partition_table is not None:
+            kwargs["partition_table"] = partition_table
+        return self.get(**kwargs)
+
+    def get_partition_by_device_name_and_number(
             self, device_name, partition_number):
         """Return `Partition` for the block device and partition_number."""
         partitions = self.filter(
@@ -222,3 +252,17 @@ class Partition(CleanSave, TimestampedModel):
             raise IntegrityError('This filesystem is in use ')
         else:
             self.filesystem.delete()
+
+    def delete(self):
+        """Delete the partition.
+
+        If this partition is part of a filesystem group then it cannot be
+        deleted.
+        """
+        if self.filesystem is not None:
+            filesystem_group = self.filesystem.filesystem_group
+            if filesystem_group is not None:
+                raise ValidationError(
+                    "Cannot delete partition because its part of "
+                    "a %s." % filesystem_group.get_nice_name())
+        super(Partition, self).delete()
