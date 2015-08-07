@@ -37,6 +37,7 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.utils
 from provisioningserver.utils.script import (
     ActionScript,
+    AtomicDeleteScript,
     AtomicWriteScript,
 )
 from testtools.matchers import (
@@ -248,3 +249,47 @@ class TestAtomicWriteScript(MAASTestCase):
         self.assertThat(
             mocked_atomic_write,
             MockCalledOnceWith(content, filename, mode=0600, overwrite=True))
+
+
+class TestAtomicDeleteScript(MAASTestCase):
+
+    def setUp(self):
+        super(TestAtomicDeleteScript, self).setUp()
+        # Silence ArgumentParser.
+        self.patch(sys, "stdout", StringIO.StringIO())
+        self.patch(sys, "stderr", StringIO.StringIO())
+
+    def get_parser(self):
+        parser = ArgumentParser()
+        AtomicDeleteScript.add_arguments(parser)
+        return parser
+
+    def get_and_run_mocked_script(self, *args):
+        parser = self.get_parser()
+        parsed_args = parser.parse_args(*args)
+        mocked_atomic_delete = self.patch(
+            provisioningserver.utils.script, 'atomic_delete')
+        AtomicDeleteScript.run(parsed_args)
+        return mocked_atomic_delete
+
+    def test_arg_setup(self):
+        parser = self.get_parser()
+        filename = factory.make_string()
+        args = parser.parse_args((
+            '--filename', filename))
+        self.assertThat(
+            args, MatchesStructure.byEquality(
+                filename=filename))
+
+    def test_filename_arg_required(self):
+        parser = self.get_parser()
+        self.assertRaises(SystemExit, parser.parse_args, tuple())
+
+    def test_calls_atomic_delete_with_filename(self):
+        filename = factory.make_string()
+        mocked_atomic_delete = self.get_and_run_mocked_script(
+            ('--filename', filename))
+
+        self.assertThat(
+            mocked_atomic_delete,
+            MockCalledOnceWith(filename))

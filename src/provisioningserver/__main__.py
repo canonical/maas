@@ -21,6 +21,7 @@ import provisioningserver.cluster_config_command
 import provisioningserver.dhcp.writer
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils.script import (
+    AtomicDeleteScript,
     AtomicWriteScript,
     MainScript,
 )
@@ -28,6 +29,7 @@ from provisioningserver.utils.script import (
 
 script_commands = {
     'atomic-write': AtomicWriteScript,
+    'atomic-delete': AtomicDeleteScript,
     'check-for-shared-secret': security.CheckForSharedSecretScript,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-shared-secret': security.InstallSharedSecretScript,

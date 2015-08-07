@@ -61,6 +61,12 @@ class TestConfigureDHCP(MAASTestCase):
         server = self.server(omapi_key)
         dhcp.configure(server, subnets)
 
+    def patch_os_exists(self):
+        return self.patch_autospec(dhcp.os.path, "exists")
+
+    def patch_sudo_delete_file(self):
+        return self.patch_autospec(dhcp, 'sudo_delete_file')
+
     def patch_sudo_write_file(self):
         return self.patch_autospec(dhcp, 'sudo_write_file')
 
@@ -139,8 +145,21 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertThat(
             restart_service, MockCalledOnceWith(self.server.dhcp_service))
 
+    def test__deletes_dhcp_config_if_no_subnets_defined(self):
+        mock_exists = self.patch_os_exists()
+        mock_exists.return_value = True
+        mock_sudo_delete = self.patch_sudo_delete_file()
+        dhcp_service = ServiceRegistry[self.server.dhcp_service]
+        self.patch_autospec(dhcp_service, "off")
+        self.patch_restart_service()
+        self.patch_ensure_service()
+        self.configure(factory.make_name('key'), [])
+        self.assertThat(
+            mock_sudo_delete, MockCalledOnceWith(self.server.config_filename))
+
     def test__stops_dhcp_server_if_no_subnets_defined(self):
-        self.patch_sudo_write_file()
+        mock_exists = self.patch_os_exists()
+        mock_exists.return_value = False
         dhcp_service = ServiceRegistry[self.server.dhcp_service]
         off = self.patch_autospec(dhcp_service, "off")
         restart_service = self.patch_restart_service()

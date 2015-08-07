@@ -24,7 +24,10 @@ import signal
 from subprocess import CalledProcessError
 import sys
 
-from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.fs import (
+    atomic_delete,
+    atomic_write,
+)
 
 
 class ActionScript:
@@ -128,3 +131,28 @@ class AtomicWriteScript:
         atomic_write(
             content, args.filename, overwrite=not args.no_overwrite,
             mode=mode)
+
+
+class AtomicDeleteScript:
+    """Wrap the atomic_delete function turning it into an ActionScript.
+
+    To use:
+    >>> main = MainScript(atomic_delete.__doc__)
+    >>> main.register("myscriptname", AtomicDeleteScript)
+    >>> main()
+    """
+
+    @staticmethod
+    def add_arguments(parser):
+        """Initialise options for deleting files atomically.
+
+        :param parser: An instance of :class:`ArgumentParser`.
+        """
+        parser.add_argument(
+            "--filename", action="store", required=True, help=(
+                "The name of the file in which to delete."))
+
+    @staticmethod
+    def run(args):
+        """Delete the file atomically."""
+        atomic_delete(args.filename)

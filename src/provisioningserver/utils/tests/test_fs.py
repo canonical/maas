@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import hashlib
+import os
 import os.path
 from random import randint
 from shutil import rmtree
@@ -40,6 +41,7 @@ from mock import (
 )
 import provisioningserver.config
 from provisioningserver.utils.fs import (
+    atomic_delete,
     atomic_symlink,
     atomic_write,
     ensure_dir,
@@ -49,6 +51,7 @@ from provisioningserver.utils.fs import (
     incremental_write,
     pick_new_mtime,
     read_text_file,
+    sudo_delete_file,
     sudo_write_file,
     tempdir,
     write_text_file,
@@ -177,6 +180,24 @@ class TestAtomicWrite(MAASTestCase):
         self.assertEqual(
             mock_mkstemp.side_effect.filename,
             error.filename)
+
+
+class TestAtomicDelete(MAASTestCase):
+    """Test `atomic_delete`."""
+
+    def test_atomic_delete_deletes_file(self):
+        filename = self.make_file()
+        atomic_delete(filename)
+        self.assertThat(filename, Not(FileExists()))
+
+    def test_renames_file_before_deleting(self):
+        filename = self.make_file()
+        del_filename = ".%s.del" % os.path.basename(filename)
+        self.addCleanup(os.remove, del_filename)
+        mock_remove = self.patch(fs_module.os, "remove")
+        atomic_delete(filename)
+        self.assertThat(del_filename, FileExists())
+        self.assertThat(mock_remove, MockCalledOnceWith(del_filename))
 
 
 class TestAtomicSymlink(MAASTestCase):
@@ -337,6 +358,33 @@ class TestSudoWriteFile(MAASTestCase):
         self.assertRaises(
             CalledProcessError,
             sudo_write_file, self.make_file(), factory.make_string())
+
+
+class TestSudoDeleteFile(MAASTestCase):
+    """Testing for `sudo_delete_file`."""
+
+    def patch_popen(self, return_value=0):
+        process = Mock()
+        process.returncode = return_value
+        process.communicate = Mock(return_value=('output', 'error output'))
+        self.patch(fs_module, 'Popen', Mock(return_value=process))
+        return process
+
+    def test_calls_atomic_delete(self):
+        self.patch_popen()
+        path = os.path.join(self.make_dir(), factory.make_name('file'))
+
+        sudo_delete_file(path)
+
+        self.assertThat(fs_module.Popen, MockCalledOnceWith(
+            ['sudo', '-n', get_maas_provision_command(), 'atomic-delete',
+             '--filename', path]))
+
+    def test_catches_failures(self):
+        self.patch_popen(1)
+        self.assertRaises(
+            CalledProcessError,
+            sudo_delete_file, self.make_file())
 
 
 class TestEnsureDir(MAASTestCase):
