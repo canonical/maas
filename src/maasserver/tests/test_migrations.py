@@ -31,6 +31,8 @@ EXISTING_DUPES = [
     (88, '0088_z_backport_trunk_0099'),
     (100, '0100_remove_cluster_from_bootsrouce'),
     (100, '0100_remove_duplicate_bootsource_urls'),
+    (139, '0139_power_parameters_and_state_updated_field'),
+    (139, '0139_z_add_vlan_fabric'),
     ]
 
 

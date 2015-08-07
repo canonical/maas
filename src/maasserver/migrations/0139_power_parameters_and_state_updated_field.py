@@ -63,13 +63,14 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
         u'maasserver.blockdevice': {
-            'Meta': {'ordering': "[u'id']", 'unique_together': "((u'node', u'name'),)", 'object_name': 'BlockDevice'},
+            'Meta': {'ordering': "[u'id']", 'unique_together': "((u'node', u'path'),)", 'object_name': 'BlockDevice'},
             'block_size': ('django.db.models.fields.IntegerField', [], {}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'id_path': ('django.db.models.fields.FilePathField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'path': ('django.db.models.fields.FilePathField', [], {'max_length': '100'}),
             'size': ('django.db.models.fields.BigIntegerField', [], {}),
             'tags': ('djorm_pgarray.fields.ArrayField', [], {'default': '[]', 'dbtype': "u'text'", 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
@@ -193,33 +194,25 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.fabric': {
-            'Meta': {'object_name': 'Fabric'},
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '256'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {})
-        },
         u'maasserver.filestorage': {
             'Meta': {'unique_together': "((u'filename', u'owner'),)", 'object_name': 'FileStorage'},
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'083eacb2-24a9-11e5-b81e-00163edfc3e6'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'c4af88bc-2ae9-11e5-9139-00163edfc3e6'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.filesystem': {
             'Meta': {'object_name': 'Filesystem'},
-            'block_device': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.BlockDevice']", 'unique': 'True', 'null': 'True', 'blank': 'True'}),
+            'block_device': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.BlockDevice']", 'null': 'True', 'blank': 'True'}),
             'create_params': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'filesystem_group': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "u'filesystems'", 'null': 'True', 'to': u"orm['maasserver.FilesystemGroup']"}),
             'fstype': ('django.db.models.fields.CharField', [], {'default': "u'ext4'", 'max_length': '20'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'label': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'mount_params': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'mount_point': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
-            'partition': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Partition']", 'unique': 'True', 'null': 'True', 'blank': 'True'}),
+            'partition': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Partition']", 'null': 'True', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
         },
@@ -232,30 +225,6 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
-        },
-        u'maasserver.interface': {
-            'Meta': {'ordering': "(u'created',)", 'object_name': 'Interface'},
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ip_addresses': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': u"orm['maasserver.StaticIPAddress']", 'null': 'True', 'blank': 'True'}),
-            'ipv4_params': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
-            'ipv6_params': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
-            'mac': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.MACAddress']", 'null': 'True', 'blank': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
-            'params': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
-            'parents': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': u"orm['maasserver.Interface']", 'null': 'True', 'through': u"orm['maasserver.InterfaceRelationship']", 'blank': 'True'}),
-            'tags': ('djorm_pgarray.fields.ArrayField', [], {'default': '[]', 'dbtype': "u'text'", 'blank': 'True'}),
-            'type': ('django.db.models.fields.CharField', [], {'max_length': '20'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'vlan': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.VLAN']", 'on_delete': 'models.PROTECT'})
-        },
-        u'maasserver.interfacerelationship': {
-            'Meta': {'object_name': 'InterfaceRelationship'},
-            'child': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "u'parent_relationships'", 'to': u"orm['maasserver.Interface']"}),
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'parent': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "u'children_relationships'", 'to': u"orm['maasserver.Interface']"}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
         u'maasserver.largefile': {
             'Meta': {'object_name': 'LargeFile'},
@@ -335,7 +304,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'swap_size': ('django.db.models.fields.BigIntegerField', [], {'default': 'None', 'null': 'True', 'blank': 'True'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-083c99ea-24a9-11e5-b81e-00163edfc3e6'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-c4b17d70-2ae9-11e5-9139-00163edfc3e6'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -372,10 +341,8 @@ class Migration(SchemaMigration):
             'router_ip': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
             'static_ip_range_high': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
             'static_ip_range_low': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
-            'subnet': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Subnet']", 'null': 'True', 'on_delete': 'models.PROTECT', 'blank': 'True'}),
             'subnet_mask': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'vlan': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.VLAN']", 'on_delete': 'models.PROTECT'})
+            'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
         u'maasserver.partition': {
             'Meta': {'object_name': 'Partition'},
@@ -402,13 +369,6 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'serial': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'})
         },
-        u'maasserver.space': {
-            'Meta': {'object_name': 'Space'},
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '256'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {})
-        },
         u'maasserver.sshkey': {
             'Meta': {'unique_together': "((u'user', u'key'),)", 'object_name': 'SSHKey'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
@@ -431,22 +391,9 @@ class Migration(SchemaMigration):
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'hostname': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '255', 'null': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ip': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'unique': 'True', 'null': 'True', 'blank': 'True'}),
-            'subnet': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Subnet']", 'null': 'True', 'blank': 'True'}),
+            'ip': ('maasserver.fields.MAASIPAddressField', [], {'unique': 'True', 'max_length': '39'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
-        },
-        u'maasserver.subnet': {
-            'Meta': {'unique_together': "((u'name', u'space'),)", 'object_name': 'Subnet'},
-            'cidr': ('maasserver.fields.CIDRField', [], {'unique': 'True'}),
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            'dns_servers': ('djorm_pgarray.fields.ArrayField', [], {'default': '[]', 'dbtype': "u'text'", 'null': 'True', 'blank': 'True'}),
-            'gateway_ip': ('maasserver.fields.MAASIPAddressField', [], {'max_length': '39', 'null': 'True', 'blank': 'True'}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
-            'space': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Space']", 'on_delete': 'models.PROTECT'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'vlan': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.VLAN']", 'on_delete': 'models.PROTECT'})
         },
         u'maasserver.tag': {
             'Meta': {'object_name': 'Tag'},
@@ -468,15 +415,6 @@ class Migration(SchemaMigration):
             u'blockdevice_ptr': ('django.db.models.fields.related.OneToOneField', [], {'to': u"orm['maasserver.BlockDevice']", 'unique': 'True', 'primary_key': 'True'}),
             'filesystem_group': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "u'virtual_devices'", 'to': u"orm['maasserver.FilesystemGroup']"}),
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
-        },
-        u'maasserver.vlan': {
-            'Meta': {'unique_together': "((u'vid', u'fabric'), (u'name', u'fabric'))", 'object_name': 'VLAN'},
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            'fabric': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Fabric']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '256'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'vid': ('django.db.models.fields.IntegerField', [], {})
         },
         u'maasserver.zone': {
             'Meta': {'ordering': "[u'name']", 'object_name': 'Zone'},
@@ -505,7 +443,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1436274410L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1436961921L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
