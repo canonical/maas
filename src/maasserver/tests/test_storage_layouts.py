@@ -1280,6 +1280,26 @@ class TestBcacheStorageLayout(MAASServerTestCase):
                 mount_point="/",
                 ))
 
+    def test_configure_creates_boot_partition(self):
+        node = make_Node_with_uefi_boot_method()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE, tags=['ssd'])
+        layout = BcacheStorageLayout(node)
+        layout.configure()
+
+        partition_table = boot_disk.get_partitiontable()
+        partitions = partition_table.partitions.order_by('id').all()
+        boot_partition = partitions[1]
+        self.assertEquals(1 * 1024 ** 3, boot_partition.size)
+        self.assertThat(
+            boot_partition.filesystem,
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot"))
+
     def test_configure_storage_creates_bcache_layout_with_ssd(self):
         node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
@@ -1291,7 +1311,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[1]
+        root_partition = partitions[2]
         cache_partition_table = ssd.get_partitiontable()
         cache_partition = cache_partition_table.partitions.order_by(
             'id').all()[0]
@@ -1327,7 +1347,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[1]
+        root_partition = partitions[2]
         self.assertEquals(
             FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
         self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)
@@ -1360,7 +1380,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
 
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[1]
+        root_partition = partitions[2]
         self.assertEquals(
             FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
         self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)

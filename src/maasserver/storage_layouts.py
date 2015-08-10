@@ -163,7 +163,7 @@ class StorageLayoutBase(Form):
         else:
             return None
 
-    def create_basic_layout(self):
+    def create_basic_layout(self, boot_size=None):
         """Create the basic layout that is similar for all layout types.
 
         :return: The created root partition.
@@ -181,10 +181,11 @@ class StorageLayoutBase(Form):
                 fstype=FILESYSTEM_TYPE.FAT32,
                 label="efi",
                 mount_point="/boot/efi")
-        boot_size = self.get_boot_size()
+        if boot_size is None:
+            boot_size = self.get_boot_size()
         if boot_size > 0:
             boot_partition = boot_partition_table.add_partition(
-                size=self.get_boot_size(), bootable=True)
+                size=boot_size, bootable=True)
             Filesystem.objects.create(
                 partition=boot_partition,
                 fstype=FILESYSTEM_TYPE.EXT4,
@@ -481,7 +482,10 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
                     "Node doesn't have an available cache device to "
                     "setup bcache.")
 
-        root_partition = self.create_basic_layout()
+        boot_size = self.get_boot_size()
+        if boot_size == 0:
+            boot_size = 1 * 1024 ** 3
+        root_partition = self.create_basic_layout(boot_size=boot_size)
         cache_device = self.create_cache_device()
         create_kwargs = {
             "backing_partition": root_partition,
