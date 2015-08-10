@@ -17,9 +17,9 @@ __all__ = [
     'MACAddress',
     ]
 
-
 from operator import attrgetter
 import re
+from textwrap import dedent
 
 from django.db.models import (
     ForeignKey,
@@ -27,7 +27,10 @@ from django.db.models import (
     SET_NULL,
 )
 from maasserver import DefaultMeta
-from maasserver.enum import IPADDRESS_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.exceptions import (
     StaticIPAddressConflict,
     StaticIPAddressForbidden,
@@ -138,6 +141,35 @@ def update_macs_cluster_interfaces(leases, cluster):
                     network.macaddress_set.add(mac_address)
 
 
+class MACAddressManager(BulkManager):
+    """Custom Manager with custom queries for MACAddress objects.
+    """
+
+    # Note: code using this query assumes that the MACs come back ordered
+    # by node_id; when we iterate across the results, we assume that the change
+    # in node_id means we need to start over. (for example, we might be naming
+    # interfaces "eth1" followed by "eth2", and when we see the node_id change,
+    # we'll start over at "eth0") The additional sorting by mac_address is
+    # just a bonus, for consistency sake.
+    # Also note that the key reason this code is using self.raw is the use
+    # of LEFT OUTER JOIN, which allows the selection of MACs *without* a
+    # corresponding Interface. (whereas an INNER JOIN, which would occur
+    # by default, would leave those rows out.)
+    find_macs_having_no_interface_query = dedent("""\
+        SELECT macaddress.*
+            FROM maasserver_macaddress AS macaddress
+            LEFT OUTER JOIN maasserver_interface AS iface
+                ON macaddress.id = iface.mac_id
+            WHERE iface.id IS NULL
+            ORDER BY macaddress.node_id, macaddress.mac_address
+        """)
+
+    def find_macs_having_no_interface(self):
+        """Find all MACs not linked to an interface.
+        """
+        return self.raw(self.find_macs_having_no_interface_query)
+
+
 class MACAddress(CleanSave, TimestampedModel):
     """A `MACAddress` represents a `MAC address`_ attached to a :class:`Node`.
 
@@ -164,7 +196,7 @@ class MACAddress(CleanSave, TimestampedModel):
 
     # future columns: tags, nic_name, metadata, bonding info
 
-    objects = BulkManager()
+    objects = MACAddressManager()
 
     class Meta(DefaultMeta):
         verbose_name = "MAC address"
@@ -538,3 +570,77 @@ class MACAddress(CleanSave, TimestampedModel):
             self.update_related_dns_zones()
 
         return static_ip
+
+
+def ensure_physical_interfaces_created():
+    """Utility function to create a PhysicalInterface for every MACAddress
+    in the database that is not associated with any Interface."""
+    # Circular imports
+    from maasserver.models import (
+        Interface,
+        Subnet,
+        VLAN,
+    )
+    # Go through each MAC that does not have an associated interface.
+    macs = MACAddress.objects.find_macs_having_no_interface()
+    previous_node = -1
+    index = 0
+    for mac in macs:
+        current_node = mac.node_id
+        # Note: this code assumes that the query is ordered by node_id.
+        if current_node != previous_node or current_node is None:
+            index = 0
+        else:
+            index += 1
+        # Create a "dummy" interface. (this is a 'legacy' MACAddress)
+        iface = Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL,
+            name='eth' + unicode(index),
+            vlan=VLAN.objects.get_default_vlan()
+        )
+        iface.save()
+        previous_node = current_node
+
+        # Determine the Subnet that this MAC resides on, and link up any
+        # related StaticIPAddresses.
+        ngi = mac.cluster_interface
+        if ngi is not None and ngi.subnet is not None:
+            # Known cluster interface subnet.
+            subnet = ngi.subnet
+            for ip in mac.ip_addresses.all():
+                if unicode(ip.ip) in subnet.cidr:
+                    ip.subnet = subnet
+                    ip.save()
+                    # Since we found the Subnet, adjust the new Interface's
+                    # VLAN, too.
+                    _update_interface_with_subnet_vlan(iface, subnet)
+                else:
+                    maaslog.warning(
+                        "IP address [%s] (associated with MAC [%s]) is not "
+                        "within expected cluster interface subnet [%s]." %
+                        (unicode(ip.ip), unicode(mac),
+                         unicode(subnet.get_cidr())))
+        else:
+            for ip in mac.ip_addresses.all():
+                # The Subnet isn't on a known cluster interface. Expand the
+                # search.
+                # XXX:fabric (could be a subnet that occurs in >1 fabric)
+                subnet = Subnet.objects.get_subnet_with_ip(ip.ip)
+                if subnet is not None:
+                    ip.subnet = subnet
+                    ip.save()
+                    _update_interface_with_subnet_vlan(iface, subnet)
+                else:
+                    maaslog.warning(
+                        "A subnet known to MAAS matching IP address [%s] "
+                        "(associated with MAC [%s]) could not be found." %
+                        (unicode(ip.ip), unicode(mac)))
+
+
+def _update_interface_with_subnet_vlan(iface, subnet):
+    """Utility function to update an interface's VLAN to match a corresponding
+    Subnet's VLAN.
+    """
+    if iface.vlan_id != subnet.vlan_id and subnet.vlan_id != 0:
+        iface.vlan = subnet.vlan
+        iface.save()

@@ -28,19 +28,27 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     PROTECT,
+    Q,
 )
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import (
     INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
+    IPADDRESS_TYPE,
 )
 from maasserver.fields import (
     JSONObjectField,
     VerboseRegexValidator,
 )
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.space import Space
 from maasserver.models.timestampedmodel import TimestampedModel
+from netaddr import IPNetwork
+from provisioningserver.logger import get_maas_logger
+
+
+maaslog = get_maas_logger("interface")
 
 # This is only last-resort validation, more specialized validation
 # will happen at the form level based on the interface type.
@@ -62,7 +70,7 @@ class Interface(CleanSave, TimestampedModel):
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
         kwargs['type'] = type
-        # Derive the concret class from the interface's type.
+        # Derive the concrete class from the interface's type.
         super(Interface, self).__init__(*args, **kwargs)
         klass = INTERFACE_TYPE_MAPPING.get(self.type)
         if klass:
@@ -111,6 +119,100 @@ class Interface(CleanSave, TimestampedModel):
 
     def get_node(self):
         return self.mac.node
+
+    def update_ip_addresses(self, cidr_list):
+        """Update the IP addresses linked to this interface.
+
+        :param cidr_list: A list of IP/network addresses using the CIDR format
+        e.g. ['192.168.12.1/24', 'fe80::9e4e:36ff:fe3b:1c94/64'] to which the
+        interface is connected.
+        """
+        # Circular imports.
+        from maasserver.models import StaticIPAddress, Subnet, Fabric
+
+        connected_ip_addresses = set()
+
+        # XXX:fabric - Using the default Fabric for now.
+        fabric = Fabric.objects.get_default_fabric()
+        for ip in cidr_list:
+            network = IPNetwork(ip)
+            cidr = unicode(network.cidr)
+            address = unicode(network.ip)
+            try:
+                subnet = Subnet.objects.get(cidr=cidr, vlan__fabric=fabric)
+            except Subnet.DoesNotExist:
+                vlan = fabric.get_default_vlan()
+                space = Space.objects.get_default_space()
+                subnet = Subnet.objects.create_from_cidr(
+                    cidr=cidr, vlan=vlan, space=space)
+                maaslog.info(
+                    "Creating subnet %s connected to interface %s "
+                    "of node %s.", cidr, self, self.get_node())
+
+            # This code needs to deal with both:
+            # - legacy statically configured IPs (subnet=None, mac=mac) for
+            #   which the link to the interface was implicitly done through
+            #   the MAC field
+            # - newly configured IPs (fabric=fabric, interface=interface) for
+            #   which the link is explicitly done to the interface object.
+            try:
+                ip_address = StaticIPAddress.objects.get(
+                    Q(subnet=None, macaddress=self.mac) | Q(
+                        subnet=subnet, interface=self),
+                    ip=address)
+            except StaticIPAddress.DoesNotExist:
+                pass
+            else:
+                # Update legacy static IPs.
+                if ip_address.subnet is None:
+                    ip_address.subnet = subnet
+                    ip_address.save()
+                connected_ip_addresses.add(ip_address)
+                continue
+
+            # Handle conflicting IP records.
+            set_address = None
+            try:
+                ip_address = StaticIPAddress.objects.get(
+                    (Q(subnet=None) & ~Q(macaddress=self.mac)) |
+                    (Q(subnet=subnet) & ~Q(interface=self)),
+                    ip=address)
+            except StaticIPAddress.DoesNotExist:
+                set_address = address
+            else:
+                if ip_address.alloc_type != IPADDRESS_TYPE.DHCP:
+                    maaslog.warning(
+                        "IP address %s is already assigned to node %s",
+                        address, self.get_node())
+                else:
+                    # Handle conflicting DHCP address: the records might be
+                    # out of date: if the conflicting IP address is a DHCP
+                    # address, set its IP to None (but keep the record since it
+                    # materializes the interface<->subnet link).
+                    ip_address.ip = None
+                    ip_address.save()
+                    set_address = address
+
+            # Add/update DHCP address.
+            try:
+                ip_address = StaticIPAddress.objects.get(
+                    subnet=subnet, interface=self,
+                    alloc_type=IPADDRESS_TYPE.DHCP)
+            except StaticIPAddress.DoesNotExist:
+                ip_address = StaticIPAddress.objects.create(
+                    ip=set_address, subnet=subnet,
+                    alloc_type=IPADDRESS_TYPE.DHCP)
+            else:
+                ip_address.ip = set_address
+                ip_address.save()
+            connected_ip_addresses.add(ip_address)
+
+        existing_ip_addresses = set(self.ip_addresses.all())
+
+        for ip_address in existing_ip_addresses - connected_ip_addresses:
+            self.ip_addresses.remove(ip_address)
+        for ip_address in connected_ip_addresses - existing_ip_addresses:
+            self.ip_addresses.add(ip_address)
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):

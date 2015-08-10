@@ -1,7 +1,7 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the `0145_populate_subnets` migration.
+"""Migration to populate subnets.
 
 WARNING: Although these methods will become obsolete very quickly, they
 cannot be removed, since they are used by the 0145_populate_subnets

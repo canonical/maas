@@ -145,6 +145,7 @@ from maasserver.models import (
     PartitionTable,
     PhysicalBlockDevice,
     RAID,
+    Space,
     SSHKey,
     SSLKey,
     Tag,
@@ -158,6 +159,10 @@ from maasserver.models.node import (
     nodegroup_fqdn,
 )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
+from maasserver.models.subnet import (
+    create_cidr,
+    Subnet,
+)
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
@@ -189,6 +194,7 @@ from maasserver.utils.osystems import (
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import (
+    AddrFormatError,
     IPAddress,
     IPNetwork,
     IPRange,
@@ -218,6 +224,12 @@ maaslog = get_maas_logger()
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
+
+SUBNET_MASK_HELP = "e.g. 255.255.255.0 (defaults to 64-bit netmask for IPv6)."
+
+
+def _make_network_from_subnet(ip, subnet):
+    return make_network(ip, IPNetwork(subnet.cidr).netmask)
 
 
 def remove_None_values(data):
@@ -1611,24 +1623,31 @@ ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S = (
     "All addresses in the dynamic range must be within the same /16 "
     "network.")
 
+ERROR_MESSAGE_INVALID_RANGE = (
+    "Invalid IP range (high IP address must not be less than low IP address).")
+
 
 def validate_new_dynamic_range_size(instance, ip_range_low, ip_range_high):
     """Check that a ip address range is of a manageable size.
 
     :raises ValidationError: If the ip range is larger than a /16
-        network.
+        IPv4 network.
     """
     # Return early if the instance is not already managed, its dynamic
     # IP range hasn't changed, or the new values are blank.
     if not instance.is_managed:
         return True
     # Deliberately vague check to allow for empty strings.
-    if (not ip_range_low and not ip_range_high):
+    if not ip_range_low and not ip_range_high:
         return True
     if (ip_range_low == instance.ip_range_low and
        ip_range_high == instance.ip_range_high):
         return True
-    ip_range = IPRange(ip_range_low, ip_range_high)
+
+    try:
+        ip_range = IPRange(ip_range_low, ip_range_high)
+    except AddrFormatError:
+        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
     # Allow any size of dynamic range for v6 networks, but limit v4
     # networks to /16s.
@@ -1699,13 +1718,12 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
 
 def create_Network_from_NodeGroupInterface(interface):
     """Given a `NodeGroupInterface`, create its Network counterpart."""
-    if not interface.subnet_mask:
-        # Can be None or empty string, do nothing if so.
+    if not interface.subnet:
         return
 
     name, vlan_tag = get_name_and_vlan_from_cluster_interface(
         interface.nodegroup.name, interface.interface)
-    ipnetwork = make_network(interface.ip, interface.subnet_mask)
+    ipnetwork = _make_network_from_subnet(interface.ip, interface.subnet)
     network = Network(
         name=name,
         ip=unicode(ipnetwork.network),
@@ -1769,6 +1787,10 @@ class NodeGroupInterfaceForm(MAASModelForm):
             "controller to be able to enable DNS management."
             ))
 
+    # XXX mpontillo 2015-07-23: need a custom field for this, for IPv4/IPv6
+    # address or prefix length.
+    subnet_mask = forms.CharField(required=False)
+
     class Meta:
         model = NodeGroupInterface
         fields = (
@@ -1776,19 +1798,43 @@ class NodeGroupInterfaceForm(MAASModelForm):
             'interface',
             'management',
             'ip',
-            'subnet_mask',
-            'broadcast_ip',
             'router_ip',
+            'subnet_mask',
             'ip_range_low',
             'ip_range_high',
             'static_ip_range_low',
             'static_ip_range_high',
             )
 
+    def __init__(self, *args, **kwargs):
+        super(NodeGroupInterfaceForm, self).__init__(*args, **kwargs)
+        if not self.initial.get('subnet_mask'):
+            self.initial['subnet_mask'] = self.get_subnet_mask()
+
     def save(self, *args, **kwargs):
         """Override `MAASModelForm`.save() so that the network data is copied
         to a `Network` instance."""
+        # Note: full_clean() should not be needed here, but in some cases
+        # it isn't being called before reaching this point. (Another form
+        # also does this; the cause should be investigated.)
+        self.full_clean()
+        ip = self.cleaned_data.get('ip')
+        subnet_mask = self.cleaned_data.get('subnet_mask')
+
+        subnet = None
+        if subnet_mask:
+            cidr = create_cidr(ip, subnet_mask)
+            subnet, _ = Subnet.objects.get_or_create(
+                cidr=cidr, defaults={
+                    'name': cidr,
+                    'cidr': cidr,
+                    'space': Space.objects.get_default_space()
+                })
+
         interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
+        interface.subnet = subnet
+        interface.save()
+
         if interface.network is None:
             return interface
         create_Network_from_NodeGroupInterface(interface)
@@ -1878,14 +1924,82 @@ class NodeGroupInterfaceForm(MAASModelForm):
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()
         cleaned_data['name'] = self.compute_name()
+        self.clean_dependant_subnet_mask(cleaned_data)
+        self.clean_dependant_ip_ranges(cleaned_data)
+        self.clean_ip_range_bounds(cleaned_data)
+        self.clean_dependant_ips_in_network(cleaned_data)
+        return cleaned_data
 
+    def get_subnet_mask(self, cleaned_data=None):
+        # `subnet_mask` is not among the form's fields and thus its
+        # initial value isn't populated from the related ngi instance
+        # by BaseModelForm.__init__.
+        subnet_mask = None
+        if cleaned_data is not None:
+            subnet_mask = cleaned_data.get('subnet_mask')
+        if not subnet_mask:
+            subnet_mask = self.data.get('subnet_mask')
+        if not subnet_mask:
+            if self.instance is not None:
+                return self.instance.subnet_mask
+            else:
+                return ''
+        else:
+            return subnet_mask
+
+    def clean_dependant_subnet_mask(self, cleaned_data):
         ip_addr = cleaned_data.get('ip')
         if ip_addr and IPAddress(ip_addr).version == 6:
             netmask = cleaned_data.get('subnet_mask')
             if netmask in (None, ''):
                 netmask = 'ffff:ffff:ffff:ffff::'
             cleaned_data['subnet_mask'] = unicode(netmask)
+        new_management = cleaned_data.get('management')
+        new_subnet_mask = self.get_subnet_mask(cleaned_data)
+        required_subnet_mask = (
+            new_management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
+            not new_subnet_mask)
+        if required_subnet_mask:
+            set_form_error(
+                self, 'subnet_mask',
+                "That field cannot be empty (unless that interface is "
+                "'unmanaged')")
 
+    def get_network(self, cleaned_data):
+        subnet_mask = self.get_subnet_mask(cleaned_data)
+        ip = cleaned_data.get('ip')
+        if subnet_mask and ip:
+            return IPNetwork(unicode(ip) + '/' + unicode(subnet_mask))
+        else:
+            return None
+
+    def clean_dependant_ips_in_network(self, cleaned_data):
+        """Ensure that the network settings are all congruent.
+
+        Specifically, it ensures that the router address, the DHCP address
+        range, and the broadcast address if given, all fall within the network
+        defined by the interface's IP address and the subnet mask.
+
+        If no broadcast address is given, the network's default broadcast
+        address will be used.
+        """
+        network = self.get_network(cleaned_data)
+        if network is None:
+            return
+        fields_in_network = [
+            "router_ip",
+            "ip_range_low",
+            "ip_range_high",
+            "static_ip_range_low",
+            "static_ip_range_high",
+        ]
+        for field in fields_in_network:
+            ip = cleaned_data.get(field)
+            if ip and IPAddress(ip) not in network:
+                msg = "%s not in the %s network" % (ip, unicode(network.cidr))
+                set_form_error(self, field, msg)
+
+    def clean_dependant_ip_ranges(self, cleaned_data):
         dynamic_range_low = cleaned_data.get('ip_range_low')
         dynamic_range_high = cleaned_data.get('ip_range_high')
         try:
@@ -1905,6 +2019,50 @@ class NodeGroupInterfaceForm(MAASModelForm):
             set_form_error(self, 'static_ip_range_high', exception.message)
         return cleaned_data
 
+    def manages_static_range(self, cleaned_data):
+        """Is this a managed interface with a static IP range configured?"""
+        is_managed = cleaned_data.get('is_managed', False)
+        static_ip_range_low = cleaned_data.get('static_ip_range_low', None)
+        static_ip_range_high = cleaned_data.get('static_ip_range_high', None)
+        # Deliberately vague implicit conversion to bool: a blank IP address
+        # can show up internally as either None or an empty string.
+        return is_managed and static_ip_range_low and static_ip_range_high
+
+    def clean_ip_range_bounds(self, cleaned_data):
+        """Ensure that the static and dynamic ranges have sane bounds."""
+        if not self.manages_static_range(cleaned_data):
+            # Exit early with nothing to do.
+            return cleaned_data
+
+        ip_range_low = cleaned_data.get('ip_range_low', "")
+        ip_range_high = cleaned_data.get('ip_range_high', "")
+        static_ip_range_low = cleaned_data.get('static_ip_range_low', "")
+        static_ip_range_high = cleaned_data.get('static_ip_range_high', "")
+
+        ip_range_low = IPAddress(ip_range_low)
+        ip_range_high = IPAddress(ip_range_high)
+        static_ip_range_low = IPAddress(static_ip_range_low)
+        static_ip_range_high = IPAddress(static_ip_range_high)
+
+        message_base = (
+            "Lower bound %s is higher than upper bound %s")
+        try:
+            IPRange(static_ip_range_low, static_ip_range_high)
+        except AddrFormatError:
+            message = (
+                message_base % (
+                    static_ip_range_low, static_ip_range_high))
+            set_form_error(self, 'static_ip_range_low', message)
+            set_form_error(self, 'static_ip_range_high', message)
+        try:
+            IPRange(ip_range_low, ip_range_high)
+        except AddrFormatError:
+            message = (
+                message_base % (self.ip_range_low, self.ip_range_high))
+            set_form_error(self, 'ip_range_low', message)
+            set_form_error(self, 'ip_range_high', message)
+
+        return cleaned_data
 
 INTERFACES_VALIDATION_ERROR_MESSAGE = (
     "Invalid json value: should be a list of dictionaries, each containing "
@@ -2036,7 +2194,7 @@ class NodeGroupDefineForm(MAASModelForm):
         validate_nonoverlapping_networks(interfaces)
         return interfaces
 
-    def save(self):
+    def save(self, **kwargs):
         nodegroup = super(NodeGroupDefineForm, self).save()
         # Go through the interface definitions, but process the IPv4 ones
         # first.  This way, if the NodeGroupInterfaceForm needs to make up
@@ -2775,7 +2933,7 @@ class BootSourceSelectionForm(MAASModelForm):
             BootSourceSelectionForm, self).save(commit=False)
         boot_source_selection.boot_source = self.boot_source
         if kwargs.get('commit', True):
-            boot_source_selection.save(*args, **kwargs)
+            boot_source_selection.save()
         return boot_source_selection
 
 

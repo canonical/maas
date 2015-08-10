@@ -30,6 +30,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
 )
+from netaddr import IPNetwork
 from piston.utils import rc
 
 
@@ -57,6 +58,20 @@ class NodeGroupInterfacesHandler(OperationsHandler):
 
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
+
+    @classmethod
+    def subnet_mask(handler, ngi):
+        """Backward-compatibility layer: get the subnet_mask from the linked
+        Subnet.
+        """
+        return IPNetwork(ngi.subnet.cidr).netmask
+
+    @classmethod
+    def broadcast_ip(handler, ngi):
+        """Backward-compatibility layer: get the broadcast_ip from the linked
+        Subnet.
+        """
+        return IPNetwork(ngi.subnet.cidr).broadcast
 
     @operation(idempotent=True)
     def list(self, request, uuid):

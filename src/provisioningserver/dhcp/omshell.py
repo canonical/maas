@@ -27,12 +27,16 @@ from subprocess import (
 )
 from textwrap import dedent
 
+from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.utils import parse_key_value_file
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
 )
+
+
+maaslog = get_maas_logger("dhcp.omshell")
 
 
 bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)
@@ -157,7 +161,14 @@ class Omshell:
 
     def create(self, ip_address, mac_address):
         # The "name" is not a host name; it's an identifier used within
-        # the DHCP server.  We just happen to use the IP address.
+        # the DHCP server. We use the MAC address. Prior to 1.9, MAAS used
+        # the IPs as the key but changing to using MAC addresses allows the
+        # DHCP service to give all the NICs of a bond the same IP address.
+        # The only caveat of this change is that the remove() method in this
+        # class has to be able to deal with legacy host mappings (using IP as
+        # the key) and new host mappings (using the MAC as the key).
+        maaslog.debug(
+            "Creating host mapping %s->%s" % (mac_address, ip_address))
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}
@@ -166,7 +177,7 @@ class Omshell:
             set ip-address = {ip_address}
             set hardware-address = {mac_address}
             set hardware-type = 1
-            set name = "{ip_address}"
+            set name = "{mac_address}"
             create
             """)
         stdin = stdin.format(
@@ -187,20 +198,29 @@ class Omshell:
         else:
             raise ExternalProcessError(returncode, self.command, output)
 
-    def remove(self, ip_address):
+    def remove(self, mac_address):
         # The "name" is not a host name; it's an identifier used within
-        # the DHCP server.  We just happen to use the IP address.
+        # the DHCP server. We use the MAC address. Prior to 1.9, MAAS using
+        # the IPs as the key but changing to using MAC addresses allows the
+        # DHCP service to give all the NICs of a bond the same IP address.
+        # The only caveat of this change is that the remove() method needs
+        # to be able to deal with legacy host mappings (using IP as
+        # the key) and new host mappings (using the MAC as the key).
+        # This is achieved by sending both the IP and the MAC: one of them will
+        # be the key for the mapping (it will be the IP if the record was
+        # created with by an old version of MAAS and the MAC otherwise).
+        maaslog.debug("Removing host mapping key=%s" % mac_address)
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}
             connect
             new host
-            set name = "{ip_address}"
+            set name = "{mac_address}"
             open
             remove
             """)
         stdin = stdin.format(
-            self=self, ip_address=ip_address)
+            self=self, mac_address=mac_address)
 
         returncode, output = self._run(stdin)
 

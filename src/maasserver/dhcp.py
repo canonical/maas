@@ -29,7 +29,10 @@ from maasserver.utils.orm import (
     post_commit,
     transactional,
 )
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
@@ -61,9 +64,9 @@ def make_subnet_config(interface, dns_servers, ntp_server):
     return {
         'subnet': unicode(
             IPAddress(interface.ip_range_low) &
-            IPAddress(interface.subnet_mask)),
-        'subnet_mask': interface.subnet_mask,
-        'subnet_cidr': unicode(interface.network.cidr),
+            IPAddress(IPNetwork(interface.subnet.cidr).netmask)),
+        'subnet_mask': unicode(IPNetwork(interface.subnet.cidr).netmask),
+        'subnet_cidr': unicode(interface.subnet.cidr),
         'broadcast_ip': interface.broadcast_ip,
         'interface': interface.interface,
         'router_ip': (

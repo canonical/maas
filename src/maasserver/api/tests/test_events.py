@@ -645,7 +645,7 @@ class TestEventsAPI(APITestCase):
         self.assertEquals(events_per_group, int(query_1_result['count']))
         self.assertEquals(
             expected_queries, query_1_count,
-            "Number of queries has changed, make sure this is expected.")
+            "Number of queries has changed; make sure this is expected.")
 
         self.assertEquals(events_per_group * 2, int(query_2_result['count']))
         self.assertEquals(

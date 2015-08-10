@@ -43,7 +43,8 @@ import netifaces
 from provisioningserver.utils.shell import call_and_check
 
 
-def make_network(ip_address, netmask_or_bits, **kwargs):
+def make_network(
+        ip_address, netmask_or_bits, cidr=False, **kwargs):
     """Construct an `IPNetwork` with the given address and netmask or width.
 
     This is a thin wrapper for the `IPNetwork` constructor.  It's here because
@@ -59,7 +60,10 @@ def make_network(ip_address, netmask_or_bits, **kwargs):
         malformed.
     :return: An `IPNetwork` of the given base address and netmask or bit width.
     """
-    return IPNetwork("%s/%s" % (ip_address, netmask_or_bits), **kwargs)
+    network = IPNetwork("%s/%s" % (ip_address, netmask_or_bits), **kwargs)
+    if cidr:
+        network = network.cidr
+    return network
 
 
 def find_ip_via_arp(mac):
@@ -206,6 +210,8 @@ def intersect_iprange(network, iprange):
 
     IPSet is notoriously inefficient so we intersect ourselves here.
     """
+    if not network or not iprange:
+        return None
     if network.last >= iprange.first and network.first <= iprange.last:
         first = max(network.first, iprange.first)
         last = min(network.last, iprange.last)

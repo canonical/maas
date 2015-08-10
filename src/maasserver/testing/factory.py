@@ -8,6 +8,8 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from maasserver.models.subnet import create_cidr
+
 
 str = None
 
@@ -323,7 +325,7 @@ class Factory(maastesting.factory.Factory):
         return reload_object(node)
 
     def get_interface_fields(self, name=None, ip=None, router_ip=None,
-                             network=None, subnet_mask=None, broadcast_ip=None,
+                             network=None, subnet_mask=None,
                              ip_range_low=None, ip_range_high=None,
                              interface=None, management=None,
                              static_ip_range_low=None,
@@ -352,9 +354,8 @@ class Factory(maastesting.factory.Factory):
             dynamic_range = network
             static_range = None
         if subnet_mask is None:
+            assert type(network) == IPNetwork
             subnet_mask = unicode(network.netmask)
-        if broadcast_ip is None:
-            broadcast_ip = unicode(network.broadcast)
         if static_ip_range_low is None or static_ip_range_high is None:
             if static_range is None:
                 static_ip_range_low = None
@@ -381,7 +382,6 @@ class Factory(maastesting.factory.Factory):
         return dict(
             name=name,
             subnet_mask=subnet_mask,
-            broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low,
             ip_range_high=ip_range_high,
             static_ip_range_low=static_ip_range_low,
@@ -393,7 +393,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_NodeGroup(self, name=None, uuid=None, cluster_name=None,
                        dhcp_key=None, ip=None, router_ip=None, network=None,
-                       subnet_mask=None, broadcast_ip=None, ip_range_low=None,
+                       subnet_mask=None, ip_range_low=None,
                        ip_range_high=None, interface=None, management=None,
                        status=None, maas_url='', static_ip_range_low=None,
                        static_ip_range_high=None, default_disable_ipv4=None,
@@ -428,10 +428,9 @@ class Factory(maastesting.factory.Factory):
         if management is not None:
             interface_settings = dict(
                 ip=ip, router_ip=router_ip, network=network,
-                subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
-                ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-                interface=interface, management=management,
-                static_ip_range_low=static_ip_range_low,
+                subnet_mask=subnet_mask, ip_range_low=ip_range_low,
+                ip_range_high=ip_range_high, interface=interface,
+                management=management, static_ip_range_low=static_ip_range_low,
                 static_ip_range_high=static_ip_range_high)
             interface_settings.update(kwargs)
             self.make_NodeGroupInterface(cluster, **interface_settings)
@@ -459,21 +458,41 @@ class Factory(maastesting.factory.Factory):
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
                                 router_ip=None, network=None,
-                                subnet_mask=None, broadcast_ip=None,
-                                ip_range_low=None, ip_range_high=None,
-                                interface=None, management=None,
-                                static_ip_range_low=None,
+                                subnet_mask=None, ip_range_low=None,
+                                ip_range_high=None, interface=None,
+                                management=None, static_ip_range_low=None,
                                 static_ip_range_high=None, **kwargs):
         interface_settings = self.get_interface_fields(
-            name=name, ip=ip, router_ip=router_ip, network=network,
-            subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
+            name=name, ip=ip, router_ip=router_ip,
+            network=network, subnet_mask=subnet_mask,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management,
             static_ip_range_low=static_ip_range_low,
             static_ip_range_high=static_ip_range_high)
         interface_settings.update(**kwargs)
+
+        subnet = None
+
+        # Only populate the subnet field if the subnet_mask exists.
+        # (the caller could want an unconfigured NodeGroupInterface)
+        if interface_settings['subnet_mask']:
+            cidr = create_cidr(
+                interface_settings['ip'], interface_settings['subnet_mask'])
+
+            subnet, _ = Subnet.objects.get_or_create(
+                cidr=cidr, defaults={
+                    'name': cidr,
+                    'cidr': cidr,
+                    'space': Space.objects.get_default_space(),
+                })
+
+            del interface_settings['subnet_mask']
+
+        if 'broadcast_ip' in interface_settings:
+            del interface_settings['broadcast_ip']
+
         interface = NodeGroupInterface(
-            nodegroup=nodegroup, **interface_settings)
+            nodegroup=nodegroup, subnet=subnet, **interface_settings)
         interface.save()
         return interface
 
@@ -562,7 +581,7 @@ class Factory(maastesting.factory.Factory):
         return node
 
     def make_StaticIPAddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
-                             mac=None, user=None):
+                             mac=None, user=None, **kwargs):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `mac` is passed, connect this IP address to the
@@ -570,7 +589,8 @@ class Factory(maastesting.factory.Factory):
         """
         if ip is None:
             ip = self.make_ipv4_address()
-        ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type, user=user)
+        ipaddress = StaticIPAddress(
+            ip=ip, alloc_type=alloc_type, user=user, **kwargs)
         ipaddress.save()
         if mac is not None:
             MACStaticIPAddressLink(

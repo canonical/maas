@@ -185,10 +185,11 @@ def find_nodegroup(request):
             ngi.management
         FROM maasserver_nodegroup AS ng
         JOIN maasserver_nodegroupinterface AS ngi ON ng.id = ngi.nodegroup_id
+        JOIN maasserver_subnet AS subnet ON subnet.id = ngi.subnet_id
         WHERE
             inet %s BETWEEN
-                (ngi.ip & ngi.subnet_mask) AND
-                (ngi.ip | ~ngi.subnet_mask)
+                (ngi.ip & netmask(subnet.cidr)) AND
+                (ngi.ip | ~netmask(subnet.cidr))
         ORDER BY ngi.management DESC, ng.id ASC
         """, [ip_address])
     nodegroups = list(query)

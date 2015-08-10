@@ -120,7 +120,7 @@ class TestOmshell(MAASTestCase):
             set ip-address = {ip}
             set hardware-address = {mac}
             set hardware-type = 1
-            set name = "{ip}"
+            set name = "{mac}"
             create
             """)
         expected_script = expected_script.format(

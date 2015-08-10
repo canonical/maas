@@ -42,6 +42,7 @@ __all__ = [
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
+    'PhysicalInterface',
     'RAID',
     'Space',
     'SSHKey',

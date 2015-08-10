@@ -37,13 +37,17 @@ from textwrap import dedent
 import time
 
 from fixtures import FakeLogger
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.fields import MAC
 from maasserver.models import Interface
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
+from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
@@ -83,6 +87,7 @@ from mock import (
     Mock,
     sentinel,
 )
+from netaddr import IPNetwork
 from testtools.content import text_content
 from testtools.matchers import (
     Contains,
@@ -1455,3 +1460,19 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node_interfaces = Interface.objects.filter(mac__node=node)
         self.assert_expected_interfaces_and_macs_exist(
             node_interfaces, {vlanif.name: VLAN_MAC, bondif.name: BOND_MAC})
+
+    def test__creates_dhcp_ip_address(self):
+        node = factory.make_Node()
+        cidr = '192.168.0.3/24'
+        subnet = factory.make_Subnet(
+            cidr=cidr, vlan=VLAN.objects.get_default_vlan())
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        eth0 = Interface.objects.get(mac__node=node, name='eth0')
+        address = unicode(IPNetwork(cidr).ip)
+        ipv4_ip = eth0.ip_addresses.get(ip=address)
+        self.assertThat(
+            ipv4_ip,
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet,
+                ip=address))

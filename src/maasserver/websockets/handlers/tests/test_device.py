@@ -207,7 +207,7 @@ class TestDeviceHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEquals(
             query_10_count, 8,
-            "Number of queries has changed, make sure this is expected.")
+            "Number of queries has changed; make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of nodes.")

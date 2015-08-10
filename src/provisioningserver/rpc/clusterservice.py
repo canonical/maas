@@ -315,6 +315,13 @@ class Cluster(RPCProtocol):
 
     @cluster.RemoveHostMaps.responder
     def remove_host_maps(self, ip_addresses, shared_key):
+        # Note that the `ip_addresses` parameter is now a list of
+        # IPs *and* MAC addresses. Prior to MAAS 1.9 it was a list of
+        # IP addresses because that's what was used as the key for the host
+        # mappings but we now use the MAC as the key in order to be able
+        # to assign the same IP to two NICs. As a result, this code (the host
+        # map removal code) has to deal with legacy host maps using the IP
+        # as the key and host maps with the MAC as the key.
         d = concurrency.dhcp.run(
             deferToThread, remove_host_maps, ip_addresses, shared_key)
         d.addCallback(lambda _: {})

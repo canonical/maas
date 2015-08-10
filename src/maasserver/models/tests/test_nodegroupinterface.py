@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
     NODEGROUP_STATUS,
@@ -279,64 +280,6 @@ class TestNodeGroupInterface(MAASServerTestCase):
             ValidationError,
             factory.make_NodeGroupInterface, cluster, name='eth 0')
 
-    def test_clean_ips_in_network_validates_IP(self):
-        network = IPNetwork('192.168.0.3/24')
-        ip_outside_network = '192.168.2.1'
-        checked_fields = [
-            'broadcast_ip',
-            'router_ip',
-            'ip_range_low',
-            'ip_range_high',
-            'static_ip_range_low',
-            'static_ip_range_high',
-            ]
-        for field in checked_fields:
-            nodegroup = factory.make_NodeGroup(
-                network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-            [interface] = nodegroup.get_managed_interfaces()
-            setattr(interface, field, ip_outside_network)
-            message = "%s not in the %s network" % (
-                ip_outside_network,
-                '192.168.0.0/24',
-                )
-            exception = self.assertRaises(
-                ValidationError, interface.full_clean)
-            self.assertEqual({field: [message]}, exception.message_dict)
-
-    def test_clean_network(self):
-        nodegroup = factory.make_NodeGroup(
-            network=IPNetwork('192.168.0.3/24'),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        # Set a bogus subnet mask.
-        interface.subnet_mask = '0.9.0.4'
-        message = "invalid IPNetwork %s/0.9.0.4" % interface.ip
-        exception = self.assertRaises(ValidationError, interface.full_clean)
-        self.assertEqual(
-            {'subnet_mask': [message]},
-            exception.message_dict)
-
-    def test_clean_network_config_if_managed(self):
-        network = IPNetwork('192.168.0.3/24')
-        checked_fields = [
-            'interface',
-            'subnet_mask',
-            'ip_range_low',
-            'ip_range_high',
-            ]
-        for field in checked_fields:
-            nodegroup = factory.make_NodeGroup(
-                network=network,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-            [interface] = nodegroup.get_managed_interfaces()
-            setattr(interface, field, '')
-            exception = self.assertRaises(
-                ValidationError, interface.full_clean)
-            message = (
-                "That field cannot be empty (unless that interface is "
-                "'unmanaged')")
-            self.assertEqual({field: [message]}, exception.message_dict)
-
     def test_clean_network_config_if_managed_accepts_empty_static_range(self):
         network = IPNetwork('192.168.0.3/24')
         checked_fields = [
@@ -386,7 +329,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.subnet_mask = None
         interface.broadcast_ip = None
         interface.full_clean()
-        self.assertIsNone(interface.broadcast_ip)
+        self.assertEqual(interface.broadcast_ip, '')
 
     def test_default_broadcast_ip_saves_cleanly(self):
         # When the default value for broadcast_ip was introduced, it broke
@@ -509,6 +452,9 @@ class TestNodeGroupInterface(MAASServerTestCase):
         message = (
             "This interface's network must not overlap with other "
             "networks on this cluster.")
+        # Is it really OK that we're testing subnet_mask here, which is a
+        # "virtual" field in this model class? (should this test be moved
+        # to the form?)
         errors = {
             'ip': [message],
             'subnet_mask': [message],

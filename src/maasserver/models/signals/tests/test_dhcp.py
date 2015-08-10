@@ -110,7 +110,7 @@ class TestDHCPSignals(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.subnet_mask = '255.255.0.0'
+        interface.subnet_mask = "255.255.0.0"
         interface.save()
 
         self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))

@@ -193,7 +193,6 @@ class NODEGROUPINTERFACE_MANAGEMENT:
     """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
     # A nodegroupinterface starts out as UNMANAGED.
     DEFAULT = 0
-
     #: Do not manage DHCP or DNS for this interface.
     UNMANAGED = 0
     #: Manage DHCP for this interface.

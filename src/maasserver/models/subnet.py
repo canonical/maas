@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'create_cidr',
     'Subnet',
 ]
 
@@ -22,6 +23,7 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     ForeignKey,
+    Manager,
     PROTECT,
 )
 from djorm_pgarray.fields import ArrayField
@@ -46,6 +48,63 @@ def get_default_vlan():
     return VLAN.objects.get_default_vlan()
 
 
+def create_cidr(network, subnet_mask=None):
+    """Given the specified network and subnet mask, create a CIDR string.
+
+    Discards any extra bits present in the 'network'. (bits which overlap
+    zeroes in the netmask)
+
+    Returns the object in unicode format, so that this function can be used
+    in database migrations (which do not support custom fields).
+
+    :param network:The network
+    :param subnet_mask:An IPv4 or IPv6 netmask or prefix length
+    :return:An IPNetwork representing the CIDR.
+    """
+    if type(network) == IPNetwork:
+        if not subnet_mask:
+            subnet_mask = network.netmask
+        network = network.network
+    elif type(network) == IPAddress:
+        if subnet_mask and type(subnet_mask) is not IPAddress:
+            subnet_mask = IPAddress(subnet_mask)
+
+    cidr = IPNetwork(unicode(network) + '/' + unicode(subnet_mask)).cidr
+    return unicode(cidr)
+
+
+class SubnetManager(Manager):
+    """Manager for :class:`Subnet` model."""
+
+    def create_from_cidr(self, cidr, vlan, space):
+        """Create a subnet from the given CIDR."""
+        name = "subnet-" + unicode(cidr)
+        return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
+
+    # Note: << is the postgresql "is contained within" operator.
+    # See http://www.postgresql.org/docs/8.4/static/functions-net.html
+    # Use an ORDER BY and LIMIT clause to match the most specific
+    # subnet for the given IP address.
+    find_subnet_with_ip_query = """
+        SELECT subnet.*
+        FROM maasserver_subnet AS subnet
+            WHERE %s << subnet.cidr
+            ORDER BY masklen(subnet.cidr) DESC
+            LIMIT 1
+        """
+
+    def get_subnet_with_ip(self, ip):
+        """Find the most specific Subnet the specified IP address belongs in.
+        """
+        subnets = self.raw(
+            self.find_subnet_with_ip_query, params=[unicode(ip)])
+
+        for subnet in subnets:
+            return subnet  # This is stable because the query is ordered.
+        else:
+            return None
+
+
 class Subnet(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
@@ -53,6 +112,8 @@ class Subnet(CleanSave, TimestampedModel):
         unique_together = (
             ('name', 'space'),
         )
+
+    objects = SubnetManager()
 
     name = CharField(
         blank=False, editable=True, max_length=255,

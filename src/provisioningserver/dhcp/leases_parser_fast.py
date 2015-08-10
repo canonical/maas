@@ -23,12 +23,17 @@ __all__ = [
     'parse_leases',
     ]
 
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    OrderedDict,
+)
 from datetime import datetime
 from itertools import chain
 import re
 
 from provisioningserver.dhcp.leases_parser import (
+    get_host_ip,
+    get_host_key,
     get_host_mac,
     has_expired,
     is_host,
@@ -70,18 +75,21 @@ def extract_leases(leases_contents):
 
 
 def parse_leases(leases_contents):
-    results = {}
+    results = OrderedDict()
     now = datetime.utcnow()
     for entry in extract_leases(leases_contents):
         if is_lease(entry):
             if not has_expired(entry, now):
-                results[entry.ip] = entry.hardware.mac
+                results[entry.host] = (entry.hardware.mac, entry.host)
         elif is_host(entry):
             mac = get_host_mac(entry)
-            if mac is None:
-                # TODO: Test this.
-                if entry.ip in results:
-                    del results[entry.ip]
+            ip = get_host_ip(entry)
+            key = get_host_key(entry)
+            if ip is None or mac is None:
+                if key in results:
+                    del results[key]
             else:
-                results[entry.ip] = mac
-    return results
+                results[key] = (mac, ip)
+    return {
+        val[1]: val[0] for _, val in results.items()
+    }

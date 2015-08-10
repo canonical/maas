@@ -87,12 +87,18 @@
     uuid: master}
   model: maasserver.nodegroup
   pk: 1
-- fields: {broadcast_ip: 192.168.122.255, created: !!timestamp '2015-03-23 16:14:09.048245',
+- fields: {created: !!timestamp '2015-03-23 16:14:09.048245',
     foreign_dhcp_ip: null, interface: eth0, ip: 192.168.122.2, ip_range_high: 192.168.122.254,
     ip_range_low: 192.168.122.150, management: 2, name: eth0, nodegroup: 1, router_ip: 192.168.122.1,
-    static_ip_range_high: 192.168.122.149, static_ip_range_low: 192.168.122.10, subnet_mask: 255.255.255.0,
+    static_ip_range_high: 192.168.122.149, static_ip_range_low: 192.168.122.10,
     updated: !!timestamp '2015-03-23 16:25:47.360034'}
   model: maasserver.nodegroupinterface
+  pk: 1
+- fields: {created: !!timestamp '2015-03-23 16:14:09.048250',
+    name: '192.168.122.0/24', vlan: 0, space: 0, cidr: '192.168.122.0/24',
+    gateway_ip: '192.168.122.1',
+    updated: !!timestamp '2015-03-23 16:14:10.573423'}
+  model: maasserver.subnet
   pk: 1
 - fields:
     cluster_interface: 1

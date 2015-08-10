@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 
-from collections import defaultdict
 from textwrap import dedent
 
 from django.core.exceptions import ValidationError
@@ -48,22 +47,10 @@ from netaddr import (
     IPRange,
 )
 from netaddr.core import AddrFormatError
-from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.utils.network import (
     intersect_iprange,
     make_network,
 )
-
-# UI explanation for subnet_mask field.
-SUBNET_MASK_HELP = "e.g. 255.255.255.0"
-if REVEAL_IPv6:
-    SUBNET_MASK_HELP += " (defaults to 64-bit netmask for IPv6)."
-
-
-# UI explanation for broadcast_ip field.
-BROADCAST_IP_HELP = "e.g. 192.168.1.255"
-if REVEAL_IPv6:
-    BROADCAST_IP_HELP += " (for IPv4 networks only)."
 
 
 class NodeGroupInterfaceManager(Manager):
@@ -72,12 +59,14 @@ class NodeGroupInterfaceManager(Manager):
     find_by_network_for_static_allocation_query = dedent("""\
     SELECT ngi.*
       FROM maasserver_nodegroup AS ng,
-           maasserver_nodegroupinterface AS ngi
+           maasserver_nodegroupinterface AS ngi,
+           maasserver_subnet AS subnet
      WHERE ng.status = %s
        AND ngi.nodegroup_id = ng.id
+       AND ngi.subnet_id = subnet.id
        AND ngi.static_ip_range_low IS NOT NULL
        AND ngi.static_ip_range_high IS NOT NULL
-       AND (ngi.ip & ngi.subnet_mask) = (INET %s)
+       AND (ngi.ip & netmask(subnet.cidr)) = (INET %s)
      ORDER BY ng.id, ngi.id
     """)
 
@@ -110,10 +99,12 @@ class NodeGroupInterfaceManager(Manager):
     find_by_address_query = dedent("""\
     SELECT ngi.*
       FROM maasserver_nodegroup AS ng,
-           maasserver_nodegroupinterface AS ngi
+           maasserver_nodegroupinterface AS ngi,
+           maasserver_subnet AS subnet
      WHERE ng.status = %s
        AND ngi.nodegroup_id = ng.id
-       AND (ngi.ip & ngi.subnet_mask) = (INET %s & ngi.subnet_mask)
+       AND ngi.subnet_id = subnet.id
+       AND (ngi.ip & netmask(subnet.cidr)) = (INET %s & netmask(subnet.cidr))
      ORDER BY ng.id, ngi.id
     """)
 
@@ -140,12 +131,14 @@ class NodeGroupInterfaceManager(Manager):
     find_by_address_for_static_allocation_query = dedent("""\
     SELECT ngi.*
       FROM maasserver_nodegroup AS ng,
-           maasserver_nodegroupinterface AS ngi
+           maasserver_nodegroupinterface AS ngi,
+           maasserver_subnet AS subnet
      WHERE ng.status = %s
        AND ngi.nodegroup_id = ng.id
+       AND ngi.subnet_id = subnet.id
        AND ngi.static_ip_range_low IS NOT NULL
        AND ngi.static_ip_range_high IS NOT NULL
-       AND (ngi.ip & ngi.subnet_mask) = (INET %s & ngi.subnet_mask)
+       AND (ngi.ip & netmask(subnet.cidr)) = (INET %s & netmask(subnet.cidr))
      ORDER BY ng.id, ngi.id
     """)
 
@@ -238,17 +231,12 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     interface = CharField(
         blank=True, editable=True, max_length=255, default='',
         help_text="Network interface (e.g. 'eth1').")
-    subnet_mask = MAASIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None,
-        help_text=SUBNET_MASK_HELP)
-    broadcast_ip = MAASIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None,
-        verbose_name="Broadcast IP",
-        help_text=BROADCAST_IP_HELP)
+
     router_ip = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Router IP",
         help_text="IP of this network's router given to DHCP clients")
+
     ip_range_low = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="DHCP dynamic IP range low value",
@@ -276,6 +264,48 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         null=True, default=None, editable=True, blank=True, unique=False)
 
     @property
+    def broadcast_ip(self):
+        if self.subnet is None:
+            return ''
+        return unicode(IPNetwork(self.subnet.cidr).broadcast)
+
+    @broadcast_ip.setter
+    def broadcast_ip(self, value):
+        # This is a derived field, so setting it is a no-op.
+        pass
+
+    @property
+    def subnet_mask(self):
+        if self.subnet is None:
+            return ''
+        return unicode(IPNetwork(self.subnet.cidr).netmask)
+
+    @subnet_mask.setter
+    def subnet_mask(self, value):
+        """Compatability layer to create a Subnet model object, and link
+        it to this NodeGroupInterface (or use an existing Subnet).
+
+        Note: currently, this will create stale Subnet objects in the database
+        if the NodeGroupInterface is edited multiple times. In the future,
+        when a Subnet is "unlinked", we should check all objects that depend
+        on it to see if they should be moved to the new subnet, and/or
+        reject the change.
+        """
+        if value is None or value == "":
+            self.subnet = None
+            return
+
+        # Circular imports
+        from maasserver.models import Subnet, Space
+        cidr = make_network(self.ip, value).cidr
+        subnet, _ = Subnet.objects.get_or_create(cidr=unicode(cidr), defaults={
+            'name': unicode(cidr),
+            'cidr': unicode(cidr),
+            'space': Space.objects.get_default_space()
+        })
+        self.subnet = subnet
+
+    @property
     def network(self):
         """Return the network defined by the interface's address and netmask.
 
@@ -283,13 +313,15 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         :raise AddrFormatError: If the combination of interface address and
             subnet mask is malformed.
         """
-        ip = self.ip
-        netmask = self.subnet_mask
+        if self.subnet is None:
+            return None
+
+        netmask = IPNetwork(self.subnet.cidr).netmask
         # Nullness check for GenericIPAddress fields is deliberately kept
         # vague: MAASIPAddressField seems to represent nulls as empty
         # strings.
         if netmask:
-            return make_network(ip, netmask).cidr
+            return make_network(self.ip, netmask).cidr
         else:
             return None
 
@@ -378,7 +410,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def __repr__(self):
         return "<NodeGroupInterface %s,%s>" % (
-            self.nodegroup.uuid, self.name)
+            self.nodegroup.uuid if self.nodegroup_id else None, self.name)
 
     def clean_network_valid(self):
         """Validate the network.
@@ -387,12 +419,17 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         valid.
         """
         try:
-            self.network
+            network = self.network
+            if network and IPAddress(self.ip) not in self.network:
+                raise ValidationError(
+                    "Cluster IP address is not within specified subnet.")
         except AddrFormatError as e:
             # The interface's address is validated separately.  If the
             # combination with the netmask is invalid, either there's already
             # going to be a specific validation error for the IP address, or
             # the failure is due to an invalid netmask.
+            # XXX mpontillo 2015-07-23: subnet - now that this is a property,
+            # is this appropriate?
             raise ValidationError({'subnet_mask': [e.message]})
 
     def clean_network_config_if_managed(self):
@@ -401,7 +438,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         if self.is_managed:
             mandatory_fields = [
                 'interface',
-                'subnet_mask',
                 'ip_range_low',
                 'ip_range_high',
             ]
@@ -414,42 +450,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             if len(errors) != 0:
                 raise ValidationError(errors)
 
-    def clean_ips_in_network(self):
-        """Ensure that the network settings are all congruent.
-
-        Specifically, it ensures that the router address, the DHCP address
-        range, and the broadcast address if given, all fall within the network
-        defined by the interface's IP address and the subnet mask.
-
-        If no broadcast address is given, the network's default broadcast
-        address will be used.
-        """
-        network = self.network
-        if network is None:
-            return
-        network_settings = (
-            ("broadcast_ip", self.broadcast_ip),
-            ("router_ip", self.router_ip),
-            ("ip_range_low", self.ip_range_low),
-            ("ip_range_high", self.ip_range_high),
-            ("static_ip_range_low", self.static_ip_range_low),
-            ("static_ip_range_high", self.static_ip_range_high),
-            )
-        network_errors = defaultdict(list)
-        for field, address in network_settings:
-            if address and IPAddress(address) not in network:
-                network_errors[field].append(
-                    "%s not in the %s network" % (address, network))
-        if len(network_errors) != 0:
-            raise ValidationError(network_errors)
-
-        # Deliberately vague nullness check.  A null IP address seems to be
-        # None in some situations, or an empty string in others.
-        if not self.broadcast_ip:
-            # No broadcast address given.  Set the default.  Set it in string
-            # form; validation breaks if we pass an IPAddress.
-            self.broadcast_ip = unicode(network.broadcast)
-
     def manages_static_range(self):
         """Is this a managed interface with a static IP range configured?"""
         # Deliberately vague implicit conversion to bool: a blank IP address
@@ -457,41 +457,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         return (
             self.is_managed and
             self.static_ip_range_low and
-            self.static_ip_range_high
-            )
-
-    def clean_ip_range_bounds(self):
-        """Ensure that the static and dynamic ranges have sane bounds."""
-        if not self.manages_static_range():
-            # Exit early with nothing to do.
-            return
-
-        errors = {}
-        ip_range_low = IPAddress(self.ip_range_low)
-        ip_range_high = IPAddress(self.ip_range_high)
-        static_ip_range_low = IPAddress(self.static_ip_range_low)
-        static_ip_range_high = IPAddress(self.static_ip_range_high)
-
-        message_base = (
-            "Lower bound %s is higher than upper bound %s")
-        try:
-            IPRange(static_ip_range_low, static_ip_range_high)
-        except AddrFormatError:
-            message = (
-                message_base % (
-                    self.static_ip_range_low, self.static_ip_range_high))
-            errors['static_ip_range_low'] = [message]
-            errors['static_ip_range_high'] = [message]
-        try:
-            IPRange(ip_range_low, ip_range_high)
-        except AddrFormatError:
-            message = (
-                message_base % (self.ip_range_low, self.ip_range_high))
-            errors['ip_range_low'] = [message]
-            errors['ip_range_high'] = [message]
-
-        if errors:
-            raise ValidationError(errors)
+            self.static_ip_range_high)
 
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
@@ -505,10 +471,32 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         static_ip_range_low = IPAddress(self.static_ip_range_low)
         static_ip_range_high = IPAddress(self.static_ip_range_high)
 
-        static_range = IPRange(
-            static_ip_range_low, static_ip_range_high)
-        dynamic_range = IPRange(
-            ip_range_low, ip_range_high)
+        message_base = (
+            "Lower bound %s is higher than upper bound %s")
+
+        static_range = {}
+        dynamic_range = {}
+
+        try:
+            static_range = IPRange(
+                static_ip_range_low, static_ip_range_high)
+        except AddrFormatError:
+            message = message_base % (
+                static_ip_range_low, static_ip_range_high)
+            errors.update({
+                'static_ip_range_low': [message],
+                'static_ip_range_high': [message],
+                })
+
+        try:
+            dynamic_range = IPRange(
+                ip_range_low, ip_range_high)
+        except AddrFormatError:
+            message = message_base % (ip_range_low, ip_range_high)
+            errors.update({
+                'ip_range_low': [message],
+                'ip_range_high': [message],
+                })
 
         # This is a bit unattractive, but we can't use IPSet for
         # large networks - it's far too slow. What we actually care
@@ -529,6 +517,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                 'static_ip_range_low': [message],
                 'static_ip_range_high': [message],
                 }
+
+        if errors:
             raise ValidationError(errors)
 
     def clean_overlapping_networks(self):
@@ -570,8 +560,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
         self.clean_network_valid()
-        self.clean_ips_in_network()
         self.clean_network_config_if_managed()
-        self.clean_ip_range_bounds()
         self.clean_ip_ranges()
         self.clean_overlapping_networks()

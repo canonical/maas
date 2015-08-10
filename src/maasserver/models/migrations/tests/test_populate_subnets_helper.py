@@ -22,6 +22,7 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import datetime
+import unittest
 
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
@@ -40,6 +41,7 @@ from netaddr import IPNetwork
 from testtools.matchers import Equals
 
 
+@unittest.skip("Can no longer test this migration; fields have been deleted.")
 class TestPopulateSubnetsMigration(MAASServerTestCase):
 
     def do_forward_migration(self):
@@ -72,6 +74,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
     def do_reverse_migration(self):
         self.migrate_subnets_backwards()
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__nodegroupinterface_migrated(self):
         nodegroup = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(nodegroup)
@@ -82,6 +85,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.assertThat(subnet.cidr, Equals(
             helper._get_cidr_for_nodegroupinterface(ngi)))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__nodegroupinterface_with_no_network_in_default_vlan(self):
         nodegroup = factory.make_NodeGroup()
         factory.make_NodeGroupInterface(nodegroup)
@@ -90,6 +94,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         subnet = Subnet.objects.first()
         self.assertThat(subnet.vlan, Equals(VLAN.objects.get_default_vlan()))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__migrated_nodegroupinterface_subnet_has_default_space(self):
         nodegroup = factory.make_NodeGroup()
         factory.make_NodeGroupInterface(nodegroup)
@@ -99,6 +104,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.assertThat(subnet.space, Equals(
             Space.objects.get_default_space()))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__migrated_network_subnet_has_default_space(self):
         factory.make_Network()
 
@@ -107,6 +113,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.assertThat(subnet.space, Equals(
             Space.objects.get_default_space()))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__migrated_nodegroupinterface_subnet_linked(self):
         nodegroup = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(nodegroup)
@@ -116,6 +123,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         ngi = reload_object(ngi)
         self.assertThat(ngi.subnet, Equals(subnet))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__nodegroupinterface_with_network_and_vlan_subnet_has_vlan(self):
         nodegroup = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(nodegroup)
@@ -128,6 +136,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.assertThat(subnet.vlan, Equals(VLAN.objects.get(
             vid=network.vlan_tag)))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__nodegroupinterfaces_with_identical_subnets_migrated(self):
         nodegroup = factory.make_NodeGroup()
         # MAAS only allows overlapping subnets if one of the
@@ -157,6 +166,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.assertThat(subnet.cidr, Equals(
             helper._get_cidr_for_nodegroupinterface(ngi2)))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__nodegroupinterface_with_corresponding_network_migrated(self):
         nodegroup = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(nodegroup)
@@ -174,6 +184,7 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
             helper._get_cidr_for_network(network)))
         self.assertThat(subnet.vlan.vid, Equals(network.vlan_tag))
 
+    @unittest.skip("Can no longer test this migration; missing fields")
     def test__migrate_networks_forward(self):
         network = factory.make_Network()
         self.migrate_networks_forward()

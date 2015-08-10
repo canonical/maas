@@ -409,31 +409,31 @@ class TestRemoveHostMaps(MAASTestCase):
         ))
 
     def test_calls_omshell_remove(self):
-        ip_addresses = [factory.make_ipv4_address() for _ in range(5)]
-        dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
+        mac_addresses = [factory.make_mac_address() for _ in range(5)]
+        dhcp.remove_host_maps(mac_addresses, sentinel.shared_key)
         self.assertThat(Omshell.remove, MockCallsMatch(*(
-            call(ip_address) for ip_address in ip_addresses
+            call(mac_address) for mac_address in mac_addresses
         )))
 
     def test_calls_omshell_nullify_lease(self):
-        ip_addresses = [factory.make_ipv4_address() for _ in range(5)]
-        dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
+        mac_addresses = [factory.make_mac_address() for _ in range(5)]
+        dhcp.remove_host_maps(mac_addresses, sentinel.shared_key)
         self.assertThat(Omshell.nullify_lease, MockCallsMatch(*(
-            call(ip_address) for ip_address in ip_addresses
+            call(mac_address) for mac_address in mac_addresses
         )))
 
     def test_raises_error_when_omshell_crashes(self):
         error_message = factory.make_name("error").encode("ascii")
         Omshell.remove.side_effect = ExternalProcessError(
             returncode=2, cmd=("omshell",), output=error_message)
-        ip_address = factory.make_ipv4_address()
+        mac_address = factory.make_mac_address()
         with FakeLogger("maas.dhcp") as logger:
             error = self.assertRaises(
                 exceptions.CannotRemoveHostMap, dhcp.remove_host_maps,
-                [ip_address], sentinel.shared_key)
+                [mac_address], sentinel.shared_key)
         # The CannotRemoveHostMap exception includes a message describing the
         # problematic mapping.
-        self.assertDocTestMatches("%s: ..." % ip_address, unicode(error))
+        self.assertDocTestMatches("%s: ..." % mac_address, unicode(error))
         # A message is also written to the maas.dhcp logger that describes the
         # problematic mapping.
         self.assertDocTestMatches(

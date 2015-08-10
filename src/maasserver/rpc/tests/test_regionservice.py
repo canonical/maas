@@ -90,6 +90,7 @@ from mock import (
     sentinel,
 )
 import netaddr
+from netaddr.ip import IPNetwork
 from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
     cluster,
@@ -247,7 +248,7 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
     def get_cluster_networks(self, cluster):
         return [
             {"interface": ngi.interface, "ip": ngi.ip,
-             "subnet_mask": ngi.subnet_mask}
+             "subnet_mask": unicode(IPNetwork(ngi.subnet.cidr).cidr.netmask)}
             for ngi in cluster.nodegroupinterface_set.all()
         ]
 

@@ -182,6 +182,7 @@ def _create_or_update_physical_interface(node, ifname, mac):
 
     interface.vlan = fabric.get_default_vlan()
     interface.save()
+    return interface
 
 
 def update_node_network_information(node, output, exit_status):
@@ -218,9 +219,8 @@ def update_node_network_information(node, output, exit_status):
             #     should be logged)
             # Currently unhandled: (XXX:fabric)
             # (3) MAC exists, but is on a different Fabric
-            if mac.node is None or mac.node == node:
-                _create_or_update_physical_interface(node, link['name'], mac)
-            elif mac.node != node:
+            ips = link.get('inet', []) + link.get('inet6', [])
+            if mac.node is not None and mac.node != node:
                 logger.warning(
                     "MAC %s moved from node %s to %s" %
                     (mac, mac.node.fqdn, node.fqdn))
@@ -229,7 +229,9 @@ def update_node_network_information(node, output, exit_status):
                     mac=mac, mac__node=mac.node).delete()
                 mac.node = node
                 mac.save()
-                _create_or_update_physical_interface(node, link['name'], mac)
+            interface = _create_or_update_physical_interface(
+                node, link['name'], mac)
+            interface.update_ip_addresses(ips)
 
     # Go through the set of MACs and ensure they all correspond to physical
     # interfaces which still exist on the Node.

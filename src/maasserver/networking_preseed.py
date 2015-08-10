@@ -334,7 +334,7 @@ def map_netmasks(node):
                 interfaces, IPAddress(sip.ip))
             if interface is not None:
                 if valid_ipv4(sip.ip):
-                    netmask = interface.subnet_mask
+                    netmask = unicode(IPNetwork(interface.subnet.cidr).netmask)
                 else:
                     netmask = '%d' % interface.network.prefixlen
                 mapping[normalise_ip(sip.ip)] = netmask

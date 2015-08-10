@@ -33,7 +33,7 @@ def update_leases(uuid, mappings):
 
     :param uuid: Cluster UUID as found in
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
-    :param mappings: List of pairs of (ip, mac) as defined in
+    :param mappings: List of {<ip>: <mac>} dicts as defined in
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
 
     Converts the mappings format into a dict that

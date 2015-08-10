@@ -15,16 +15,31 @@ __metaclass__ = type
 __all__ = []
 
 
-from maasserver.enum import INTERFACE_TYPE
-from maasserver.models import MACAddress
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
+from maasserver.models import (
+    Fabric,
+    MACAddress,
+    Space,
+    Subnet,
+    VLAN,
+)
 from maasserver.models.interface import (
     BondInterface,
     PhysicalInterface,
     VLANInterface,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import MatchesStructure
+from netaddr import IPNetwork
+from testtools.matchers import (
+    Contains,
+    MatchesStructure,
+    Not,
+)
 
 
 class InterfaceTest(MAASServerTestCase):
@@ -176,3 +191,185 @@ class BondInterfaceTest(MAASServerTestCase):
         mac1.delete()
         self.assertItemsEqual(
             [], BondInterface.objects.filter(id=interface.id))
+
+
+class UpdateIpAddressesTest(MAASServerTestCase):
+
+    def test__creates_missing_subnet(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network)
+        address = unicode(network.ip)
+        interface.update_ip_addresses([cidr])
+
+        default_fabric = Fabric.objects.get_default_fabric()
+        default_space = Space.objects.get_default_space()
+        subnets = Subnet.objects.filter(
+            cidr=unicode(network.cidr), vlan__fabric=default_fabric,
+            space=default_space)
+        self.assertEqual(1, len(subnets))
+        self.assertEqual(1, interface.ip_addresses.count())
+        self.assertThat(
+            interface.ip_addresses.first(),
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnets[0],
+                ip=address))
+
+    def test__creates_dhcp_ip_addresses(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = VLAN.objects.get_default_vlan()
+        num_connections = 3
+        cidr_list = [
+            unicode(factory.make_ip4_or_6_network()) for _
+            in range(num_connections)
+            ]
+        subnet_list = [
+            factory.make_Subnet(cidr=cidr, vlan=vlan) for cidr in cidr_list]
+
+        interface.update_ip_addresses(cidr_list)
+
+        self.assertEqual(num_connections, interface.ip_addresses.count())
+        for i in range(num_connections):
+            ip = interface.ip_addresses.all()[i]
+            self.assertThat(ip, MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet_list[i],
+                ip=unicode(IPNetwork(cidr_list[i]).ip)))
+
+    def test__creates_link_with_empty_ip_if_conflicting_static_ip(self):
+        mac = factory.make_MACAddress_with_Node()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network)
+        address = unicode(network.ip)
+        vlan = VLAN.objects.get_default_vlan()
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        other_mac = factory.make_MACAddress_with_Node()
+        other_interface = factory.make_Interface(
+            mac=other_mac, type=INTERFACE_TYPE.PHYSICAL)
+        ip = factory.make_StaticIPAddress(
+            subnet=subnet, ip=address,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        other_interface.ip_addresses.add(ip)
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertEqual(1, interface.ip_addresses.count())
+        self.assertThat(
+            interface.ip_addresses.first(),
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet,
+                ip=None))
+
+    def test__creates_link_if_conflicting_dhcp_ip(self):
+        mac = factory.make_MACAddress_with_Node()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network)
+        address = unicode(network.ip)
+        vlan = VLAN.objects.get_default_vlan()
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        other_mac = factory.make_MACAddress_with_Node()
+        other_interface = factory.make_Interface(
+            mac=other_mac, type=INTERFACE_TYPE.PHYSICAL)
+        ip = factory.make_StaticIPAddress(
+            subnet=subnet, ip=address,
+            alloc_type=IPADDRESS_TYPE.DHCP)
+        other_interface.ip_addresses.add(ip)
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertEqual(1, interface.ip_addresses.count())
+        self.assertThat(
+            interface.ip_addresses.first(),
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet,
+                ip=address))
+        self.assertIsNone(reload_object(ip).ip)
+
+    def test__updates_ip_of_dhcp_address(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = VLAN.objects.get_default_vlan()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network)
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        ip = factory.make_StaticIPAddress(
+            subnet=subnet, ip=factory.pick_ip_in_network(network),
+            alloc_type=IPADDRESS_TYPE.DHCP)
+        interface.ip_addresses.add(ip)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertItemsEqual([ip], interface.ip_addresses.all())
+        self.assertEqual(unicode(network.ip), reload_object(ip).ip)
+
+    def test__updates_legacy_static_ip_addresses(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = VLAN.objects.get_default_vlan()
+        network = factory.make_ip4_or_6_network()
+        address = unicode(network.ip)
+        cidr = unicode(network)
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        ip = factory.make_StaticIPAddress(
+            subnet=None, ip=address, mac=mac,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertItemsEqual([ip], interface.ip_addresses.all())
+        self.assertEqual(subnet, reload_object(ip).subnet)
+
+    def test__updates_linked_static_ip_addresses(self):
+        # New-style static IP addresses (i.e. static IP addresses linked
+        # to a subnet) are picked up by `connect()`.
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = VLAN.objects.get_default_vlan()
+        network = factory.make_ip4_or_6_network()
+        address = unicode(network.ip)
+        cidr = unicode(network)
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        ip = factory.make_StaticIPAddress(
+            subnet=subnet, ip=address, alloc_type=IPADDRESS_TYPE.STICKY)
+        interface.ip_addresses.add(ip)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertItemsEqual([ip], interface.ip_addresses.all())
+        self.assertEqual(subnet, reload_object(ip).subnet)
+
+    def test__removes_obsolete_links(self):
+        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(
+            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        vlan = VLAN.objects.get_default_vlan()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network)
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        old_subnet = factory.make_Subnet()
+        old_ip = factory.make_StaticIPAddress(
+            subnet=old_subnet, ip=factory.pick_ip_in_network(network),
+            alloc_type=IPADDRESS_TYPE.DHCP)
+        interface.ip_addresses.add(old_ip)
+
+        interface.update_ip_addresses([cidr])
+
+        self.assertThat(interface.ip_addresses.all(), Not(Contains(old_ip)))
+        self.assertEqual(1, interface.ip_addresses.count())
+        self.assertThat(
+            interface.ip_addresses.first(),
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DHCP, subnet=subnet,
+                ip=unicode(IPNetwork(cidr).ip)))

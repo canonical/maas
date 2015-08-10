@@ -1983,16 +1983,16 @@ class Node(CleanSave, TimestampedModel):
         This should only be done when the node is in an unused state. If `ip`
         is supplied, only deallocate the specified address.
         """
-        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(
+        deallocated_ip_mac = StaticIPAddress.objects.deallocate_by_node(
             self, alloc_type=alloc_type, ip=ip)
 
-        if len(deallocated_ips) > 0:
+        if len(deallocated_ip_mac) > 0:
             # Prevent circular imports
             from maasserver.dns import config as dns_config
-            self.delete_host_maps(deallocated_ips)
+            self.delete_host_maps(deallocated_ip_mac)
             dns_config.dns_update_zones([self.nodegroup])
 
-        return deallocated_ips
+        return deallocated_ip_mac
 
     def deallocate_static_ip_addresses_later(self):
         """Schedule for `deallocate_static_ip_addresses` to be called later.

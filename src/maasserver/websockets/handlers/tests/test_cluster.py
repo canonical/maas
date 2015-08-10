@@ -119,8 +119,8 @@ class TestClusterHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEquals(
-            query_10_count, 2,
-            "Number of queries has changed, make sure this is expected.")
+            query_10_count, 3,
+            "Number of queries has changed; make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of clusters.")

@@ -203,33 +203,33 @@ def create_host_maps(mappings, shared_key):
 
 
 @synchronous
-def remove_host_maps(ip_addresses, shared_key):
+def remove_host_maps(mac_addresses, shared_key):
     """Remove DHCP host maps for the given IP addresses.
 
-    Additionally, this will ensure that any lease present for the IP
+    Additionally, this will ensure that any lease present for the MAC
     address(es) supplied is also forcefully expired.  Generally, host
     maps don't create leases unless the host map is inside the dynamic
     range, however this is still safe to call and can be called to
     guarantee that any IP address is left expired regardless of whether
     it's in the dynamic range or not.
 
-    :param ip_addresses: A list of IP addresses.
+    :param mac_addresses: A list of MAC addresses.
     :param shared_key: The key used to access the DHCP server via OMAPI.
     """
     _ensure_dhcpv4_is_accessible(CannotRemoveHostMap)
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
-    for ip_address in ip_addresses:
+    for mac_address in mac_addresses:
         try:
-            omshell.remove(ip_address)
-            omshell.nullify_lease(ip_address)
+            omshell.remove(mac_address)
+            omshell.nullify_lease(mac_address)
         except ExternalProcessError as e:
             maaslog.error(
                 "Could not remove host map for %s: %s",
-                ip_address, unicode(e))
+                mac_address, unicode(e))
             if 'not connected.' in e.output_as_unicode:
                 raise CannotRemoveHostMap(
                     "The DHCP server could not be reached.")
             else:
                 raise CannotRemoveHostMap("%s: %s" % (
-                    ip_address, e.output_as_unicode))
+                    mac_address, e.output_as_unicode))

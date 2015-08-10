@@ -70,7 +70,7 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
 
     :param static_mappings: A mapping from `NodeGroup` model instances
         to mappings of ``ip-address -> mac-address``.
-    :return: A generator of ``(nodegroup, ip-address)`` tuples.
+    :return: A generator of ``(nodegroup, ip-address/mac-address)`` tuples.
     """
     # Avoid circular imports.
     from maasserver.models.dhcplease import DHCPLease
@@ -90,6 +90,7 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
                 for static_range in managed_ranges)
             if not within_managed_range:
                 yield nodegroup, dhcp_lease.ip
+                yield nodegroup, dhcp_lease.mac.get_raw()
 
 
 def gen_calls_to_remove_dynamic_host_maps(clients, static_mappings):
@@ -106,14 +107,14 @@ def gen_calls_to_remove_dynamic_host_maps(clients, static_mappings):
         to mappings of ``ip-address -> mac-address``.
     :return: A generator of callables.
     """
-    ip_addresses_to_remove = defaultdict(set)
-    ip_addresses_with_maps = (
+    mac_addresses_to_remove = defaultdict(set)
+    ip_mac_with_maps = (
         gen_dynamic_ip_addresses_with_host_maps(static_mappings))
-    for nodegroup, ip_address in ip_addresses_with_maps:
-        ip_addresses_to_remove[nodegroup].add(ip_address)
-    for nodegroup, ip_addresses in ip_addresses_to_remove.viewitems():
+    for nodegroup, ip_or_mac in ip_mac_with_maps:
+        mac_addresses_to_remove[nodegroup].add(ip_or_mac)
+    for nodegroup, mac_addresses in mac_addresses_to_remove.viewitems():
         yield partial(
-            clients[nodegroup], RemoveHostMaps, ip_addresses=ip_addresses,
+            clients[nodegroup], RemoveHostMaps, ip_addresses=mac_addresses,
             shared_key=nodegroup.dhcp_key)
 
 

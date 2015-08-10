@@ -69,7 +69,7 @@ class NodeGroupManager(Manager):
     the model class it manages.
     """
 
-    def new(self, name, uuid, subnet_mask=None, dhcp_key='',
+    def new(self, name, uuid, dhcp_key='',
             status=NODEGROUP_STATUS.DEFAULT, cluster_name=None, maas_url='',
             default_disable_ipv4=False):
         """Create a :class:`NodeGroup` with the given parameters.
@@ -97,7 +97,7 @@ class NodeGroupManager(Manager):
         except NodeGroup.DoesNotExist:
             # The master did not exist yet; create it on demand.
             master = self.new(
-                DEFAULT_DNS_ZONE_NAME, 'master', '127.0.0.1',
+                DEFAULT_DNS_ZONE_NAME, 'master',
                 dhcp_key=generate_omapi_key(),
                 status=NODEGROUP_STATUS.ENABLED)
 

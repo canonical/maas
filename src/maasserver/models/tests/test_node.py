@@ -407,14 +407,20 @@ class TestNode(MAASServerTestCase):
             node_module, "remove_host_maps")
         node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         primary_mac = node.get_primary_mac()
-        static_ip_addresses = set(
-            static_ip_address.ip for static_ip_address in
+        deallocation = set(sum([
+            [static_ip_address.ip] + list(
+                [
+                    unicode(mac.mac_address)
+                    for mac in static_ip_address.get_mac_addresses()
+                ])
+            for static_ip_address in
             primary_mac.claim_static_ips(
-                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False))
+                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)],
+            []))
         node.delete()
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: static_ip_addresses}))
+                {node.nodegroup: deallocation}))
 
     def test_delete_node_also_deletes_dhcp_host_map(self):
         remove_host_maps = self.patch_autospec(
@@ -1435,7 +1441,10 @@ class TestNode(MAASServerTestCase):
             owner=user, status=NODE_STATUS.ALLOCATED)
         sips = node.get_primary_mac().claim_static_ips(update_host_maps=False)
         node.deallocate_static_ip_addresses()
-        expected = {sip.ip.format() for sip in sips}
+        expected = set(sum(
+            [[sip.ip.format(), unicode(node.get_primary_mac().mac_address)]
+                for sip in sips], []))
+
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
                 {node.nodegroup: expected}))
@@ -2768,8 +2777,8 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         deallocated = node.deallocate_static_ip_addresses(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
 
-        self.expectThat(deallocated, HasLength(1))
-        self.expectThat(deallocated, Equals(set([pxe_ip])))
+        self.expectThat(deallocated, HasLength(2))
+        self.expectThat(deallocated, Equals(set([pxe_ip, pxe_mac])))
         self.expectThat(remove_host_maps.call_count, Equals(1))
 
     def test__claims_specific_sticky_ip_address(self):
@@ -2867,12 +2876,12 @@ class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):
         deallocated = node.deallocate_static_ip_addresses(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
 
-        self.expectThat(deallocated, HasLength(1))
+        self.expectThat(deallocated, HasLength(2))
 
         # try removing the remaining IP addresses now
         deallocated = node.deallocate_static_ip_addresses(
             alloc_type=IPADDRESS_TYPE.STICKY)
-        self.expectThat(deallocated, HasLength(len(macs)))
+        self.expectThat(deallocated, HasLength(2 * len(macs)))
         self.expectThat(remove_host_maps.call_count, Equals(2))
 
 

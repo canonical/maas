@@ -268,8 +268,9 @@ class TestUpdateHostMaps(MAASServerTestCase):
         self.assertThat(
             protocol.RemoveHostMaps, MockCalledOnceWith(
                 ANY, ip_addresses=ANY, shared_key=nodegroup.dhcp_key))
-        expected_ip_addresses = [
-            lease.ip for lease in leases_in_the_dynamic_range]
+        expected_ip_addresses = sum([
+            [lease.ip, lease.mac.get_raw()]
+            for lease in leases_in_the_dynamic_range], [])
         _, _, kwargs = protocol.RemoveHostMaps.mock_calls[0]
         observed_ip_addresses = kwargs["ip_addresses"]
         self.assertItemsEqual(expected_ip_addresses, observed_ip_addresses)
@@ -561,10 +562,12 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 
         # Only the leases that fall outside of the static range are in
         # gen_dynamic_ip_addresses_with_host_maps's output.
-        addrs_expected = [
-            (nodegroup, lease.ip)
-            for lease in leases_without_static_range
-        ]
+        addrs_expected = sum([
+            [
+                (nodegroup, lease.ip),
+                (nodegroup, lease.mac.get_raw())
+            ]
+            for lease in leases_without_static_range], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
         self.assertThat(addrs, IsInstance(Iterator))
         self.assertItemsEqual(addrs_expected, addrs)
@@ -587,10 +590,12 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 
         # All leases fall outside of the static range -- because there isn't
         # one -- so gen_dynamic_ip_addresses_with_host_maps returns them all.
-        addrs_expected = [
-            (nodegroup, lease.ip)
-            for lease in leases_without_static_range
-        ]
+        addrs_expected = sum([
+            [
+                (nodegroup, lease.ip),
+                (nodegroup, lease.mac.get_raw())
+            ]
+            for lease in leases_without_static_range], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
         self.assertThat(addrs, IsInstance(Iterator))
         self.assertItemsEqual(addrs_expected, addrs)
@@ -621,10 +626,13 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         # nodegroup. The assumption is that at some point in the past this
         # lease was within a range attributed to this nodegroup, and it thus
         # has the authority to revoke it.
-        addrs_expected = [
-            (nodegroup, lease.ip)
-            for lease in leases_without_static_range
-        ]
+        addrs_expected = sum([
+            [
+                (nodegroup, lease.ip),
+                (nodegroup, lease.mac.get_raw())
+            ]
+            for lease in leases_without_static_range], [])
+
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
         self.assertThat(addrs, IsInstance(Iterator))
         self.assertItemsEqual(addrs_expected, addrs)
@@ -676,7 +684,12 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         static_mappings = self.make_static_mappings(nodegroup1, leases1)
 
         # Only the leases associated with the first nodegroup are returned.
-        addrs_expected = [(nodegroup1, lease1.ip) for lease1 in leases1]
+        addrs_expected = sum([
+            [
+                (nodegroup1, lease1.ip),
+                (nodegroup1, lease1.mac.get_raw())
+            ]
+            for lease1 in leases1], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
         self.assertThat(addrs, IsInstance(Iterator))
         self.assertItemsEqual(addrs_expected, addrs)

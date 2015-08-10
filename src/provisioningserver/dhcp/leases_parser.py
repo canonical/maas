@@ -22,6 +22,7 @@ __all__ = [
     'parse_leases',
     ]
 
+from collections import OrderedDict
 from datetime import datetime
 
 from pyparsing import (
@@ -54,6 +55,8 @@ set_statement = (
 lease_or_host = oneOf(['lease', 'host'], caseless=True)
 
 hardware = CaselessKeyword("hardware") + hardware_type("type") + mac("mac")
+fixed_address4 = CaselessKeyword("fixed-address") + ip("address")
+fixed_address6 = CaselessKeyword("fixed-address6") + ip("address6")
 ends = CaselessKeyword("ends") + expiry("expiry")
 deleted = CaselessKeyword("deleted")
 
@@ -76,8 +79,6 @@ other_statement_names = [
     'ddns-fwd-name',
     'ddns-rev-name',
     'ddns-text',
-    'fixed-address',
-    'fixed-address6',
     'next',
     'option',
     'reserved',
@@ -91,11 +92,11 @@ other_statement_names = [
 other_statement = oneOf(other_statement_names, caseless=True) + args
 
 lease_statement = (
-    hardware | deleted | ends | set_statement | lone_statement |
-    other_statement
+    hardware | fixed_address4 | fixed_address6 | deleted | ends |
+    set_statement | lone_statement | other_statement
     ) + Suppress(';')
 lease_parser = (
-    lease_or_host("lease_or_host") + ip("ip") +
+    lease_or_host("lease_or_host") + ip("host") +
     Suppress('{') +
     Dict(ZeroOrMore(Group(lease_statement))) +
     Suppress('}')
@@ -153,17 +154,23 @@ def gather_leases(hosts_and_leases):
     # time, for whatever reason, the dict will contain the one that was
     # last appended to the leases file.
     return {
-        lease.ip: lease.hardware.mac
+        lease.host: lease.hardware.mac
         for lease in filter(is_lease, hosts_and_leases)
         if not has_expired(lease, now)
     }
 
 
 def get_host_mac(host):
-    """Get the MAC address from a host declaration.  A rubout has none."""
+    """Get the MAC address from a host declaration.
+
+    For a rubout this is the 'host' record."""
     assert is_host(host)
     if 'deleted' in host:
-        return None
+        host = getattr(host, 'host', None)
+        if host in (None, '', b''):
+            return None
+        else:
+            return host
     hardware = getattr(host, 'hardware', None)
     if hardware in (None, '', b''):
         return None
@@ -171,19 +178,45 @@ def get_host_mac(host):
         return hardware.mac
 
 
+def get_host_key(host):
+    """Get the key from a host declaration.
+
+    The key can be the IP or the MAC depending on which version of MAAS created
+    the host map.
+    """
+    host = getattr(host, 'host', None)
+    if host in (None, '', b''):
+        return None
+    else:
+        return host
+
+
+def get_host_ip(host):
+    """Get the IP address from a host declaration.  A rubout has none."""
+    assert is_host(host)
+    if 'deleted' in host:
+        return None
+    fields = ['fixed-address', 'fixed-address6']
+    for field in fields:
+        address = getattr(host, field, None)
+        if address not in (None, '', b''):
+            return address
+    return None
+
+
 def gather_hosts(hosts_and_leases):
     """Find current host declarations among `hosts_and_leases`."""
     # Get MAC address mappings for host entries.  A newer entry
     # overwrites an older one for the same IP address.  A rubout entry
-    # will have no MAC address.
-    host_maps = {
-        host.ip: get_host_mac(host)
-        for host in filter(is_host, hosts_and_leases)}
+    # will have no IP address.
+    host_maps = OrderedDict()
+    for host in filter(is_host, hosts_and_leases):
+        host_maps[get_host_key(host)] = (get_host_mac(host), get_host_ip(host))
     # Now filter out mappings where the last entry was a rubout.
     return {
-        ip: mac
-        for ip, mac in host_maps.items()
-        if mac is not None
+        val[1]: val[0]
+        for _, val in host_maps.items()
+        if val[1] and val[0]
     }
 
 

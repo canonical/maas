@@ -251,7 +251,12 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip2 = factory.make_StaticIPAddress(mac=mac2)
         observed = StaticIPAddress.objects.deallocate_by_node(node)
         self.assertItemsEqual(
-            [ip1.ip.format(), ip2.ip.format()],
+            [
+                ip1.ip.format(),
+                ip2.ip.format(),
+                unicode(mac1.mac_address),
+                unicode(mac2.mac_address),
+            ],
             observed
         )
 
@@ -300,7 +305,12 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip2 = factory.make_StaticIPAddress(mac=mac2)
         observed = StaticIPAddress.objects.delete_by_node(node)
         self.assertItemsEqual(
-            [ip1.ip.format(), ip2.ip.format()],
+            [
+                ip1.ip.format(),
+                ip2.ip.format(),
+                unicode(mac1.mac_address),
+                unicode(mac2.mac_address),
+            ],
             observed
         )
 

@@ -36,6 +36,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.clusters import ClusterListView
+from netaddr import IPNetwork
 from testtools.matchers import (
     ContainsAll,
     HasLength,
@@ -278,9 +279,15 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
         self.assertEqual(
             (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
             (response.status_code, extract_redirect(response)))
+        interface = reload_object(interface)
         self.assertThat(
-            reload_object(interface),
+            interface,
             MatchesStructure.byEquality(**data))
+        cidr = unicode(
+            IPNetwork("%s/%s" % (data['ip'], data['subnet_mask'])).cidr)
+        self.assertThat(
+            interface.subnet,
+            MatchesStructure.byEquality(cidr=cidr))
 
     def test_interface_edit_supports_interface_alias(self):
         self.client_log_in(as_admin=True)

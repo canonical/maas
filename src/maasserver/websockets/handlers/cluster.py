@@ -38,7 +38,8 @@ class ClusterHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             NodeGroup.objects.all()
-            .prefetch_related('nodegroupinterface_set'))
+            .prefetch_related('nodegroupinterface_set')
+            .prefetch_related('nodegroupinterface_set__subnet'))
         pk = 'id'
         allowed_methods = ['list', 'get', 'set_active']
         exclude = [

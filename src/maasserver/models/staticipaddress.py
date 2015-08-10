@@ -24,6 +24,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
+from itertools import chain
 
 from django.contrib.auth.models import User
 from django.db import (
@@ -251,10 +252,18 @@ class StaticIPAddressManager(Manager):
     @classmethod
     def _deallocate(cls, queryset):
         """Helper func to deallocate the records in the supplied queryset
-        filter and return a list of IPs deleted."""
-        deallocated_ips = {record.ip.format() for record in queryset}
+        filter and return a list of tuple (IP, mac) deleted."""
+        records = [
+            set(chain(
+                [record.ip.format()],
+                [
+                    unicode(mac.mac_address)
+                    for mac in record.get_mac_addresses()]))
+            for record in queryset
+        ]
+        deallocated_ip_mac = set().union(*records)
         queryset.delete()
-        return deallocated_ips
+        return deallocated_ip_mac
 
     def deallocate_by_node(
             self, node, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
@@ -387,3 +396,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """
         return super(StaticIPAddress, self).full_clean(
             exclude=exclude, validate_unique=validate_unique)
+
+    def get_mac_addresses(self):
+        # TODO: go through interface table.
+        return self.macaddress_set.all()
