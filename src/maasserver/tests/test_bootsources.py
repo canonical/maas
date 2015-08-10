@@ -19,7 +19,6 @@ from os import environ
 from maasserver import bootsources
 from maasserver.bootsources import (
     cache_boot_sources,
-    cache_boot_sources_in_thread,
     ensure_boot_source_definition,
     get_boot_sources,
     get_os_info_from_boot_sources,
@@ -35,10 +34,13 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
-from maastesting.matchers import MockCalledOnceWith
 from mock import MagicMock
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
@@ -49,8 +51,6 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.helpers import ImageSpec
 from requests.exceptions import ConnectionError
 from testtools.matchers import HasLength
-from twisted.internet import reactor
-from twisted.internet.threads import deferToThread
 
 
 def patch_and_capture_env_for_download_all_image_descriptions(testcase):
@@ -96,6 +96,10 @@ def make_boot_image_mapping(image_specs=[]):
 
 
 class TestHelpers(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestHelpers, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
@@ -144,6 +148,10 @@ class TestHelpers(MAASServerTestCase):
 
 class TestGetOSInfoFromBootSources(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestGetOSInfoFromBootSources, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
+
     def test__returns_empty_sources_and_sets_when_cache_empty(self):
         self.assertEqual(
             ([], set(), set()),
@@ -174,11 +182,12 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
             get_os_info_from_boot_sources(os))
 
 
-class TestPrivateCacheBootSources(MAASServerTestCase):
+class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestPrivateCacheBootSources, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test__has_env_GNUPGHOME_set(self):
         capture = (
@@ -227,11 +236,12 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         self.assertItemsEqual(releases, cached_releases)
 
 
-class TestBadConnectionHandling(MAASServerTestCase):
+class TestBadConnectionHandling(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestBadConnectionHandling, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test__catches_connection_errors_and_sets_component_error(self):
         sources = [
@@ -263,13 +273,3 @@ class TestBadConnectionHandling(MAASServerTestCase):
         download_image_descriptions.return_value = BootImageMapping()
         cache_boot_sources()
         self.assertIsNone(get_persistent_error(COMPONENT.REGION_IMAGE_IMPORT))
-
-
-class TestCacheBootSources(MAASServerTestCase):
-
-    def test__calls_callLater_in_reactor(self):
-        mock_callLater = self.patch(reactor, 'callLater')
-        cache_boot_sources_in_thread()
-        self.assertThat(
-            mock_callLater,
-            MockCalledOnceWith(1, deferToThread, cache_boot_sources))

@@ -31,6 +31,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import (
@@ -52,6 +53,10 @@ from testtools.matchers import (
 
 
 class UbuntuImagesTest(MAASServerTestCase):
+
+    def setUp(self):
+        super(UbuntuImagesTest, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def patch_get_os_info_from_boot_sources(
             self, sources, releases=None, arches=None):
@@ -225,6 +230,10 @@ class UbuntuImagesTest(MAASServerTestCase):
 
 
 class OtherImagesTest(MAASServerTestCase):
+
+    def setUp(self):
+        super(OtherImagesTest, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def make_other_resource(self, os=None, arch=None, subarch=None,
                             release=None):

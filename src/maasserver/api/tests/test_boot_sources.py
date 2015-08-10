@@ -20,6 +20,7 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -43,6 +44,10 @@ def get_boot_source_backward_uri(boot_source, nodegroup=None):
 
 
 class TestBootSourceAPI(APITestCase):
+
+    def setUp(self):
+        super(TestBootSourceAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_handler_path(self):
         self.assertEqual(
@@ -113,6 +118,10 @@ class TestBootSourceAPI(APITestCase):
 
 
 class TestBootSourceBackwardAPI(APITestCase):
+
+    def setUp(self):
+        super(TestBootSourceBackwardAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_handler_path(self):
         self.assertEqual(
@@ -201,6 +210,10 @@ class TestBootSourceBackwardAPI(APITestCase):
 class TestBootSourcesAPI(APITestCase):
     """Test the the boot source API."""
 
+    def setUp(self):
+        super(TestBootSourcesAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
+
     def test_handler_path(self):
         self.assertEqual(
             '/api/1.0/boot-sources/',
@@ -288,6 +301,10 @@ class TestBootSourcesAPI(APITestCase):
 
 class TestBootSourcesBackwardAPI(APITestCase):
     """Test the the boot source API."""
+
+    def setUp(self):
+        super(TestBootSourcesBackwardAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def get_uri(self, nodegroup=None):
         if nodegroup is None:

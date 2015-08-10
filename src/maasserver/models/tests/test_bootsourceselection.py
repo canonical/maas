@@ -18,12 +18,17 @@ from maasserver.models import (
     BootSource,
     BootSourceSelection,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestBootSourceSelection(MAASServerTestCase):
     """Tests for the `BootSourceSelection` model."""
+
+    def setUp(self):
+        super(TestBootSourceSelection, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_can_create_selection(self):
         boot_source = BootSource(

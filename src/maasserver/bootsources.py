@@ -13,16 +13,15 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "cache_boot_sources",
     "ensure_boot_source_definition",
     "get_boot_sources",
     "get_os_info_from_boot_sources",
-    "cache_boot_sources",
-    "cache_boot_sources_in_thread",
 ]
 
 import os
 
-from maasserver import locks
+from django.db import connection
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -42,9 +41,8 @@ from provisioningserver.import_images.download_descriptions import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.twisted import synchronous
 from requests.exceptions import ConnectionError
-from twisted.internet import reactor
-from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("bootsources")
@@ -115,64 +113,90 @@ def get_os_info_from_boot_sources(os):
     return os_sources, releases, arches
 
 
-@transactional
+@synchronous
 def cache_boot_sources():
-    """Cache all image information in boot sources."""
-    # If the lock is already held, then cache is already running.
-    if locks.cache_sources.is_locked():
-        return
+    """Cache all image information in boot sources.
 
-    source_errors = []
+    Called from *outside* of a transaction this will:
 
-    # Hold the lock while performing the cache
-    with locks.cache_sources:
-        set_simplestreams_env()
-        with tempdir('keyrings') as keyrings_path:
-            for source in BootSource.objects.all():
-                sources = write_all_keyrings(
-                    keyrings_path, [source.to_dict_without_selections()])
-                try:
-                    image_descriptions = download_all_image_descriptions(
-                        sources)
-                except (IOError, ConnectionError) as e:
-                    source_errors.append(
-                        "Failed to import images from boot source %s: %s" % (
-                            source.url, unicode(e)))
-                    continue
+    1. Retrieve information about all boot sources from the database. The
+       transaction is committed before proceeding.
 
-                # We clear the cache once the information has been retrieved,
-                # because if an error occurs getting the information then the
-                # function will not make it to this point, allowing the items
-                # in the cache to remain before it errors.
-                BootSourceCache.objects.filter(boot_source=source).delete()
-                if not image_descriptions.is_empty():
-                    for image_spec in image_descriptions.mapping.keys():
-                        BootSourceCache.objects.create(
-                            boot_source=source,
-                            os=image_spec.os,
-                            arch=image_spec.arch,
-                            subarch=image_spec.subarch,
-                            release=image_spec.release,
-                            label=image_spec.label,
-                            )
-        maaslog.info("Updated boot sources cache.")
+    2. The boot sources are consulted (i.e. there's network IO now) and image
+       descriptions downloaded.
 
-        # Update the component errors while still holding the lock.
-        if len(source_errors) > 0:
-            register_persistent_error(
-                COMPONENT.REGION_IMAGE_IMPORT, "\n".join(source_errors))
-        else:
-            discard_persistent_error(COMPONENT.REGION_IMAGE_IMPORT)
+    3. Update the boot source cache with the fetched information. If the boot
+       source has been modified or deleted during #2 then the results are
+       discarded.
 
+    This approach does not require an exclusive lock.
 
-def cache_boot_sources_in_thread():
-    """Starts the caching of image information in boot sources.
-
-    Note: This function returns immediately. It only starts the process, it
-    doesn't wait for it to be finished.
     """
-    # We start the update about 1 second later, or we get a OperationalError.
-    # "OperationalError: could not serialize access due to concurrent update"
-    # The wait will make sure the transaction that started the update will
-    # have finished and been committed.
-    reactor.callLater(1, deferToThread, cache_boot_sources)
+    assert not connection.in_atomic_block, (
+        "cache_boot_sources() should not be called from within a transaction.")
+
+    # Nomenclature herein: `bootsource` is an ORM record for BootSource;
+    # `source` is one of those converted to a dict. The former ought not to be
+    # used outside of a transactional context.
+
+    @transactional
+    def get_sources():
+        return list(
+            bootsource.to_dict_without_selections()
+            for bootsource in BootSource.objects.all()
+            # TODO: Only where there are no corresponding BootSourceCache
+            # records or the BootSource's updated timestamp is later than any
+            # of the BootSourceCache records' timestamps.
+        )
+
+    @transactional
+    def update_cache(source, descriptions):
+        try:
+            bootsource = BootSource.objects.get(url=source["url"])
+        except BootSource.DoesNotExist:
+            # The record was deleted while we were fetching the description.
+            maaslog.debug(
+                "Image descriptions at %s are no longer needed; discarding.",
+                source["url"])
+        else:
+            if bootsource.compare_dict_without_selections(source):
+                # Only delete from the cache once we have the descriptions.
+                BootSourceCache.objects.filter(boot_source=bootsource).delete()
+                if not descriptions.is_empty():
+                    for spec in descriptions.mapping:
+                        BootSourceCache.objects.create(
+                            boot_source=bootsource, os=spec.os,
+                            arch=spec.arch, subarch=spec.subarch,
+                            release=spec.release, label=spec.label)
+                maaslog.debug(
+                    "Image descriptions for %s have been updated.",
+                    source["url"])
+            else:
+                maaslog.debug(
+                    "Image descriptions for %s are outdated; discarding.",
+                    source["url"])
+
+    # FIXME: This modifies the environment of the entire process, which is Not
+    # Cool. We should integrate with simplestreams in a more Pythonic manner.
+    set_simplestreams_env()
+
+    errors = []
+    for source in get_sources():
+        with tempdir("keyrings") as keyrings_path:
+            [source] = write_all_keyrings(keyrings_path, [source])
+            try:
+                descriptions = download_all_image_descriptions([source])
+            except (IOError, ConnectionError) as error:
+                errors.append(
+                    "Failed to import images from boot source "
+                    "%s: %s" % (source["url"], error))
+            else:
+                update_cache(source, descriptions)
+
+    maaslog.info("Updated boot sources cache.")
+
+    component = COMPONENT.REGION_IMAGE_IMPORT
+    if len(errors) > 0:
+        register_persistent_error(component, "\n".join(errors))
+    else:
+        discard_persistent_error(component)

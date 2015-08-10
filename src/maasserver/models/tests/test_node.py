@@ -99,6 +99,7 @@ from maasserver.utils.orm import (
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.twisted import always_succeed_with
@@ -114,6 +115,7 @@ from metadataserver.user_data import (
 )
 import mock
 from mock import (
+    call,
     ANY,
     sentinel,
     MagicMock,
@@ -131,7 +133,6 @@ from provisioningserver.utils.enum import (
 )
 from testtools import ExpectedException
 from testtools.matchers import (
-    AfterPreprocessing,
     Contains,
     Equals,
     HasLength,
@@ -141,7 +142,10 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
-from twisted.internet import defer
+from twisted.internet import (
+    defer,
+    reactor,
+)
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
@@ -1069,9 +1073,15 @@ class TestNode(MAASServerTestCase):
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = "hard"
         self.expectThat(
-            node_module.post_commit_do, MockCalledOnceWith(
-                node_module.power_off_node, node.system_id, node.hostname,
-                node.nodegroup.uuid, expected_power_info,
+            node_module.post_commit_do, MockCallsMatch(
+                # A call to power off the node is first scheduled.
+                call(
+                    node_module.power_off_node, node.system_id, node.hostname,
+                    node.nodegroup.uuid, expected_power_info),
+                # Also a call to deallocate static IP addresses.
+                call(
+                    reactor.callLater, 0, deferToThread,
+                    node.deallocate_static_ip_addresses),
             ))
 
     def test_release_node_that_has_power_off(self):
@@ -1082,7 +1092,8 @@ class TestNode(MAASServerTestCase):
         self.patch(node, 'stop')
         self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.OFF
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.expectThat(node.stop, MockNotCalled())
         self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
@@ -1104,7 +1115,8 @@ class TestNode(MAASServerTestCase):
         self.assertEquals(
             [node_result], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertEquals(
             [], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
@@ -1342,7 +1354,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.set_netboot(on=False)
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertTrue(node.netboot)
 
     def test_release_clears_osystem_and_distro_series(self):
@@ -1350,7 +1363,8 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.osystem = factory.make_name('os')
         node.distro_series = factory.make_name('series')
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertEqual("", node.osystem)
         self.assertEqual("", node.distro_series)
 
@@ -1372,7 +1386,8 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.OFF)
         self.patch(node, 'start_transition_monitor')
         node_stop = self.patch(node, 'stop')
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertThat(node_stop, MockNotCalled())
 
     def test_release_deallocates_static_ip_when_node_is_off(self):
@@ -1478,7 +1493,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         mock_clear = self.patch(node, "_clear_storage_configuration")
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
@@ -2028,7 +2044,8 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
         self.patch(node, 'stop_transition_monitor')
-        node.update_power_state(POWER_STATE.OFF)
+        with post_commit_hooks:
+            node.update_power_state(POWER_STATE.OFF)
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
 
@@ -2043,7 +2060,8 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
         self.patch(node, 'stop_transition_monitor')
-        node.update_power_state(POWER_STATE.OFF)
+        with post_commit_hooks:
+            node.update_power_state(POWER_STATE.OFF)
         self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
 
     def test_update_power_state_does_not_stop_monitor_if_not_releasing(self):
@@ -2605,7 +2623,8 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         [factory.make_Node(parent=parent) for _ in range(3)]
         other_nodes = [factory.make_Node() for _ in range(3)]
-        parent.release()
+        with post_commit_hooks:
+            parent.release()
         self.assertItemsEqual([], parent.children.all())
         self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
 
@@ -2791,16 +2810,17 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
     def test__deallocate_static_ip_addresses_later_calls_deallocate(self):
         clock = self.patch(node_module, "reactor", Clock())
         node = factory.make_Node()
-        node.deallocate_static_ip_addresses_later()
+        with post_commit_hooks:
+            # This sets up a post-commit hook with then schedules a later
+            # execution of the deallocation.
+            node.deallocate_static_ip_addresses_later()
         self.assertThat(clock.getDelayedCalls(), HasLength(1))
         [call] = clock.getDelayedCalls()
         self.assertThat(call, MatchesStructure(
             time=Equals(0.0),
             func=Is(deferToThread),
             args=MatchesListwise([
-                AfterPreprocessing(
-                    lambda thing: thing.func,
-                    Equals(node.deallocate_static_ip_addresses)),
+                Equals(node.deallocate_static_ip_addresses),
             ]),
             kw=Equals({}),
         ))

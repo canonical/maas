@@ -16,6 +16,7 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.forms import BootSourceSelectionForm
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -23,6 +24,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestBootSourceSelectionForm(MAASServerTestCase):
     """Tests for `BootSourceSelectionForm`."""
+
+    def setUp(self):
+        super(TestBootSourceSelectionForm, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def make_valid_source_selection_params(self, boot_source=None):
         # Helper that creates a valid BootSourceCache and parameters for

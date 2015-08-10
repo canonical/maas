@@ -29,6 +29,7 @@ from maasserver.models import (
     Config,
     UserProfile,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.testing import (
     extract_redirect,
@@ -281,6 +282,7 @@ class SettingsTest(MAASServerTestCase):
             1, len(boot_source), "Didn't show boot image settings section.")
 
     def test_settings_boot_source_is_not_shown(self):
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.client_log_in(as_admin=True)
         for _ in range(2):
             factory.make_BootSource()
@@ -291,6 +293,7 @@ class SettingsTest(MAASServerTestCase):
             0, len(boot_source), "Didn't hide boot image settings section.")
 
     def test_settings_boot_source_POST_creates_new_source(self):
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.client_log_in(as_admin=True)
         url = "http://test.example.com/archive"
         keyring = "/usr/local/testing/path.gpg"
@@ -312,6 +315,7 @@ class SettingsTest(MAASServerTestCase):
             (boot_source.url, boot_source.keyring_filename))
 
     def test_settings_boot_source_POST_updates_source(self):
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.client_log_in(as_admin=True)
         boot_source = factory.make_BootSource()
         url = "http://test.example.com/archive"

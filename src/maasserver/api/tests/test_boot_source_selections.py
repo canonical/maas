@@ -22,6 +22,7 @@ from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
 )
 from maasserver.models import BootSourceSelection
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -57,6 +58,10 @@ def get_boot_source_selection_backward_uri(
 
 
 class TestBootSourceSelectionAPI(APITestCase):
+
+    def setUp(self):
+        super(TestBootSourceSelectionAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_handler_path(self):
         self.assertEqual(
@@ -145,6 +150,10 @@ class TestBootSourceSelectionAPI(APITestCase):
 
 
 class TestBootSourceSelectionBackwardAPI(APITestCase):
+
+    def setUp(self):
+        super(TestBootSourceSelectionBackwardAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_handler_path(self):
         self.assertEqual(
@@ -250,6 +259,10 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
 class TestBootSourceSelectionsAPI(APITestCase):
     """Test the the boot source selections API."""
 
+    def setUp(self):
+        super(TestBootSourceSelectionsAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
+
     def test_handler_path(self):
         self.assertEqual(
             '/api/1.0/boot-sources/3/selections/',
@@ -325,6 +338,10 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
 class TestBootSourceSelectionsBackwardAPI(APITestCase):
     """Test the the boot source selections API."""
+
+    def setUp(self):
+        super(TestBootSourceSelectionsBackwardAPI, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def get_uri(self, boot_source, nodegroup=None):
         if nodegroup is None:

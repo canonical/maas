@@ -34,10 +34,6 @@ eventloop = DatabaseXactLock(3)
 # at a time.
 import_images = DatabaseXactLock(4)
 
-# Lock used to only allow one instance of caching boot source
-# image information.
-cache_sources = DatabaseXactLock(5)
-
 # Lock to prevent concurrent changes to DNS configuration.
 dns = DatabaseXactLock(6)
 

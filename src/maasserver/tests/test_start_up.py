@@ -26,6 +26,7 @@ from maasserver.models import (
     BootSourceSelection,
     NodeGroup,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -78,6 +79,7 @@ class TestStartUp(MAASServerTestCase):
         eventloop.reset().wait(5)
 
     def test_inner_start_up_runs_in_exclusion(self):
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         lock_checker = LockChecker()
         self.patch(start_up, 'dns_update_all_zones', lock_checker)
         start_up.inner_start_up()
@@ -106,6 +108,7 @@ class TestStartImportOnUpgrade(MAASServerTestCase):
 
     def setUp(self):
         super(TestStartImportOnUpgrade, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.patch_autospec(start_up, "get_all_available_boot_images")
         self.patch_autospec(start_up, 'import_resources')
         ensure_boot_source_definition()
@@ -148,6 +151,7 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.patch_autospec(start_up, 'create_gnupg_home')
         self.patch_autospec(start_up, 'post_commit_do')
 

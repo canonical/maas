@@ -922,6 +922,10 @@ def hold_lock_thread(kill_event, run_event):
         kill_event.wait()
 
 
+# FIXME: How this function deals with transactions is not clear. It uses the
+# ORM without ensuring there's a transaction. It also does network IO and we
+# don't want to be holding open a transaction for an indefinite time while
+# that happens.
 @synchronous
 def _import_resources(force=False):
     """Import boot resources.

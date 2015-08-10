@@ -19,16 +19,28 @@ from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.bootsources import cache_boot_sources
-from maasserver.models import BootSource
+from maasserver.models import bootsource as bootsource_module
+from maasserver.models.bootsource import BootSource
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.utils.twisted import deferToNewThread
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
 
 
+def make_BootSource():
+    """Return a `BootSource` with random keyring data."""
+    return factory.make_BootSource(keyring_data=factory.make_bytes())
+
+
 class TestBootSource(MAASServerTestCase):
     """Tests for the `BootSource` model."""
+
+    def setUp(self):
+        super(TestBootSource, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
 
     def test_valid_boot_source_is_valid(self):
         boot_source = BootSource(
@@ -99,8 +111,34 @@ class TestBootSource(MAASServerTestCase):
             [],
             boot_source_dict['selections'])
 
+    def test_compare_dict_without_selections_compares_True_to_self(self):
+        boot_source = make_BootSource()
+        boot_source_dict = boot_source.to_dict_without_selections()
+        self.assertTrue(
+            boot_source.compare_dict_without_selections(boot_source_dict))
+
+    def test_compare_dict_without_selections_compares_False_to_other(self):
+        boot_source_1 = make_BootSource()
+        boot_source_2 = make_BootSource()
+        self.assertFalse(
+            boot_source_1.compare_dict_without_selections(
+                boot_source_2.to_dict_without_selections()))
+
+    def test_compare_dict_without_selections_ignores_selections(self):
+        boot_source = make_BootSource()
+        boot_source_dict = boot_source.to_dict()
+        self.assertTrue(
+            boot_source.compare_dict_without_selections(boot_source_dict))
+
+    def test_compare_dict_without_selections_ignores_other_keys(self):
+        boot_source = make_BootSource()
+        boot_source_dict = boot_source.to_dict()
+        boot_source_dict[factory.make_name("key")] = factory.make_name("value")
+        self.assertTrue(
+            boot_source.compare_dict_without_selections(boot_source_dict))
+
     # XXX: GavinPanella 2015-03-03 bug=1376317: This test is fragile, possibly
-    # due to isolation issues.
+    # due to isolation issues. Note: this test may not be superfluous.
     @skip("Possible isolation issues")
     def test_calls_cache_boot_sources_on_create(self):
         mock_callLater = self.patch(reactor, 'callLater')
@@ -110,3 +148,13 @@ class TestBootSource(MAASServerTestCase):
             mock_callLater,
             MockCalledOnceWith(
                 1, deferToThread, cache_boot_sources))
+
+
+class TestBootSourceSignals(MAASServerTestCase):
+    """Tests for the `BootSource` model's signals."""
+
+    def test_arranges_for_later_update_to_boot_sources_post_commit(self):
+        post_commit_do = self.patch(bootsource_module, "post_commit_do")
+        make_BootSource()
+        self.assertThat(post_commit_do, MockCalledOnceWith(
+            reactor.callLater, 0, deferToNewThread, cache_boot_sources))

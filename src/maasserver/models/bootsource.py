@@ -27,6 +27,9 @@ from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import post_commit_do
+from provisioningserver.utils.twisted import deferToNewThread
+from twisted.internet import reactor
 
 
 class BootSource(CleanSave, TimestampedModel):
@@ -83,6 +86,15 @@ class BootSource(CleanSave, TimestampedModel):
             "selections": [],
             }
 
+    def compare_dict_without_selections(self, other):
+        """Compare this `BootSource`, as a dict, to another, as a dict.
+
+        Only the keys ``url`` and ``keyring_data`` are relevant.
+        """
+        keys = "url", "keyring_data"
+        this = self.to_dict_without_selections()
+        return all(this[key] == other[key] for key in keys)
+
     def to_dict(self):
         """Return the current `BootSource` as a dict.
 
@@ -103,10 +115,12 @@ class BootSource(CleanSave, TimestampedModel):
 
 
 def update_boot_source_cache(sender, instance, **kwargs):
-    """Update the `BootSourceCache` with information for the updated
-    source."""
-    # Avoid circular import
-    from maasserver.bootsources import cache_boot_sources_in_thread
-    cache_boot_sources_in_thread()
+    """Update the `BootSourceCache` using the updated source.
+
+    This only begins after a successful commit to the database, and is then
+    run in a thread. Nothing waits for its completion.
+    """
+    from maasserver.bootsources import cache_boot_sources  # Circular import.
+    post_commit_do(reactor.callLater, 0, deferToNewThread, cache_boot_sources)
 
 post_save.connect(update_boot_source_cache, BootSource)

@@ -137,7 +137,6 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     callOutToThread,
-    FOREVER,
     synchronous,
 )
 from twisted.internet import reactor
@@ -1975,6 +1974,7 @@ class Node(CleanSave, TimestampedModel):
 
         self.update_nodegroup_host_maps(nodegroups, claims)
 
+    @transactional
     def deallocate_static_ip_addresses(
             self, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
         """Release the `StaticIPAddress` that is assigned to this node and
@@ -1994,7 +1994,6 @@ class Node(CleanSave, TimestampedModel):
 
         return deallocated_ips
 
-    @asynchronous(timeout=FOREVER)
     def deallocate_static_ip_addresses_later(self):
         """Schedule for `deallocate_static_ip_addresses` to be called later.
 
@@ -2002,9 +2001,9 @@ class Node(CleanSave, TimestampedModel):
         finish. This can cause blocking and thread starvation inside the
         reactor threadpool.
         """
-        reactor.callLater(
-            0, deferToThread, transactional(
-                self.deallocate_static_ip_addresses))
+        post_commit_do(
+            reactor.callLater, 0, deferToThread,
+            self.deallocate_static_ip_addresses)
 
     def get_boot_purpose(self):
         """
