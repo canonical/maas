@@ -214,7 +214,6 @@ class TestCreateRaidForm(MAASServerTestCase):
         for level in [
                 FILESYSTEM_GROUP_TYPE.RAID_0,
                 FILESYSTEM_GROUP_TYPE.RAID_1,
-                FILESYSTEM_GROUP_TYPE.RAID_4,
                 FILESYSTEM_GROUP_TYPE.RAID_5,
                 FILESYSTEM_GROUP_TYPE.RAID_6,
         ]:

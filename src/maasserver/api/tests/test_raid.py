@@ -93,8 +93,6 @@ class TestRaidsAPI(APITestCase):
             factory.make_FilesystemGroup(
                 node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_1),
             factory.make_FilesystemGroup(
-                node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_4),
-            factory.make_FilesystemGroup(
                 node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_5),
             factory.make_FilesystemGroup(
                 node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6),

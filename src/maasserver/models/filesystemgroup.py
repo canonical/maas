@@ -426,8 +426,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 for fstype in self._get_all_fstypes()
                 if fstype == FILESYSTEM_TYPE.RAID
                 ])
-            if (self.group_type == FILESYSTEM_GROUP_TYPE.RAID_4 or
-                    self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5):
+            if self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
                 return min_size * (num_raid - 1)
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
                 return min_size * (num_raid - 2)
@@ -589,13 +588,6 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             if num_raid < 2:
                 raise ValidationError(
                     "RAID level 1 must have at least 2 raid devices and "
-                    "any number of spares.")
-        elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_4:
-            # RAID 4 must have at least 3 RAID filesystems, but can have
-            # spares.
-            if num_raid < 3:
-                raise ValidationError(
-                    "RAID level 4 must have atleast 3 raid devices and "
                     "any number of spares.")
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
             # RAID 5 must have at least 3 RAID filesystems, but can have

@@ -1342,8 +1342,7 @@ class Factory(maastesting.factory.Factory):
                         fstype=FILESYSTEM_TYPE.RAID,
                         block_device=block_device)
                     group.filesystems.add(filesystem)
-            elif (group_type == FILESYSTEM_GROUP_TYPE.RAID_4 or
-                    group_type == FILESYSTEM_GROUP_TYPE.RAID_5):
+            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
                 for _ in range(3):
                     block_device = self.make_PhysicalBlockDevice(node)
                     filesystem = self.make_Filesystem(

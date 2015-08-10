@@ -709,36 +709,6 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.RAID_1, filesystems=filesystems)
         self.assertEquals(small_size, fsgroup.get_size())
 
-    def test_get_size_returns_correct_disk_size_for_raid_4(self):
-        node = factory.make_Node()
-        small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2)
-        other_size = random.randint(small_size + 1, small_size + (10 ** 5))
-        number_of_raid_devices = random.randint(2, 9)
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.RAID,
-                block_device=factory.make_PhysicalBlockDevice(
-                    node=node, size=small_size)),
-        ]
-        for _ in range(number_of_raid_devices):
-            filesystems.append(
-                factory.make_Filesystem(
-                    fstype=FILESYSTEM_TYPE.RAID,
-                    block_device=factory.make_PhysicalBlockDevice(
-                        node=node, size=other_size)))
-        # Spares are ignored and not taken into calculation.
-        for _ in range(3):
-            filesystems.append(
-                factory.make_Filesystem(
-                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
-                    block_device=factory.make_PhysicalBlockDevice(
-                        node=node, size=other_size)))
-        fsgroup = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.RAID_4, filesystems=filesystems)
-        self.assertEquals(
-            small_size * number_of_raid_devices, fsgroup.get_size())
-
     def test_get_size_returns_correct_disk_size_for_raid_5(self):
         node = factory.make_Node()
         small_size = random.randint(
@@ -1062,41 +1032,6 @@ class TestFilesystemGroup(MAASServerTestCase):
         # Test is that this does not raise an exception.
         factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_1,
-            filesystems=filesystems)
-
-    def test_cannot_save_raid_4_with_less_than_3_raid_devices(self):
-        node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.RAID,
-                block_device=factory.make_PhysicalBlockDevice(node=node))
-            for _ in range(random.randint(1, 2))
-        ]
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': [u'RAID level 4 must have atleast 3 raid "
-                    "devices and any number of spares.']}")):
-            factory.make_FilesystemGroup(
-                group_type=FILESYSTEM_GROUP_TYPE.RAID_4,
-                filesystems=filesystems)
-
-    def test_can_save_raid_4_with_3_or_more_raid_devices_and_spares(self):
-        node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.RAID,
-                block_device=factory.make_PhysicalBlockDevice(node=node))
-            for _ in range(random.randint(3, 10))
-        ]
-        for _ in range(random.randint(1, 5)):
-            filesystems.append(
-                factory.make_Filesystem(
-                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
-                    block_device=factory.make_PhysicalBlockDevice(node=node)))
-        # Test is that this does not raise an exception.
-        factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.RAID_4,
             filesystems=filesystems)
 
     def test_cannot_save_raid_5_with_less_than_3_raid_devices(self):
@@ -1442,10 +1377,6 @@ class TestFilesystemGroupGetNiceName(MAASServerTestCase):
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
             "name": "RAID",
             }),
-        (FILESYSTEM_GROUP_TYPE.RAID_4, {
-            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
-            "name": "RAID",
-            }),
         (FILESYSTEM_GROUP_TYPE.RAID_5, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_5,
             "name": "RAID",
@@ -1482,10 +1413,6 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
             "prefix": "md",
             }),
-        (FILESYSTEM_GROUP_TYPE.RAID_4, {
-            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
-            "prefix": "md",
-            }),
         (FILESYSTEM_GROUP_TYPE.RAID_5, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_5,
             "prefix": "md",
@@ -1520,10 +1447,6 @@ class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
             }),
         (FILESYSTEM_GROUP_TYPE.RAID_1, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_1,
-            "block_size": 512,
-            }),
-        (FILESYSTEM_GROUP_TYPE.RAID_4, {
-            "group_type": FILESYSTEM_GROUP_TYPE.RAID_4,
             "block_size": 512,
             }),
         (FILESYSTEM_GROUP_TYPE.RAID_5, {

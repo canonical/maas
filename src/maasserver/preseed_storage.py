@@ -336,7 +336,6 @@ class CurtinStorageGenerator:
         raid_levels = {
             FILESYSTEM_GROUP_TYPE.RAID_0: 0,
             FILESYSTEM_GROUP_TYPE.RAID_1: 1,
-            FILESYSTEM_GROUP_TYPE.RAID_4: 4,
             FILESYSTEM_GROUP_TYPE.RAID_5: 5,
             FILESYSTEM_GROUP_TYPE.RAID_6: 6,
         }
