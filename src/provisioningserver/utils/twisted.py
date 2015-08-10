@@ -17,6 +17,7 @@ __all__ = [
     'callOut',
     'deferred',
     'DeferredValue',
+    'deferToNewThread',
     'deferWithTimeout',
     'FOREVER',
     'PageFetcher',
@@ -46,7 +47,10 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.threads import deferToThread
-from twisted.python import threadable
+from twisted.python import (
+    context,
+    threadable,
+)
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from twisted.python.threadable import isInIOThread
@@ -578,3 +582,48 @@ class PageFetcher:
             "Reference to completed fetch result for %s found." % url)
 
         return dvalue.get()
+
+
+def deferToNewThread(func, *args, **kwargs):
+    """Defer `func` into a new thread.
+
+    The thread is created for this one function call; it will not have been
+    previously used, and will not be used again.
+
+    :param func: A callable, typically a function.
+    :param args: A tuple of positional arguments.
+    :param kwargs: A dict of keyword arguments.
+
+    :return: A :class:`Deferred` that fires with the result of `func`.
+    """
+    d = Deferred()
+    ctx = context.theContextTracker.currentContext().contexts[-1]
+    thread = threading.Thread(
+        target=callInThread, args=(ctx, func, args, kwargs, d),
+        name="deferToNewThread(%s)" % func.__name__)
+    thread.start()
+    return d
+
+
+def callInThread(ctx, func, args, kwargs, d):
+    """Call `func` in a newly created thread.
+
+    This function does not actually create the thread; this should be called
+    as the target of a newly created thread. Generally you won't call this
+    yourself, it will be called by `deferToNewThread`.
+
+    :param ctx: A context as a dict; see :module:`twisted.python.context`.
+    :param func: A callable, typically a function.
+    :param args: A tuple of positional arguments.
+    :param kwargs: A dict of keyword arguments.
+    :param d: A :class:`Deferred` that will be called back with the result of
+        the function call.
+
+    """
+    try:
+        result = context.call(ctx, func, *args, **kwargs)
+    except:
+        # Failure() captures the exception information and trackback.
+        reactor.callFromThread(context.call, ctx, d.errback, Failure())
+    else:
+        reactor.callFromThread(context.call, ctx, d.callback, result)

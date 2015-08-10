@@ -46,6 +46,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     callOutToThread,
     DeferredValue,
+    deferToNewThread,
     deferWithTimeout,
     FOREVER,
     PageFetcher,
@@ -78,7 +79,10 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
-from twisted.python import threadable
+from twisted.python import (
+    context,
+    threadable,
+)
 from twisted.python.failure import Failure
 
 
@@ -1055,3 +1059,69 @@ class TestPageFetcher(MAASTestCase):
 
         self.assertRaises(exception_type, extract_result, d1)
         self.assertRaises(exception_type, extract_result, d2)
+
+
+class TestDeferToNewThread(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test__runs_given_func_in_new_thread(self):
+
+        def thing_to_call(*args, **kwargs):
+            thread = threading.currentThread()
+            return thread, args, kwargs
+
+        thread, args, kwargs = yield deferToNewThread(
+            thing_to_call, sentinel.arg, thing=sentinel.kwarg)
+
+        self.expectThat(thread, Not(Is(threading.currentThread())))
+        self.expectThat(args, Equals((sentinel.arg,)))
+        self.expectThat(kwargs, Equals({"thing": sentinel.kwarg}))
+
+    @inlineCallbacks
+    def test__gives_new_thread_informative_name(self):
+
+        def get_name_of_thread():
+            return threading.currentThread().name
+
+        name = yield deferToNewThread(get_name_of_thread)
+        self.assertThat(name, Equals("deferToNewThread(get_name_of_thread)"))
+
+    def test__propagates_context_into_thread(self):
+        name = factory.make_name("name")
+        value = factory.make_name("value")
+
+        def check_context_in_thread():
+            self.assertThat(context.get(name), Equals(value))
+
+        return context.call(
+            {name: value}, deferToNewThread, check_context_in_thread)
+
+    def test__propagates_context_into_callback_from_thread(self):
+        name = factory.make_name("name")
+        value = factory.make_name("value")
+
+        def do_nothing():
+            pass
+
+        def check_context_in_callback(_):
+            self.assertThat(context.get(name), Equals(value))
+
+        d = context.call({name: value}, deferToNewThread, do_nothing)
+        d.addCallbacks(check_context_in_callback, self.fail)
+        return d
+
+    def test__propagates_context_into_errback_from_thread(self):
+        name = factory.make_name("name")
+        value = factory.make_name("value")
+
+        def break_something():
+            0 / 0
+
+        def check_context_in_errback(_):
+            self.assertThat(context.get(name), Equals(value))
+
+        d = context.call({name: value}, deferToNewThread, break_something)
+        d.addCallbacks(self.fail, check_context_in_errback)
+        return d
