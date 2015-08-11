@@ -67,15 +67,19 @@ def fix_up_databases(databases):
                         % (isolation_level, ISOLATION_LEVEL_REPEATABLE_READ),
                         RuntimeWarning, 2)
             options["isolation_level"] = ISOLATION_LEVEL_REPEATABLE_READ
-            # Disable ATOMIC_REQUESTS: MAAS manually manages this so it can
-            # retry transactions that fail with serialisation errors.
+            # Enable ATOMIC_REQUESTS: MAAS manages transactions across the
+            # whole request/response lifecycle including middleware (Django,
+            # in its infinite wisdom, does not). However we enable this
+            # setting to ensure that views run within _savepoints_ so that
+            # middleware exception handlers that suppress exceptions don't
+            # inadvertently allow failed requests to be committed.
             if "ATOMIC_REQUESTS" in database:
                 atomic_requests = database["ATOMIC_REQUESTS"]
-                if atomic_requests:
+                if not atomic_requests:
                     warnings.warn(
-                        "ATOMIC_REQUESTS is set to %r; overriding to False."
+                        "ATOMIC_REQUESTS is set to %r; overriding to True."
                         % (atomic_requests,), RuntimeWarning, 2)
-            database["ATOMIC_REQUESTS"] = False
+            database["ATOMIC_REQUESTS"] = True
 
 
 class LazySettings(django.conf.LazySettings):

@@ -594,14 +594,14 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # spares.
             if num_raid < 3:
                 raise ValidationError(
-                    "RAID level 5 must have atleast 3 raid devices and "
+                    "RAID level 5 must have at least 3 raid devices and "
                     "any number of spares.")
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
             # RAID 6 must have at least 4 RAID filesystems, but can have
             # spares.
             if num_raid < 4:
                 raise ValidationError(
-                    "RAID level 6 must have atleast 4 raid devices and "
+                    "RAID level 6 must have at least 4 raid devices and "
                     "any number of spares.")
         num_raid_invalid = len([
             fstype

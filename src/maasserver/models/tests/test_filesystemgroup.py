@@ -1045,7 +1045,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 5 must have atleast 3 raid "
+                    "{'__all__': [u'RAID level 5 must have at least 3 raid "
                     "devices and any number of spares.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.RAID_5,
@@ -1080,7 +1080,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                    "{'__all__': [u'RAID level 6 must have at least 4 raid "
                     "devices and any number of spares.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.RAID_6,
@@ -1742,7 +1742,7 @@ class TestRAID(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 5 must have atleast 3 raid "
+                    "{'__all__': [u'RAID level 5 must have at least 3 raid "
                     "devices and any number of spares.']}")):
             RAID.objects.create_raid(
                 name='md0',
@@ -1763,7 +1763,7 @@ class TestRAID(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                    "{'__all__': [u'RAID level 6 must have at least 4 raid "
                     "devices and any number of spares.']}")):
             RAID.objects.create_raid(
                 name='md0',
@@ -1977,7 +1977,7 @@ class TestRAID(MAASServerTestCase):
         with ExpectedException(
             ValidationError,
             re.escape(
-                "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                "{'__all__': [u'RAID level 6 must have at least 4 raid "
                 "devices and any number of spares.']}")):
             raid.remove_device(block_devices[0])
         self.assertEqual(4, raid.filesystems.count())
@@ -2011,7 +2011,7 @@ class TestRAID(MAASServerTestCase):
         with ExpectedException(
             ValidationError,
             re.escape(
-                "{'__all__': [u'RAID level 6 must have atleast 4 raid "
+                "{'__all__': [u'RAID level 6 must have at least 4 raid "
                 "devices and any number of spares.']}")):
             raid.remove_partition(partitions[0])
         self.assertEqual(4, raid.filesystems.count())

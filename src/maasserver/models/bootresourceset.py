@@ -40,7 +40,7 @@ INSTALL_SET = {
     BOOT_RESOURCE_FILE_TYPE.DI_INITRD,
     }
 
-# `BootResourceSet` must contain atleast one of the file types to be consider
+# `BootResourceSet` must contain at least one of the file types to be consider
 # as supporting the ability to xinstall. 'xinstall' being the
 # fastpath-installer.
 XINSTALL_TYPES = (

@@ -66,7 +66,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             "partitions.")
         self.assertEquals({
             '__all__': [
-                "Atleast one valid block device or partition is required.",
+                "At least one valid block device or partition is required.",
                 ]}, form._errors)
 
     def test_is_not_valid_if_block_device_does_not_belong_to_node(self):

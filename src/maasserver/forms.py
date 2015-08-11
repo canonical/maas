@@ -4207,7 +4207,7 @@ class CreateVolumeGroupForm(Form):
                 not has_partitions and
                 not has_block_device_and_partition_errors):
             raise ValidationError(
-                "Atleast one valid block device or partition is required.")
+                "At least one valid block device or partition is required.")
         return cleaned_data
 
     def save(self):

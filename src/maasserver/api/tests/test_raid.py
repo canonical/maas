@@ -445,7 +445,7 @@ class TestRaidsAPI(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
 
-    def test_create_raid_1_with_one_element_fails(self):
+    def test_create_raid_1_with_one_element_fails_without_side_effects(self):
         node = factory.make_Node(owner=self.logged_in_user)
         # Add one 10TB physical block devices to the node.
         bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
@@ -462,6 +462,7 @@ class TestRaidsAPI(APITestCase):
         })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
+        self.assertIsNone(bd.filesystem)
 
     def test_create_raid_with_invalid_block_device_fails(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -521,6 +522,8 @@ class TestRaidsAPI(APITestCase):
         })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
+        for bd in bds:
+            self.assertIsNone(bd.filesystem)
 
     def test_create_raid_with_block_device_from_other_node_fails(
             self):
@@ -544,6 +547,8 @@ class TestRaidsAPI(APITestCase):
         })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
+        for bd in bds:
+            self.assertIsNone(bd.filesystem)
 
     def test_create_raid_without_any_element_fails(
             self):
@@ -714,6 +719,7 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'physical'
                 and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
+        self.assertEqual(FILESYSTEM_TYPE.RAID, device.filesystem.fstype)
 
     def test_remove_valid_blockdevice(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -735,6 +741,7 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'physical'
                 and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
+        self.assertIsNone(device.filesystem)
 
     def test_add_valid_partition(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -778,6 +785,7 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'partition'
                 and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
+        self.assertIsNone(partition.filesystem)
 
     def test_add_valid_spare_device(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -870,6 +878,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(uri, {'add_block_devices': [device.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertIsNone(device.filesystem)
 
     def test_remove_invalid_blockdevice_fails(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -914,6 +923,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(uri, {'add_spare_devices': [device.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertIsNone(device.filesystem)
 
     def test_remove_invalid_spare_device_fails(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -929,6 +939,7 @@ class TestRaidAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         raid = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Make a partition on a block device on another node.
         partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice()).add_partition()
         uri = get_raid_device_uri(raid, node)
@@ -936,11 +947,13 @@ class TestRaidAPI(APITestCase):
             uri, {'add_spare_partitions': [partition.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertIsNone(partition.filesystem)
 
     def test_remove_invalid_spare_partition_fails(self):
         node = factory.make_Node(owner=self.logged_in_user)
         raid = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
+        # Make a partition on a block device on another node.
         partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice()).add_partition()
         uri = get_raid_device_uri(raid, node)

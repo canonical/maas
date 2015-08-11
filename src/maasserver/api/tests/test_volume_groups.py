@@ -96,7 +96,7 @@ class TestVolumeGroups(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_raises_400_if_form_validation_failes(self):
+    def test_create_raises_400_if_form_validation_fails(self):
         node = factory.make_Node(owner=self.logged_in_user)
         uri = get_volume_groups_uri(node)
         response = self.client.post(uri, {})

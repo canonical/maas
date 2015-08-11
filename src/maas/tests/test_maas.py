@@ -73,7 +73,7 @@ class TestDatabaseConfiguration(DjangoTestCase):
         self.assertThat(
             connections.databases, ContainsDict({
                 "default": ContainsDict({
-                    "ATOMIC_REQUESTS": Is(False),
+                    "ATOMIC_REQUESTS": Is(True),
                 }),
             }),
         )

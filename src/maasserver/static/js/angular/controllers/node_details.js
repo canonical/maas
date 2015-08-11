@@ -249,7 +249,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Force editing mode on, if the power_type is missing. This is
             // placed at the bottom because we wanted the selected items to
-            // be filled in atleast once.
+            // be filled in at least once.
             if($scope.canEdit() && $scope.node.power_type === "") {
                 $scope.power.editing = true;
             }
@@ -277,7 +277,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Force editing mode on, if the architecture is invalid. This is
             // placed at the bottom because we wanted the selected items to
-            // be filled in atleast once.
+            // be filled in at least once.
             if($scope.canEdit() && hasInvalidArchitecture($scope.node)) {
                 $scope.summary.editing = true;
             }

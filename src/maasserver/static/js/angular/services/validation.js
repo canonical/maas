@@ -117,7 +117,7 @@ angular.module('MAAS').service('ValidationService', function() {
         // Return true if the IP is valid IPv6 address, false otherwise.
         this.validateIPv6 = function(ipAddress) {
             // Invalid if the ipAddress is not a string, empty, or missing
-            // atleast one ':'.
+            // at least one ':'.
             if(!angular.isString(ipAddress) ||
                 ipAddress.length === 0 ||
                 ipAddress.indexOf(':') === -1) {
