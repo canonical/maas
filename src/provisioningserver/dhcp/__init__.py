@@ -25,13 +25,13 @@ from abc import (
 from provisioningserver.path import get_path
 
 # Location of the DHCPv4 configuration file.
-DHCPv4_CONFIG_FILE = '/etc/maas/dhcpd.conf'
+DHCPv4_CONFIG_FILE = '/var/lib/maas/dhcpd.conf'
 
 # Location of the DHCPv4 interfaces file.
 DHCPv4_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 
 # Location of the DHCPv6 configuration file.
-DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
+DHCPv6_CONFIG_FILE = '/var/lib/maas/dhcpd6.conf'
 
 # Location of the DHCPv6 interfaces file.
 DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'

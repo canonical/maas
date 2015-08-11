@@ -287,7 +287,7 @@ will work with MAAS::
 Run ``maas-provision generate-dhcp-config -h`` to see the options. You will
 need to provide various IP details such as the range of IP addresses to assign
 to clients. You can use the generated output to configure your system's ISC
-DHCP server, by inserting the configuration in the ``/etc/dhcp/dhcpd.conf``
+DHCP server, by inserting the configuration in the ``/var/lib/maas/dhcpd.conf``
 file.
 
 Also, edit /etc/default/isc-dhcp-server to set the INTERFACES variable to just

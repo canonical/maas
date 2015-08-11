@@ -1,4 +1,4 @@
-# WARNING: Do not edit /etc/maas/dhcpd6.conf yourself.  MAAS will overwrite any
+# WARNING: Do not edit /var/lib/maas/dhcpd6.conf yourself.  MAAS will overwrite any
 # changes made there.
 #
 # Instead, edit /etc/maas/templates/dhcp/dhcpd6.conf.template and your changes
