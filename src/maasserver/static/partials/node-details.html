@@ -124,7 +124,7 @@
                         <div class="inline">
                             <label for="zone" class="two-col">Zone</label>
                             <div class="three-col">
-                                <select name="zone" id="zone"placeholder="Choose a zone"
+                               <select name="zone" id="zone" placeholder="Choose a zone"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.zone.selected"
                                     data-ng-options="zone as zone.name for zone in summary.zone.options">
@@ -141,6 +141,17 @@
                                     data-ng-options="arch for arch in summary.architecture.options"
                                     data-ng-class="{ invalid: invalidArchitecture() }">
                                     <option value="" disabled="disabled">Choose an architecture</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="inline">
+                            <label for="min_hwe_kernel" class="two-col">Minimum Kernel</label>
+                            <div class="three-col">
+                                <select name="min_hwe_kernel" id="min_hwe_kernel" placeholder="No minimum kernel"
+                                    data-ng-disabled="!summary.editing"
+                                    data-ng-model="summary.min_hwe_kernel.selected"
+                                    data-ng-options="hwe_kernel for hwe_kernel in summary.min_hwe_kernel.options">
+                                    <option value="">No minimum kernel</option>
                                 </select>
                             </div>
                         </div>
@@ -205,6 +216,8 @@
                             </dd>
                         <dt class="two-col">Operating System</dt>
                             <dd class="four-col last-col">{$ getOSText() $}</dd>
+                        <dt class="two-col">Kernel</dt>
+                            <dd class="four-col last-col">{$ node.hwe_kernel $}</dd>
                         <dt class="two-col ng-hide" data-ng-show="node.third_party_driver">Third Party Driver</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.third_party_driver">
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"

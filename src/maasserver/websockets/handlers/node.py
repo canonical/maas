@@ -196,6 +196,7 @@ class NodeHandler(TimestampedModelHandler):
         if not for_list:
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
+            data["hwe_kernel"] = obj.hwe_kernel
 
             # Network
             mac_addresses = obj.macaddress_set.all().prefetch_related(
@@ -423,6 +424,8 @@ class NodeHandler(TimestampedModelHandler):
             new_params["zone"] = params["zone"]["name"]
         if "nodegroup" in params:
             new_params["nodegroup"] = params["nodegroup"]["uuid"]
+        if "min_hwe_kernel" in params:
+            new_params["min_hwe_kernel"] = params["min_hwe_kernel"]
 
         # Cleanup any fields that have a None value.
         new_params = {

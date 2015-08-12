@@ -860,8 +860,6 @@ def create_node(request):
         raise MAASAPIValidationError(
             'hwe kernel must be specified using the min_hwe_kernel argument.')
 
-    # XXX ltrager 2015/07/27: We should ensure that the specified kernel is
-    # available to MAAS
     if given_min_hwe_kernel:
         if hwe_regex.search(given_min_hwe_kernel) is None:
             raise MAASAPIValidationError(

@@ -98,6 +98,7 @@ describe("AddHardwareController", function() {
         expect($scope.clusters).toBe(ClustersManager.getItems());
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.architectures).toEqual([]);
+        expect($scope.hwe_kernels).toEqual([]);
         expect($scope.error).toBeNull();
         expect($scope.machine).toBeNull();
         expect($scope.chassis).toBeNull();
@@ -178,12 +179,30 @@ describe("AddHardwareController", function() {
         expect($scope.machine.architecture).toEqual(arch);
     });
 
+    it("initializes machine min_hwe_kernel with hwe-t", function() {
+        var defer = $q.defer();
+        var controller = makeController(null, defer);
+        var arch = makeName("arch");
+        var min_hwe_kernel = "hwe-t";
+        $scope.architectures = [arch];
+        $scope.machine = {
+            architecture: '',
+            min_hwe_kernel: 'hwe-t'
+        };
+
+        defer.resolve();
+        $scope.$digest();
+        expect($scope.machine.min_hwe_kernel).toEqual("hwe-t");
+    });
+
     it("calls stopPolling when scope destroyed", function() {
         var controller = makeController();
         spyOn(GeneralManager, "stopPolling");
         $scope.$destroy();
         expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
             "architectures");
+        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+            "hwe_kernels");
     });
 
     describe("show", function() {
@@ -200,6 +219,14 @@ describe("AddHardwareController", function() {
             $scope.show();
             expect(GeneralManager.startPolling).toHaveBeenCalledWith(
                 "architectures");
+        });
+
+        it("calls startPolling for hwe_kernels", function() {
+            var controller = makeController();
+            spyOn(GeneralManager, "startPolling");
+            $scope.show();
+            expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+                "hwe_kernels");
         });
     });
 
@@ -218,6 +245,14 @@ describe("AddHardwareController", function() {
             $scope.hide();
             expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
                 "architectures");
+        });
+
+        it("calls stopPolling for hwe_kernels", function() {
+            var controller = makeController();
+            spyOn(GeneralManager, "stopPolling");
+            $scope.hide();
+            expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+                "hwe_kernels");
         });
 
         it("emits addHardwareHidden event", function(done) {
@@ -597,6 +632,7 @@ describe("AddHardwareController", function() {
             expect(NodesManager.create).toHaveBeenCalledWith({
                 hostname: $scope.machine.name,
                 architecture: $scope.machine.architecture,
+                min_hwe_kernel: $scope.machine.min_hwe_kernel,
                 pxe_mac: $scope.machine.macs[0].mac,
                 extra_macs: [$scope.machine.macs[1].mac],
                 power_type: $scope.machine.power.type.name,

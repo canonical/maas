@@ -1871,6 +1871,7 @@ class Node(CleanSave, TimestampedModel):
         self.error_description = ''
         self.osystem = ''
         self.distro_series = ''
+        self.hwe_kernel = ''
         self.save()
 
         # Avoid circular imports

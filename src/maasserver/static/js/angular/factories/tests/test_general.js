@@ -50,7 +50,8 @@ describe("GeneralManager", function() {
 
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
-            ["node_actions", "device_actions", "architectures", "osinfo"]);
+            ["node_actions", "device_actions", "architectures", "hwe_kernels",
+             "osinfo"]);
     });
 
     it("_data.node_actions has correct data", function() {
@@ -78,6 +79,15 @@ describe("GeneralManager", function() {
         expect(architectures.loaded).toBe(false);
         expect(architectures.polling).toBe(false);
         expect(architectures.nextPromise).toBeNull();
+    });
+
+    it("_data.hwe_kernels has correct data", function() {
+        var hwe_kernels = GeneralManager._data.hwe_kernels;
+        expect(hwe_kernels.method).toBe("general.hwe_kernels");
+        expect(hwe_kernels.data).toEqual([]);
+        expect(hwe_kernels.loaded).toBe(false);
+        expect(hwe_kernels.polling).toBe(false);
+        expect(hwe_kernels.nextPromise).toBeNull();
     });
 
     it("_data.osinfo has correct data", function() {
@@ -124,6 +134,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.node_actions.loaded = true;
             GeneralManager._data.device_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
+            GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = false;
             expect(GeneralManager.isLoaded()).toBe(false);
         });
@@ -132,6 +143,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.node_actions.loaded = true;
             GeneralManager._data.device_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
+            GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             expect(GeneralManager.isLoaded()).toBe(true);
         });
@@ -155,6 +167,7 @@ describe("GeneralManager", function() {
         it("returns true if one true", function() {
             GeneralManager._data.node_actions.polling = true;
             GeneralManager._data.architectures.polling = false;
+            GeneralManager._data.hwe_kernels.polling = false;
             GeneralManager._data.osinfo.polling = false;
             expect(GeneralManager.isPolling()).toBe(true);
         });
@@ -162,6 +175,7 @@ describe("GeneralManager", function() {
         it("returns true if all true", function() {
             GeneralManager._data.node_actions.polling = true;
             GeneralManager._data.architectures.polling = true;
+            GeneralManager._data.hwe_kernels.polling = true;
             GeneralManager._data.osinfo.polling = true;
             expect(GeneralManager.isPolling()).toBe(true);
         });
@@ -378,11 +392,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(4);
+            expect(GeneralManager._loadData.calls.count()).toBe(5);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

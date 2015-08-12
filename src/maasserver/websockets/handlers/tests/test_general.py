@@ -44,7 +44,9 @@ class TestGeneralHandler(MAASServerTestCase):
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertEquals(sorted(arches), handler.architectures({}))
+        self.assertEquals(
+            sorted(['%s/generic' % arch.split('/')[0] for arch in arches]),
+            handler.architectures({}))
 
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User(), {})
@@ -58,6 +60,7 @@ class TestGeneralHandler(MAASServerTestCase):
                 (osystem["name"], osystem["title"]),
             ],
             "releases": releases,
+            "kernels": None,
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(
                 "default_distro_series"),

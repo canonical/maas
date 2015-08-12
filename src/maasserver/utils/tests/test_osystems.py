@@ -17,10 +17,12 @@ __all__ = []
 from operator import itemgetter
 import random
 
+from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
+from maasserver.models import BootResource
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import osystems as osystems_module
@@ -33,6 +35,8 @@ from maasserver.utils.osystems import (
     list_commissioning_choices,
     list_osystem_choices,
     list_release_choices,
+    release_a_newer_than_b,
+    validate_hwe_kernel,
 )
 
 
@@ -253,3 +257,122 @@ class TestReleases(MAASServerTestCase):
             for release in comm_releases
             ]
         self.assertEqual(choices, list_commissioning_choices([osystem]))
+
+
+class TestReleaseANewerThanB(MAASServerTestCase):
+
+    def test_release_a_newer_than_b(self):
+        # Since we wrap around 'p' we want to use 'p' as our starting point
+        alphabet = ([chr(i) for i in xrange(ord('p'), ord('z') + 1)] +
+                    [chr(i) for i in xrange(ord('a'), ord('p'))])
+        previous_true = 0
+        for i in alphabet:
+            true_count = 0
+            for j in alphabet:
+                if release_a_newer_than_b(i, j):
+                    true_count += 1
+            previous_true += 1
+            self.assertEqual(previous_true, true_count)
+
+
+class TestValidateHweKernel(MAASServerTestCase):
+
+    def test_validate_hwe_kernel_returns_default_kernel(self):
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-u')
+        hwe_kernel = validate_hwe_kernel(
+            None, None, 'amd64/generic', 'ubuntu', 'trusty')
+        self.assertEqual(hwe_kernel, 'hwe-t')
+
+    def test_validate_hwe_kernel_set_kernel(self):
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-v')
+        hwe_kernel = validate_hwe_kernel(
+            'hwe-v', None, 'amd64/generic', 'ubuntu', 'trusty')
+        self.assertEqual(hwe_kernel, 'hwe-v')
+
+    def test_validate_hwe_kernel_fails_with_nongeneric_arch_and_kernel(self):
+        exception_raised = False
+        try:
+            validate_hwe_kernel(
+                'hwe-v', None, 'armfh/hardbank', 'ubuntu', 'trusty')
+        except ValidationError as e:
+            self.assertEqual(
+                'Subarchitecture(hardbank) must be generic when setting ' +
+                'hwe_kernel.', e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kernel_fails_with_missing_hwe_kernel(self):
+        exception_raised = False
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-u')
+        try:
+            validate_hwe_kernel(
+                'hwe-v', None, 'amd64/generic', 'ubuntu', 'trusty')
+        except ValidationError as e:
+            self.assertEqual(
+                'hwe-v is not available for ubuntu/trusty on amd64/generic.',
+                e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kernel_fails_with_old_kernel_and_newer_release(self):
+        exception_raised = False
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-v')
+        try:
+            validate_hwe_kernel(
+                'hwe-t', None, 'amd64/generic', 'ubuntu', 'vivid')
+        except ValidationError as e:
+            self.assertEqual(
+                'hwe-t is too old to use on ubuntu/vivid.',
+                e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kern_fails_with_old_kern_and_new_min_hwe_kern(self):
+        exception_raised = False
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-v')
+        try:
+            validate_hwe_kernel(
+                'hwe-t', 'hwe-v', 'amd64/generic', 'ubuntu', 'precise')
+        except ValidationError as e:
+            self.assertEqual(
+                'hwe_kernel(hwe-t) is older than min_hwe_kernel(hwe-v).',
+                e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kernel_fails_with_no_avalible_kernels(self):
+        exception_raised = False
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-v')
+        try:
+            validate_hwe_kernel(
+                'hwe-t', 'hwe-v', 'amd64/generic', 'ubuntu', 'precise')
+        except ValidationError as e:
+            self.assertEqual(
+                'hwe_kernel(hwe-t) is older than min_hwe_kernel(hwe-v).',
+                e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kern_fails_with_old_release_and_newer_hwe_kern(self):
+        exception_raised = False
+        try:
+            validate_hwe_kernel(
+                None, 'hwe-v', 'amd64/generic', 'ubuntu', 'trusty')
+        except ValidationError as e:
+            self.assertEqual(
+                'trusty has no kernels availible which meet' +
+                ' min_hwe_kernel(hwe-v).', e.message)
+            exception_raised = True
+        self.assertEqual(True, exception_raised)

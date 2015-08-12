@@ -13,8 +13,14 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             'os[0] as os[1] for os in maasOsSelect.osystems">',
         '</select>',
         '<select name="release" data-ng-model="ngModel.release" ',
+            'data-ng-change="selectedReleaseChanged()" ',
             'data-ng-options="',
             'release[0] as release[1] for release in releases">',
+        '</select>',
+        '<select name="hwe_kernel" data-ng-model="ngModel.hwe_kernel" ',
+            'data-ng-options="',
+            'hwe_kernel for hwe_kernel in hwe_kernels">',
+            '<option value="">Default kernel</option>',
         '</select>'
     ].join(''));
 }]);
@@ -43,6 +49,19 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                         }
                     }
                     return choices;
+                }
+                return [];
+            }
+
+            // Return only the selectable kernels based on the selected os.
+            function getSelectableKernels() {
+                if(angular.isObject($scope.maasOsSelect) &&
+                    angular.isObject($scope.maasOsSelect.kernels) &&
+                    angular.isString($scope.ngModel.osystem) &&
+                    angular.isString($scope.ngModel.release)) {
+                    var os = $scope.ngModel.osystem;
+                    var release = $scope.ngModel.release.split('/')[1];
+                    return $scope.maasOsSelect.kernels[os][release];
                 }
                 return [];
             }
@@ -100,22 +119,26 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     $scope.releases,
                     $scope.ngModel.osystem + "/" +
                     $scope.maasOsSelect.default_release);
+                $scope.ngModel.kernel = "";
             }
 
             // Defaults
             if(!angular.isObject($scope.ngModel)) {
                 $scope.ngModel = {
                     osystem: null,
-                    release: null
+                    release: null,
+                    hwe_kernel: null
                 };
             }
             $scope.releases = getSelectableReleases();
+            $scope.hwe_kernels = getSelectableKernels();
 
             // Add the reset function to ngModel, allowing users to call
             // this function to reset the defauls.
             $scope.ngModel.$reset = function() {
                 $scope.ngModel.osystem = null;
                 $scope.ngModel.release = null;
+                $scope.ngModel.hwe_kernel = null;
                 setDefault();
             };
 
@@ -126,13 +149,28 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                 setDefault();
             });
 
+            // If the available release change update the available kernels and
+            // set the default.
+            $scope.$watch("maasOsSelect.kernels", function() {
+                $scope.hwe_kernels = getSelectableKernels();
+                setDefault();
+            });
+
             // Updates the default and selectable releases.
             $scope.selectedOSChanged = function() {
                 $scope.releases = getSelectableReleases();
+                $scope.hwe_kernels = getSelectableKernels();
                 $scope.ngModel.release = null;
+                $scope.ngModel.hwe_kernel = null;
                 if($scope.releases.length > 0) {
                     $scope.ngModel.release = $scope.releases[0][0];
                 }
+            };
+
+            // Updates the default and selectable kernels.
+            $scope.selectedReleaseChanged = function() {
+                $scope.hwe_kernels = getSelectableKernels();
+                $scope.ngModel.hwe_kernel = null;
             };
         }
     };

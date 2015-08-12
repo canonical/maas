@@ -17,15 +17,18 @@ __all__ = [
     'list_all_releases_requiring_keys',
     'list_all_usable_osystems',
     'list_all_usable_releases',
+    'list_all_usable_hwe_kernels',
     'list_osystem_choices',
     'list_release_choices',
     'list_commissioning_choices',
+    'validate_hwe_kernel',
     ]
-
 
 from operator import itemgetter
 
+from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
+from maasserver.models import BootResource
 
 
 def list_all_usable_osystems():
@@ -63,6 +66,21 @@ def list_all_usable_releases(osystems):
             [release for release in osystem['releases']],
             key=itemgetter('title'))
     return distro_series
+
+
+def list_all_usable_hwe_kernels(releases):
+    """Return dictionary of usable `kernels` for each os/release."""
+    kernels = {}
+    for osystem, osystems in releases.iteritems():
+        if not osystem in kernels:
+            kernels[osystem] = {}
+        for release in osystems:
+            os_release = osystem + '/' + release['name']
+            kernels[osystem][release['name']] = sorted([
+                i for i in BootResource.objects.get_usable_hwe_kernels(
+                    os_release)
+                if release_a_newer_than_b(i, release['name'])])
+    return kernels
 
 
 def list_all_releases_requiring_keys(osystems):
@@ -176,3 +194,93 @@ def list_commissioning_choices(osystems):
             for release in releases
             if release['can_commission']
             ]
+
+
+def release_a_newer_than_b(a, b):
+    """ Compare two Ubuntu releases and return true if a >= b.
+
+    The release names can be the full release name(e.g Precise, Trusty), or
+    a hardware enablement(e.g hwe-p, hwe-t). The function wraps around the
+    letter 'p' as Precise was the first version of Ubuntu MAAS supported
+    """
+    def get_release_num(release):
+        release = release.lower()
+        if 'hwe-' in release:
+            release = release.lstrip('hwe-')
+        return ord(release[0])
+
+    # Compare release versions based off of the first letter of their
+    # release name or the letter in hwe-<letter>. Wrap around the letter
+    # 'p' as that is the first version of Ubuntu MAAS supported.
+    num_a = get_release_num(a)
+    num_b = get_release_num(b)
+    num_wrap = ord('p')
+
+    if((num_a >= num_wrap and num_b >= num_wrap and num_a >= num_b) or
+       (num_a < num_wrap and num_b >= num_wrap and num_a < num_b) or
+       (num_a < num_wrap and num_b < num_wrap and num_a >= num_b)):
+        return True
+    else:
+        return False
+
+
+def validate_hwe_kernel(
+        hwe_kernel, min_hwe_kernel, architecture, osystem, distro_series):
+    """ Validates that hwe_kernel works on the selected os/release/arch.
+
+    Checks that the current hwe_kernel is avalible for the selected
+    os/release/architecture combination, and that the selected hwe_kernel is >=
+    min_hwe_kernel. If no hwe_kernel is selected one will be chosen.
+    """
+    # The hwe_kernel feature is only supported on Ubuntu
+    if((osystem and "ubuntu" not in osystem.lower()) or
+       (not architecture or architecture == '') or
+       (not distro_series or distro_series == '')):
+        return hwe_kernel
+
+    arch, subarch = architecture.split('/')
+
+    if (subarch != 'generic' and
+        ((hwe_kernel and hwe_kernel.startswith('hwe-')) or
+         (min_hwe_kernel and min_hwe_kernel.startswith('hwe-')))):
+        raise ValidationError(
+            'Subarchitecture(%s) must be generic when setting hwe_kernel.' %
+            subarch)
+
+    os_release = osystem + '/' + distro_series
+    usable_kernels = BootResource.objects.get_usable_hwe_kernels(
+        os_release, arch)
+
+    if hwe_kernel and hwe_kernel.startswith('hwe-'):
+        if hwe_kernel not in usable_kernels:
+            raise ValidationError(
+                '%s is not available for %s on %s.' %
+                (hwe_kernel, os_release, architecture))
+        if not release_a_newer_than_b(hwe_kernel, distro_series):
+            raise ValidationError(
+                '%s is too old to use on %s.' % (hwe_kernel, os_release))
+        if((min_hwe_kernel and min_hwe_kernel.startswith('hwe-')) and
+           (not release_a_newer_than_b(hwe_kernel, min_hwe_kernel))):
+            raise ValidationError(
+                'hwe_kernel(%s) is older than min_hwe_kernel(%s).' %
+                (hwe_kernel, min_hwe_kernel))
+        return hwe_kernel
+    elif(min_hwe_kernel and min_hwe_kernel.startswith('hwe-')):
+        for i in usable_kernels:
+            if(release_a_newer_than_b(i, min_hwe_kernel) and
+               release_a_newer_than_b(i, distro_series)):
+                return i
+        raise ValidationError(
+            '%s has no kernels availible which meet min_hwe_kernel(%s).' %
+            (distro_series, min_hwe_kernel))
+    return 'hwe-' + distro_series[0]
+
+
+def validate_min_hwe_kernel(min_hwe_kernel):
+    """Check that the min_hwe_kernel is avalible."""
+    if not min_hwe_kernel or min_hwe_kernel == "":
+        return ""
+    usable_kernels = BootResource.objects.get_usable_hwe_kernels()
+    if min_hwe_kernel not in usable_kernels:
+        raise ValidationError('%s is not a usable kernel.' % min_hwe_kernel)
+    return min_hwe_kernel

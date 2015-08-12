@@ -42,6 +42,13 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
+                hwe_kernels: {
+                    method: "general.hwe_kernels",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
                 osinfo: {
                     method: "general.osinfo",
                     data: {},

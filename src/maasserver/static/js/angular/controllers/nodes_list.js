@@ -58,7 +58,8 @@ angular.module('MAAS').controller('NodesListController', [
         };
         $scope.tabs.nodes.osSelection = {
             osystem: null,
-            release: null
+            release: null,
+            hwe_kernel: null
         };
         $scope.tabs.nodes.zoneSelection = null;
 
@@ -427,6 +428,12 @@ angular.module('MAAS').controller('NodesListController', [
                 release = release.split("/");
                 release = release[release.length-1];
                 extra.distro_series = release;
+                // hwe_kernel is optional so only include it if its specified
+                if(angular.isString($scope.tabs[tab].osSelection.hwe_kernel) &&
+                   ($scope.tabs[tab].osSelection.hwe_kernel.indexOf('hwe-')
+                    >= 0)) {
+                    extra.hwe_kernel = $scope.tabs[tab].osSelection.hwe_kernel;
+                }
             } else if($scope.tabs[tab].actionOption.name === "set-zone" &&
                 angular.isNumber($scope.tabs[tab].zoneSelection.id)) {
                 // Set the zone parameter

@@ -28,7 +28,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.osSelection = {
             osystem: null,
-            release: null
+            release: null,
+            hwe_kernel: null
         };
         $scope.checkingPower = false;
         $scope.nic = {
@@ -75,6 +76,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             architecture: {
                 selected: null,
                 options: GeneralManager.getData("architectures")
+            },
+            min_hwe_kernel: {
+                selected: null,
+                options: GeneralManager.getData("hwe_kernels")
             },
             zone: {
                 selected: null,
@@ -273,6 +278,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.summary.zone.selected = ZonesManager.getItemFromList(
                 $scope.node.zone.id);
             $scope.summary.architecture.selected = $scope.node.architecture;
+            $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
             $scope.summary.tags = angular.copy($scope.node.tags);
 
             // Force editing mode on, if the architecture is invalid. This is
@@ -407,6 +413,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.architecture", updateSummary);
             $scope.$watchCollection(
                 $scope.summary.architecture.options, updateSummary);
+
+            // Uppdate the summary when min_hwe_kernel is updated.
+            $scope.$watch("node.min_hwe_kernel", updateSummary);
+            $scope.$watchCollection(
+                $scope.summary.min_hwe_kernel.options, updateSummary);
 
             // Update the summary when the node or zone list is
             // updated.
@@ -684,6 +695,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 release = release.split("/");
                 release = release[release.length-1];
                 extra.distro_series = release;
+                // hwe_kernel is optional so only include it if its specified
+                if(angular.isString($scope.osSelection.hwe_kernel) &&
+                   ($scope.osSelection.hwe_kernel.indexOf('hwe-') >= 0)) {
+                    extra.hwe_kernel = $scope.osSelection.hwe_kernel;
+                }
             }
 
             NodesManager.performAction(
@@ -811,6 +827,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.nodegroup = angular.copy($scope.summary.cluster.selected);
             node.zone = angular.copy($scope.summary.zone.selected);
             node.architecture = $scope.summary.architecture.selected;
+            if($scope.summary.min_hwe_kernel.selected === null) {
+                node.min_hwe_kernel = "";
+            }else{
+                node.min_hwe_kernel = $scope.summary.min_hwe_kernel.selected;
+            }
             node.tags = [];
             angular.forEach($scope.summary.tags, function(tag) {
                 node.tags.push(tag.text);
@@ -1031,18 +1052,20 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     });
             }
 
-            // Poll for architectures and osinfo the whole time. This is
-            // because the user can always see the architecture and
-            // operating system. Need to keep this information up-to-date
+            // Poll for architectures, hwe_kernels, and osinfo the whole
+            // time. This is because the user can always see the architecture
+            // and operating system. Need to keep this information up-to-date
             // so the user is viewing current data.
             GeneralManager.startPolling("architectures");
+            GeneralManager.startPolling("hwe_kernels");
             GeneralManager.startPolling("osinfo");
         });
 
-        // Stop polling for architectures and osinfo when the scope is
-        // destroyed.
+        // Stop polling for architectures, hwe_kernels, and osinfo when the
+        // scope is destroyed.
         $scope.$on("$destroy", function() {
             GeneralManager.stopPolling("architectures");
+            GeneralManager.stopPolling("hwe_kernels");
             GeneralManager.stopPolling("osinfo");
         });
     }]);

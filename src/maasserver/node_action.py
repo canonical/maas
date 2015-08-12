@@ -33,6 +33,7 @@ from abc import (
 from collections import OrderedDict
 
 from crochet import TimeoutError
+from django.core.exceptions import ValidationError
 from maasserver import locks
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -49,6 +50,7 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from maasserver.utils.osystems import validate_hwe_kernel
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
 from provisioningserver.rpc.exceptions import (
@@ -290,7 +292,7 @@ class Deploy(NodeAction):
     permission = NODE_PERMISSION.VIEW
     installable_only = True
 
-    def execute(self, osystem=None, distro_series=None):
+    def execute(self, osystem=None, distro_series=None, hwe_kernel=None):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
             with locks.node_acquire:
@@ -301,6 +303,15 @@ class Deploy(NodeAction):
             self.node.osystem = osystem
             self.node.distro_series = distro_series
             self.node.save()
+
+        try:
+            self.node.hwe_kernel = validate_hwe_kernel(
+                hwe_kernel, self.node.min_hwe_kernel,
+                self.node.architecture, self.node.osystem,
+                self.node.distro_series)
+            self.node.save()
+        except ValidationError as e:
+            raise NodeActionError(e.message)
 
         try:
             self.node.start(self.user)
@@ -390,6 +401,8 @@ class Release(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase()
+            self.node.hwe_kernel = ""
+            self.node.save()
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 

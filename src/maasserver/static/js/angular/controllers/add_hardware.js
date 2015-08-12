@@ -23,6 +23,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
+        $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
         $scope.error = null;
 
         // Input values.
@@ -265,6 +266,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                     macs: [newMAC()],
                     zone: cloneMachine.zone,
                     architecture: cloneMachine.architecture,
+                    min_hwe_kernel: cloneMachine.min_hwe_kernel,
                     power: {
                         type: cloneMachine.power.type,
                         parameters: {}
@@ -309,6 +311,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             return {
                 hostname: machine.name,
                 architecture: machine.architecture,
+                min_hwe_kernel: machine.min_hwe_kernel,
                 pxe_mac: pxe_mac,
                 extra_macs: extra_macs,
                 power_type: machine.power.type.name,
@@ -361,6 +364,9 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Start the polling of architectures.
             GeneralManager.startPolling("architectures");
+
+            // Start the polling of hwe_kernels.
+            GeneralManager.startPolling("hwe_kernels");
         };
 
         // Called by the parent scope when this controller is hidden.
@@ -369,6 +375,9 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Stop the polling of architectures.
             GeneralManager.stopPolling("architectures");
+
+            // Stop the polling of hwe_kernels.
+            GeneralManager.stopPolling("hwe_kernels");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -430,6 +439,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.machine.cluster === null ||
                 $scope.machine.zone === null ||
                 $scope.machine.architecture === '' ||
+                $scope.machine.min_hwe_kernel === '' ||
                 $scope.machine.power.type === null ||
                 $scope.invalidName($scope.machine));
             if(in_error) {
@@ -564,5 +574,6 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Stop polling when the scope is destroyed.
         $scope.$on("$destroy", function() {
             GeneralManager.stopPolling("architectures");
+            GeneralManager.stopPolling("hwe_kernels");
         });
     }]);

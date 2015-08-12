@@ -132,6 +132,14 @@
                             </select>
                         </div>
                         <div class="inline">
+                            <label for="min_hwe_kernel" class="two-col">Minimum Kernel</label>
+                            <select name="min_hwe_kernel" id="min_hwe_kernel" class="three-col" placeholder="No minimum kernel"
+                                data-ng-model="machine.min_hwe_kernel"
+                                data-ng-options="hwe_kernel for hwe_kernel in hwe_kernels">
+                                <option value="">No minimum kernel</option>
+                            </select>
+                        </div>
+                        <div class="inline">
                             <label for="zone" class="two-col">Zone</label>
                             <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
                                 data-ng-model="machine.zone"

@@ -115,6 +115,26 @@ class TestNodeForm(MAASServerTestCase):
             pick_default_architecture(arches),
             form.fields['architecture'].initial)
 
+    def test_form_validates_hwe_kernel_by_passing_invalid_config(self):
+        self.client_log_in()
+        node = factory.make_Node(
+            owner=self.logged_in_user)
+        osystem = make_usable_osystem(self)
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem['name'],
+            'min_hwe_kernel': 'hwe-t',
+            'hwe_kernel': 'hwe-p',
+            },
+            instance=node)
+        self.assertEqual(form.is_valid(), False)
+
+    def test_form_validates_min_hwe_kernel_by_passing_invalid_config(self):
+        node = factory.make_Node(min_hwe_kernel='hwe-t')
+        form = NodeForm(instance=node)
+        self.assertEqual(form.is_valid(), False)
+
     def test_adds_blank_default_when_no_arches_available(self):
         patch_usable_architectures(self, [])
         form = NodeForm()
@@ -578,17 +598,3 @@ class TestAdminNodeForm(MAASServerTestCase):
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
-
-    def test__release_a_newer_than_b(self):
-        form = AdminNodeForm()
-        # Since we wrap around 'p' we want to use 'p' as our starting point
-        alphabet = ([chr(i) for i in xrange(ord('p'), ord('z') + 1)] +
-                    [chr(i) for i in xrange(ord('a'), ord('p'))])
-        previous_true = 0
-        for i in alphabet:
-            true_count = 0
-            for j in alphabet:
-                if form._release_a_newer_than_b(i, j):
-                    true_count += 1
-            previous_true += 1
-            self.assertEqual(previous_true, true_count)

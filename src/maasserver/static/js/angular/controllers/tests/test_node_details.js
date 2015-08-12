@@ -212,6 +212,10 @@ describe("NodeDetailsController", function() {
                 selected: null,
                 options: GeneralManager.getData("architectures")
             },
+            min_hwe_kernel: {
+                selected: null,
+                options: GeneralManager.getData("hwe_kernels")
+            },
             zone: {
                 selected: null,
                 options: ZonesManager.getItems()
@@ -222,6 +226,8 @@ describe("NodeDetailsController", function() {
             ClustersManager.getItems());
         expect($scope.summary.architecture.options).toBe(
             GeneralManager.getData("architectures"));
+        expect($scope.summary.min_hwe_kernel.options).toBe(
+            GeneralManager.getData("hwe_kernels"));
         expect($scope.summary.zone.options).toBe(
             ZonesManager.getItems());
     });
@@ -654,6 +660,7 @@ describe("NodeDetailsController", function() {
             "node.actions",
             "node.nodegroup.id",
             "node.architecture",
+            "node.min_hwe_kernel",
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",
@@ -667,6 +674,7 @@ describe("NodeDetailsController", function() {
         expect(watchCollections).toEqual([
             $scope.summary.cluster.options,
             $scope.summary.architecture.options,
+            $scope.summary.min_hwe_kernel.options,
             $scope.summary.zone.options
         ]);
     });
@@ -682,7 +690,7 @@ describe("NodeDetailsController", function() {
         $rootScope.$digest();
 
         expect(GeneralManager.startPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["osinfo"]]);
+            [["architectures"], ["hwe_kernels"], ["osinfo"]]);
     });
 
     it("calls stopPolling when the $scope is destroyed", function() {
@@ -690,7 +698,7 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         $scope.$destroy();
         expect(GeneralManager.stopPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["osinfo"]]);
+            [["architectures"], ["hwe_kernels"], ["osinfo"]]);
     });
 
     describe("tagsAutocomplete", function() {

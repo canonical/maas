@@ -121,12 +121,10 @@ class BootResourceManager(Manager):
             if (resource_set is not None and
                     resource_set.commissionable and
                     resource_set.installable):
-                arches.add(resource.architecture)
-                if 'subarches' in resource.extra:
-                    arch, _ = resource.split_arch()
-                    for subarch in resource.extra['subarches'].split(','):
-                        arches.add('%s/%s' % (arch, subarch.strip()))
-        return arches
+                arch, _ = resource.split_arch()
+                if 'kflavor' in resource.extra:
+                    arches.add('%s/%s' % (arch, resource.extra['kflavor']))
+        return sorted(arches)
 
     def get_commissionable_resource(self, osystem, series):
         """Return generator for all commissionable resources for the
@@ -224,11 +222,15 @@ class BootResourceManager(Manager):
             return False
         return True
 
-    def get_usable_kernels(self, name, architecture):
+    def get_usable_hwe_kernels(self, name=None, architecture=None):
         """Return the set of usable kernels for architecture and release."""
+        if not name:
+            name = ''
+        if not architecture:
+            architecture = ''
         kernels = set()
         for resource in self.filter(
-                architecture__startswith=architecture, name=name):
+                architecture__startswith=architecture, name__startswith=name):
             resource_set = resource.get_latest_set()
             if(resource_set is None or
                not resource_set.commissionable or
@@ -241,7 +243,7 @@ class BootResourceManager(Manager):
                 for subarch in resource.extra["subarches"].split(","):
                     if subarch.startswith("hwe-"):
                         kernels.add(subarch)
-        return kernels
+        return sorted(kernels)
 
     def get_kpackage_for_node(self, node):
         """Return the kernel package name for the kernel specified."""

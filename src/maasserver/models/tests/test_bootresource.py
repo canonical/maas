@@ -154,13 +154,13 @@ class TestBootResourceManager(MAASServerTestCase):
 
     def test_get_usable_architectures(self):
         arches = [
-            '%s/%s' % (factory.make_name('arch'), factory.make_name('subarch'))
+            '%s/generic' % factory.make_name('arch')
             for _ in range(3)
             ]
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         usable_arches = BootResource.objects.get_usable_architectures()
-        self.assertIsInstance(usable_arches, set)
+        self.assertIsInstance(usable_arches, list)
         self.assertItemsEqual(
             arches, usable_arches)
 
@@ -171,22 +171,22 @@ class TestBootResourceManager(MAASServerTestCase):
             subarches = [factory.make_name('subarch') for _ in range(3)]
             architecture = '%s/%s' % (arch, subarches.pop())
             arches.add(architecture)
-            for subarch in subarches:
-                arches.add('%s/%s' % (arch, subarch))
             factory.make_usable_boot_resource(
                 architecture=architecture,
                 extra={'subarches': ','.join(subarches)})
         usable_arches = BootResource.objects.get_usable_architectures()
-        self.assertIsInstance(usable_arches, set)
+        self.assertIsInstance(usable_arches, list)
         self.assertItemsEqual(
-            arches, usable_arches)
+            ['%s/generic' % i.split('/')[0] for i in arches],
+            usable_arches)
 
     def test_get_commissionable_resource_returns_iterable(self):
         os = factory.make_name('os')
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
         factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+            architecture="amd64/generic")
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
         self.assertIsInstance(commissionables, Iterable)
@@ -511,7 +511,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
 
 
 class TestGetUsableKernels(MAASServerTestCase):
-    """Tests for `get_usable_kernels`."""
+    """Tests for `get_usable_hwe_kernels`."""
 
     scenarios = (
         ("ubuntu/trusty", {
@@ -550,11 +550,11 @@ class TestGetUsableKernels(MAASServerTestCase):
                 name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 architecture="%s/%s" % (self.arch, self.subarch))
         self.assertEqual(
-            set(self.kernels),
-            BootResource.objects.get_usable_kernels(
+            self.kernels,
+            BootResource.objects.get_usable_hwe_kernels(
                 self.name, self.arch),
             "%s should return %s as its usable kernel" % (
-                self.name, set(self.kernels)))
+                self.name, self.kernels))
 
 
 class TestGetKpackageForNode(MAASServerTestCase):

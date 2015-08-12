@@ -1131,7 +1131,7 @@ class Factory(maastesting.factory.Factory):
             sha256=sha256, total_size=size, content=largeobject)
 
     def make_BootResource(self, rtype=None, name=None, architecture=None,
-                          extra=None):
+                          extra=None, kflavor=None):
         if rtype is None:
             rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
         if name is None:
@@ -1150,6 +1150,10 @@ class Factory(maastesting.factory.Factory):
                 self.make_name('key'): self.make_name('value')
                 for _ in range(3)
                 }
+        if kflavor is None:
+            extra['kflavor'] = 'generic'
+        else:
+            extra['kflavor'] = kflavor
         return BootResource.objects.create(
             rtype=rtype, name=name, architecture=architecture, extra=extra)
 
@@ -1186,9 +1190,10 @@ class Factory(maastesting.factory.Factory):
 
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
-            extra=None, version=None, label=None):
+            extra=None, version=None, label=None, kflavor=None):
         resource = self.make_BootResource(
-            rtype=rtype, name=name, architecture=architecture, extra=extra)
+            rtype=rtype, name=name, architecture=architecture, extra=extra,
+            kflavor=kflavor)
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
         filetypes = COMMISSIONABLE_SET.union(INSTALL_SET)

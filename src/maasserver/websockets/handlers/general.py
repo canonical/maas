@@ -23,6 +23,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.utils.osystems import (
+    list_all_usable_hwe_kernels,
     list_all_usable_osystems,
     list_all_usable_releases,
     list_osystem_choices,
@@ -37,6 +38,7 @@ class GeneralHandler(Handler):
     class Meta:
         allowed_methods = [
             'architectures',
+            'hwe_kernels',
             'osinfo',
             'node_actions',
             'device_actions',
@@ -45,15 +47,21 @@ class GeneralHandler(Handler):
 
     def architectures(self, params):
         """Return all supported architectures."""
-        return sorted(BootResource.objects.get_usable_architectures())
+        return BootResource.objects.get_usable_architectures()
+
+    def hwe_kernels(self, params):
+        """Return all supported hwe_kernels."""
+        return BootResource.objects.get_usable_hwe_kernels()
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""
         osystems = list_all_usable_osystems()
         releases = list_all_usable_releases(osystems)
+        kernels = list_all_usable_hwe_kernels(releases)
         return {
             "osystems": list_osystem_choices(osystems, include_default=False),
             "releases": list_release_choices(releases, include_default=False),
+            "kernels": kernels,
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(
                 "default_distro_series"),
