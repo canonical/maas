@@ -216,6 +216,19 @@ class TestKernelOpts(MAASTestCase):
                 "overlayroot=tmpfs",
                 "ip=::::%s:BOOTIF" % params.hostname]))
 
+    def test_enlist_compose_kernel_command_line_inc_purpose_opts(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        params = self.make_kernel_parameters(purpose="enlist")
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip=::::%s:BOOTIF" % params.hostname]))
+
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(
             kernel_opts, 'get_curtin_kernel_cmdline_sep')
