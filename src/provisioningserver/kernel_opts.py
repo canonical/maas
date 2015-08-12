@@ -127,7 +127,7 @@ def prefix_target_name(name):
 
 def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
-    if params.purpose == "commissioning" or params.purpose == "xinstall":
+    if params.purpose in ["commissioning", "xinstall", "enlist"]:
         # These are kernel parameters read by the ephemeral environment.
         tname = prefix_target_name(
             get_ephemeral_name(

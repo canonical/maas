@@ -3,6 +3,17 @@ Changelog
 =========
 
 
+1.8.2
+=====
+
+See https://launchpad.net/maas/+milestone/1.8.2 for full details.
+
+Bug Fix Update
+--------------
+
+#1459865    Fix enlistment to always use the correct kernel parameters.
+
+
 1.8.1
 =====
 
