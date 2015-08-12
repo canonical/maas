@@ -27,6 +27,7 @@ __all__ = [
     'psql_array',
     'request_transaction_retry',
     'retry_on_serialization_failure',
+    'savepoint',
     'transactional',
     'validate_in_transaction',
     ]
@@ -415,7 +416,8 @@ def transactional(func):
         if connection.in_atomic_block:
             # Don't use the retry-capable function if we're already in a
             # transaction; retrying is pointless when the txn is broken.
-            return func_within_txn(*args, **kwargs)
+            with post_commit_hooks.savepoint():
+                return func_within_txn(*args, **kwargs)
         else:
             # Use the retry-capable function, firing post-transaction hooks.
             try:
@@ -429,6 +431,32 @@ def transactional(func):
     call_within_transaction.func = func
 
     return call_within_transaction
+
+
+@contextmanager
+def savepoint():
+    """Context manager to wrap the code within a savepoint.
+
+    This also enters a savepoint context for post-commit hooks, and so should
+    always be used in preference to `transaction.atomic()` when only a
+    savepoint is needed.
+
+    If either a transaction or a savepoint within a transaction is what you
+    want, use the `transactional` decorator.
+
+    If you want a _decorator_ specifically, use the `transactional` decorator.
+
+    If you want a _savepoint decorator_ specifically, write one, or adapt
+    this to do it.
+
+    """
+    if connection.in_atomic_block:
+        with post_commit_hooks.savepoint():
+            with transaction.atomic():
+                yield
+    else:
+        raise TransactionManagementError(
+            "Savepoints cannot be created outside of a transaction.")
 
 
 def commit_within_atomic_block(using="default"):

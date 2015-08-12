@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 from collections import deque
+from contextlib import contextmanager
 from itertools import count
 from Queue import Queue
 import threading
@@ -166,6 +167,28 @@ class DeferredHooks(threading.local):
     def add(self, d):
         assert isinstance(d, Deferred)
         self.hooks.append(d)
+
+    @contextmanager
+    def savepoint(self):
+        """Context manager that saves the current hooks on the way in.
+
+        If the context exits with an exception the newly added hooks are
+        cancelled, and the saved hooks are restored.
+
+        If the context exits cleanly, the saved hooks are restored, and the
+        newly hooks are added to the end of the hook queue.
+        """
+        saved = self.hooks
+        self.hooks = deque()
+        try:
+            yield
+        except:
+            self.reset()
+            raise
+        else:
+            saved.extend(self.hooks)
+        finally:
+            self.hooks = saved
 
     @synchronous
     def fire(self):

@@ -48,6 +48,7 @@ from maasserver.utils.orm import (
     psql_array,
     request_transaction_retry,
     retry_on_serialization_failure,
+    savepoint,
     validate_in_transaction,
 )
 from maastesting.djangotestcase import DjangoTransactionTestCase
@@ -81,6 +82,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesPredicate,
+    Not,
 )
 from twisted.internet.defer import (
     CancelledError,
@@ -629,6 +631,23 @@ class TestTransactional(DjangoTransactionTestCase):
         # The hook list is cleared so that the exception is raised only once.
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
 
+    def test__creates_post_commit_hook_savepoint_on_inner_block(self):
+        hooks = post_commit_hooks.hooks
+
+        @orm.transactional
+        def inner():
+            # We're inside a savepoint context here.
+            self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+            return "inner"
+
+        @orm.transactional
+        def outer():
+            # We're inside a transaction here, but not yet a savepoint.
+            self.assertThat(post_commit_hooks.hooks, Is(hooks))
+            return "outer > " + inner()
+
+        self.assertEqual("outer > inner", outer())
+
 
 class TestTransactionalRetries(SerializationFailureTestCase):
 
@@ -658,6 +677,26 @@ class TestTransactionalRetries(SerializationFailureTestCase):
         # once more by transactional().
         expected_reset_calls = [call()] * 10
         self.assertThat(reset, MockCallsMatch(*expected_reset_calls))
+
+
+class TestSavepoint(DjangoTransactionTestCase):
+    """Tests for `savepoint`."""
+
+    def test__crashes_if_not_already_within_transaction(self):
+        with ExpectedException(TransactionManagementError):
+            with savepoint():
+                pass
+
+    def test__creates_savepoint_for_transaction_and_post_commit_hooks(self):
+        hooks = post_commit_hooks.hooks
+        with transaction.atomic():
+            self.expectThat(connection.savepoint_ids, HasLength(0))
+            with savepoint():
+                # We're one savepoint in.
+                self.assertThat(connection.savepoint_ids, HasLength(1))
+                # Post-commit hooks have been saved.
+                self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+            self.expectThat(connection.savepoint_ids, HasLength(0))
 
 
 class TestOutsideAtomicBlock(MAASTestCase):

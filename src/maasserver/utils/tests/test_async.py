@@ -47,6 +47,7 @@ from testtools.matchers import (
     IsInstance,
     LessThan,
 )
+from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.internet.task import deferLater
@@ -301,3 +302,39 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             maastesting.factory.TestException#...
             """),
             logger.output)
+
+    def test__savepoint_saves_and_restores_hooks(self):
+        d = Deferred()
+        dhooks = DeferredHooks()
+        dhooks.add(d)
+
+        with dhooks.savepoint():
+            self.expectThat(list(dhooks.hooks), Equals([]))
+
+        self.expectThat(list(dhooks.hooks), Equals([d]))
+
+    def test__savepoint_restores_hooks_with_new_hooks_on_clean_exit(self):
+        d1 = Deferred()
+        d2 = Deferred()
+        dhooks = DeferredHooks()
+        dhooks.add(d1)
+
+        with dhooks.savepoint():
+            dhooks.add(d2)
+            self.expectThat(list(dhooks.hooks), Equals([d2]))
+
+        self.expectThat(list(dhooks.hooks), Equals([d1, d2]))
+
+    def test__savepoint_restores_hooks_only_on_dirty_exit(self):
+        d1 = Deferred()
+        d2 = Deferred()
+        dhooks = DeferredHooks()
+        dhooks.add(d1)
+
+        exception_type = factory.make_exception_type()
+        with ExpectedException(exception_type):
+            with dhooks.savepoint():
+                dhooks.add(d2)
+                raise exception_type()
+
+        self.expectThat(list(dhooks.hooks), Equals([d1]))

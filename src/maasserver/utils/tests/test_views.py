@@ -35,9 +35,15 @@ from django.http import HttpResponse
 from django.http.response import REASON_PHRASES
 from fixtures import FakeLogger
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import SerializationFailureTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    SerializationFailureTestCase,
+)
 from maasserver.utils import views
-from maasserver.utils.orm import validate_in_transaction
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    validate_in_transaction,
+)
 from maasserver.utils.views import HttpResponseConflict
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -466,3 +472,29 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
         handler.get_response(request)
         self.assertEqual(recorder, [True] * 3, "Nonce hasn't been cleaned up!")
+
+
+class TestWebApplicationHandlerAtomicViews(MAASServerTestCase):
+
+    def test__make_view_atomic_wraps_view_with_post_commit_savepoint(self):
+        hooks = post_commit_hooks.hooks
+        savepoint_level = len(connection.savepoint_ids)
+
+        def view(*args, **kwargs):
+            # We're one more savepoint in.
+            self.assertThat(
+                connection.savepoint_ids,
+                HasLength(savepoint_level + 1))
+            # Post-commit hooks have been saved.
+            self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+            # Return the args we were given.
+            return args, kwargs
+
+        handler = views.WebApplicationHandler()
+        view_atomic = handler.make_view_atomic(view)
+
+        self.assertThat(post_commit_hooks.hooks, Is(hooks))
+        self.assertThat(
+            view_atomic(sentinel.arg, kwarg=sentinel.kwarg),
+            Equals(((sentinel.arg, ), {"kwarg": sentinel.kwarg})))
+        self.assertThat(post_commit_hooks.hooks, Is(hooks))

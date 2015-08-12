@@ -167,6 +167,29 @@ class WebApplicationHandler(WSGIHandler):
         # error page when there's a persistent serialization failure.
         return response
 
+    def make_view_atomic(self, view):
+        """Make `view` atomic and with a post-commit hook savepoint.
+
+        This view will be executed within a transaction as it is -- that's a
+        core purpose of this class -- so wrapping the view in an extra atomic
+        layer means that it will run within a *savepoint*.
+
+        This prevents middleware exception handlers that suppress exceptions
+        from inadvertently allowing failed requests to be committed.
+
+        In addition this also holds a post-commit hook savepoint around the
+        view. If the view crashes those post-commit hooks that were created
+        with this savepoint will be discarded.
+
+        """
+        view_atomic = super(WebApplicationHandler, self).make_view_atomic(view)
+
+        def view_atomic_with_post_commit_savepoint(*args, **kwargs):
+            with post_commit_hooks.savepoint():
+                return view_atomic(*args, **kwargs)
+
+        return view_atomic_with_post_commit_savepoint
+
     def get_response(self, request):
         """Override `BaseHandler.get_response`.
 
