@@ -1018,7 +1018,7 @@ class TestSetStaticIP(MAASServerTestCase):
 class TestMACAddressManager(MAASServerTestCase):
     def test_find_macs_having_no_interface(self):
         orphaned = [
-            factory.make_MACAddress()
+            factory.make_MACAddress(iftype=None)
             for _ in range(3)
         ]
         for iftype in INTERFACE_TYPE_MAPPING.keys():
@@ -1037,7 +1037,7 @@ class TestEnsurePhysicalInterfacesCreated(MAASServerTestCase):
     )
 
     def make_mac(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress(iftype=None)
         if self.with_cluster:
             ng = factory.make_NodeGroup()
             ngi = factory.make_NodeGroupInterface(

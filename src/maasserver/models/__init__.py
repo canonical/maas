@@ -90,7 +90,12 @@ from maasserver.models.filesystemgroup import (
     RAID,
     VolumeGroup,
 )
-from maasserver.models.interface import Interface
+from maasserver.models.interface import (
+    BondInterface,
+    Interface,
+    PhysicalInterface,
+    VLANInterface,
+)
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
@@ -123,6 +128,7 @@ from piston.doc import HandlerDocumentation
 # export in __all__.
 ignore_unused(
     Bcache,
+    BondInterface,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -156,6 +162,7 @@ ignore_unused(
     UserProfile,
     VirtualBlockDevice,
     VLAN,
+    VLANInterface,
     VolumeGroup,
     Zone,
 )

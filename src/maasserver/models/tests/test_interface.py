@@ -72,7 +72,7 @@ class InterfaceTest(MAASServerTestCase):
 class PhysicalInterfaceTest(MAASServerTestCase):
 
     def test_manager_returns_physical_interfaces(self):
-        mac = factory.make_MACAddress_with_Node()
+        mac = factory.make_MACAddress_with_Node(iftype=None)
         parent = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_VLAN()
@@ -82,13 +82,13 @@ class PhysicalInterfaceTest(MAASServerTestCase):
             [parent], PhysicalInterface.objects.all())
 
     def test_get_node_returns_parent_node(self):
-        mac = factory.make_MACAddress_with_Node()
+        mac = factory.make_MACAddress_with_Node(iftype=None)
         interface = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         self.assertEqual(mac.node, interface.get_node())
 
     def test_leaves_underlying_mac_intact_when_removed(self):
-        mac = factory.make_MACAddress_with_Node()
+        mac = factory.make_MACAddress_with_Node(iftype=None)
         interface = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         interface.delete()

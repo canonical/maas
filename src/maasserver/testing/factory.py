@@ -536,13 +536,16 @@ class Factory(maastesting.factory.Factory):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.make_mac_address())
 
-    def make_MACAddress(self, address=None, node=None, networks=None,
-                        **kwargs):
+    def make_MACAddress(
+            self, address=None, node=None, networks=None,
+            iftype=INTERFACE_TYPE.PHYSICAL, ifname=None, **kwargs):
         """Create a `MACAddress` model object."""
         if address is None:
             address = self.make_mac_address()
         mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
         mac.save()
+        if iftype is not None:
+            self.make_Interface(iftype, mac=mac, name=ifname)
         if networks is not None:
             mac.networks.add(*networks)
         return mac

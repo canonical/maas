@@ -9,6 +9,7 @@ from __future__ import (
     unicode_literals,
     )
 
+
 str = None
 
 __metaclass__ = type
@@ -34,6 +35,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
 )
+from maasserver.exceptions import StaticIPAddressForbidden
 from maasserver.fields import (
     MAASIPAddressField,
     VerboseRegexValidator,
@@ -172,6 +174,27 @@ class NodeGroupInterfaceManager(Manager):
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
     return VLAN.objects.get_default_vlan()
+
+
+def raise_if_address_inside_dynamic_range(requested_address, fabric=None):
+    """
+    Checks if the specified IP address, inside the specified fabric,
+    is inside a MAAS-managed dynamic range.
+
+    :raises: StaticIPAddressForbidden if the address occurs within
+        an existing dynamic range within the specified fabric.
+    """
+    if fabric is not None:
+        raise NotImplementedError("Fabrics are not yet supported.")
+
+    requested_address_ip = IPAddress(requested_address)
+    for interface in NodeGroupInterface.objects.all():
+        if interface.is_managed:
+            dynamic_range = interface.get_dynamic_ip_range()
+            if requested_address_ip in dynamic_range:
+                raise StaticIPAddressForbidden(
+                    "Requested IP address %s is in a dynamic range." %
+                    requested_address)
 
 
 class NodeGroupInterface(CleanSave, TimestampedModel):

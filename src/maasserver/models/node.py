@@ -26,6 +26,7 @@ from collections import (
 from datetime import timedelta
 from itertools import chain
 from operator import attrgetter
+import re
 from uuid import uuid1
 
 from django.contrib.auth.models import User
@@ -723,6 +724,25 @@ class Node(CleanSave, TimestampedModel):
             query = dhcpleases_qs.filter(mac__in=macs)
             return query.values_list('ip', flat=True)
 
+    def get_interface_names(self):
+        return list(self.get_interfaces().values_list('name', flat=True))
+
+    def get_next_ifname(self, ifnames=None):
+        """
+        Scans the interfaces on this Node and returns the next free ifname in
+        the format 'ethX', where X is zero or a positive integer.
+        """
+        if ifnames is None:
+            ifnames = self.get_interface_names()
+        used_ethX = []
+        for ifname in ifnames:
+            if re.match('eth[0-9]+', ifname):
+                used_ethX.append(int(ifname[3:]))
+        if len(used_ethX) == 0:
+            return "eth0"
+        else:
+            return "eth" + unicode(used_ethX[-1] + 1)
+
     def get_static_ip_mappings(self):
         """Return node's static addresses, and their MAC addresses.
 
@@ -780,7 +800,7 @@ class Node(CleanSave, TimestampedModel):
         cursor.execute(RECURSIVE_INTERFACE_QUERY, [self.id])
         results = cursor.fetchall()
         ids = [res[0] for res in results]
-        # Materialize the list of ID (that list will have a reasonnable size)
+        # Materialize the list of ID (that list will have a reasonable size)
         # and return a QuerySet instead of using Manager.raw() that returns a
         # (very limited) RawQuerySet.
         return Interface.objects.filter(id__in=ids)
@@ -925,12 +945,17 @@ class Node(CleanSave, TimestampedModel):
         """
 
         # Avoid circular imports
-        from maasserver.models import MACAddress
+        from maasserver.models import (
+            MACAddress,
+            PhysicalInterface,
+        )
 
         # Create the MACAddress, but only if it does not exist.
         try:
             mac = MACAddress(mac_address=mac_address, node=self)
             mac.save()
+            iface = PhysicalInterface(mac=mac, name=self.get_next_ifname())
+            iface.save()
         except ValidationError as e:
             if any(("is not a valid MAC address." in m
                     for m in e.message_dict['mac_address'])):

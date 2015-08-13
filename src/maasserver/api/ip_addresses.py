@@ -37,7 +37,10 @@ from maasserver.forms import (
     ClaimIPForm,
     ReleaseIPForm,
 )
-from maasserver.models import StaticIPAddress
+from maasserver.models import (
+    PhysicalInterface,
+    StaticIPAddress,
+)
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.utils.orm import (
@@ -92,8 +95,11 @@ class IPAddressesHandler(OperationsHandler):
         else:
             # The user has requested a static IP linked to a MAC
             # address, so we set that up via the MACAddress model.
-            mac_address, _ = MACAddress.objects.get_or_create(
+            mac_address, created = MACAddress.objects.get_or_create(
                 mac_address=mac, cluster_interface=interface)
+            if created:
+                iface = PhysicalInterface(mac=mac_address, name='eth0')
+                iface.save()
             ips_on_interface = (
                 addr.ip for addr in mac_address.ip_addresses.all()
                 if IPAddress(addr.ip) in interface.network)

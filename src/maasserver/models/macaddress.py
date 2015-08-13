@@ -33,9 +33,6 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     StaticIPAddressConflict,
-    StaticIPAddressForbidden,
-    StaticIPAddressOutOfRange,
-    StaticIPAddressTypeClash,
     StaticIPAddressUnavailable,
 )
 from maasserver.fields import (
@@ -47,9 +44,13 @@ from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.managers import BulkManager
 from maasserver.models.network import Network
 from maasserver.models.nodegroup import NodeGroup
-from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.nodegroupinterface import (
+    NodeGroupInterface,
+    raise_if_address_inside_dynamic_range,
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils import get_one
 from netaddr import (
     IPAddress,
     IPRange,
@@ -300,7 +301,7 @@ class MACAddress(CleanSave, TimestampedModel):
                 return self.node.parent.get_pxe_mac().cluster_interface
         return None
 
-    def _get_attached_clusters_with_static_ranges(self):
+    def get_attached_clusters_with_static_ranges(self):
         """Returns a list of cluster interfaces attached to this MAC address,
         where each cluster interface has a defined static range.
         """
@@ -323,116 +324,13 @@ class MACAddress(CleanSave, TimestampedModel):
     def claim_static_ips(
             self, alloc_type=IPADDRESS_TYPE.AUTO, requested_address=None,
             fabric=None, user=None, update_host_maps=True):
-        """Assign static IP addresses to this MAC.
-
-        Allocates one address per managed cluster interface connected to this
-        MAC. Typically this will be either just one IPv4 address, or an IPv4
-        address and an IPv6 address.
-        Calls update_host_maps() on the related Node in order to update
-
-        any DHCP mappings.
-
-        :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
-            This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
-        :param requested_address: Optional IP address to claim.  Must be in
-            the range defined on some cluster interface to which this
-            MACAddress is related. If given, no allocations will be made on
-            any other cluster interfaces the MAC may be connected to.
-        :param user: Optional User who will be given ownership of any
-            `StaticIPAddress`es claimed.
-        :param update_host_maps: If True, will update any relevant DHCP
-            mappings in addition to allocating the address.
-        :return: A list of :class:`StaticIPAddress`.  Returns empty if
-            the cluster_interface is not yet known, or the
-            static_ip_range_low/high values values are not set on the
-            cluster_interface.  If an IP address was already allocated, the
-            function will return it rather than allocate a new one.
-        :raises: StaticIPAddressExhaustion if there are not enough IPs left.
-        :raises: StaticIPAddressTypeClash if an IP already exists with a
-            different type.
-        :raises: StaticIPAddressOutOfRange if the requested_address is not in
-            the cluster interface's defined range.
-        :raises: StaticIPAddressUnavailable if the requested_address is already
-            allocated.
-        :raises: StaticIPAddressForbidden if the address occurs within
-            an existing dynamic range within the specified fabric.
+        """Shim to call claim_static_ips on the Interface object related
+        to this MAC.
         """
-        if fabric is not None:
-            raise NotImplementedError("Fabrics are not yet supported.")
-
-        # This method depends on a database isolation level of SERIALIZABLE
-        # (or perhaps REPEATABLE READ) to avoid race conditions.
-
-        # Every IP address we allocate is managed by one cluster interface.
-        # We're only interested in cluster interfaces with a static range.
-        # The check for a static range is deliberately kept vague; Django uses
-        # different representations for "none" values in IP addresses.
-        if self.get_cluster_interface() is None:
-            # No known cluster interface.  Nothing we can do.
-            hostname_string = self._get_hostname_log_prefix()
-            maaslog.error(
-                "%sTried to allocate an IP to MAC %s, but its cluster "
-                "interface is not known", hostname_string, self)
-            return []
-        cluster_interfaces = self._get_attached_clusters_with_static_ranges()
-        if len(cluster_interfaces) == 0:
-            # There were cluster interfaces, but none of them had a static
-            # range.  Can't allocate anything.
-            return []
-
-        if requested_address is not None:
-            # A specific IP address was requested.  We restrict our attention
-            # to the cluster interface that is responsible for that address.
-            # In addition, claiming addresses inside a dynamic range on the
-            # requested fabric is not allowed.
-            self._raise_if_address_inside_dynamic_range(
-                requested_address, fabric)
-            cluster_interface = find_cluster_interface_responsible_for_ip(
-                cluster_interfaces, IPAddress(requested_address))
-            if cluster_interface is None:
-                raise StaticIPAddressOutOfRange(
-                    "Requested IP address %s is not in a subnet managed by "
-                    "any cluster interface." % requested_address)
-            cluster_interfaces = [cluster_interface]
-
-        allocations = self._map_allocated_addresses(cluster_interfaces)
-
-        # Check if we already have a full complement of static IP addresses
-        # allocated, none of which are the same type.
-        if (None not in allocations.values() and alloc_type not in
-                [a.alloc_type for a in allocations.values()]):
-            raise StaticIPAddressTypeClash(
-                "MAC address %s already has IP addresses of different "
-                "types than the ones requested." % self)
-
-        new_allocations = []
-        # Allocate IP addresses on all relevant cluster interfaces where this
-        # MAC does not have any address allocated yet.
-        for interface in cluster_interfaces:
-            if allocations[interface] is None:
-                # No IP address yet on this cluster interface. Get one.
-                static_ip = self._allocate_static_address(
-                    interface, alloc_type, requested_address, user=user)
-                allocations[interface] = static_ip
-                mac_address = MAC(self.mac_address)
-                new_allocations.append(
-                    (static_ip.ip, mac_address.get_raw()))
-
-        # Note: the previous behavior of the product (MAAS < 1.8) was to
-        # update host maps with *every* address, not just changed addresses.
-        # This should only impact separately-claimed IPv6 and IPv4 addresses.
-        if update_host_maps:
-            if self.node is not None:
-                self.node.update_host_maps(new_allocations)
-            self.update_related_dns_zones()
-        # We now have a static IP allocated to each of our cluster interfaces.
-        # Ignore the clashes.  Return the ones that have the right type: those
-        # are either matching pre-existing allocations or fresh ones.
-        return [
-            sip
-            for sip in allocations.values()
-            if sip.alloc_type == alloc_type
-            ]
+        from maasserver.models import PhysicalInterface
+        interface = get_one(PhysicalInterface.objects.filter(mac=self))
+        return interface.claim_static_ips(
+            alloc_type, requested_address, fabric, user, update_host_maps)
 
     def _get_device_cluster_or_default(self):
         """Returns a cluster interface for this MAC, first by checking for a
@@ -451,27 +349,6 @@ class MACAddress(CleanSave, TimestampedModel):
         # Prevent circular imports
         from maasserver.dns import config as dns_config
         dns_config.dns_update_zones([self._get_device_cluster_or_default()])
-
-    def _raise_if_address_inside_dynamic_range(
-            self, requested_address, fabric=None):
-        """
-        Checks if the specified IP address, inside the specified fabric,
-        is inside a MAAS-managed dynamic range.
-
-        :raises: StaticIPAddressForbidden if the address occurs within
-            an existing dynamic range within the specified fabric.
-        """
-        if fabric is not None:
-            raise NotImplementedError("Fabrics are not yet supported.")
-
-        requested_address_ip = IPAddress(requested_address)
-        for interface in NodeGroupInterface.objects.all():
-            if interface.is_managed:
-                dynamic_range = interface.get_dynamic_ip_range()
-                if requested_address_ip in dynamic_range:
-                    raise StaticIPAddressForbidden(
-                        "Requested IP address %s is in a dynamic range." %
-                        requested_address)
 
     def _get_dhcp_managed_clusters(self, fabric=None):
         """Returns the DHCP-managed clusters relevant to the specified fabric.
@@ -528,7 +405,7 @@ class MACAddress(CleanSave, TimestampedModel):
 
         # Raise a StaticIPAddressForbidden exception if the requested_address
         # is in a dynamic range.
-        self._raise_if_address_inside_dynamic_range(requested_address, fabric)
+        raise_if_address_inside_dynamic_range(requested_address, fabric)
 
         # Allocate IP if it isn't allocated already.
         static_ip, created = StaticIPAddress.objects.get_or_create(

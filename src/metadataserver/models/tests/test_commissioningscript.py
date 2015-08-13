@@ -1308,10 +1308,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         BOND_NAME = 'bond0'
-        vlan_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        vlan_mac = factory.make_MACAddress_with_Node(
+            address=ETH0_MAC, iftype=None)
         node = vlan_mac.node
         bond_mac = factory.make_MACAddress_with_Node(
-            address=ETH1_MAC, node=node)
+            address=ETH1_MAC, node=node, iftype=None)
         phy1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", mac=vlan_mac)
         phy2 = factory.make_Interface(
@@ -1330,10 +1331,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Note: the MACs here are swapped compared to their expected values.
         ETH0_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
-        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        eth0_mac = factory.make_MACAddress_with_Node(
+            address=ETH0_MAC, iftype=None)
         node = eth0_mac.node
         eth1_mac = factory.make_MACAddress_with_Node(
-            node=node, address=ETH1_MAC)
+            node=node, address=ETH1_MAC, iftype=None)
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", mac=eth0_mac)
         factory.make_Interface(
@@ -1349,7 +1351,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Test whether MAC address entities are preserved and not recreated"""
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         mac_to_be_preserved = factory.make_MACAddress_with_Node(
-            address=ETH0_MAC)
+            address=ETH0_MAC, iftype=None)
         node = mac_to_be_preserved.node
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
@@ -1359,7 +1361,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__legacy_model_upgrade_preserves_macs(self):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
-        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        eth0_mac = factory.make_MACAddress_with_Node(
+            address=ETH0_MAC, iftype=None)
         node = eth0_mac.node
         eth1_mac = factory.make_MACAddress_with_Node(
             node=node, address=ETH1_MAC)
@@ -1404,14 +1407,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         VLAN_MAC = '00:00:00:00:01:01'
         BOND_MAC = '00:00:00:00:01:02'
-        eth0_mac = factory.make_MACAddress_with_Node(address=ETH0_MAC)
+        eth0_mac = factory.make_MACAddress_with_Node(
+            address=ETH0_MAC, iftype=None)
         node = eth0_mac.node
         eth1_mac = factory.make_MACAddress_with_Node(
-            address=ETH1_MAC, node=node)
+            address=ETH1_MAC, node=node, iftype=None)
         vlan_mac = factory.make_MACAddress_with_Node(
-            address=VLAN_MAC, node=node)
+            address=VLAN_MAC, node=node, iftype=None)
         bond_mac = factory.make_MACAddress_with_Node(
-            address=BOND_MAC, node=node)
+            address=BOND_MAC, node=node, iftype=None)
         phy1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name='eth0', mac=eth0_mac)
         phy2 = factory.make_Interface(
@@ -1449,10 +1453,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test__preserves_unrelated_virtual_interfaces(self):
         VLAN_MAC = '00:00:00:00:01:01'
         BOND_MAC = '00:00:00:00:01:02'
-        vlan_mac = factory.make_MACAddress_with_Node(address=VLAN_MAC)
+        vlan_mac = factory.make_MACAddress_with_Node(
+            address=VLAN_MAC, iftype=None)
         node = vlan_mac.node
         bond_mac = factory.make_MACAddress_with_Node(
-            node=node, address=BOND_MAC)
+            node=node, address=BOND_MAC, iftype=None)
         vlanif = factory.make_Interface(INTERFACE_TYPE.VLAN, mac=vlan_mac)
         bondif = factory.make_Interface(INTERFACE_TYPE.BOND, mac=bond_mac)
 

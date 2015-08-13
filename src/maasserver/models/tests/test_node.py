@@ -59,6 +59,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
+    PhysicalInterface,
 )
 from maasserver.models.node import PowerInfo
 from maasserver.models.signals import power as node_query
@@ -307,6 +308,35 @@ class TestNode(MAASServerTestCase):
         node.add_mac_address(mac_address)
         self.assertEqual(
             cluster_interface, node.get_primary_mac().cluster_interface)
+
+    def test_add_mac_address_adds_interface(self):
+        mac = factory.make_mac_address()
+        node = factory.make_Node()
+        node.add_mac_address(mac)
+        ifaces = PhysicalInterface.objects.filter(mac__mac_address=mac)
+        self.assertEqual(1, ifaces.count())
+        self.assertEqual('eth0', ifaces.first().name)
+
+    def test_add_mac_addresses_adds_interfaces(self):
+        node = factory.make_Node()
+        node.add_mac_address(factory.make_mac_address())
+        node.add_mac_address(factory.make_mac_address())
+        ifaces = PhysicalInterface.objects.all()
+        self.assertEqual(2, ifaces.count())
+        self.assertEqual(
+            ['eth0', 'eth1'], list(ifaces.order_by('id').values_list(
+                'name', flat=True)))
+
+    def test_add_mac_addresses_adds_interfaces_with_sequential_names(self):
+        mac = factory.make_MACAddress_with_Node(iftype=None)
+        factory.make_Interface(
+            type=INTERFACE_TYPE.PHYSICAL, mac=mac, name='eth4000')
+        mac.node.add_mac_address(factory.make_mac_address())
+        ifaces = PhysicalInterface.objects.all()
+        self.assertEqual(2, ifaces.count())
+        self.assertEqual(
+            ['eth4000', 'eth4001'], list(ifaces.order_by('id').values_list(
+                'name', flat=True)))
 
     def test_remove_mac_address(self):
         mac = factory.make_mac_address()
@@ -1286,7 +1316,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_get_interfaces_returns_all_connected_interfaces(self):
-        mac = factory.make_MACAddress_with_Node()
+        mac = factory.make_MACAddress_with_Node(iftype=None)
         phy1 = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         phy2 = factory.make_Interface(
@@ -1305,10 +1335,10 @@ class TestNode(MAASServerTestCase):
             mac.node.get_interfaces())
 
     def test_get_interfaces_ignores_interface_on_other_nodes(self):
-        other_mac = factory.make_MACAddress_with_Node()
+        other_mac = factory.make_MACAddress_with_Node(iftype=None)
         factory.make_Interface(
             mac=other_mac, type=INTERFACE_TYPE.PHYSICAL)
-        mac = factory.make_MACAddress_with_Node()
+        mac = factory.make_MACAddress_with_Node(iftype=None)
         phy = factory.make_Interface(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_Interface(
@@ -1316,6 +1346,24 @@ class TestNode(MAASServerTestCase):
 
         self.assertItemsEqual(
             [phy, vlan], mac.node.get_interfaces())
+
+    def test_get_interface_names_returns_interface_name(self):
+        mac = factory.make_MACAddress_with_Node(ifname='eth0')
+        self.assertEquals(['eth0'], mac.node.get_interface_names())
+
+    def test_get_next_ifname_names_returns_sane_default(self):
+        node = factory.make_Node()
+        self.assertEquals('eth0', node.get_next_ifname(ifnames=[]))
+
+    def test_get_next_ifname_names_returns_next_available(self):
+        node = factory.make_Node()
+        self.assertEquals('eth2', node.get_next_ifname(
+            ifnames=['eth0', 'eth1']))
+
+    def test_get_next_ifname_names_returns_next_in_sequence(self):
+        node = factory.make_Node()
+        self.assertEquals('eth12', node.get_next_ifname(
+            ifnames=['eth10', 'eth11']))
 
     def test_get_static_ip_mappings_returns_static_ip_and_mac(self):
         node = factory.make_Node(mac=True, disable_ipv4=False)
