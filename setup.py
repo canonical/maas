@@ -64,8 +64,7 @@ setup(
 
     data_files=[
         ('/etc/maas',
-            ['etc/maas/drivers.yaml',
-             'contrib/maas-http.conf']),
+            ['etc/maas/drivers.yaml']),
         ('/etc/maas/templates/uefi',
             glob('etc/maas/templates/uefi/*.template')),
         ('/etc/maas/templates/dhcp',
@@ -84,7 +83,8 @@ setup(
         ('/etc/maas/templates/deployment-user-data',
             glob('etc/maas/templates/deployment-user-data/*.py')),
         ('/usr/share/maas',
-            ['contrib/maas-rsyslog.conf']),
+            ['contrib/maas-rsyslog.conf',
+             'contrib/maas-http.conf']),
         ('/etc/maas/preseeds',
             ['contrib/preseeds_v2/commissioning',
              'contrib/preseeds_v2/enlist',
