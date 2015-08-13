@@ -3596,6 +3596,154 @@ def get_cache_set_choices_for_node(node):
     ]
 
 
+class CreateCacheSetForm(Form):
+    """For validaing and saving a new Bcache Cache Set."""
+
+    cache_device = forms.ChoiceField(required=False)
+    cache_partition = forms.ChoiceField(required=False)
+
+    clean_cache_device = clean_block_device_name_to_id('cache_device')
+    clean_cache_partition = clean_partition_name_to_id('cache_partition')
+
+    def __init__(self, node, *args, **kwargs):
+        super(CreateCacheSetForm, self).__init__(*args, **kwargs)
+        self.node = node
+        self._set_up_field_choices()
+
+    def clean(self):
+        cleaned_data = super(CreateCacheSetForm, self).clean()
+        cache_device = self.cleaned_data.get("cache_device")
+        cache_partition = self.cleaned_data.get("cache_partition")
+        if cache_device and cache_partition:
+            raise ValidationError(
+                "Cannot set both cache_device and cache_partition.")
+        elif not cache_device and not cache_partition:
+            raise ValidationError(
+                "Either cache_device or cache_partition must be specified.")
+        return cleaned_data
+
+    def save(self):
+        """Persist the bcache into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        if self.cleaned_data['cache_device']:
+            cache_device = BlockDevice.objects.get(
+                id=self.cleaned_data['cache_device'])
+            return CacheSet.objects.get_or_create_cache_set_for_block_device(
+                cache_device)
+        elif self.cleaned_data['cache_partition']:
+            cache_partition = Partition.objects.get(
+                id=self.cleaned_data['cache_partition'])
+            return CacheSet.objects.get_or_create_cache_set_for_partition(
+                cache_partition)
+
+    def _set_up_field_choices(self):
+        """Sets up choices for `cache_device` and `cache_partition` fields."""
+        # Select the unused, non-partitioned block devices of this node.
+        free_block_devices = list(
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
+        block_device_choices = [
+            (bd.id, bd.name)
+            for bd in free_block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in free_block_devices
+        ]
+
+        # Select the unused partitions of this node.
+        free_partitions = list(
+            Partition.objects.get_free_partitions_for_node(self.node))
+        partition_choices = [
+            (partition.id, partition.name)
+            for partition in free_partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in free_partitions
+        ]
+
+        self.fields['cache_device'].choices = block_device_choices
+        self.fields['cache_partition'].choices = partition_choices
+
+
+class UpdateCacheSetForm(Form):
+    """For validaing and updating a Bcache Cache Set."""
+
+    cache_device = forms.ChoiceField(required=False)
+    cache_partition = forms.ChoiceField(required=False)
+
+    clean_cache_device = clean_block_device_name_to_id('cache_device')
+    clean_cache_partition = clean_partition_name_to_id('cache_partition')
+
+    def __init__(self, cache_set, *args, **kwargs):
+        super(UpdateCacheSetForm, self).__init__(*args, **kwargs)
+        self.cache_set = cache_set
+        self.node = cache_set.get_node()
+        self._set_up_field_choices()
+
+    def clean(self):
+        cleaned_data = super(UpdateCacheSetForm, self).clean()
+        if (self.cleaned_data.get("cache_device") and
+                self.cleaned_data.get("cache_partition")):
+            msg_error = "Cannot set both cache_device and cache_partition."
+            set_form_error(self, "cache_device", msg_error)
+            set_form_error(self, "cache_partition", msg_error)
+        return cleaned_data
+
+    def save(self):
+        """Persist the bcache into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        if self.cleaned_data['cache_device']:
+            filesystem = self.cache_set.get_filesystem()
+            filesystem.partition = None
+            filesystem.block_device = BlockDevice.objects.get(
+                id=self.cleaned_data['cache_device'])
+            filesystem.save()
+        elif self.cleaned_data['cache_partition']:
+            filesystem = self.cache_set.get_filesystem()
+            filesystem.block_device = None
+            filesystem.partition = Partition.objects.get(
+                id=self.cleaned_data['cache_partition'])
+            filesystem.save()
+        return self.cache_set
+
+    def _set_up_field_choices(self):
+        """Sets up choices for `cache_device` and `cache_partition` fields."""
+        # Select the unused, non-partitioned block devices of this node.
+        block_devices = list(
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
+        # Add the used block device, if its a block device
+        device = self.cache_set.get_device()
+        if isinstance(device, BlockDevice):
+            block_devices.append(device)
+        block_device_choices = [
+            (bd.id, bd.name)
+            for bd in block_devices
+        ] + [
+            (bd.name, bd.name)
+            for bd in block_devices
+        ]
+
+        # Select the unused partitions of this node.
+        partitions = list(
+            Partition.objects.get_free_partitions_for_node(self.node))
+        # Add the used partition, if its a partition.
+        if isinstance(device, Partition):
+            partitions.append(device)
+        partition_choices = [
+            (partition.id, partition.name)
+            for partition in partitions
+        ] + [
+            (partition.name, partition.name)
+            for partition in partitions
+        ]
+
+        self.fields['cache_device'].choices = block_device_choices
+        self.fields['cache_partition'].choices = partition_choices
+
+
 class CreateBcacheForm(Form):
     """For validaing and saving a new Bcache."""
 

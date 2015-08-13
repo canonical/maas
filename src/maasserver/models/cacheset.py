@@ -17,10 +17,12 @@ __all__ = [
     ]
 
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import (
     Manager,
     Q,
 )
+from django.http import Http404
 from maasserver import DefaultMeta
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -118,6 +120,43 @@ class CacheSetManager(Manager):
         else:
             return cache_set
 
+    def get_cache_set_or_404(self, system_id, cache_set_id, user, perm):
+        """Fetch a `CacheSet` by its `Node`'s system_id and its id.  Raise
+        exceptions if no `CacheSet` with this id exist, if the `Node` with
+        system_id doesn't exist, if the `CacheSet` doesn't exist on the
+        `Node`, or if the provided user has not the required permission on
+        this `Node` and `CacheSet`.
+
+        :param name: The system_id.
+        :type name: string
+        :param name: The blockdevice_id.
+        :type name: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        # Circular imports.
+        from maasserver.models.node import Node
+        node = Node.nodes.get_node_or_404(system_id, user, perm)
+        try:
+            cache_set = self.get_cache_set_by_id_or_name(cache_set_id, node)
+        except self.model.DoesNotExist:
+            raise Http404()
+        node = cache_set.get_node()
+        if node.system_id != system_id:
+            raise Http404()
+        if user.has_perm(perm, node):
+            return cache_set
+        else:
+            raise PermissionDenied()
+
 
 class CacheSet(CleanSave, TimestampedModel):
     """A Bcache cache set."""
@@ -145,13 +184,17 @@ class CacheSet(CleanSave, TimestampedModel):
         cache_idx = CacheSet.objects.get_cache_set_idx(self)
         return "cache%d" % cache_idx
 
+    def get_filesystem(self):
+        """Return the filesystem for this cache set."""
+        return self.filesystems.first()
+
     def get_device(self):
         """Return the device that is apart of this cache set.
 
         Returns either a `PhysicalBlockDevice`, `VirtualBlockDevice`, or
         `Partition`.
         """
-        filesystem = self.filesystems.first()
+        filesystem = self.get_filesystem()
         if filesystem is None:
             return None
         else:

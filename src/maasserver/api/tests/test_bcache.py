@@ -160,12 +160,13 @@ class TestBcacheDeviceAPI(APITestCase):
 
     def test_read(self):
         node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
         backing_block_device = factory.make_PhysicalBlockDevice(node=node)
         backing_filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             block_device=backing_block_device)
         bcache = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, cache_set=cache_set,
             filesystems=[backing_filesystem])
         uri = get_bcache_device_uri(bcache)
         response = self.client.get(uri)
@@ -182,6 +183,10 @@ class TestBcacheDeviceAPI(APITestCase):
             "resource_uri": Equals(get_bcache_device_uri(bcache)),
             "virtual_device": ContainsDict({
                 "id": Equals(bcache.virtual_device.id),
+                }),
+            "cache_set": ContainsDict({
+                "id": Equals(cache_set.id),
+                "name": Equals(cache_set.name),
                 }),
             "backing_device": ContainsDict({
                 "id": Equals(backing_block_device.id),

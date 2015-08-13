@@ -14,6 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models import CacheSet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -131,6 +136,84 @@ class TestCacheSetManager(MAASServerTestCase):
             "cache20", factory.make_Node())
 
 
+class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
+    """Tests for the `CacheSetManager.get_cache_set_or_404`."""
+
+    def test__raises_Http404_when_invalid_node(self):
+        user = factory.make_admin()
+        cache_set = factory.make_CacheSet()
+        self.assertRaises(
+            Http404, CacheSet.objects.get_cache_set_or_404,
+            factory.make_name("system_id"), cache_set.id, user,
+            NODE_PERMISSION.VIEW)
+
+    def test__raises_Http404_when_invalid_device(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        self.assertRaises(
+            Http404, CacheSet.objects.get_cache_set_or_404,
+            node.system_id, random.randint(0, 100), user,
+            NODE_PERMISSION.VIEW)
+
+    def test__return_cache_set_by_name(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set.id, CacheSet.objects.get_cache_set_or_404(
+                node.system_id, cache_set.name, user, NODE_PERMISSION.VIEW).id)
+
+    def test__view_returns_cache_set_when_no_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set.id, CacheSet.objects.get_cache_set_or_404(
+                node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
+
+    def test__view_returns_cache_set_when_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set.id, CacheSet.objects.get_cache_set_or_404(
+                node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
+
+    def test__edit_raises_PermissionDenied_when_user_not_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=factory.make_User())
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertRaises(
+            PermissionDenied, CacheSet.objects.get_cache_set_or_404,
+            node.system_id, cache_set.id, user,
+            NODE_PERMISSION.EDIT)
+
+    def test__edit_returns_device_when_user_is_owner(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set.id, CacheSet.objects.get_cache_set_or_404(
+                node.system_id, cache_set.id, user, NODE_PERMISSION.EDIT).id)
+
+    def test__admin_raises_PermissionDenied_when_user_requests_admin(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertRaises(
+            PermissionDenied, CacheSet.objects.get_cache_set_or_404,
+            node.system_id, cache_set.id, user,
+            NODE_PERMISSION.ADMIN)
+
+    def test__admin_returns_device_when_admin(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set.id, CacheSet.objects.get_cache_set_or_404(
+                node.system_id, cache_set.id, user, NODE_PERMISSION.ADMIN).id)
+
+
 class TestCacheSet(MAASServerTestCase):
     """Tests for the `CacheSet` model."""
 
@@ -152,6 +235,11 @@ class TestCacheSet(MAASServerTestCase):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
         self.assertEquals(node, cache_set.get_node())
+
+    def test_get_filesystem(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = factory.make_CacheSet(block_device=block_device)
+        self.assertEquals(block_device.filesystem, cache_set.get_filesystem())
 
     def test_get_device(self):
         block_device = factory.make_PhysicalBlockDevice()

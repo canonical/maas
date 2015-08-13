@@ -24,6 +24,10 @@ from maasserver.api.bcache import (
     BcacheHandler,
     BcachesHandler,
 )
+from maasserver.api.bcache_cacheset import (
+    BcacheCacheSetHandler,
+    BcacheCacheSetsHandler,
+)
 from maasserver.api.blockdevices import (
     BlockDeviceHandler,
     BlockDevicesHandler,
@@ -180,6 +184,10 @@ bcache_device_handler = RestrictedResource(
     BcacheHandler, authentication=api_auth)
 bcache_devices_handler = RestrictedResource(
     BcachesHandler, authentication=api_auth)
+bcache_cache_set_handler = RestrictedResource(
+    BcacheCacheSetHandler, authentication=api_auth)
+bcache_cache_sets_handler = RestrictedResource(
+    BcacheCacheSetsHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -279,6 +287,11 @@ urlpatterns += patterns(
         bcache_devices_handler, name='bcache_devices_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/bcache/(?P<bcache_id>[^/]+)/$',
         bcache_device_handler, name='bcache_device_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-sets/$',
+        bcache_cache_sets_handler, name='bcache_cache_sets_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-set/'
+        '(?P<cache_set_id>[^/]+)/$',
+        bcache_cache_set_handler, name='bcache_cache_set_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

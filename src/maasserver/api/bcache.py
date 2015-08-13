@@ -32,6 +32,7 @@ DISPLAYED_BCACHE_FIELDS = (
     'id',
     'uuid',
     'name',
+    'cache_set',
     'backing_device',
     'size',
     'human_size',
@@ -65,8 +66,7 @@ class BcachesHandler(OperationsHandler):
 
         :param name: Name of the Bcache.
         :param uuid: UUID of the Bcache.
-        :param cache_device: Cache block device.
-        :param cache_partition: Cache partition.
+        :param cache_set: Cache set.
         :param backing_device: Backing block device.
         :param backing_partition: Backing partition.
         :param cache_mode: Cache mode (WRITEBACK, WRITETHROUGH, WRITEAROUND).
@@ -78,7 +78,7 @@ class BcachesHandler(OperationsHandler):
 
         """
         node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, request.user, NODE_PERMISSION.EDIT)
         form = CreateBcacheForm(node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -89,7 +89,7 @@ class BcachesHandler(OperationsHandler):
 class BcacheHandler(OperationsHandler):
     """Manage bcache device on a node."""
     api_doc_section_name = "Bcache Device"
-    create = update = None
+    create = None
     model = Bcache
     fields = DISPLAYED_BCACHE_FIELDS
 
@@ -146,8 +146,7 @@ class BcacheHandler(OperationsHandler):
 
         :param name: Name of the Bcache.
         :param uuid: UUID of the Bcache.
-        :param cache_device: Cache block device to replace current one.
-        :param cache_partition: Cache partition to replace current one.
+        :param cache_set: Cache set to replace current one.
         :param backing_device: Backing block device to replace current one.
         :param backing_partition: Backing partition to replace current one.
         :param cache_mode: Cache mode (writeback, writethrough, writearound).
@@ -155,7 +154,7 @@ class BcacheHandler(OperationsHandler):
         Specifying both a device and a partition for a given role (cache or
         backing) is not allowed.
 
-        Returns 404 if the node or the cacheis not found.
+        Returns 404 if the node or the bcache is not found.
         """
         bcache = Bcache.objects.get_object_or_404(
             system_id, bcache_id, request.user, NODE_PERMISSION.EDIT)
