@@ -8,10 +8,11 @@ Using hardware-enablement kernels
 
 .. note::
 
-  This feature is available in MAAS versions 1.5 and above.
+  As of MAAS 1.9 this feature is configured by setting the hwe_kernel variable
+  instead of the architecture variable.
 
 MAAS allows you to use hardware enablement kernels when booting nodes
-that require them.
+with Ubuntu that require them.
 
 What are hardware-enablement kernels?
 -------------------------------------
@@ -43,24 +44,32 @@ wiki.
 Booting hardware-enablement kernels
 -----------------------------------
 
-MAAS imports hardware-enablement kernels along with its generic boot images,
-but as different "sub-architectures" to the default "generic" one.
+MAAS imports hardware-enablement kernels along with its generic boot
+images. These hardware-enablement kernels are specified by using min_hwe_kernel
+or hwe_kernel variables.
 
-So, for example, a common server might have architecture and sub-architecture
-of ``amd64/generic``, but some newer system chassis which doesn't become
-fully functional with the default kernel for Ubuntu 14.04 Trusty Tahr, for
-example, may require ``amd64/hwe-t``.
+The min_hwe_kernel variable is used to instruct MAAS to ensure the release to
+be deployed uses a kernel version at or above the value of min_hwe_kernel. For
+example if min_hwe_kernel is set to hwe-t when deploying any release before
+Trusty the hwe-t kernel will be used. For any release after Trusty the default
+kernel for that release will be used. If hwe-t or newer is not availible for
+the specified release MAAS will not allow that release to be deployed and throw
+an error.
 
-The quickest way to make a node use a hardware-enablement kernel is by using
-the MAAS command, like this::
+min_hwe_kernel can be set by running the command::
 
   $ maas <profile-name> node update <system-id>
-    architecture=amd64/hwe-t
+    min_hwe_kernel=hwe-<release letter>
 
-If you specify an architecture that doesn't exist (e.g.  ``amd64/hwe-zz``),
-the ``maas`` command will return an error.
+It's also possible to set the min_hwe_kernel from the MAAS web UI, by visiting
+the Node's page and clicking ``Edit node``. Under the Minimum Kernel field, you
+will be able to select any HWE kernels that have been imported onto that node's
+cluster controller.
 
-It's also possible to use HWE kernels from the MAAS web UI, by visiting
-the Node's page and clicking ``Edit node``. Under the Architecture field,
-you will be able to select any HWE kernels that have been imported onto
-that node's cluster controller.
+You can also set the hwe_kernel during deployment. MAAS checks that the
+specified kernel is avalible for the release specified before deploying the
+node. You can set the hwe_kernel when deploying in the web interface or by
+using the command::
+
+  $ maas <profile-name> node start <system-id> distro_series=<distro>
+  hwe_kernel=hwe-<release letter>
