@@ -26,6 +26,7 @@ from django.core.exceptions import (
 )
 from django.db.models import (
     CharField,
+    ForeignKey,
     Manager,
     Q,
 )
@@ -40,6 +41,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE_CHOICES,
     FILESYSTEM_TYPE,
 )
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
@@ -323,6 +325,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     cache_mode = CharField(
         max_length=20, null=True, blank=True,
         choices=CACHE_MODE_TYPE_CHOICES)
+
+    cache_set = ForeignKey(
+        CacheSet, null=True, blank=True)
 
     def __unicode__(self):
         return '%s device %s %d' % (self.group_type, self.name, self.id)

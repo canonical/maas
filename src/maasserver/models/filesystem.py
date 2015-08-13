@@ -30,6 +30,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE_CHOICES,
 )
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.partition import Partition
@@ -85,6 +86,9 @@ class Filesystem(CleanSave, TimestampedModel):
 
     mount_params = CharField(
         max_length=255, null=True, blank=True)
+
+    cache_set = ForeignKey(
+        CacheSet, null=True, blank=True, related_name='filesystems')
 
     def get_node(self):
         """`Node` this filesystem belongs to."""

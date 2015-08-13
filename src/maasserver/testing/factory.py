@@ -34,6 +34,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE,
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -57,6 +58,7 @@ from maasserver.models import (
     BootSource,
     BootSourceCache,
     BootSourceSelection,
+    CacheSet,
     Device,
     DHCPLease,
     DownloadProgress,
@@ -1297,7 +1299,7 @@ class Factory(maastesting.factory.Factory):
             filesystem_group=None, label=None, create_params=None,
             mount_point=None, mount_params=None, block_device_size=None):
         if fstype is None:
-            fstype = self.pick_enum(FILESYSTEM_TYPE)
+            fstype = self.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         if partition is None and block_device is None:
             if self.pick_bool():
                 partition = self.make_Partition()
@@ -1310,17 +1312,33 @@ class Factory(maastesting.factory.Factory):
             label=label, create_params=create_params, mount_point=mount_point,
             mount_params=mount_params)
 
+    def make_CacheSet(self, block_device=None, partition=None, node=None):
+        if node is None:
+            node = self.make_Node()
+        if block_device is None:
+            if partition is None:
+                block_device = self.make_PhysicalBlockDevice(node=node)
+        if block_device is not None:
+            return CacheSet.objects.get_or_create_cache_set_for_block_device(
+                block_device)
+        else:
+            return CacheSet.objects.get_or_create_cache_set_for_partition(
+                partition)
+
     def make_FilesystemGroup(
             self, uuid=None, group_type=None, name=None, create_params=None,
             filesystems=None, node=None, block_device_size=None,
-            cache_mode=None, num_lvm_devices=4):
+            cache_mode=None, num_lvm_devices=4, cache_set=None):
         if group_type is None:
             group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
-        if group_type == FILESYSTEM_GROUP_TYPE.BCACHE and cache_mode is None:
-            cache_mode = self.pick_enum(CACHE_MODE_TYPE)
+        if group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
+            if cache_mode is None:
+                cache_mode = self.pick_enum(CACHE_MODE_TYPE)
+            if cache_set is None:
+                cache_set = self.make_CacheSet(node=node)
         group = FilesystemGroup(
             uuid=uuid, group_type=group_type, name=name, cache_mode=cache_mode,
-            create_params=create_params)
+            create_params=create_params, cache_set=cache_set)
         group.save()
         if filesystems is None:
             if node is None:

@@ -21,6 +21,7 @@ __all__ = [
     'BootSource',
     'BootSourceCache',
     'BootSourceSelection',
+    'CacheSet',
     'ComponentError',
     'Config',
     'Device',
@@ -72,6 +73,7 @@ from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.candidatename import CandidateName
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
@@ -124,6 +126,7 @@ ignore_unused(
     BootResource,
     BootResourceFile,
     BootResourceSet,
+    CacheSet,
     CandidateName,
     ComponentError,
     Config,

@@ -1,0 +1,159 @@
+# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for `CacheSet`."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = []
+
+from maasserver.models import CacheSet
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestCacheSetManager(MAASServerTestCase):
+    """Tests for the `CacheSet` model manager."""
+
+    def test_get_cache_set_idx(self):
+        node = factory.make_Node()
+        cache_set_zero = factory.make_CacheSet(node=node)
+        cache_set_one = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            0, CacheSet.objects.get_cache_set_idx(cache_set_zero))
+        self.assertEquals(
+            1, CacheSet.objects.get_cache_set_idx(cache_set_one))
+
+    def test_get_cache_sets_for_node(self):
+        node = factory.make_Node()
+        cache_sets = [
+            factory.make_CacheSet(node=node)
+            for _ in range(3)
+        ]
+        self.assertItemsEqual(
+            cache_sets, CacheSet.objects.get_cache_sets_for_node(node))
+
+    def test_get_cache_set_for_block_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = factory.make_CacheSet(block_device=block_device)
+        self.assertEquals(
+            cache_set, CacheSet.objects.get_cache_set_for_block_device(
+                block_device))
+
+    def test_get_cache_set_for_partition(self):
+        partition = factory.make_Partition()
+        cache_set = factory.make_CacheSet(partition=partition)
+        self.assertEquals(
+            cache_set, CacheSet.objects.get_cache_set_for_partition(
+                partition))
+
+    def test_get_or_create_cache_set_for_block_device_creates_new(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = CacheSet.objects.get_or_create_cache_set_for_block_device(
+            block_device)
+        self.assertEquals(block_device, cache_set.get_device())
+
+    def test_get_or_create_cache_set_for_block_device_returns_previous(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = CacheSet.objects.get_or_create_cache_set_for_block_device(
+            block_device)
+        cache_set_prev = (
+            CacheSet.objects.get_or_create_cache_set_for_block_device(
+                block_device))
+        self.assertEquals(cache_set_prev, cache_set)
+
+    def test_get_or_create_cache_set_for_partition_creates_new(self):
+        partition = factory.make_Partition()
+        cache_set = CacheSet.objects.get_or_create_cache_set_for_partition(
+            partition)
+        self.assertEquals(partition, cache_set.get_device())
+
+    def test_get_or_create_cache_set_for_partition_returns_previous(self):
+        partition = factory.make_Partition()
+        cache_set = CacheSet.objects.get_or_create_cache_set_for_partition(
+            partition)
+        cache_set_prev = (
+            CacheSet.objects.get_or_create_cache_set_for_partition(
+                partition))
+        self.assertEquals(cache_set_prev, cache_set)
+
+    def test_get_cache_set_by_id_or_name_by_id(self):
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set,
+            CacheSet.objects.get_cache_set_by_id_or_name(cache_set.id, node))
+
+    def test_get_cache_set_by_id_or_name_by_id_invalid_for_mismatch_node(self):
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertRaises(
+            CacheSet.DoesNotExist,
+            CacheSet.objects.get_cache_set_by_id_or_name,
+            cache_set.id, factory.make_Node())
+
+    def test_get_cache_set_by_id_or_name_by_name(self):
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(
+            cache_set,
+            CacheSet.objects.get_cache_set_by_id_or_name(cache_set.name, node))
+
+    def test_get_cache_set_by_id_or_name_raises_error_for_invalid_name(self):
+        self.assertRaises(
+            CacheSet.DoesNotExist,
+            CacheSet.objects.get_cache_set_by_id_or_name,
+            "cakhe", factory.make_Node())
+
+    def test_get_cache_set_by_id_or_name_raises_error_for_invalid_idx(self):
+        self.assertRaises(
+            CacheSet.DoesNotExist,
+            CacheSet.objects.get_cache_set_by_id_or_name,
+            "cacheX", factory.make_Node())
+
+    def test_get_cache_set_by_id_or_name_raises_error_for_missing_idx(self):
+        self.assertRaises(
+            CacheSet.DoesNotExist,
+            CacheSet.objects.get_cache_set_by_id_or_name,
+            "cache", factory.make_Node())
+
+    def test_get_cache_set_by_id_or_name_raises_error_for_not_exist_idx(self):
+        self.assertRaises(
+            CacheSet.DoesNotExist,
+            CacheSet.objects.get_cache_set_by_id_or_name,
+            "cache20", factory.make_Node())
+
+
+class TestCacheSet(MAASServerTestCase):
+    """Tests for the `CacheSet` model."""
+
+    def test_name(self):
+        node = factory.make_Node()
+        cache_set_zero = factory.make_CacheSet(node=node)
+        cache_set_one = factory.make_CacheSet(node=node)
+        self.assertEquals("cache0", cache_set_zero.name)
+        self.assertEquals("cache1", cache_set_one.name)
+
+    def test_get_name(self):
+        node = factory.make_Node()
+        cache_set_zero = factory.make_CacheSet(node=node)
+        cache_set_one = factory.make_CacheSet(node=node)
+        self.assertEquals("cache0", cache_set_zero.get_name())
+        self.assertEquals("cache1", cache_set_one.get_name())
+
+    def test_get_node(self):
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        self.assertEquals(node, cache_set.get_node())
+
+    def test_get_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        cache_set = factory.make_CacheSet(block_device=block_device)
+        self.assertEquals(block_device, cache_set.get_device())

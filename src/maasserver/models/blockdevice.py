@@ -155,6 +155,10 @@ class BlockDevice(CleanSave, TimestampedModel):
         """
         return self.name
 
+    def get_node(self):
+        """Return the name."""
+        return self.node
+
     @property
     def path(self):
         # Path is persistent and set by curtin on deploy.
