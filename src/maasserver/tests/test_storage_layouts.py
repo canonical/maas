@@ -1085,7 +1085,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         }
         self.assertEquals(cache_no_part, layout.get_cache_no_part())
 
-    def test_create_cache_device_setups_up_cache_device_with_partition(self):
+    def test_create_cache_set_setups_up_cache_device_with_partition(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -1095,13 +1095,14 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         layout.cleaned_data = {
             'cache_no_part': False,
         }
-        cache_partition = layout.create_cache_device()
+        cache_set = layout.create_cache_set()
+        cache_device = cache_set.get_device()
         partition_table = ssd.get_partitiontable()
         self.assertIsNotNone(partition_table)
         partition = partition_table.partitions.order_by('id').all()[0]
-        self.assertEquals(partition, cache_partition)
+        self.assertEquals(partition, cache_device)
 
-    def test_create_cache_device_setups_up_cache_device_without_part(self):
+    def test_create_cache_set_setups_up_cache_device_without_part(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -1111,10 +1112,11 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         layout.cleaned_data = {
             'cache_no_part': True,
         }
-        cache_device = layout.create_cache_device()
+        cache_set = layout.create_cache_set()
+        cache_device = cache_set.get_device()
         self.assertEquals(ssd, cache_device)
 
-    def test_create_cache_device_setups_up_cache_device_with_cache_size(self):
+    def test_create_cache_set_setups_up_cache_device_with_cache_size(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -1130,11 +1132,12 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             'cache_size': cache_size,
             'cache_no_part': False,
         }
-        cache_partition = layout.create_cache_device()
+        cache_set = layout.create_cache_set()
+        cache_device = cache_set.get_device()
         partition_table = ssd.get_partitiontable()
         self.assertIsNotNone(partition_table)
         partition = partition_table.partitions.order_by('id').all()[0]
-        self.assertEquals(partition, cache_partition)
+        self.assertEquals(partition, cache_device)
         self.assertEquals(cache_size, partition.size)
 
     def test_raises_error_when_invalid_cache_device(self):
@@ -1324,7 +1327,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             root_partition.filesystem.filesystem_group.group_type)
         self.assertEquals(
             root_partition.filesystem.filesystem_group,
-            cache_partition.filesystem.filesystem_group)
+            cache_partition.filesystem.cache_set.filesystemgroup_set.first())
         bcache = root_partition.filesystem.filesystem_group
         self.assertIsNotNone(bcache)
         self.assertThat(
@@ -1356,7 +1359,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             root_partition.filesystem.filesystem_group.group_type)
         self.assertEquals(
             root_partition.filesystem.filesystem_group,
-            ssd.filesystem.filesystem_group)
+            ssd.filesystem.cache_set.filesystemgroup_set.first())
         bcache = root_partition.filesystem.filesystem_group
         self.assertThat(
             bcache.virtual_device.filesystem, MatchesStructure.byEquality(
@@ -1389,7 +1392,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             root_partition.filesystem.filesystem_group.group_type)
         self.assertEquals(
             root_partition.filesystem.filesystem_group,
-            ssd.filesystem.filesystem_group)
+            ssd.filesystem.cache_set.filesystemgroup_set.first())
         bcache = root_partition.filesystem.filesystem_group
         self.assertEquals(cache_mode, bcache.cache_mode)
         self.assertThat(

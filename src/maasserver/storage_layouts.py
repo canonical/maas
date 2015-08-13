@@ -30,6 +30,7 @@ from maasserver.fields_storage import (
     calculate_size_from_precentage,
     is_precentage,
 )
+from maasserver.models.cacheset import CacheSet
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
     set_form_error,
@@ -405,20 +406,22 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
         """Return true if use full cache device without partition."""
         return self.cleaned_data['cache_no_part']
 
-    def create_cache_device(self):
-        """Create the cache device based on the provided options."""
+    def create_cache_set(self):
+        """Create the cache set based on the provided options."""
         # Circular imports.
         from maasserver.models.partitiontable import PartitionTable
         cache_block_device = self.get_cache_device()
         cache_no_part = self.get_cache_no_part()
         if cache_no_part:
-            cache_device = cache_block_device
+            return CacheSet.objects.get_or_create_cache_set_for_block_device(
+                cache_block_device)
         else:
             cache_partition_table = PartitionTable.objects.create(
                 block_device=cache_block_device)
-            cache_device = cache_partition_table.add_partition(
+            cache_partition = cache_partition_table.add_partition(
                 size=self.get_cache_size())
-        return cache_device
+            return CacheSet.objects.get_or_create_cache_set_for_partition(
+                cache_partition)
 
     def clean(self):
         # Circular imports.
@@ -486,16 +489,10 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         if boot_size == 0:
             boot_size = 1 * 1024 ** 3
         root_partition = self.create_basic_layout(boot_size=boot_size)
-        cache_device = self.create_cache_device()
-        create_kwargs = {
-            "backing_partition": root_partition,
-            "cache_mode": self.get_cache_mode(),
-        }
-        if cache_device.type == "partition":
-            create_kwargs['cache_partition'] = cache_device
-        else:
-            create_kwargs['cache_device'] = cache_device
-        bcache = Bcache.objects.create_bcache(**create_kwargs)
+        cache_set = self.create_cache_set()
+        bcache = Bcache.objects.create_bcache(
+            cache_mode=self.get_cache_mode(), cache_set=cache_set,
+            backing_partition=root_partition)
         Filesystem.objects.create(
             block_device=bcache.virtual_device,
             fstype=FILESYSTEM_TYPE.EXT4,

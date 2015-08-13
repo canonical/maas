@@ -152,7 +152,8 @@ class CurtinStorageGenerator:
         """Return True if the filesystem requires a format operation."""
         return (
             filesystem is not None and
-            filesystem.filesystem_group_id is None)
+            filesystem.filesystem_group_id is None and
+            filesystem.cache_set is None)
 
     def _generate_disk_operations(self):
         """Generate all disk operations."""
@@ -355,8 +356,7 @@ class CurtinStorageGenerator:
             "type": "bcache",
             "backing_device": filesystem_group.get_bcache_backing_filesystem(
                 ).get_parent().get_name(),
-            "cache_device": filesystem_group.get_bcache_cache_filesystem(
-                ).get_parent().get_name(),
+            "cache_device": filesystem_group.cache_set.get_device().get_name(),
             "cache_mode": filesystem_group.cache_mode,
         }
         block_device = filesystem_group.virtual_device

@@ -137,6 +137,13 @@ class Filesystem(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Only one of partition or block_device can be specified.")
 
+        # If fstype is for a bcache as a cache device it needs to be in a
+        # cache_set.
+        if (self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE
+                and self.cache_set is None):
+            raise ValidationError(
+                "BCACHE_CACHE must be inside of a cache_set.")
+
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid4()

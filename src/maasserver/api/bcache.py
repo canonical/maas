@@ -33,7 +33,6 @@ DISPLAYED_BCACHE_FIELDS = (
     'uuid',
     'name',
     'backing_device',
-    'cache_device',
     'size',
     'human_size',
     'virtual_device',
@@ -123,11 +122,6 @@ class BcacheHandler(OperationsHandler):
     def backing_device(cls, bcache):
         """Return the backing device for this bcache."""
         return bcache.get_bcache_backing_filesystem().get_parent()
-
-    @classmethod
-    def cache_device(cls, bcache):
-        """Return the cache device for this bcache."""
-        return bcache.get_bcache_cache_filesystem().get_parent()
 
     def read(self, request, system_id, bcache_id):
         """Read bcache device on node.

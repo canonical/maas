@@ -87,9 +87,7 @@ class TestBcacheDevicesAPI(APITestCase):
         """Tests Bcache device creation."""
         node = factory.make_Node(owner=self.logged_in_user)
         backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
-        cache_device = factory.make_PhysicalBlockDevice(
-            node=node, size=cache_size)
+        cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
         uuid = unicode(uuid4())
@@ -98,7 +96,7 @@ class TestBcacheDevicesAPI(APITestCase):
             'name': 'bcache0',
             'uuid': uuid,
             'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
-            'cache_device': cache_device.id,
+            'cache_set': cache_set.id,
             'backing_device': backing_device.id,
         })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -107,8 +105,8 @@ class TestBcacheDevicesAPI(APITestCase):
         self.assertItemsEqual('bcache0', parsed_device['name'])
         self.assertItemsEqual(uuid, parsed_device['uuid'])
 
-    def test_create_with_missing_cache_fails(self):
-        """Tests Bcache device creation without a cache device."""
+    def test_create_with_missing_cache_set_fails(self):
+        """Tests Bcache device creation without a cache set."""
         node = factory.make_Node(owner=self.logged_in_user)
         backing_size = 10 * 1000 ** 4
         backing_device = factory.make_PhysicalBlockDevice(
@@ -125,23 +123,21 @@ class TestBcacheDevicesAPI(APITestCase):
             httplib.BAD_REQUEST, response.status_code, response.content)
         parsed_content = json.loads(response.content)
         self.assertIn(
-            'Either cache_device or cache_partition must be specified.',
+            'Bcache requires a cache_set.',
             parsed_content['__all__'])
         self.assertIsNone(backing_device.filesystem)
 
     def test_create_with_missing_backing_fails(self):
         """Tests Bcache device creation without a backing device."""
         node = factory.make_Node(owner=self.logged_in_user)
-        cache_size = 1000 ** 4
-        cache_device = factory.make_PhysicalBlockDevice(
-            node=node, size=cache_size)
+        cache_set = factory.make_CacheSet(node=node)
         uuid = unicode(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
             'uuid': uuid,
             'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
-            'cache_device': cache_device.id,
+            'cache_set': cache_set.id,
         })
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
@@ -149,7 +145,6 @@ class TestBcacheDevicesAPI(APITestCase):
         self.assertIn(
             'Either backing_device or backing_partition must be specified.',
             parsed_content['__all__'])
-        self.assertIsNone(cache_device.filesystem)
 
 
 class TestBcacheDeviceAPI(APITestCase):
@@ -166,16 +161,12 @@ class TestBcacheDeviceAPI(APITestCase):
     def test_read(self):
         node = factory.make_Node()
         backing_block_device = factory.make_PhysicalBlockDevice(node=node)
-        cache_block_device = factory.make_PhysicalBlockDevice(node=node)
         backing_filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             block_device=backing_block_device)
-        cache_filesystem = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-            block_device=cache_block_device)
         bcache = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-            filesystems=[backing_filesystem, cache_filesystem])
+            filesystems=[backing_filesystem])
         uri = get_bcache_device_uri(bcache)
         response = self.client.get(uri)
 
@@ -194,9 +185,6 @@ class TestBcacheDeviceAPI(APITestCase):
                 }),
             "backing_device": ContainsDict({
                 "id": Equals(backing_block_device.id),
-                }),
-            "cache_device": ContainsDict({
-                "id": Equals(cache_block_device.id),
                 }),
             }))
 
@@ -262,50 +250,40 @@ class TestBcacheDeviceAPI(APITestCase):
         self.assertListEqual(
             filesystem_ids, [fs.id for fs in bcache.filesystems.all()])
 
-    def test_change_storages_bcache(self):
-        """Tests update bcache method by changing the name, UUID and cache
-        mode of a bcache."""
+    def test_change_bcache_backing(self):
+        """Tests update bcache method by changing backing device to different
+        block device."""
         node = factory.make_Node(owner=self.logged_in_user)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        new_cache = factory.make_PhysicalBlockDevice(node=node)
         new_backing = factory.make_PhysicalBlockDevice(node=node)
         response = self.client.put(uri, {
-            'cache_device': new_cache.id,
             'backing_device': new_backing.id
         })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertEqual(new_cache.id, parsed_device['cache_device']['id'])
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
-        self.assertEqual('physical', parsed_device['cache_device']['type'])
         self.assertEqual('physical', parsed_device['backing_device']['type'])
 
     def test_change_storages_to_partitions_bcache(self):
-        """Tests update bcache method by changing the name, UUID and cache
-        mode of a bcache."""
+        """Tests update bcache method by changing backing device to a
+        partition."""
         node = factory.make_Node(owner=self.logged_in_user)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        new_cache = factory.make_PartitionTable(
-            block_device=factory.make_PhysicalBlockDevice(
-                node=node)).add_partition()
         new_backing = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node)).add_partition()
         response = self.client.put(uri, {
-            'cache_partition': new_cache.id,
             'backing_partition': new_backing.id
         })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertEqual(new_cache.id, parsed_device['cache_device']['id'])
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
-        self.assertEqual('partition', parsed_device['cache_device']['type'])
         self.assertEqual('partition', parsed_device['backing_device']['type'])
 
     def test_invalid_change_fails(self):
@@ -315,13 +293,13 @@ class TestBcacheDeviceAPI(APITestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        new_cache = factory.make_PhysicalBlockDevice()  # On other node.
+        new_backing = factory.make_PhysicalBlockDevice()  # On other node.
         response = self.client.put(uri, {
-            'cache_device': new_cache.id,
+            'backing_device': new_backing.id,
         })
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         parsed_content = json.loads(response.content)
         self.assertIn(
             'Select a valid choice.',
-            parsed_content['cache_device'][0])
+            parsed_content['backing_device'][0])

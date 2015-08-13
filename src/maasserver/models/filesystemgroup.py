@@ -17,7 +17,6 @@ __all__ = [
     'FilesystemGroup',
     ]
 
-from collections import Counter
 from uuid import uuid4
 
 from django.core.exceptions import (
@@ -104,19 +103,30 @@ class BaseFilesystemGroupManager(Manager):
     def filter_by_block_device(self, block_device):
         """Return all the `FilesystemGroup`s that are related to
         block_device."""
+        cache_set_partition_query = Q(
+            cache_set__filesystems__partition__partition_table__block_device=(
+                block_device))
         partition_query = Q(
             filesystems__partition__partition_table__block_device=block_device)
         return self.filter(
+            Q(cache_set__filesystems__block_device=block_device) |
+            cache_set_partition_query |
             Q(filesystems__block_device=block_device) |
             partition_query).distinct()
 
     def filter_by_node(self, node):
         """Return all `FilesystemGroup` that are related to node."""
+        cache_set_partition_query = Q(**{
+            "cache_set__filesystems__partition__partition_table__"
+            "block_device__node": node,
+            })
         partition_query = Q(**{
             "filesystems__partition__partition_table__"
             "block_device__node": node,
             })
         return self.filter(
+            Q(cache_set__filesystems__block_device__node=node) |
+            cache_set_partition_query |
             Q(filesystems__block_device__node=node) |
             partition_query).distinct()
 
@@ -213,8 +223,8 @@ class BcacheManager(BaseFilesystemGroupManager):
     extra_filters = {'group_type': FILESYSTEM_GROUP_TYPE.BCACHE}
 
     def validate_bcache_creation_parameters(
-            self, cache_mode, cache_device, cache_partition,
-            backing_device, backing_partition, validate_mode=True):
+            self, cache_set, cache_mode, backing_device, backing_partition,
+            validate_mode=True):
         """Validate bcache creation parameters. Raises ValidationErrors as
         needed. We don't always need to validate the mode, so, there is an
         option for that."""
@@ -224,18 +234,12 @@ class BcacheManager(BaseFilesystemGroupManager):
                 CACHE_MODE_TYPE.WRITEAROUND):
             raise ValidationError('Invalid cache mode: %s' % cache_mode)
 
-        if cache_device and cache_partition:
-            raise ValidationError(
-                'A Bcache can have either a caching device or partition.')
+        if cache_set is None:
+            raise ValidationError("Bcache requires a cache_set.")
 
         if backing_device and backing_partition:
             raise ValidationError(
                 'A Bcache can have either a backing device or partition.')
-
-        if not cache_device and not cache_partition:
-            raise ValidationError(
-                'Either cache_device or cache_partition must be '
-                'specified.')
 
         if not backing_device and not backing_partition:
             raise ValidationError(
@@ -243,29 +247,16 @@ class BcacheManager(BaseFilesystemGroupManager):
                 'specified.')
 
     def create_bcache(
-            self, name=None, uuid=None, cache_device=None,
-            cache_partition=None, backing_device=None,
-            backing_partition=None, cache_mode=None):
+            self, cache_set, name=None, uuid=None,
+            backing_device=None, backing_partition=None, cache_mode=None):
         """Creates a bcache of type `cache_type` using the desired cache and
         backing elements."""
 
         self.validate_bcache_creation_parameters(
-            cache_mode, cache_device, cache_partition, backing_device,
-            backing_partition)
+            cache_set, cache_mode, backing_device, backing_partition)
 
         # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
-
-        # Create filesystems on the target devices and partitions
-        if cache_device is not None:
-            cache_filesystem = Filesystem.objects.create(
-                block_device=cache_device,
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE)
-        elif cache_partition is not None:
-            cache_filesystem = Filesystem.objects.create(
-                partition=cache_partition,
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE)
-
         if backing_device is not None:
             backing_filesystem = Filesystem(
                 block_device=backing_device,
@@ -280,16 +271,11 @@ class BcacheManager(BaseFilesystemGroupManager):
             name=name,
             uuid=uuid,
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-            cache_mode=cache_mode)
-
-        cache_filesystem.filesystem_group = bcache_filesystem_group
-        cache_filesystem.save()
-
+            cache_mode=cache_mode,
+            cache_set=cache_set)
         backing_filesystem.filesystem_group = bcache_filesystem_group
         backing_filesystem.save()
-
         bcache_filesystem_group.save()
-
         return bcache_filesystem_group
 
 
@@ -457,13 +443,6 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 return filesystem.partition.partition_table.block_device
         return None
 
-    def get_bcache_cache_filesystem(self):
-        """Return the filesystem that is the cache device for the Bcache."""
-        for filesystem in self.filesystems.all():
-            if filesystem.fstype == FILESYSTEM_TYPE.BCACHE_CACHE:
-                return filesystem
-        return None
-
     def get_bcache_size(self):
         """Size of this Bcache.
 
@@ -625,13 +604,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             return
         # Circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
-        fstypes_counter = Counter(
-            self._get_all_fstypes(filesystems=filesystems))
-        valid_counter = Counter(
-            [FILESYSTEM_TYPE.BCACHE_CACHE, FILESYSTEM_TYPE.BCACHE_BACKING])
-        if fstypes_counter != valid_counter:
+        filesystems = [
+            filesystem.fstype
+            for filesystem in self.filesystems.all()
+        ]
+        if filesystems != [FILESYSTEM_TYPE.BCACHE_BACKING]:
             raise ValidationError(
-                "Bcache must contain one cache and one backing device.")
+                "Bcache can only contain one backing device.")
         backing_block_device = self.get_bcache_backing_block_device()
         backing_block_device = backing_block_device.actual_instance
         if isinstance(backing_block_device, VirtualBlockDevice):
@@ -640,6 +619,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                     "Bcache cannot use a logical volume as a backing device.")
         if self.cache_mode is None:
             raise ValidationError("Bcache requires cache mode to be set.")
+        if self.cache_set is None:
+            raise ValidationError(
+                "Bcache requires an assigned cache set.")
 
     def save(self, *args, **kwargs):
         # Prevent the group_type from changing. This is not supported and will

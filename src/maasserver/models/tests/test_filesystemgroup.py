@@ -303,17 +303,16 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
     def test__bcache_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
-        filesystem_one = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-            block_device=block_device_one)
+        cache_set = factory.make_CacheSet(block_device=block_device_one)
         block_device_two = factory.make_PhysicalBlockDevice(node=node)
-        filesystem_two = factory.make_Filesystem(
+        filesystem_backing = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             block_device=block_device_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK,
-            filesystems=[filesystem_one, filesystem_two])
+            cache_set=cache_set,
+            filesystems=[filesystem_backing])
         filesystem_groups = (
             Bcache.objects.filter_by_block_device(
                 block_device_one))
@@ -332,14 +331,14 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             partition_table=partition_table)
         partition_two = factory.make_Partition(
             partition_table=partition_table)
-        filesystem_one = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE, partition=partition_one)
-        filesystem_two = factory.make_Filesystem(
+        cache_set = factory.make_CacheSet(partition=partition_one)
+        filesystem_backing = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK,
-            filesystems=[filesystem_one, filesystem_two])
+            cache_set=cache_set,
+            filesystems=[filesystem_backing])
         filesystem_groups = (
             Bcache.objects.filter_by_block_device(
                 block_device))
@@ -462,17 +461,16 @@ class TestManagersFilterByNode(MAASServerTestCase):
     def test__bcache_on_block_devices(self):
         node = factory.make_Node()
         block_device_one = factory.make_PhysicalBlockDevice(node=node)
-        filesystem_one = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-            block_device=block_device_one)
+        cache_set = factory.make_CacheSet(block_device=block_device_one)
         block_device_two = factory.make_PhysicalBlockDevice(node=node)
-        filesystem_two = factory.make_Filesystem(
+        filesystem_backing = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             block_device=block_device_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK,
-            filesystems=[filesystem_one, filesystem_two])
+            cache_set=cache_set,
+            filesystems=[filesystem_backing])
         filesystem_groups = (
             Bcache.objects.filter_by_node(node))
         result_filesystem_group_ids = [
@@ -491,14 +489,14 @@ class TestManagersFilterByNode(MAASServerTestCase):
             partition_table=partition_table)
         partition_two = factory.make_Partition(
             partition_table=partition_table)
-        filesystem_one = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE, partition=partition_one)
-        filesystem_two = factory.make_Filesystem(
+        cache_set = factory.make_CacheSet(partition=partition_one)
+        filesystem_backing = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK,
-            filesystems=[filesystem_one, filesystem_two])
+            cache_set=cache_set,
+            filesystems=[filesystem_backing])
         filesystem_groups = (
             Bcache.objects.filter_by_node(node))
         result_filesystem_group_ids = [
@@ -777,23 +775,18 @@ class TestFilesystemGroup(MAASServerTestCase):
         node = factory.make_Node()
         backing_size = random.randint(
             MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2)
-        cache_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2)
+        cache_set = factory.make_CacheSet(node=node)
         backing_block_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        cache_block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=cache_size)
         filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=cache_block_device),
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 block_device=backing_block_device),
         ]
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-            cache_mode=CACHE_MODE_TYPE.WRITEBACK, filesystems=filesystems)
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK, cache_set=cache_set,
+            filesystems=filesystems)
         self.assertEquals(backing_size, fsgroup.get_size())
 
     def test_is_lvm_returns_true_when_LVM_VG(self):
@@ -1104,7 +1097,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6,
             filesystems=filesystems)
 
-    def test_cannot_save_bcache_without_cache(self):
+    def test_cannot_save_bcache_without_cache_set(self):
         node = factory.make_Node()
         filesystems = [
             factory.make_Filesystem(
@@ -1114,34 +1107,31 @@ class TestFilesystemGroup(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'Bcache must contain one cache and one "
-                    "backing device.']}")):
-            factory.make_FilesystemGroup(
+                    "{'__all__': [u'Bcache requires an assigned cache "
+                    "set.']}")):
+            filesystem_group = factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
                 filesystems=filesystems)
+            filesystem_group.cache_set = None
+            filesystem_group.save()
 
     def test_cannot_save_bcache_without_backing(self):
         node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=factory.make_PhysicalBlockDevice(node=node)),
-        ]
+        cache_set = factory.make_CacheSet(node=node)
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'Bcache must contain one cache and one "
-                    "backing device.']}")):
+                    "{'__all__': [u'At least one filesystem must have "
+                    "been added.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-                filesystems=filesystems)
+                cache_set=cache_set,
+                filesystems=[])
 
     def test_cannot_save_bcache_with_logical_volume_as_backing(self):
         node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
         filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=factory.make_PhysicalBlockDevice(node=node)),
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 block_device=factory.make_VirtualBlockDevice(node=node)),
@@ -1153,14 +1143,13 @@ class TestFilesystemGroup(MAASServerTestCase):
                     "backing device.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                cache_set=cache_set,
                 filesystems=filesystems)
 
-    def test_can_save_bcache_with_cache_and_backing(self):
+    def test_can_save_bcache_with_cache_set_and_backing(self):
         node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
         filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=factory.make_PhysicalBlockDevice(node=node)),
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 block_device=factory.make_PhysicalBlockDevice(node=node)),
@@ -1168,70 +1157,26 @@ class TestFilesystemGroup(MAASServerTestCase):
         # Test is that this does not raise an exception.
         factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_set=cache_set,
             filesystems=filesystems)
-
-    def test_cannot_save_bcache_with_multiple_caches(self):
-        node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=factory.make_PhysicalBlockDevice(node=node))
-            for _ in range(random.randint(2, 10))
-        ]
-        filesystems.append(
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
-                block_device=factory.make_PhysicalBlockDevice(node=node)))
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': [u'Bcache must contain one cache and one "
-                    "backing device.']}")):
-            factory.make_FilesystemGroup(
-                group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-                filesystems=filesystems)
 
     def test_cannot_save_bcache_with_multiple_backings(self):
         node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
         filesystems = [
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 block_device=factory.make_PhysicalBlockDevice(node=node))
             for _ in range(random.randint(2, 10))
         ]
-        filesystems.append(
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                block_device=factory.make_PhysicalBlockDevice(node=node)))
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'Bcache must contain one cache and one "
-                    "backing device.']}")):
+                    "{'__all__': [u'Bcache can only contain one backing "
+                    "device.']}")):
             factory.make_FilesystemGroup(
                 group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-                filesystems=filesystems)
-
-    def test_cannot_save_bcache_with_multiple_caches_and_backings(self):
-        node = factory.make_Node()
-        filesystems = [
-            factory.make_Filesystem(
-                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
-                block_device=factory.make_PhysicalBlockDevice(node=node))
-            for _ in range(random.randint(2, 10))
-        ]
-        for _ in range(random.randint(2, 10)):
-            filesystems.append(
-                factory.make_Filesystem(
-                    fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-                    block_device=factory.make_PhysicalBlockDevice(node=node)))
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': [u'Bcache must contain one cache and one "
-                    "backing device.']}")):
-            factory.make_FilesystemGroup(
-                group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                cache_set=cache_set,
                 filesystems=filesystems)
 
     def test_save_doesnt_overwrite_uuid(self):
@@ -1305,20 +1250,6 @@ class TestFilesystemGroup(MAASServerTestCase):
         self.assertEquals(
             filesystem.get_block_size(),
             filesystem_group.get_virtual_block_device_block_size())
-
-    def test_get_bcache_cache_filesystem_for_bcache(self):
-        node = factory.make_Node()
-        backing_filesystem = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
-            block_device=factory.make_PhysicalBlockDevice(node=node))
-        cache_filesystem = factory.make_Filesystem(
-            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
-            block_device=factory.make_PhysicalBlockDevice(node=node))
-        bcache = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
-            filesystems=[cache_filesystem, backing_filesystem])
-        self.assertEquals(
-            cache_filesystem, bcache.get_bcache_cache_filesystem())
 
     def test_delete_deletes_filesystems_not_block_devices(self):
         node = factory.make_Node()
@@ -2124,26 +2055,22 @@ class TestBcache(MAASServerTestCase):
         and backing roles."""
         node = factory.make_Node()
         backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
-        cache_device = factory.make_PhysicalBlockDevice(
-            node=node, size=cache_size)
+        cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
         uuid = unicode(uuid4())
         bcache = Bcache.objects.create_bcache(
             name='bcache0',
             uuid=uuid,
-            cache_device=cache_device,
+            cache_set=cache_set,
             backing_device=backing_device,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
 
         # Verify the filesystems were properly created on the target devices
         self.assertEqual(backing_size, bcache.get_size())
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_device.filesystem.fstype)
-        self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
-        self.assertEqual(bcache, cache_device.filesystem.filesystem_group)
+        self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
 
     def test_create_bcache_with_virtual_block_devices(self):
@@ -2159,6 +2086,7 @@ class TestBcache(MAASServerTestCase):
                 factory.make_PhysicalBlockDevice(node=node, size=cache_size)
                 for _ in range(10)],
             level=FILESYSTEM_GROUP_TYPE.RAID_1).virtual_device
+        cache_set = factory.make_CacheSet(block_device=cache_device)
         # A ridiculously reliable backing store.
         backing_device = RAID.objects.create_raid(
             block_devices=[
@@ -2167,7 +2095,7 @@ class TestBcache(MAASServerTestCase):
             level=FILESYSTEM_GROUP_TYPE.RAID_6).virtual_device
 
         bcache = Bcache.objects.create_bcache(
-            cache_device=cache_device,
+            cache_set=cache_set,
             backing_device=backing_device,
             cache_mode=CACHE_MODE_TYPE.WRITEAROUND)
 
@@ -2177,7 +2105,7 @@ class TestBcache(MAASServerTestCase):
             FILESYSTEM_TYPE.BCACHE_CACHE, cache_device.filesystem.fstype)
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
-        self.assertEqual(bcache, cache_device.filesystem.filesystem_group)
+        self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
 
     def test_create_bcache_with_partitions(self):
@@ -2189,6 +2117,7 @@ class TestBcache(MAASServerTestCase):
         cache_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=cache_size)).add_partition()
+        cache_set = factory.make_CacheSet(partition=cache_partition)
         backing_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=backing_size)).add_partition()
@@ -2198,7 +2127,7 @@ class TestBcache(MAASServerTestCase):
         bcache = Bcache.objects.create_bcache(
             name='bcache0',
             uuid=uuid,
-            cache_partition=cache_partition,
+            cache_set=cache_set,
             backing_partition=backing_partition,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
 
@@ -2209,7 +2138,7 @@ class TestBcache(MAASServerTestCase):
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_BACKING,
             backing_partition.filesystem.fstype)
-        self.assertEqual(bcache, cache_partition.filesystem.filesystem_group)
+        self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(bcache, backing_partition.filesystem.filesystem_group)
 
     def test_create_bcache_with_block_devices_and_partition(self):
@@ -2221,13 +2150,14 @@ class TestBcache(MAASServerTestCase):
         cache_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=cache_size)).add_partition()
+        cache_set = factory.make_CacheSet(partition=cache_partition)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
         uuid = unicode(uuid4())
         bcache = Bcache.objects.create_bcache(
             name='bcache0',
             uuid=uuid,
-            cache_partition=cache_partition,
+            cache_set=cache_set,
             backing_device=backing_device,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
 
@@ -2237,7 +2167,7 @@ class TestBcache(MAASServerTestCase):
             FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
-        self.assertEqual(bcache, cache_partition.filesystem.filesystem_group)
+        self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
 
     def test_delete_bcache(self):
@@ -2245,26 +2175,16 @@ class TestBcache(MAASServerTestCase):
         caching and backing devices."""
         node = factory.make_Node()
         backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
-        cache_device = factory.make_PhysicalBlockDevice(
-            node=node, size=cache_size)
+        cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
         bcache = Bcache.objects.create_bcache(
-            cache_device=cache_device,
+            cache_set=cache_set,
             backing_device=backing_device,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
-
-        # Save the IDs (we'll need them below).
-        caching_fs_id = cache_device.filesystem.id
-        backing_fs_id = backing_device.filesystem.id
-
         bcache.delete()
 
         # Verify both filesystems were deleted.
-        self.assertIsNone(cache_device.filesystem)
         self.assertIsNone(backing_device.filesystem)
-
-        # Make sure the filesystems were actually deleted from the database.
-        self.assertEqual(0, Filesystem.objects.filter(
-            id__in=[caching_fs_id, backing_fs_id]).count())
+        # Verify the cache_set is not deleted.
+        self.assertIsNotNone(reload_object(cache_set))

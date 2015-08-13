@@ -642,9 +642,10 @@ class TestComplexDiskLayout(
             uuid="f3281144-a0b6-46f1-90af-8541f97f7b1f",
             size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False)
+        cache_set = factory.make_CacheSet(partition=cache_partition)
         bcache0 = Bcache.objects.create_bcache(
             name="bcache0", uuid="9e7bdc2d-1567-4e1c-a89a-4e20df099458",
-            backing_partition=root_partition, cache_partition=cache_partition,
+            backing_partition=root_partition, cache_set=cache_set,
             cache_mode=CACHE_MODE_TYPE.WRITETHROUGH)
         bcache0_partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.GPT,

@@ -130,6 +130,7 @@ from maasserver.models import (
     BootSource,
     BootSourceCache,
     BootSourceSelection,
+    CacheSet,
     Config,
     Device,
     DownloadProgress,
@@ -3564,22 +3565,51 @@ def clean_partition_names_to_ids(field):
     return _convert
 
 
+def clean_cache_set_name_to_id(field):
+    """Helper to clean a cache set choice input field.
+
+    Converts the name of the cache_set to its id.
+    """
+    def _convert(self):
+        value = self.cleaned_data[field]
+        if not value:
+            return value
+        try:
+            cache_set = CacheSet.objects.get_cache_set_by_id_or_name(
+                value, self.node)
+        except CacheSet.DoesNotExist:
+            return value
+        return cache_set.id
+    return _convert
+
+
+def get_cache_set_choices_for_node(node):
+    """Return all the cache_set choices including id or name."""
+    all_cache_sets = list(
+        CacheSet.objects.get_cache_sets_for_node(node))
+    return [
+        (cs.id, cs.name)
+        for cs in all_cache_sets
+    ] + [
+        (cs.name, cs.name)
+        for cs in all_cache_sets
+    ]
+
+
 class CreateBcacheForm(Form):
     """For validaing and saving a new Bcache."""
 
     name = forms.CharField(required=False)
     uuid = UUID4Field(required=False)
-    cache_device = forms.ChoiceField(required=False)
     backing_device = forms.ChoiceField(required=False)
-    cache_partition = forms.ChoiceField(required=False)
     backing_partition = forms.ChoiceField(required=False)
+    cache_set = forms.ChoiceField(required=True)
     cache_mode = forms.ChoiceField(
         choices=CACHE_MODE_TYPE_CHOICES, required=True)
 
-    clean_cache_device = clean_block_device_name_to_id('cache_device')
     clean_backing_device = clean_block_device_name_to_id('backing_device')
-    clean_cache_partition = clean_partition_name_to_id('cache_partition')
     clean_backing_partition = clean_partition_name_to_id('backing_partition')
+    clean_cache_set = clean_cache_set_name_to_id('cache_set')
 
     def __init__(self, node, *args, **kwargs):
         super(CreateBcacheForm, self).__init__(*args, **kwargs)
@@ -3589,15 +3619,12 @@ class CreateBcacheForm(Form):
     def clean(self):
         """Makes sure the Bcache is sensible."""
         cleaned_data = super(CreateBcacheForm, self).clean()
-
         Bcache.objects.validate_bcache_creation_parameters(
+            cache_set=self.cleaned_data.get('cache_set'),
             cache_mode=self.cleaned_data.get('cache_mode'),
-            cache_device=self.cleaned_data.get('cache_device'),
-            cache_partition=self.cleaned_data.get('cache_partition'),
             backing_device=self.cleaned_data.get('backing_device'),
             backing_partition=self.cleaned_data.get('backing_partition'),
             validate_mode=False)  # Cache mode is validated by the field.
-
         return cleaned_data
 
     def save(self):
@@ -3605,15 +3632,6 @@ class CreateBcacheForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-
-        cache_partition = cache_device = None
-        if self.cleaned_data['cache_device']:
-            cache_device = BlockDevice.objects.get(
-                id=self.cleaned_data['cache_device'])
-        elif self.cleaned_data['cache_partition']:
-            cache_partition = Partition.objects.get(
-                id=self.cleaned_data['cache_partition'])
-
         backing_partition = backing_device = None
         if self.cleaned_data['backing_device']:
             backing_device = BlockDevice.objects.get(
@@ -3621,20 +3639,17 @@ class CreateBcacheForm(Form):
         elif self.cleaned_data['backing_partition']:
             backing_partition = Partition.objects.get(
                 id=self.cleaned_data['backing_partition'])
-
         return Bcache.objects.create_bcache(
+            cache_set=CacheSet.objects.get(id=self.cleaned_data['cache_set']),
             name=self.cleaned_data['name'],
             uuid=self.cleaned_data['uuid'],
-            cache_device=cache_device,
             backing_device=backing_device,
-            cache_partition=cache_partition,
             backing_partition=backing_partition,
             cache_mode=self.cleaned_data['cache_mode'])
 
     def _set_up_field_choices(self):
-        """Sets up choices for `cache_device`, `backing_device`,
-        `cache_partition` and `backing_partition` fields."""
-
+        """Sets up choices for `cache_set`, `backing_device`,
+        and `backing_partition` fields."""
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = list(
             BlockDevice.objects.get_free_block_devices_for_node(self.node))
@@ -3657,8 +3672,8 @@ class CreateBcacheForm(Form):
             for partition in free_partitions
         ]
 
-        self.fields['cache_device'].choices = block_device_choices
-        self.fields['cache_partition'].choices = partition_choices
+        self.fields['cache_set'].choices = get_cache_set_choices_for_node(
+            self.node)
         self.fields['backing_device'].choices = block_device_choices
         self.fields['backing_partition'].choices = partition_choices
 
@@ -3668,17 +3683,15 @@ class UpdateBcacheForm(Form):
 
     name = forms.CharField(required=False)
     uuid = UUID4Field(required=False)
-    cache_device = forms.ChoiceField(required=False)
     backing_device = forms.ChoiceField(required=False)
-    cache_partition = forms.ChoiceField(required=False)
     backing_partition = forms.ChoiceField(required=False)
+    cache_set = forms.ChoiceField(required=False)
     cache_mode = forms.ChoiceField(
         choices=CACHE_MODE_TYPE_CHOICES, required=False)
 
-    clean_cache_device = clean_block_device_name_to_id('cache_device')
     clean_backing_device = clean_block_device_name_to_id('backing_device')
-    clean_cache_partition = clean_partition_name_to_id('cache_partition')
     clean_backing_partition = clean_partition_name_to_id('backing_partition')
+    clean_cache_set = clean_cache_set_name_to_id('cache_set')
 
     def __init__(self, bcache, *args, **kwargs):
         super(UpdateBcacheForm, self).__init__(*args, **kwargs)
@@ -3691,26 +3704,6 @@ class UpdateBcacheForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-
-        if self.cleaned_data['cache_device']:
-            device = BlockDevice.objects.get(
-                id=int(self.cleaned_data['cache_device']), node=self.node)
-            # Remove previous cache
-            self.bcache.filesystems.filter(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE).delete()
-            # Create a new one on this device.
-            self.bcache.filesystems.add(Filesystem.objects.create(
-                block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_CACHE))
-        elif self.cleaned_data['cache_partition']:
-            partition = Partition.objects.get(
-                id=int(self.cleaned_data['cache_partition']))
-            # Remove previous cache
-            self.bcache.filesystems.filter(
-                fstype=FILESYSTEM_TYPE.BCACHE_CACHE).delete()
-            # Create a new one on this partition.
-            self.bcache.filesystems.add(Filesystem.objects.create(
-                partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_CACHE))
-
         if self.cleaned_data['backing_device']:
             device = BlockDevice.objects.get(
                 id=int(self.cleaned_data['backing_device']))
@@ -3736,9 +3729,11 @@ class UpdateBcacheForm(Form):
             self.bcache.uuid = self.cleaned_data['uuid']
         if self.cleaned_data['cache_mode']:
             self.bcache.cache_mode = self.cleaned_data['cache_mode']
+        if self.cleaned_data['cache_set']:
+            self.bcache.cache_set = CacheSet.objects.get(
+                id=self.cleaned_data['cache_set'])
 
         self.bcache.save()
-
         return self.bcache
 
     def _set_up_field_choices(self):
@@ -3786,10 +3781,10 @@ class UpdateBcacheForm(Form):
             for fs in current_partitions
         ]
 
-        self.fields['cache_device'].choices = block_device_choices
-        self.fields['cache_partition'].choices = partition_choices
         self.fields['backing_device'].choices = block_device_choices
         self.fields['backing_partition'].choices = partition_choices
+        self.fields['cache_set'].choices = get_cache_set_choices_for_node(
+            self.node)
 
 
 class CreateRaidForm(Form):
