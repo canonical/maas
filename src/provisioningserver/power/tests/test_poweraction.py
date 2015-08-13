@@ -202,21 +202,6 @@ class TestPowerAction(MAASTestCase):
             locate_config('templates/power'),
             PowerAction(power_type).get_config_basedir())
 
-    def test_ipmi_script_includes_config_dir(self):
-        conf_dir = factory.make_name('power_config_dir')
-        self.configure_power_config_dir(conf_dir)
-        action = PowerAction('ipmi')
-        script = action.render_template(
-            action.get_template(),
-            action.update_context(dict(
-                power_change='on', power_address='mystystem',
-                power_user='me', power_pass='me', ipmipower='echo',
-                ipmi_chassis_config='echo', config_dir='dir',
-                ipmi_config='file.conf', power_driver='LAN',
-                ip_address='', power_off_mode='hard')),
-        )
-        self.assertIn(conf_dir, script)
-
     def test_moonshot_checks_state(self):
         # We can't test the moonshot template in detail (and it may be
         # customized), but by making it use "echo" instead of a real
@@ -238,7 +223,7 @@ class TestPowerAction(MAASTestCase):
 class TestTemplateContext(MAASTestCase):
 
     def make_stubbed_power_action(self):
-        power_action = PowerAction("ipmi")
+        power_action = PowerAction("moonshot")
         render_template = self.patch(power_action, "render_template")
         render_template.return_value = "echo done"
         return power_action
