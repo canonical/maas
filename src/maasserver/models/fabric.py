@@ -20,12 +20,16 @@ __all__ = [
 
 import datetime
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
 )
+from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
@@ -56,6 +60,30 @@ class FabricManager(Manager):
         if created:
             fabric._create_default_vlan()
         return fabric
+
+    def get_fabric_or_404(self, id, user, perm):
+        """Fetch a `Fabric` by its id.  Raise exceptions if no `Fabric` with
+        this id exist or if the provided user has not the required permission
+        to access this `Fabric`.
+
+        :param id: The system_id.
+        :type id: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        fabric = get_object_or_404(self.model, id=id)
+        if user.has_perm(perm, fabric):
+            return fabric
+        else:
+            raise PermissionDenied()
 
 
 class Fabric(CleanSave, TimestampedModel):

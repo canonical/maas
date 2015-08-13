@@ -229,6 +229,48 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_FilesystemGroup()))
 
+    def test_user_can_view_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertTrue(
+            backend.has_perm(
+                user, NODE_PERMISSION.VIEW, factory.make_Fabric()))
+
+    def test_user_cannot_edit_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.EDIT, factory.make_Fabric()))
+
+    def test_user_not_admin_of_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.ADMIN, factory.make_Fabric()))
+
+    def test_admin_can_view_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.VIEW, factory.make_Fabric()))
+
+    def test_admin_can_edit_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.EDIT, factory.make_Fabric()))
+
+    def test_admin_is_admin_of_a_fabric(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.ADMIN, factory.make_Fabric()))
+
 
 class TestNodeVisibility(MAASServerTestCase):
 

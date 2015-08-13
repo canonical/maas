@@ -15,8 +15,14 @@ __metaclass__ = type
 __all__ = []
 
 
-from django.core.exceptions import ValidationError
-from maasserver.enum import INTERFACE_TYPE
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    NODE_PERMISSION,
+)
 from maasserver.models.fabric import (
     DEFAULT_FABRIC_NAME,
     Fabric,
@@ -31,7 +37,58 @@ from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesStructure
 
 
-class FabricTest(MAASServerTestCase):
+class TestFabricManagerGetFabricOr404(MAASServerTestCase):
+
+    def test__user_view_returns_fabric(self):
+        user = factory.make_User()
+        fabric = factory.make_Fabric()
+        self.assertEquals(
+            fabric,
+            Fabric.objects.get_fabric_or_404(
+                fabric.id, user, NODE_PERMISSION.VIEW))
+
+    def test__user_edit_raises_PermissionError(self):
+        user = factory.make_User()
+        fabric = factory.make_Fabric()
+        self.assertRaises(
+            PermissionDenied,
+            Fabric.objects.get_fabric_or_404,
+            fabric.id, user, NODE_PERMISSION.EDIT)
+
+    def test__user_admin_raises_PermissionError(self):
+        user = factory.make_User()
+        fabric = factory.make_Fabric()
+        self.assertRaises(
+            PermissionDenied,
+            Fabric.objects.get_fabric_or_404,
+            fabric.id, user, NODE_PERMISSION.ADMIN)
+
+    def test__admin_view_returns_fabric(self):
+        admin = factory.make_admin()
+        fabric = factory.make_Fabric()
+        self.assertEquals(
+            fabric,
+            Fabric.objects.get_fabric_or_404(
+                fabric.id, admin, NODE_PERMISSION.VIEW))
+
+    def test__admin_edit_returns_fabric(self):
+        admin = factory.make_admin()
+        fabric = factory.make_Fabric()
+        self.assertEquals(
+            fabric,
+            Fabric.objects.get_fabric_or_404(
+                fabric.id, admin, NODE_PERMISSION.EDIT))
+
+    def test__admin_admin_returns_fabric(self):
+        admin = factory.make_admin()
+        fabric = factory.make_Fabric()
+        self.assertEquals(
+            fabric,
+            Fabric.objects.get_fabric_or_404(
+                fabric.id, admin, NODE_PERMISSION.ADMIN))
+
+
+class TestFabric(MAASServerTestCase):
 
     def test_creates_fabric_with_default_vlan(self):
         name = factory.make_name('name')

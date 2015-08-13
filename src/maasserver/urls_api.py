@@ -59,6 +59,10 @@ from maasserver.api.doc_handler import (
     describe,
 )
 from maasserver.api.events import EventsHandler
+from maasserver.api.fabrics import (
+    FabricHandler,
+    FabricsHandler,
+)
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
@@ -121,6 +125,10 @@ from maasserver.api.users import (
     UsersHandler,
 )
 from maasserver.api.version import VersionHandler
+from maasserver.api.vlans import (
+    VlanHandler,
+    VlansHandler,
+)
 from maasserver.api.volume_groups import (
     VolumeGroupHandler,
     VolumeGroupsHandler,
@@ -195,6 +203,10 @@ user_handler = RestrictedResource(UserHandler, authentication=api_auth)
 users_handler = RestrictedResource(UsersHandler, authentication=api_auth)
 zone_handler = RestrictedResource(ZoneHandler, authentication=api_auth)
 zones_handler = RestrictedResource(ZonesHandler, authentication=api_auth)
+fabric_handler = RestrictedResource(FabricHandler, authentication=api_auth)
+fabrics_handler = RestrictedResource(FabricsHandler, authentication=api_auth)
+vlan_handler = RestrictedResource(VlanHandler, authentication=api_auth)
+vlans_handler = RestrictedResource(VlansHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -316,6 +328,18 @@ urlpatterns += patterns(
     url(r'^users/(?P<username>[^/]+)/$', user_handler, name='user_handler'),
     url(r'^zones/(?P<name>[^/]+)/$', zone_handler, name='zone_handler'),
     url(r'^zones/$', zones_handler, name='zones_handler'),
+    url(
+        r'^fabrics/$',
+        fabrics_handler, name='fabrics_handler'),
+    url(
+        r'^fabrics/(?P<fabric_id>[^/]+)/$',
+        fabric_handler, name='fabric_handler'),
+    url(
+        r'^fabrics/(?P<fabric_id>[^/]+)/vlans/$',
+        vlans_handler, name='vlans_handler'),
+    url(
+        r'^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vlan_id>[^/]+)/$',
+        vlan_handler, name='vlan_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
     url(
         r'^boot-resources/$',
