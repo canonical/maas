@@ -408,11 +408,17 @@ class MACAddress(CleanSave, TimestampedModel):
         raise_if_address_inside_dynamic_range(requested_address, fabric)
 
         # Allocate IP if it isn't allocated already.
+        if cluster_interface is None:
+            maaslog.warning("set_static_ip called without a cluster_interface")
+            subnet = None
+        else:
+            subnet = cluster_interface.subnet
         static_ip, created = StaticIPAddress.objects.get_or_create(
             ip=requested_address,
             defaults={
                 'alloc_type': IPADDRESS_TYPE.STICKY,
                 'user': user,
+                'subnet': subnet,
             })
         if created:
             MACStaticIPAddressLink(
@@ -502,7 +508,10 @@ def ensure_physical_interfaces_created():
                 # The Subnet isn't on a known cluster interface. Expand the
                 # search.
                 # XXX:fabric (could be a subnet that occurs in >1 fabric)
-                subnet = Subnet.objects.get_subnet_with_ip(ip.ip)
+                for subnet in Subnet.objects.get_subnets_with_ip(ip.ip):
+                    break
+                else:
+                    subnet = None
                 if subnet is not None:
                     ip.subnet = subnet
                     ip.save()

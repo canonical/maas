@@ -264,7 +264,7 @@ class Factory(maastesting.factory.Factory):
             routers=None, zone=None, networks=None, boot_type=None,
             sortable_name=False, power_type=None, power_parameters=None,
             power_state=None, power_state_updated=undefined, disable_ipv4=None,
-            with_boot_disk=False, **kwargs):
+            with_boot_disk=False, vlan=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -314,7 +314,7 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             node.networks.add(*networks)
         if mac:
-            self.make_MACAddress(node=node)
+            self.make_MACAddress(node=node, vlan=vlan)
         if with_boot_disk:
             self.make_PhysicalBlockDevice(node=node)
 
@@ -538,14 +538,15 @@ class Factory(maastesting.factory.Factory):
 
     def make_MACAddress(
             self, address=None, node=None, networks=None,
-            iftype=INTERFACE_TYPE.PHYSICAL, ifname=None, **kwargs):
+            iftype=INTERFACE_TYPE.PHYSICAL, ifname=None, vlan=None,
+            **kwargs):
         """Create a `MACAddress` model object."""
         if address is None:
             address = self.make_mac_address()
         mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
         mac.save()
         if iftype is not None:
-            self.make_Interface(iftype, mac=mac, name=ifname)
+            self.make_Interface(iftype, mac=mac, name=ifname, vlan=vlan)
         if networks is not None:
             mac.networks.add(*networks)
         return mac
@@ -562,7 +563,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_Node_with_MACAddress_and_NodeGroupInterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            mac_count=1, network=None, disable_ipv4=False, **kwargs):
+            mac_count=1, network=None, disable_ipv4=False, vlan=None,
+            **kwargs):
         """Create a Node that has a MACAddress which has a
         NodeGroupInterface.
 
@@ -573,20 +575,21 @@ class Factory(maastesting.factory.Factory):
         if nodegroup is None:
             nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = self.make_Node(
-            mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
+            mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4,
+            vlan=vlan, **kwargs)
         ngi = self.make_NodeGroupInterface(
             nodegroup, network=network, management=management)
         mac = node.get_primary_mac()
         mac.cluster_interface = ngi
         mac.save()
         for _ in range(1, mac_count):
-            mac = self.make_MACAddress(node=node)
+            mac = self.make_MACAddress(node=node, vlan=vlan)
             mac.cluster_interface = ngi
             mac.save()
         return node
 
     def make_StaticIPAddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
-                             mac=None, user=None, **kwargs):
+                             mac=None, user=None, subnet=None, **kwargs):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `mac` is passed, connect this IP address to the
@@ -595,9 +598,13 @@ class Factory(maastesting.factory.Factory):
         if ip is None:
             ip = self.make_ipv4_address()
         ipaddress = StaticIPAddress(
-            ip=ip, alloc_type=alloc_type, user=user, **kwargs)
+            ip=ip, alloc_type=alloc_type, user=user, subnet=subnet, **kwargs)
         ipaddress.save()
         if mac is not None:
+            ifaces = mac.interface_set.filter(mac=mac)
+            if len(ifaces) > 0:
+                ipaddress.interface_set.add(ifaces[0])
+            # XXX 2015-08-14 LJ remove MACStaticIPAddressLink
             MACStaticIPAddressLink(
                 mac_address=mac, ip_address=ipaddress).save()
         return ipaddress

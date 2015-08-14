@@ -87,6 +87,15 @@ class CreateCidrTest(MAASServerTestCase):
 
 class SubnetTest(MAASServerTestCase):
 
+    def assertIPBestMatchesSubnet(self, ip, expected):
+        subnets = Subnet.objects.get_subnets_with_ip(IPAddress(ip))
+        for tmp in subnets:
+            subnet = tmp
+            break
+        else:
+            subnet = None
+        self.assertThat(subnet, Equals(expected))
+
     def test_creates_subnet(self):
         name = factory.make_name('name')
         vlan = factory.make_VLAN()
@@ -124,50 +133,36 @@ class SubnetTest(MAASServerTestCase):
             name=name, vlan=vlan, cidr=cidr, space=space,
             gateway_ip=None, dns_servers=[]))
 
-    def test_get_subnet_with_ip_finds_matching_subnet(self):
+    def test_get_subnets_with_ip_finds_matching_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv4_network())
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet.get_cidr().first)), Equals(subnet))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet.get_cidr().last)), Equals(subnet))
+        self.assertIPBestMatchesSubnet(subnet.get_cidr().first, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_cidr().last, subnet)
 
-    def test_get_subnet_with_ip_finds_most_specific_subnet(self):
+    def test_get_subnets_with_ip_finds_most_specific_subnet(self):
         subnet1 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/8'))
         subnet2 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/16'))
         subnet3 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/24'))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet1.get_cidr().first)), Equals(subnet3))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet1.get_cidr().last)), Equals(subnet1))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet2.get_cidr().last)), Equals(subnet2))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet3.get_cidr().last)), Equals(subnet3))
+        self.assertIPBestMatchesSubnet(subnet1.get_cidr().first, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_cidr().last, subnet1)
+        self.assertIPBestMatchesSubnet(subnet2.get_cidr().last, subnet2)
+        self.assertIPBestMatchesSubnet(subnet3.get_cidr().last, subnet3)
 
-    def test_get_subnet_with_ip_finds_matching_ipv6_subnet(self):
+    def test_get_subnets_with_ip_finds_matching_ipv6_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv6_network())
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet.get_cidr().first)), Equals(subnet))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet.get_cidr().last)), Equals(subnet))
+        self.assertIPBestMatchesSubnet(subnet.get_cidr().first, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_cidr().last, subnet)
 
-    def test_get_subnet_with_ip_finds_most_specific_ipv6_subnet(self):
+    def test_get_subnets_with_ip_finds_most_specific_ipv6_subnet(self):
         subnet1 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/32'))
         subnet2 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/48'))
         subnet3 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/64'))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet1.get_cidr().first)), Equals(subnet3))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet1.get_cidr().last)), Equals(subnet1))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet2.get_cidr().last)), Equals(subnet2))
-        self.assertThat(Subnet.objects.get_subnet_with_ip(
-            IPAddress(subnet3.get_cidr().last)), Equals(subnet3))
+        self.assertIPBestMatchesSubnet(subnet1.get_cidr().first, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_cidr().last, subnet1)
+        self.assertIPBestMatchesSubnet(subnet2.get_cidr().last, subnet2)
+        self.assertIPBestMatchesSubnet(subnet3.get_cidr().last, subnet3)
 
-    def test_get_subnet_with_ip_returns_none_if_not_found(self):
+    def test_get_subnets_with_ip_returns_empty_list_if_not_found(self):
         network = factory._make_random_network()
         factory.make_Subnet()
-        self.assertIsNone(Subnet.objects.get_subnet_with_ip(
-            IPAddress(network.first - 1)))
-        self.assertIsNone(Subnet.objects.get_subnet_with_ip(
-            IPAddress(network.last + 1)))
+        self.assertIPBestMatchesSubnet(network.first - 1, None)
+        self.assertIPBestMatchesSubnet(network.first + 1, None)

@@ -1341,7 +1341,7 @@ class TestNodeBlockDeviceListener(
         yield listener.start()
         try:
             yield deferToThread(self.update_blockdevice, blockdevice.id, {
-                "size": random.randint(1000 * 1000, 1000 * 1000 * 1000)
+                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)

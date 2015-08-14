@@ -81,23 +81,67 @@ class SubnetManager(Manager):
         name = "subnet-" + unicode(cidr)
         return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
 
+    find_subnets_with_ip_query = """
+        SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
+        FROM
+            maasserver_subnet AS subnet
+        WHERE
+            %s << subnet.cidr
+        ORDER BY prefixlen DESC
+        """
+
+    def get_subnets_with_ip(self, ip):
+        """Find the most specific Subnet the specified IP address belongs in.
+        """
+        return self.raw(
+            self.find_subnets_with_ip_query, params=[unicode(ip)])
+
     # Note: << is the postgresql "is contained within" operator.
     # See http://www.postgresql.org/docs/8.4/static/functions-net.html
     # Use an ORDER BY and LIMIT clause to match the most specific
     # subnet for the given IP address.
-    find_subnet_with_ip_query = """
-        SELECT subnet.*
+    # Also, when using "SELECT DISTINCT", the items in ORDER BY must be
+    # present in the SELECT. (hence the extra field)
+    find_managed_subnet_with_ip_query = """
+        SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
         FROM maasserver_subnet AS subnet
-            WHERE %s << subnet.cidr
-            ORDER BY masklen(subnet.cidr) DESC
-            LIMIT 1
+        INNER JOIN maasserver_nodegroupinterface AS ngi
+            ON ngi.subnet_id = subnet.id
+        INNER JOIN maasserver_vlan AS vlan
+            ON ngi.vlan_id = vlan.id
+        INNER JOIN maasserver_nodegroup AS nodegroup
+          ON ngi.nodegroup_id = nodegroup.id
+        WHERE
+            %s << subnet.cidr AND /* Specified IP is inside range */
+            ngi.management != 0 AND  /* Managed cluster interface */
+            nodegroup.status = 1 AND /* Active cluster */
+            vlan.fabric_id = %s
+        ORDER BY prefixlen DESC
+        LIMIT 1
         """
 
-    def get_subnet_with_ip(self, ip):
-        """Find the most specific Subnet the specified IP address belongs in.
+    def get_managed_subnet_with_ip(self, ip, fabric=None):
+        """Find the most-specific managed Subnet the specified IP address
+        belongs to.
+
+        The most-specific Subnet is a Subnet that is both referred to by
+        a managed, active NodeGroupInterface, and on the specified Fabric.
+
+        If no Fabric is specified, uses the default Fabric.
         """
+        # Circular imports
+        from maasserver.models import Fabric
+        if fabric is None:
+            # If no Fabric is specified, use the default. (will always be 0)
+            fabric = 0
+        elif isinstance(fabric, Fabric):
+            fabric = fabric.id
+        else:
+            fabric = int(fabric)
+
         subnets = self.raw(
-            self.find_subnet_with_ip_query, params=[unicode(ip)])
+            self.find_managed_subnet_with_ip_query,
+            params=[unicode(ip), fabric])
 
         for subnet in subnets:
             return subnet  # This is stable because the query is ordered.

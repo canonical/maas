@@ -27,6 +27,7 @@ from collections import defaultdict
 from itertools import chain
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import (
     connection,
     IntegrityError,
@@ -49,6 +50,7 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import strip_domain
 from maasserver.utils.dns import (
@@ -63,9 +65,13 @@ from netaddr import (
     IPAddress,
     IPRange,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.threads import deferToThread
+
+
+maaslog = get_maas_logger("node")
 
 
 class StaticIPAddressManager(Manager):
@@ -115,6 +121,7 @@ class StaticIPAddressManager(Manager):
         ipaddress = StaticIPAddress(
             ip=requested_address.format(), alloc_type=alloc_type,
             hostname=hostname)
+        ipaddress.set_ip_address(requested_address.format())
         try:
             # Try to save this address to the database.
             ipaddress.save()
@@ -330,6 +337,89 @@ class StaticIPAddressManager(Manager):
             mapping[hostname].append(ip)
         return mapping
 
+    def update_leases(self, nodegroup, leases):
+        """Refresh our knowledge of a node group's IP mappings.
+
+        This deletes entries that are no longer current, adds new ones,
+        and updates or replaces ones that have changed.
+        This method also updates the MAC address objects to link them to
+        their respective cluster interface.
+
+        :param nodegroup: The node group that these updates are for.
+        :param leases: A dict describing all current IP/MAC mappings as
+            managed by the node group's DHCP server.  Keys are IP
+            addresses, values are MAC addresses.  Any :class:`StaticIPAddress`
+            entries for `nodegroup` that are from DHCP not in `leases` will be
+            deleted.
+        :return: Iterable of IP addresses that were newly leased.
+        """
+        from maasserver.models.macaddress import (
+            update_macs_cluster_interfaces,
+            MACAddress,
+        )
+
+        mac_leases = {mac: ip for ip, mac in leases.viewitems()}
+        new_leases = leases.copy()
+        # get all rows for DHCP allocations in this nodegroup
+        ngi_ips = StaticIPAddress.objects.filter(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            subnet__nodegroupinterface__nodegroup=nodegroup)
+        for ip in ngi_ips:
+            for iface in ip.interface_set.all():
+                if unicode(iface.mac.mac_address) in mac_leases:
+                    # we found our mac address in this nodegroup.  Because of
+                    # having an interface-per-vlan, we need to make sure that
+                    # we are updating only the interfaces that are on the vlan
+                    # where the ip address lives.
+                    ip_addr = mac_leases[unicode(iface.mac.mac_address)]
+                    subnet = Subnet.objects.get_managed_subnet_with_ip(ip_addr)
+                    if subnet is not None and iface.vlan_id == subnet.vlan_id:
+                        ip.set_ip_address(ip_addr, iface=iface)
+                        if ip_addr in new_leases:
+                            del new_leases[ip_addr]
+                else:
+                    # this ip is not in the new leases, retire it.
+                    ip.ip = ''
+            ip.save()
+
+        # At this point, new_leases contains only MAC addresses that do not
+        # exist in this nodegroup.  For now, make them a warning, and otherwise
+        # ignore them.
+        macs = MACAddress.objects.filter(
+            mac_address__in=[mac for mac in new_leases.viewvalues()])
+        for mac in macs:
+            if mac.node is None:
+                maaslog.warning(
+                    "mac %s exists on nodegroup %s and other(s)" % (
+                        mac.mac_address,
+                        nodegroup.name,
+                        ))
+            else:
+                maaslog.warning(
+                    "%s: mac %s exists on nodegroup %s and %s" % (
+                        mac.node.hostname,
+                        mac.mac_address,
+                        nodegroup.name,
+                        mac.node.nodegroup.name,
+                        ))
+
+        # Make sure that all of the IP Addresses are recorded in
+        # StaticIPAddress. Don't bother to create MACAddress rows and the
+        # attendant linkage, since we don't have good answers for those things
+        # when we just have an (IP, MAC) tuple.
+        for ipaddr, mac in new_leases.viewitems():
+            ipaddress = StaticIPAddress.objects.filter(ip=ipaddr)
+            if len(ipaddress) == 0:
+                ipaddress = StaticIPAddress.objects._attempt_allocation(
+                    IPAddress(ipaddr),
+                    IPADDRESS_TYPE.DHCP)
+                ipaddress.subnet = Subnet.objects.get_managed_subnet_with_ip(
+                    ipaddr)
+                ipaddress.save()
+
+        update_macs_cluster_interfaces(leases, nodegroup)
+        return new_leases
+
 
 class StaticIPAddress(CleanSave, TimestampedModel):
 
@@ -381,6 +471,21 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """
         self.delete()
 
+    def clean_subnet_id(self):
+        """Validate that the IP address is inside the subnet."""
+        # USER_RESERVED allows completely arbitrary IPs, everything else must
+        # be on a subnet.
+        if self.alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+            # TODO: Tests need to create subnet entries before we can actually
+            # enable this check.
+            return
+            raise ValidationError(
+                {'subnet_id': ["Address must be within the subnet."]})
+
+    def clean(self, *args, **kwargs):
+        super(StaticIPAddress, self).clean(*args, **kwargs)
+        self.clean_subnet_id()
+
     def full_clean(self, exclude=None, validate_unique=False):
         """Overrides Django's default for validating unique columns.
 
@@ -400,3 +505,12 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     def get_mac_addresses(self):
         # TODO: go through interface table.
         return self.macaddress_set.all()
+
+    def set_ip_address(self, ipaddr, iface=None):
+        self.ip = ipaddr
+        subnet = Subnet.objects.get_managed_subnet_with_ip(ipaddr)
+        if subnet is not None:
+            self.subnet = subnet
+            if (iface is not None and iface.vlan_id != subnet.vlan_id):
+                iface.vlan = subnet.vlan
+                iface.save()

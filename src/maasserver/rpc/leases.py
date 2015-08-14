@@ -18,6 +18,7 @@ __all__ = [
 
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.orm import transactional
 from provisioningserver.pserv_services.lease_upload_service import (
     convert_mappings_to_leases,
@@ -49,4 +50,5 @@ def update_leases(uuid, mappings):
     else:
         leases = convert_mappings_to_leases(mappings)
         DHCPLease.objects.update_leases(nodegroup, leases)
+        StaticIPAddress.objects.update_leases(nodegroup, leases)
         return {}

@@ -26,6 +26,7 @@ from maasserver.exceptions import (
     StaticIPAddressUnavailable,
 )
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -48,9 +49,11 @@ from django.db import transaction
 
 class TestStaticIPAddressManager(MAASServerTestCase):
 
-    def make_ip_ranges(self, network=None):
+    def make_ip_ranges(self, network=None, nodegroup=None):
+        if not nodegroup:
+            nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(), network=network)
+            nodegroup, network=network)
         return (
             interface.network,
             interface.static_ip_range_low,
@@ -334,6 +337,88 @@ class TestStaticIPAddressManager(MAASServerTestCase):
 
         StaticIPAddress.objects.delete_by_node(node)
         self.assertItemsEqual([], StaticIPAddress.objects.all())
+
+    def test_update_leases_new_ip_new_mac(self):
+        vlan = VLAN.objects.get_default_vlan()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            vlan=vlan
+        )
+        mac = node.get_primary_mac()
+        ngi = mac.cluster_interface
+        ipaddress = factory.make_StaticIPAddress(
+            ip=ngi.ip_range_low, alloc_type=IPADDRESS_TYPE.DHCP,
+            subnet=ngi.subnet, mac=mac)
+
+        # Now that we have set the conditions, add a new lease on this subnet,
+        # for a new IP and mac.
+        ipaddr2 = factory.pick_ip_in_network(ngi.network, [ipaddress.ip])
+        mac_addr2 = factory.make_mac_address()
+        StaticIPAddress.objects.update_leases(
+            node.nodegroup, {ipaddr2: mac_addr2})
+        new_ips = StaticIPAddress.objects.filter(ip=ipaddr2)
+        self.assertEqual(1, len(new_ips))
+        # we do not create mac links for this case.
+        self.assertItemsEqual([], new_ips[0].get_mac_addresses())
+
+    def test_update_leases_drop_lease(self):
+        from maasserver.models.vlan import VLAN
+        vlan = VLAN.objects.get_default_vlan()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            vlan=vlan
+        )
+        mac = node.get_primary_mac()
+        ngi = mac.cluster_interface
+        factory.make_StaticIPAddress(
+            ip=ngi.ip_range_low, alloc_type=IPADDRESS_TYPE.DHCP,
+            subnet=ngi.subnet, mac=mac)
+        # and then we can do an update_leases call for this lease
+        StaticIPAddress.objects.update_leases(
+            node.nodegroup, {})
+        new_ips = StaticIPAddress.objects.filter(ip=ngi.ip_range_low)
+        # confirm that there is no entry for the new IP
+        self.assertEqual(0, len(new_ips))
+        # and confirm that the old entry no longer has an IP
+        self.assertEqual(None, StaticIPAddress.objects.all()[0].ip)
+
+    def test_update_leases_new_ip_existing_mac(self):
+        from maasserver.models.vlan import VLAN
+        vlan = VLAN.objects.get_default_vlan()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            vlan=vlan
+        )
+        mac = node.get_primary_mac()
+        ngi = mac.cluster_interface
+        ipaddress = factory.make_StaticIPAddress(
+            ip=ngi.ip_range_low, alloc_type=IPADDRESS_TYPE.DHCP,
+            subnet=ngi.subnet, mac=mac)
+        # and then we can do an update_leases call for this lease
+        ipaddr2 = factory.pick_ip_in_network(ngi.network, [ipaddress.ip])
+        StaticIPAddress.objects.update_leases(
+            node.nodegroup, {ipaddr2: mac.mac_address})
+        new_ips = StaticIPAddress.objects.filter(ip=ipaddr2)
+        self.assertThat(new_ips, HasLength(1))
+        self.assertItemsEqual([mac], new_ips[0].get_mac_addresses())
+
+    def test_update_leases_new_ip_existing_mac_different_nodegroup(self):
+        vlan = VLAN.objects.get_default_vlan()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            vlan=vlan
+        )
+        mac = node.get_primary_mac()
+        ngi = mac.cluster_interface
+        ipaddress = factory.make_StaticIPAddress(
+            ip=ngi.ip_range_low, alloc_type=IPADDRESS_TYPE.DHCP,
+            subnet=ngi.subnet, mac=mac)
+        # This is slightly overkill to get a new NodeGroup and all the
+        # linkages, but makes for a more comolete test.
+        node2 = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
+        ipaddr2 = factory.pick_ip_in_network(ngi.network, [ipaddress.ip])
+        StaticIPAddress.objects.update_leases(
+            node2.nodegroup, {ipaddr2: mac.mac_address})
+        new_ips = StaticIPAddress.objects.filter(ip=ipaddr2)
+        self.assertThat(new_ips, HasLength(1))
+        # we do not create mac links for this case.
+        self.assertItemsEqual([], new_ips[0].get_mac_addresses())
 
 
 class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):

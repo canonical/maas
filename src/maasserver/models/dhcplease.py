@@ -64,11 +64,8 @@ class DHCPLeaseManager(Manager):
 
     def _get_leased_ips(self, nodegroup):
         """Query the currently leased IP addresses for `nodegroup`."""
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT ip FROM maasserver_dhcplease WHERE nodegroup_id = %s"
-            % nodegroup.id)
-        return frozenset(ip for ip, in cursor.fetchall())
+        return frozenset(DHCPLease.objects.filter(
+            nodegroup=nodegroup).values_list('ip', flat=True))
 
     def _add_missing_leases(self, nodegroup, leases):
         """Add items from `leases` that aren't in the database yet.

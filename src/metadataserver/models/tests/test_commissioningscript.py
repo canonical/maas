@@ -722,7 +722,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
 
         check_output = self.patch(subprocess, "check_output")
@@ -743,7 +743,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
 
@@ -782,7 +782,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
 
@@ -817,7 +817,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
@@ -844,7 +844,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
@@ -871,7 +871,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
@@ -898,7 +898,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         name = factory.make_name('name')
         model = factory.make_name('model')
         serial = factory.make_name('serial')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
@@ -1059,7 +1059,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device(self):
         name = factory.make_name('name')
         id_path = '/dev/disk/by-id/deviceid'
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
@@ -1077,7 +1077,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_path(self):
         name = factory.make_name('name')
-        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
