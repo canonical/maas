@@ -166,12 +166,18 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
         ip = factory.make_ipv4_address()
         self.assertIsNone(find_cluster_interface_responsible_for_ip([], ip))
 
+    def test__returns_None_if_no_interface_networks(self):
+        nodegroup = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(nodegroup, network=None)
+        ip = factory.make_ipv4_address()
+        self.assertIsNone(find_cluster_interface_responsible_for_ip([], ip))
+
     def test__finds_responsible_IPv4_interface(self):
         nodegroup = factory.make_NodeGroup()
         networks = [
             IPNetwork('10.1.1.0/24'),
             IPNetwork('10.2.2.0/24'),
-            IPNetwork('10.3.3.0/24'),
+            IPNetwork('10.3.3.0/24')
             ]
         interfaces = [
             factory.make_NodeGroupInterface(nodegroup, network=network)

@@ -71,7 +71,7 @@ def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
         contains `ip_address`, or `None`.
     """
     for interface in cluster_interfaces:
-        if ip_address in interface.network:
+        if interface.network is not None and ip_address in interface.network:
             return interface
     return None
 
