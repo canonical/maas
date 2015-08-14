@@ -32,7 +32,7 @@ DISPLAYED_VLAN_FIELDS = (
 
 
 class VlansHandler(OperationsHandler):
-    """Manage vlans on a fabric."""
+    """Manage VLANs on a fabric."""
     api_doc_section_name = "VLANs"
     create = update = delete = None
     fields = DISPLAYED_VLAN_FIELDS
@@ -43,7 +43,7 @@ class VlansHandler(OperationsHandler):
         return ('vlans_handler', ["fabric_id"])
 
     def read(self, request, fabric_id):
-        """List all vlans belonging to fabric.
+        """List all VLANs belonging to fabric.
 
         Returns 404 if the node is not found.
         """
@@ -53,7 +53,7 @@ class VlansHandler(OperationsHandler):
 
 
 class VlanHandler(OperationsHandler):
-    """Manage vlan on a fabric."""
+    """Manage VLAN on a fabric."""
     api_doc_section_name = "VLAN"
     create = update = None
     model = VLAN

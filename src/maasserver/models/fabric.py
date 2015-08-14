@@ -66,7 +66,7 @@ class FabricManager(Manager):
         this id exist or if the provided user has not the required permission
         to access this `Fabric`.
 
-        :param id: The system_id.
+        :param id: The fabric_id.
         :type id: int
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User

@@ -59,7 +59,7 @@ class FabricHandler(OperationsHandler):
 
     @classmethod
     def vlans(cls, fabric):
-        """Return VLAN's in fabric."""
+        """Return VLANs within the specified fabric."""
         return fabric.vlan_set.all()
 
     def read(self, request, fabric_id):
