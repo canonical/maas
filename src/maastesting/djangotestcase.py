@@ -20,6 +20,11 @@ __all__ = [
     ]
 
 from contextlib import closing
+from itertools import izip
+from time import (
+    sleep,
+    time,
+)
 
 from django.conf import settings
 from django.core.management.commands import syncdb
@@ -78,6 +83,54 @@ def count_queries(func, *args, **kwargs):
     return counter.num_queries, result
 
 
+def get_rogue_database_activity():
+    """Return details of rogue database activity.
+
+    This excludes itself, naturally, and also auto-vacuum activity which is
+    governed by PostgreSQL and not something to be concerned about.
+
+    :return: A list of dicts, where each dict represents a complete row from
+        the ``pg_stat_activity`` table, mapping column names to values.
+    """
+    with connection.temporary_connection() as cursor:
+        cursor.execute("""\
+        SELECT * FROM pg_stat_activity
+         WHERE pid != pg_backend_pid()
+           AND query NOT LIKE 'autovacuum:%'
+        """)
+        names = tuple(column.name for column in cursor.description)
+        return [dict(izip(names, row)) for row in cursor]
+
+
+def check_for_rogue_database_activity(test):
+    """Check for rogue database activity and fail the test if found.
+
+    All database activity outside of this thread should have terminated by the
+    time this is called, but in practice it won't have. We have unconsciously
+    lived with this situation for a long time, so we give it a few seconds to
+    finish up before failing.
+
+    """
+    cutoff = time() + 5.0  # Give it 5 seconds.
+    while time() < cutoff:
+        database_activity = get_rogue_database_activity()
+        if len(database_activity) == 0:
+            break  # All quiet on the database front.
+        else:
+            pause = max(0.0, min(0.2, cutoff - time()))
+            sleep(pause)  # Somat's still wriggling.
+    else:
+        test.fail(
+            "Rogue database activity:\n" + "\n--\n".join(
+                "\n".join(
+                    "%s=%s" % (name, activity[name])
+                    for name in sorted(activity)
+                )
+                for activity in database_activity
+            )
+        )
+
+
 class DjangoTestCase(
         MAASTestCase, django.test.TestCase):
     """A Django `TestCase` for MAAS.
@@ -119,6 +172,8 @@ class DjangoTestCase(
                 # We're in a different transaction now to the one we started
                 # in, so force a flush of all databases to ensure all's well.
                 django.test.TransactionTestCase._fixture_teardown(self)
+        # Don't let unfinished database activity get away with it.
+        check_for_rogue_database_activity(self)
 
 
 class DjangoTransactionTestCase(
@@ -132,6 +187,11 @@ class DjangoTransactionTestCase(
     """
 
     client_class = SensibleClient
+
+    def _fixture_teardown(self):
+        super(DjangoTransactionTestCase, self)._fixture_teardown()
+        # Don't let unfinished database activity get away with it.
+        check_for_rogue_database_activity(self)
 
 
 class TestModelMixin:

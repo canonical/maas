@@ -32,7 +32,10 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    transactional,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -139,7 +142,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
         def delete_node_then_get_client(uuid):
             from maasserver.rpc import getClientFor
-            d = deferToThread(node.delete)  # Auto-commit outside txn.
+            d = deferToThread(transactional(node.delete))
             d.addCallback(lambda _: getClientFor(uuid))
             return d
 
