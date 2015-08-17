@@ -20,12 +20,12 @@ __all__ = [
     "remove_host_maps",
 ]
 
+import os
 import time
 
 from provisioningserver.dhcp import (
     DHCPv4Server,
     DHCPv6Server,
-    DISABLED_DHCP_SERVER,
 )
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
@@ -43,7 +43,10 @@ from provisioningserver.service_monitor import (
     service_monitor,
     ServiceActionError,
 )
-from provisioningserver.utils.fs import sudo_write_file
+from provisioningserver.utils.fs import (
+    sudo_delete_file,
+    sudo_write_file,
+)
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import synchronous
 
@@ -63,34 +66,9 @@ def configure(server, subnet_configs):
     stopping = len(subnet_configs) == 0
 
     if stopping:
-        dhcpd_config = DISABLED_DHCP_SERVER
-    else:
-        dhcpd_config = get_config(
-            server.template_basename, omapi_key=server.omapi_key,
-            dhcp_subnets=subnet_configs)
+        if os.path.exists(server.config_filename):
+            sudo_delete_file(server.config_filename)
 
-    interfaces = {subnet['interface'] for subnet in subnet_configs}
-    interfaces_config = ' '.join(sorted(interfaces))
-
-    try:
-        sudo_write_file(server.config_filename, dhcpd_config)
-        sudo_write_file(server.interfaces_filename, interfaces_config)
-    except ExternalProcessError as e:
-        # ExternalProcessError.__unicode__ contains a generic failure
-        # message as well as the command and its error output. On the
-        # other hand, ExternalProcessError.output_as_unicode contains just
-        # the error output which is probably the best information on what
-        # went wrong. Log the full error information, but keep the
-        # exception message short and to the point.
-        maaslog.error(
-            "Could not rewrite %s server configuration (for network "
-            "interfaces %s): %s", server.descriptive_name,
-            interfaces_config, unicode(e))
-        raise CannotConfigureDHCP(
-            "Could not rewrite %s server configuration: %s" % (
-                server.descriptive_name, e.output_as_unicode))
-
-    if stopping:
         service = ServiceRegistry.get_item(server.dhcp_service)
         service.off()
         try:
@@ -109,6 +87,29 @@ def configure(server, subnet_configs):
                 "%s server failed to stop: %s" % (
                     server.descriptive_name, e))
     else:
+        dhcpd_config = get_config(
+            server.template_basename, omapi_key=server.omapi_key,
+            dhcp_subnets=subnet_configs)
+        interfaces = {subnet['interface'] for subnet in subnet_configs}
+        interfaces_config = ' '.join(sorted(interfaces))
+        try:
+            sudo_write_file(server.config_filename, dhcpd_config)
+            sudo_write_file(server.interfaces_filename, interfaces_config)
+        except ExternalProcessError as e:
+            # ExternalProcessError.__unicode__ contains a generic failure
+            # message as well as the command and its error output. On the
+            # other hand, ExternalProcessError.output_as_unicode contains just
+            # the error output which is probably the best information on what
+            # went wrong. Log the full error information, but keep the
+            # exception message short and to the point.
+            maaslog.error(
+                "Could not rewrite %s server configuration (for network "
+                "interfaces %s): %s", server.descriptive_name,
+                interfaces_config, unicode(e))
+            raise CannotConfigureDHCP(
+                "Could not rewrite %s server configuration: %s" % (
+                    server.descriptive_name, e.output_as_unicode))
+
         service = ServiceRegistry.get_item(server.dhcp_service)
         service.on()
         try:

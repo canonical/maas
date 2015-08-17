@@ -13,11 +13,13 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'atomic_delete',
     'atomic_symlink',
     'atomic_write',
     'ensure_dir',
     'incremental_write',
     'read_text_file',
+    'sudo_delete_file',
     'sudo_write_file',
     'tempdir',
     'write_text_file',
@@ -130,6 +132,19 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
     finally:
         if os.path.isfile(temp_file):
             os.remove(temp_file)
+
+
+def atomic_delete(filename):
+    """Delete the file `filename` in an atomic fashion.
+
+    This requires write permissions to the directory that `filename` is in.
+    It moves the file to a temporary file in the same directory (so that it
+    will be on the same filesystem as the destination) and then deletes the
+    temporary file. Such a rename is atomic in POSIX.
+    """
+    del_filename = ".%s.del" % os.path.basename(filename)
+    rename(filename, del_filename)
+    os.remove(del_filename)
 
 
 def create_provisional_symlink(src_dir, dst):
@@ -259,6 +274,24 @@ def sudo_write_file(filename, contents, encoding='utf-8', mode=0o644):
     ]
     proc = Popen(sudo(command), stdin=PIPE)
     stdout, stderr = proc.communicate(raw_contents)
+    if proc.returncode != 0:
+        raise ExternalProcessError(proc.returncode, command, stderr)
+
+
+def sudo_delete_file(filename):
+    """Delete file as root.  USE WITH EXTREME CARE.
+
+    Runs an atomic update using non-interactive `sudo`.  This will fail if
+    it needs to prompt for a password.
+    """
+    maas_provision_cmd = get_maas_provision_command()
+    command = [
+        maas_provision_cmd,
+        'atomic-delete',
+        '--filename', filename,
+    ]
+    proc = Popen(sudo(command))
+    stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         raise ExternalProcessError(proc.returncode, command, stderr)
 
