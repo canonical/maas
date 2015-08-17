@@ -14,11 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     'dns_add_zones',
-    'dns_add_zones_now',
     'dns_update_all_zones',
-    'dns_update_all_zones_now',
     'dns_update_zones',
-    'dns_update_zones_now',
     ]
 
 from itertools import (
@@ -46,6 +43,7 @@ from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     post_commit,
     transactional,
+    with_connection,
 )
 from provisioningserver.dns.actions import (
     bind_reconfigure,
@@ -96,7 +94,6 @@ def is_dns_enabled():
 DNS_DEFER_UPDATES = True
 
 
-@synchronised(locks.dns)
 def dns_add_zones_now(clusters):
     """Add zone files for the given cluster(s), and serve them.
 
@@ -135,7 +132,6 @@ def dns_add_zones(clusters):
         return None
 
 
-@synchronised(locks.dns)
 def dns_update_zones_now(clusters):
     """Update the zone files for the given cluster(s).
 
@@ -169,7 +165,6 @@ def dns_update_zones(clusters):
         return None
 
 
-@synchronised(locks.dns)
 def dns_update_all_zones_now(reload_retry=False, force=False):
     """Update all zone files for all clusters.
 
@@ -270,8 +265,9 @@ class Changes:
             self.hook.addBoth(callOut, self.reset)
         return self.hook
 
+    @with_connection  # Needed by the following lock.
+    @synchronised(locks.dns)  # Lock before beginning transaction.
     @transactional
-    @synchronised(locks.dns)
     def apply(self):
         """Apply all requested changes.
 

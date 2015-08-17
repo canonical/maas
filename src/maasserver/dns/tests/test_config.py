@@ -187,6 +187,22 @@ class TestConsolidatingChanges(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ENABLED)
 
+    def test__zone_changes_applied_while_holding_dns_lock(self):
+
+        def check_dns_is_locked(reload_retry, force):
+            self.assertTrue(locks.dns.is_locked(), "locks.dns isn't locked")
+            return False  # Prevent dns_update_zones_now from continuing.
+
+        dns_update_all_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones_now")
+        dns_update_all_zones_now.side_effect = check_dns_is_locked
+
+        consolidator.update_all_zones()
+        post_commit_hooks.fire()
+        self.assertThat(
+            dns_update_all_zones_now, MockCalledOnceWith(
+                reload_retry=ANY, force=ANY))
+
     def test__added_zones_applied_post_commit(self):
         dns_add_zones_now = self.patch_autospec(
             dns_config_module, "dns_add_zones_now")
@@ -411,35 +427,6 @@ class TestDNSServer(MAASServerTestCase):
             reverse_lookup_result, Contains("%s." % fqdn),
             "Failed to reverse resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(reverse_lookup_result)))
-
-
-class TestDNSModificationUsesLocks(TestDNSServer):
-
-    def patch_is_dns_enabled(self):
-        def check_dns_is_locked():
-            self.assertTrue(
-                locks.dns.is_locked(), "locks.dns isn't locked")
-            return False  # Prevent dns_update_zones_now from continuing.
-
-        is_dns_enabled = self.patch_autospec(
-            dns_config_module, 'is_dns_enabled')
-        is_dns_enabled.side_effect = check_dns_is_locked
-        return is_dns_enabled
-
-    def test_dns_update_zones_now_uses_lock(self):
-        is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_update_zones_now(sentinel.nodegroup)
-        self.assertThat(is_dns_enabled, MockCalledOnceWith())
-
-    def test_dns_add_zones_now_uses_lock(self):
-        is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_add_zones_now(sentinel.nodegroup)
-        self.assertThat(is_dns_enabled, MockCalledOnceWith())
-
-    def test_dns_update_all_zones_now_config_uses_lock(self):
-        is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_update_all_zones_now()
-        self.assertThat(is_dns_enabled, MockCalledOnceWith())
 
 
 class TestDNSConfigModifications(TestDNSServer):

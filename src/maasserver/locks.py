@@ -28,7 +28,7 @@ startup = DatabaseLock(1)
 
 # Lock around performing critical security-related operations, like
 # generating or signing certificates.
-security = DatabaseXactLock(2)
+security = DatabaseLock(2)
 
 # Lock used when starting up the event-loop.
 eventloop = DatabaseLock(3)
@@ -38,7 +38,7 @@ eventloop = DatabaseLock(3)
 import_images = DatabaseXactLock(4)
 
 # Lock to prevent concurrent changes to DNS configuration.
-dns = DatabaseXactLock(6)
+dns = DatabaseLock(6)
 
 # Lock to prevent concurrent acquisition of nodes.
 node_acquire = DatabaseXactLock(7)
