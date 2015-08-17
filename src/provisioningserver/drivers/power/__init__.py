@@ -334,7 +334,6 @@ class PowerDriverRegistry(Registry):
 
 from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
-from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
@@ -345,7 +344,6 @@ from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 builtin_power_drivers = [
     APCPowerDriver(),
     HMCPowerDriver(),
-    IPMIPowerDriver(),
     MicrosoftOCSPowerDriver(),
     MSCMPowerDriver(),
     SeaMicroPowerDriver(),

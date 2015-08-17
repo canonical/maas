@@ -1,0 +1,110 @@
+# -*- mode: shell-script -*-
+#
+# Control a system via ipmipower
+#
+
+# Parameters.
+# If power_change is 'query', echo the current state of the
+# machine: 'on' or 'off'.
+power_change={{power_change}}
+power_address={{power_address}}
+power_user={{power_user}}
+power_pass={{power_pass}}
+power_driver={{power_driver}}
+power_off_mode={{power_off_mode}}
+ipmipower={{ipmipower}}
+ipmi_chassis_config={{ipmi_chassis_config}}
+config={{config_dir}}/{{ipmi_config}}
+
+# If ip_address was supplied and power_address is not explicitly set then
+# use ip_address because it gets discovered on-the-fly based on mac_address.
+# We don't want to use it unilaterally because mac_address may be the host's
+# MAC, so only fall back if someone deliberately left power_address empty.
+{{if ip_address and not power_address}}
+power_address={{ip_address}}
+{{endif}}
+
+# This workaround is required on many BMCs, and should have no impact
+# on BMCs that don't require it.
+# See https://bugs.launchpad.net/maas/+bug/1287964
+workarounds="-W opensesspriv"
+
+# Determines the power command needed to execute the desired
+# action. This function receives ${power_change} as argument.
+formulate_power_command() {
+    case $1 in
+    'on') echo '--cycle --on-if-off' ;;
+    'off')
+        if [ "$power_off_mode" = "soft" ];
+        then
+            echo '--soft'
+        else
+            echo '--off'
+        fi ;;
+    'query') echo '--stat' ;;
+    *)
+        echo "Got unknown power state from ipmipower: '$1'" >&2
+        exit 1
+    esac
+}
+
+# Issue command to ipmipower, for the given system.
+issue_ipmi_command() {
+    # See https://launchpad.net/bugs/1053391 for details of this workaround
+    local driver_option="" user_option=""
+    if [ -n "$power_driver" ]
+        then
+          driver_option="--driver-type=${power_driver}"
+    fi
+    if [ -n "$power_user" ]
+        then
+          user_option="-u ${power_user}"
+    fi
+
+    if [ "$power_change" != "query" ]
+    then
+        # Use C locale to force English error messages.
+        result=$(echo workaround |\
+        LC_ALL=C ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} ${user_option} -p ${power_pass} --commit --filename ${config} 2>&1)
+
+        if echo $result | grep -q "password invalid"
+        then
+            echo "Invalid password" >&2
+            exit 2
+        fi
+    fi
+
+    # Use C locale to force English error messages.
+    result=$(echo workaround |\
+    LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} ${user_option} -p ${power_pass} "$@")
+
+    exit_status=$?
+
+    if echo $result | grep -q "password invalid"
+    then
+        echo "Invalid password" >&2
+        exit 2
+    fi
+
+    if [ $exit_status -ne 0 ]; then
+        echo $result >&2
+        exit 2
+    fi
+
+    case "$result" in
+        *:* )
+                # Result looks like the usual IPMI output:
+                # <ipmi-ip-address>: <on/off>, just return the <on|off>
+                # part.
+                echo ${result} | cut -d ':' -f 2
+                ;;
+        * )
+                echo ${result};;
+    esac
+}
+ 
+# This script deliberately does not check the current power state
+# before issuing the requested power command. See bug 1171418 for an
+# explanation.
+power_command=$(formulate_power_command ${power_change})
+issue_ipmi_command ${power_command}
