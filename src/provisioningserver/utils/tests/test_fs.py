@@ -14,10 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import hashlib
+from base64 import urlsafe_b64encode
 import os
 import os.path
 from random import randint
+import re
 from shutil import rmtree
 import stat
 from subprocess import (
@@ -28,14 +29,18 @@ import sys
 import tempfile
 import time
 
-from lockfile import FileLock
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
+    call,
     Mock,
     sentinel,
 )
@@ -45,28 +50,36 @@ from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     ensure_dir,
-    FileLockProxy,
+    FileLock,
     get_maas_provision_command,
     get_mtime,
     incremental_write,
     pick_new_mtime,
     read_text_file,
+    RunLock,
     sudo_delete_file,
     sudo_write_file,
+    SystemLock,
     tempdir,
     write_text_file,
 )
 import provisioningserver.utils.fs as fs_module
+from testtools.content import text_content
 from testtools.matchers import (
     DirExists,
     EndsWith,
+    Equals,
     FileContains,
     FileExists,
+    IsInstance,
+    MatchesAll,
     Not,
     SamePath,
     StartsWith,
 )
 from testtools.testcase import ExpectedException
+from twisted.internet.task import Clock
+from twisted.python import lockfile
 
 
 class TestAtomicWrite(MAASTestCase):
@@ -526,90 +539,6 @@ class TestTempDir(MAASTestCase):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
 
-class TestFileLockProxy(MAASTestCase):
-    def test_lock_file_path(self):
-        tempdir = self.make_dir()
-        expected_result = os.path.join('/', 'run', 'lock',
-                                       'maas-' +
-                                       tempdir.replace('_', '__')
-                                       .replace(os.sep, '_') +
-                                       '-' +
-                                       hashlib.md5(tempdir).hexdigest()
-                                       )
-        observed_result = FileLockProxy.lock_file_path(tempdir)
-        self.assertEqual(expected_result, observed_result)
-
-    def test_lock_file_path_excapes__(self):
-        temppath = self.make_dir()
-        tempfile = factory.make_name('_test_')
-        test_path = os.path.join(temppath, tempfile)
-        expected_path = test_path.replace('_', '__')
-        expected_result = os.path.join('/', 'run', 'lock',
-                                       'maas-' +
-                                       expected_path
-                                       .replace(os.sep, '_') +
-                                       '-' +
-                                       hashlib.md5(test_path).hexdigest()
-                                       )
-        observed_result = FileLockProxy.lock_file_path(test_path)
-        self.assertEqual(expected_result, observed_result)
-
-    def test_locks_proxy_file(self):
-        tempdir = self.make_dir()
-        lock_file_path = FileLockProxy.lock_file_path(tempdir)
-        lock = FileLock(lock_file_path)
-        self.assertFalse(
-            lock.is_locked(),
-            'Lock file path should not be locked prior to testing.')
-        with FileLockProxy(tempdir):
-            self.assertTrue(
-                lock.is_locked(),
-                'Path not properly locked within context')
-
-    def test_cleans_up_on_successful_exit(self):
-        tempdir = self.make_dir()
-        lock_file_path = FileLockProxy.lock_file_path(tempdir)
-        lock = FileLock(lock_file_path)
-        with FileLockProxy(tempdir):
-            pass
-
-        self.assertFalse(
-            lock.is_locked(),
-            'Path is still locked when out of context')
-        self.assertThat(lock_file_path, Not(FileExists()))
-
-    def test_cleans_up_proxy_file_on_exception_exit(self):
-        class DeliberateFailure(Exception):
-            pass
-
-        tempdir = self.make_dir()
-        lock_file_path = FileLockProxy.lock_file_path(tempdir)
-        lock = FileLock(lock_file_path)
-        with ExpectedException(DeliberateFailure):
-            with FileLockProxy(tempdir):
-                factory.make_file(tempdir)
-                raise DeliberateFailure("Exiting context by exception")
-
-        self.assertFalse(lock.is_locked(),
-                         'Path is still locked when out of context')
-        self.assertThat(lock_file_path, Not(FileExists()))
-
-    def test_context_manager_releases_lock_when_context_exits(self):
-        tempdir = self.make_dir()
-        lock_file_path = FileLockProxy.lock_file_path(tempdir)
-        lock = FileLock(lock_file_path)
-        self.assertFalse(
-            lock.is_locked(),
-            'Lock file path should not be locked prior to testing.')
-        with FileLockProxy(tempdir):
-            self.assertTrue(
-                lock.is_locked(),
-                'Path not properly locked within context')
-            self.assertEqual(tempdir, tempdir)
-        self.assertFalse(lock.is_locked(),
-                         'Path is still locked when out of context')
-
-
 class TestReadTextFile(MAASTestCase):
     def test_reads_file(self):
         text = factory.make_string()
@@ -658,3 +587,187 @@ class TestWriteTextFile(MAASTestCase):
         text = '\xae'
         write_text_file(path, text, encoding='utf-16')
         self.assertThat(path, FileContains(text.encode('utf-16')))
+
+
+class TestSystemLocks(MAASTestCase):
+    """Tests for `SystemLock` and its children."""
+
+    scenarios = (
+        ("FileLock", dict(locktype=FileLock)),
+        ("RunLock", dict(locktype=RunLock)),
+        ("SystemLock", dict(locktype=SystemLock)),
+    )
+
+    def make_lock(self):
+        lockdir = self.make_dir()
+        lockpath = os.path.join(lockdir, factory.make_name("lockfile"))
+        lock = self.locktype(lockpath)
+        return lockpath, lock
+
+    def ensure_global_lock_held_when_locking_and_unlocking(self, lock):
+        # Patch the lock to check that PROCESS_LOCK is held when doing IO.
+
+        def do_lock():
+            self.assertTrue(self.locktype.PROCESS_LOCK.locked())
+            return True
+        self.patch(lock.fslock, "lock").side_effect = do_lock
+
+        def do_unlock():
+            self.assertTrue(self.locktype.PROCESS_LOCK.locked())
+        self.patch(lock.fslock, "unlock").side_effect = do_unlock
+
+    def test__path_is_read_only(self):
+        lockpath, lock = self.make_lock()
+        with ExpectedException(AttributeError):
+            lock.path = factory.make_name()
+
+    def test__holds_file_system_lock(self):
+        _, lock = self.make_lock()
+        self.assertFalse(lockfile.isLocked(lock.path))
+        with lock:
+            self.assertTrue(lockfile.isLocked(lock.path))
+        self.assertFalse(lockfile.isLocked(lock.path))
+
+    def test__is_locked_reports_accurately(self):
+        lockpath, lock = self.make_lock()
+        self.assertFalse(lock.is_locked())
+        with lock:
+            self.assertTrue(lock.is_locked())
+        self.assertFalse(lock.is_locked())
+
+    def test__is_locked_holds_global_lock(self):
+        lockpath, lock = self.make_lock()
+        PROCESS_LOCK = self.patch(self.locktype, "PROCESS_LOCK")
+        self.assertFalse(lock.is_locked())
+        self.assertThat(
+            PROCESS_LOCK.__enter__,
+            MockCalledOnceWith())
+        self.assertThat(
+            PROCESS_LOCK.__exit__,
+            MockCalledOnceWith(None, None, None))
+
+    def test__cannot_be_acquired_twice(self):
+        """
+        `SystemLock` and its kin do not suffer from a bug that afflicts
+        ``lockfile`` (https://pypi.python.org/pypi/lockfile):
+
+          >>> from lockfile import FileLock
+          >>> with FileLock('foo'):
+          ...     with FileLock('foo'):
+          ...         print("Hello!")
+          ...
+          Hello!
+          Traceback (most recent call last):
+            File "<stdin>", line 3, in <module>
+            File ".../dist-packages/lockfile.py", line 230, in __exit__
+              self.release()
+            File ".../dist-packages/lockfile.py", line 271, in release
+              raise NotLocked
+          lockfile.NotLocked
+
+        """
+        _, lock = self.make_lock()
+        with lock:
+            with ExpectedException(self.locktype.NotAvailable, lock.path):
+                with lock:
+                    pass
+
+    def test__locks_and_unlocks_while_holding_global_lock(self):
+        lockpath, lock = self.make_lock()
+        self.ensure_global_lock_held_when_locking_and_unlocking(lock)
+
+        with lock:
+            self.assertFalse(self.locktype.PROCESS_LOCK.locked())
+
+        self.assertThat(lock.fslock.lock, MockCalledOnceWith())
+        self.assertThat(lock.fslock.unlock, MockCalledOnceWith())
+
+    def test__wait_waits_until_lock_can_be_acquired(self):
+        clock = self.patch(fs_module, "reactor", Clock())
+        sleep = self.patch(fs_module, "sleep")
+        sleep.side_effect = clock.advance
+
+        lockpath, lock = self.make_lock()
+        do_lock = self.patch(lock.fslock, "lock")
+        do_unlock = self.patch(lock.fslock, "unlock")
+
+        do_lock.side_effect = [False, False, True]
+
+        with lock.wait(10):
+            self.assertThat(do_lock, MockCallsMatch(call(), call(), call()))
+            self.assertThat(sleep, MockCallsMatch(call(1.0), call(1.0)))
+            self.assertThat(do_unlock, MockNotCalled())
+
+        self.assertThat(do_unlock, MockCalledOnceWith())
+
+    def test__wait_raises_exception_when_time_has_run_out(self):
+        clock = self.patch(fs_module, "reactor", Clock())
+        sleep = self.patch(fs_module, "sleep")
+        sleep.side_effect = clock.advance
+
+        lockpath, lock = self.make_lock()
+        do_lock = self.patch(lock.fslock, "lock")
+        do_unlock = self.patch(lock.fslock, "unlock")
+
+        do_lock.return_value = False
+
+        with ExpectedException(self.locktype.NotAvailable):
+            with lock.wait(0.2):
+                pass
+
+        self.assertThat(do_lock, MockCallsMatch(call(), call(), call()))
+        self.assertThat(sleep, MockCallsMatch(call(0.1), call(0.1)))
+        self.assertThat(do_unlock, MockNotCalled())
+
+    def test__wait_locks_and_unlocks_while_holding_global_lock(self):
+        lockpath, lock = self.make_lock()
+        self.ensure_global_lock_held_when_locking_and_unlocking(lock)
+
+        with lock.wait(10):
+            self.assertFalse(self.locktype.PROCESS_LOCK.locked())
+
+        self.assertThat(lock.fslock.lock, MockCalledOnceWith())
+        self.assertThat(lock.fslock.unlock, MockCalledOnceWith())
+
+
+class TestSystemLock(MAASTestCase):
+    """Tests specific to `SystemLock`."""
+
+    def test__path(self):
+        filename = self.make_file()
+        observed = SystemLock(filename).path
+        self.assertEqual(filename, observed)
+
+
+class TestFileLock(MAASTestCase):
+    """Tests specific to `FileLock`."""
+
+    def test__path(self):
+        filename = self.make_file()
+        expected = filename + ".lock"
+        observed = FileLock(filename).path
+        self.assertEqual(expected, observed)
+
+
+class TestRunLock(MAASTestCase):
+    """Tests specific to `RunLock`."""
+
+    def test__path(self):
+        filename = self.make_file()
+        expected = '/run/lock/maas.' + urlsafe_b64encode(filename) + '.lock'
+        observed = RunLock(filename).path
+        self.assertEqual(expected, observed)
+
+    def test__uses_utf8_for_unicode_to_byte_conversions(self):
+        filename = os.path.abspath(u'\u304b\u3057\u3044')
+        path = RunLock(filename).path
+        self.addDetail("path", text_content(path))
+        self.assertThat(path, IsInstance(bytes))
+        path_from_lock = re.search(b'maas[.](.+)[.]lock', path).group(1)
+        self.assertThat(
+            path_from_lock, MatchesAll(
+                Equals(urlsafe_b64encode(filename.encode("utf-8"))),
+                IsInstance(bytes)))
+
+    def test__rejects_non_unicode_or_byte_string_in_path(self):
+        self.assertRaises(TypeError, RunLock, object())

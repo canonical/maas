@@ -154,7 +154,7 @@ from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
-    FileLockProxy,
+    RunLock,
 )
 import yaml
 
@@ -537,9 +537,7 @@ class ConfigurationFile:
         to the configuration on a clean exit.
         """
         # Only one reader or writer at a time.
-        lock = FileLockProxy(path)
-        lock.acquire(timeout=5)
-        try:
+        with RunLock(path).wait(timeout=5):
             # Ensure `path` exists...
             touch(path)
             # before loading it in.
@@ -552,8 +550,6 @@ class ConfigurationFile:
             else:
                 if configfile.dirty:
                     configfile.save()
-        finally:
-            lock.release()
 
 
 class ConfigurationMeta(type):

@@ -30,7 +30,6 @@ python-formencode
 python-hivex
 python-httplib2
 python-jsonschema
-python-lockfile
 python-netaddr
 python-netifaces
 python-oauth

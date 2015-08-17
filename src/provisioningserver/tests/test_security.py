@@ -21,7 +21,6 @@ from os import (
 from os.path import dirname
 
 from fixtures import EnvironmentVariableFixture
-import lockfile
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -32,6 +31,7 @@ from mock import (
 from provisioningserver import security
 from provisioningserver.utils.fs import (
     ensure_dir,
+    FileLock,
     read_text_file,
     write_text_file,
 )
@@ -86,7 +86,7 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
     def test__reads_with_lock(self):
-        lock = lockfile.FileLock(security.get_shared_secret_filesystem_path())
+        lock = FileLock(security.get_shared_secret_filesystem_path())
         self.assertFalse(lock.is_locked())
 
         def check_lock(path):
@@ -118,7 +118,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertEqual(secret, self.read_secret())
 
     def test__writes_with_lock(self):
-        lock = lockfile.FileLock(security.get_shared_secret_filesystem_path())
+        lock = FileLock(security.get_shared_secret_filesystem_path())
         self.assertFalse(lock.is_locked())
 
         def check_lock(path, data):

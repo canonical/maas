@@ -17,18 +17,21 @@ __all__ = [
     'atomic_symlink',
     'atomic_write',
     'ensure_dir',
+    'FileLock',
     'incremental_write',
     'read_text_file',
+    'RunLock',
     'sudo_delete_file',
     'sudo_write_file',
+    'SystemLock',
     'tempdir',
     'write_text_file',
 ]
 
+from base64 import urlsafe_b64encode
 import codecs
 from contextlib import contextmanager
 import errno
-import hashlib
 from itertools import count
 import os
 from os import (
@@ -36,7 +39,10 @@ from os import (
     stat,
     chown,
 )
-from os.path import isdir
+from os.path import (
+    abspath,
+    isdir,
+)
 from random import randint
 from shutil import rmtree
 from subprocess import (
@@ -45,11 +51,17 @@ from subprocess import (
 )
 import sys
 import tempfile
-from time import time
+import threading
+from time import (
+    sleep,
+    time,
+)
 
-from lockfile import FileLock
 from provisioningserver.utils import sudo
 from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.twisted import retries
+from twisted.internet import reactor
+from twisted.python.lockfile import FilesystemLock
 
 
 def get_maas_provision_command():
@@ -127,13 +139,9 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
         if overwrite:
             rename(temp_file, filename)
         else:
-            lock = FileLock(filename)
-            lock.acquire()
-            try:
+            with FileLock(filename):
                 if not os.path.isfile(filename):
                     rename(temp_file, filename)
-            finally:
-                lock.release()
     finally:
         if os.path.isfile(temp_file):
             os.remove(temp_file)
@@ -315,58 +323,6 @@ def ensure_dir(path):
         # Which is actually success.
 
 
-class FileLockProxy(FileLock):
-    """Create a file lock in /run/lock that implements an OS advisory file
-    lock, by proxy, on the directory or file 'path' (i.e. if you
-    do not have write permissions to the file / directory 'path', or you
-    otherwise do not want a temporary lock file created at the same location).
-
-    By creating the file lock by proxy, the actual mechanics of the
-    underlying file lock are performed on a mock file path, derived from the
-    original 'path's name, in /run/lock.
-
-    The subject path 'path' need not be writable by the calling function,
-    however the calling context obviously must have the applicable permissions
-    for the file operations they intend to perform on 'path'.
-
-    NOTE: The subject file or directory 'path' need not actually exist
-    on the filesystem to acquire a lock on 'path'. No attempt, expressed or
-    implied, is made to verify the validity of 'path' on the filesystem.
-
-    Example use as a context manager:
-
-    >>> with FileLockProxy(my_file) as playground:
-    ...     with open(my_file, 'wb') as handle:
-    ...         handle.write(b"Hello.\n")
-
-    :param path: Path to file or directory to lock (by proxy)
-
-    :param threaded: Is optional, but when set to True (the default) locks
-    will be distinguished between threads in the same process.
-    """
-    @staticmethod
-    def lock_file_path(path):
-        # Create a temp lock file path of the form
-        # /run/lock/maas-<processedfilepath>-<hash>.lock where
-        # <processedfilepath> has replaced the os's path delimiter with '_'.
-        # Occurrences of '_' in the original file are first escaped with an
-        # additional '_' before the replacement, and an md5 hash of the
-        # original file path is added as <hash>, to further help reduce the
-        # probability of name collisions in the generated proxy file names.
-        return os.path.join('/', 'run', 'lock',
-                            'maas-' +
-                            path.replace('_', '__')
-                            .replace(os.sep, '_') +
-                            '-' +
-                            hashlib.md5(path).hexdigest()
-                            )
-
-    def __init__(self, path, threaded=True):
-        FileLock.__init__(self,
-                          self.lock_file_path(path),
-                          threaded=threaded)
-
-
 @contextmanager
 def tempdir(suffix=b'', prefix=b'maas-', location=None):
     """Context manager: temporary directory.
@@ -410,3 +366,145 @@ def write_text_file(path, text, encoding='utf-8'):
     """
     with codecs.open(path, 'w', encoding) as outfile:
         outfile.write(text)
+
+
+class SystemLock:
+    """A file-system lock.
+
+    It is also not reentrant, deliberately so, for good reason: if you use
+    this to guard against concurrent writing to a file, say, then opening it
+    twice in any circumstance is bad news.
+
+    This behaviour comes about by:
+
+    * Taking a process-global lock before performing any file-system
+      operations.
+
+    * Using :class:`twisted.python.lockfile.FilesystemLock` under the hood.
+      This does not permit double-locking of a file by the name process (or by
+      any other process, naturally).
+
+    There are options too:
+
+    * `SystemLock` attempts to lock exactly the file at the path given.
+
+    * `FileLock` attempts to lock the file at the path given with an
+      additional suffix of ".lock".
+
+    * `RunLock` attempts to lock a file in ``/run/lock`` with a name based on
+      the given path and an optional "pretty" name.
+
+    """
+
+    class NotAvailable(Exception):
+        """Something has prevented acquisition of this lock.
+
+        For example, the lock has already been acquired.
+        """
+
+    # File-system locks typically claim a lock for the sake of a *process*
+    # rather than a *thread within a process*. We use a process-global lock to
+    # serialise all file-system lock operations so that only one thread can
+    # claim a file-system lock at a time.
+    PROCESS_LOCK = threading.Lock()
+
+    def __init__(self, path):
+        super(SystemLock, self).__init__()
+        self.fslock = FilesystemLock(path)
+
+    def __enter__(self):
+        with self.PROCESS_LOCK:
+            if not self.fslock.lock():
+                raise self.NotAvailable(self.fslock.name)
+
+    def __exit__(self, *exc_info):
+        with self.PROCESS_LOCK:
+            self.fslock.unlock()
+
+    @contextmanager
+    def wait(self, timeout=86400):
+        """Wait for the lock to become available.
+
+        :param timeout: The number of seconds to wait. By default it will wait
+            up to 1 day.
+        """
+        interval = max(0.1, min(1.0, float(timeout) / 10.0))
+
+        for _, _, wait in retries(timeout, interval, reactor):
+            with self.PROCESS_LOCK:
+                if self.fslock.lock():
+                    break
+            if wait > 0:
+                sleep(wait)
+        else:
+            raise self.NotAvailable(self.fslock.name)
+
+        try:
+            yield
+        finally:
+            with self.PROCESS_LOCK:
+                self.fslock.unlock()
+
+    @property
+    def path(self):
+        return self.fslock.name
+
+    def is_locked(self):
+        """Is this lock already taken?
+
+        Use this for informational purposes only.
+
+        The way this works is as follows:
+
+        1. Create a new `FilesystemLock` with the same path.
+
+        2. Use the global process lock to ensure no other processes are also
+           trying to access the lock.
+
+        3. Attempt to lock the file-system lock:
+
+           3a. Upon success, we know that the lock must have been unlocked;
+               return ``True``.
+
+           3b. Upon failure, no action is required because the lock failed. We
+               know that the lock must have been locked; return ``False``.
+
+        """
+        fslock = FilesystemLock(self.fslock.name)
+        with self.PROCESS_LOCK:
+            if fslock.lock():
+                fslock.unlock()
+                return False
+            else:
+                return True
+
+
+class FileLock(SystemLock):
+    """Always create a lock file at ``${path}.lock``."""
+
+    def __init__(self, path):
+        super(FileLock, self).__init__(abspath(path) + ".lock")
+
+
+def _ensure_bytes(string):
+    if isinstance(string, unicode):
+        return string.encode("utf-8")
+    elif isinstance(string, bytes):
+        return string
+    else:
+        raise TypeError(
+            "unicode/bytes expected, got: %r" % (string, ))
+
+
+class RunLock(SystemLock):
+    """Always create a lock file at ``/run/lock/maas.*.lock``.
+
+    This implements an advisory file lock, by proxy, on the given file-system
+    path. This is especially useful if you do not have permissions to the
+    directory in which the given path is located.
+    """
+
+    def __init__(self, path):
+        discriminator = urlsafe_b64encode(abspath(_ensure_bytes(path)))
+        lockpath = b"/run/lock/maas.%s.lock" % discriminator
+        super(RunLock, self).__init__(lockpath)

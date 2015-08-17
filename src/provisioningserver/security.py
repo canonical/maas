@@ -32,10 +32,10 @@ from sys import (
     stdin,
 )
 
-from lockfile import FileLock
 from provisioningserver.path import get_path
 from provisioningserver.utils.fs import (
     ensure_dir,
+    FileLock,
     read_text_file,
     write_text_file,
 )
