@@ -30,6 +30,7 @@ __all__ = [
     'savepoint',
     'transactional',
     'validate_in_transaction',
+    'with_connection',
     ]
 
 from contextlib import contextmanager
@@ -44,7 +45,6 @@ from time import sleep
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
-    close_old_connections,
     connection,
     transaction,
 )
@@ -398,6 +398,44 @@ def post_commit_do(func, *args, **kwargs):
         raise AssertionError("Not callable: %r" % (func,))
 
 
+@contextmanager
+def connected():
+    """Context manager that ensures we're connected to the database.
+
+    If there is not yet a connection to the database, this will connect on
+    entry and disconnect on exit. Preexisting connections will be left alone.
+    """
+    if connection.connection is None:
+        connection.ensure_connection()
+        try:
+            yield
+        finally:
+            connection.close()
+    else:
+        yield
+
+
+def with_connection(func):
+    """Ensure that we're connected to the database before calling `func`.
+
+    If there is not yet a connection to the database, this will connect before
+    calling the decorated function, and then it will disconnect when done.
+    Preexisting connections will be left alone.
+
+    This can be important when using non-transactional advisory locks.
+    """
+    @wraps(func)
+    def call_with_connection(*args, **kwargs):
+        with connected():
+            return func(*args, **kwargs)
+
+    # For convenience, when introspecting for example, expose the original
+    # function on the function we're returning.
+    call_with_connection.func = func
+
+    return call_with_connection
+
+
 def transactional(func):
     """Decorator that wraps calls to `func` in a Django-managed transaction.
 
@@ -420,11 +458,20 @@ def transactional(func):
                 return func_within_txn(*args, **kwargs)
         else:
             # Use the retry-capable function, firing post-transaction hooks.
-            try:
-                with post_commit_hooks:
-                    return func_outside_txn(*args, **kwargs)
-            finally:
-                close_old_connections()
+            #
+            # If there is not yet a connection to the database, connect before
+            # calling the decorated function, then disconnect when done. This
+            # can be important when using non-transactional advisory locks
+            # that may be held before, during, and/or after this transactional
+            # block.
+            #
+            # Previously, close_old_connections() was used here, which would
+            # close connections without realising that they were still in use
+            # for non-transactional advisory locking. This had the effect of
+            # releasing all locks prematurely: not good.
+            #
+            with connected(), post_commit_hooks:
+                return func_outside_txn(*args, **kwargs)
 
     # For convenience, when introspecting for example, expose the original
     # function on the function we're returning.

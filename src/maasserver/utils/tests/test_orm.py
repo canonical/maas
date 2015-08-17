@@ -52,6 +52,7 @@ from maasserver.utils.orm import (
     validate_in_transaction,
 )
 from maastesting.djangotestcase import DjangoTransactionTestCase
+from maastesting.doubles import StubContext
 from maastesting.factory import factory
 from maastesting.matchers import (
     HasLength,
@@ -561,6 +562,55 @@ class TestPostCommitDo(MAASTestCase):
         self.assertRaises(AssertionError, post_commit_do, sentinel.hook)
 
 
+class TestConnected(DjangoTransactionTestCase):
+    """Tests for the `orm.connected` context manager."""
+
+    def test__ensures_connection(self):
+        with orm.connected():
+            self.assertThat(connection.connection, Not(Is(None)))
+
+    def test__opens_and_closes_connection_when_no_preexisting_connection(self):
+        connection.close()
+
+        self.assertThat(connection.connection, Is(None))
+        with orm.connected():
+            self.assertThat(connection.connection, Not(Is(None)))
+        self.assertThat(connection.connection, Is(None))
+
+    def test__leaves_preexisting_connections_alone(self):
+        connection.ensure_connection()
+        preexisting_connection = connection.connection
+
+        self.assertThat(connection.connection, Not(Is(None)))
+        with orm.connected():
+            self.assertThat(connection.connection, Is(preexisting_connection))
+        self.assertThat(connection.connection, Is(preexisting_connection))
+
+
+class TestWithConnection(DjangoTransactionTestCase):
+    """Tests for the `orm.with_connection` decorator."""
+
+    def test__exposes_original_function(self):
+        function = Mock(__name__=self.getUniqueString())
+        self.assertThat(orm.with_connection(function).func, Is(function))
+
+    def test__ensures_function_is_called_within_connected_context(self):
+        context = self.patch(orm, "connected").return_value = StubContext()
+
+        @orm.with_connection
+        def function(arg, kwarg):
+            self.assertThat(arg, Is(sentinel.arg))
+            self.assertThat(kwarg, Is(sentinel.kwarg))
+            self.assertTrue(context.active)
+            return sentinel.result
+
+        self.assertFalse(context.active)
+        self.assertThat(
+            function(sentinel.arg, kwarg=sentinel.kwarg),
+            Is(sentinel.result))
+        self.assertFalse(context.active)
+
+
 class TestTransactional(DjangoTransactionTestCase):
 
     def test__exposes_original_function(self):
@@ -568,18 +618,19 @@ class TestTransactional(DjangoTransactionTestCase):
         self.assertThat(orm.transactional(function).func, Is(function))
 
     def test__calls_function_within_transaction_then_closes_connections(self):
-        close_old_connections = self.patch(orm, "close_old_connections")
+        # Close the database connection to begin with.
+        connection.close()
 
-        # No transaction has been entered (what Django calls an atomic
-        # block), and old connections have not been closed.
+        # No transaction has been entered (what Django calls an atomic block),
+        # and the connection has not yet been established.
         self.assertFalse(connection.in_atomic_block)
-        self.assertThat(close_old_connections, MockNotCalled())
+        self.expectThat(connection.connection, Is(None))
 
         def check_inner(*args, **kwargs):
-            # In here, the transaction (`atomic`) has been started but
-            # is not over, and old connections have not yet been closed.
+            # In here, the transaction (`atomic`) has been started but is not
+            # over, and the connection to the database is open.
             self.assertTrue(connection.in_atomic_block)
-            self.assertThat(close_old_connections, MockNotCalled())
+            self.expectThat(connection.connection, Not(Is(None)))
 
         function = Mock()
         function.__name__ = self.getUniqueString()
@@ -595,27 +646,49 @@ class TestTransactional(DjangoTransactionTestCase):
             sentinel.arg, kwarg=sentinel.kwarg))
 
         # After the decorated function has returned the transaction has
-        # been exited, and old connections have been closed.
+        # been exited, and the connection has been closed.
         self.assertFalse(connection.in_atomic_block)
-        self.assertThat(close_old_connections, MockCalledOnceWith())
+        self.expectThat(connection.connection, Is(None))
+
+    def test__leaves_preexisting_connections_open(self):
+        # Ensure there's a database connection to begin with.
+        connection.ensure_connection()
+
+        # No transaction has been entered (what Django calls an atomic block),
+        # but the connection has been established.
+        self.assertFalse(connection.in_atomic_block)
+        self.expectThat(connection.connection, Not(Is(None)))
+
+        # Call a function via the `transactional` decorator.
+        decorated_function = orm.transactional(lambda: None)
+        decorated_function()
+
+        # After the decorated function has returned the transaction has
+        # been exited, but the preexisting connection remains open.
+        self.assertFalse(connection.in_atomic_block)
+        self.expectThat(connection.connection, Not(Is(None)))
 
     def test__closes_connections_only_when_leaving_atomic_block(self):
-        close_old_connections = self.patch(orm, "close_old_connections")
+        # Close the database connection to begin with.
+        connection.close()
+        self.expectThat(connection.connection, Is(None))
 
         @orm.transactional
         def inner():
             # We're inside a `transactional` context here.
+            self.expectThat(connection.connection, Not(Is(None)))
             return "inner"
 
         @orm.transactional
         def outer():
             # We're inside a `transactional` context here too.
+            self.expectThat(connection.connection, Not(Is(None)))
             # Call `inner`, thus nesting `transactional` contexts.
             return "outer > " + inner()
 
         self.assertEqual("outer > inner", outer())
-        # Old connections have been closed only once.
-        self.assertThat(close_old_connections, MockCalledOnceWith())
+        # The connection has been closed.
+        self.expectThat(connection.connection, Is(None))
 
     def test__fires_post_commit_hooks_when_done(self):
         fire = self.patch(orm.post_commit_hooks, "fire")
@@ -652,9 +725,6 @@ class TestTransactional(DjangoTransactionTestCase):
 class TestTransactionalRetries(SerializationFailureTestCase):
 
     def test__retries_upon_serialization_failures(self):
-        # No-op close_old_connections().
-        self.patch(orm, "close_old_connections")
-
         function = Mock()
         function.__name__ = self.getUniqueString()
         function.side_effect = self.cause_serialization_failure

@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from contextlib import closing
+import sys
 
 from django.db import (
     connection,
@@ -32,7 +33,17 @@ def get_locks():
         return {result[0] for result in cursor.fetchall()}
 
 
+@transaction.atomic
+def divide_by_zero():
+    0 / 0  # In a transaction.
+
+
 class TestDatabaseLock(MAASTestCase):
+
+    def tearDown(self):
+        super(TestDatabaseLock, self).tearDown()
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT pg_advisory_unlock_all()")
 
     def test_create_lock(self):
         objid = self.getUniqueInteger()
@@ -69,12 +80,69 @@ class TestDatabaseLock(MAASTestCase):
             self.assertTrue(lock.is_locked())
         self.assertFalse(lock.is_locked())
 
-    def test_obtaining_lock_fails_when_outside_of_transaction(self):
+    def test_lock_remains_held_when_committing_transaction(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+        txn = transaction.atomic()
+
+        self.assertFalse(lock.is_locked())
+        txn.__enter__()
+        self.assertFalse(lock.is_locked())
+        lock.__enter__()
+        self.assertTrue(lock.is_locked())
+        txn.__exit__(None, None, None)
+        self.assertTrue(lock.is_locked())
+        lock.__exit__(None, None, None)
+        self.assertFalse(lock.is_locked())
+
+    def test_lock_remains_held_when_aborting_transaction(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+        txn = transaction.atomic()
+
+        self.assertFalse(lock.is_locked())
+        txn.__enter__()
+        self.assertFalse(lock.is_locked())
+        lock.__enter__()
+        self.assertTrue(lock.is_locked())
+
+        self.assertRaises(ZeroDivisionError, divide_by_zero)
+        exc_info = sys.exc_info()
+
+        txn.__exit__(*exc_info)
+        self.assertTrue(lock.is_locked())
+        lock.__exit__(None, None, None)
+        self.assertFalse(lock.is_locked())
+
+    def test_lock_is_held_around_transaction(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+
+        self.assertFalse(lock.is_locked())
+        with lock:
+            self.assertTrue(lock.is_locked())
+            with transaction.atomic():
+                self.assertTrue(lock.is_locked())
+            self.assertTrue(lock.is_locked())
+        self.assertFalse(lock.is_locked())
+
+    def test_lock_is_held_around_breaking_transaction(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+
+        self.assertFalse(lock.is_locked())
+        with lock:
+            self.assertTrue(lock.is_locked())
+            self.assertRaises(ZeroDivisionError, divide_by_zero)
+            self.assertTrue(lock.is_locked())
+        self.assertFalse(lock.is_locked())
+
+    def test_lock_requires_preexisting_connection(self):
+        connection.close()
         objid = self.getUniqueInteger()
         lock = dblocks.DatabaseLock(objid)
         self.assertRaises(
-            dblocks.DatabaseLockAttemptOutsideTransaction,
-            lock.__enter__)
+            dblocks.DatabaseLockAttemptWithoutConnection, lock.__enter__)
 
     def test_releasing_lock_fails_when_lock_not_held(self):
         objid = self.getUniqueInteger()

@@ -45,6 +45,7 @@ from maasserver.utils.orm import (
     get_psycopg2_exception,
     post_commit_do,
     transactional,
+    with_connection,
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.upgrade_cluster import create_gnupg_home
@@ -114,8 +115,9 @@ def start_up():
             break
 
 
-@transactional
+@with_connection  # Needed by the following lock.
 @synchronised(locks.startup)
+@transactional
 def start_import_on_upgrade():
     """Starts importing `BootResource`s on upgrade from MAAS where the boot
     images where only stored on the clusters."""
@@ -168,8 +170,9 @@ def start_import_on_upgrade():
     import_resources()
 
 
-@transactional
+@with_connection  # Needed by the following lock.
 @synchronised(locks.startup)
+@transactional
 def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.

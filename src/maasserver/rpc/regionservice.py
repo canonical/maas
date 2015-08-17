@@ -55,7 +55,10 @@ from maasserver.utils import (
     make_validation_error_message,
     synchronised,
 )
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    transactional,
+    with_connection,
+)
 from netaddr import IPAddress
 from provisioningserver.rpc import (
     cluster,
@@ -757,8 +760,9 @@ class RegionAdvertisingService(TimerService, object):
 
     @synchronous
     @synchronised(lock)
-    @transactional
+    @with_connection  # Needed by the following lock.
     @synchronised(locks.eventloop)
+    @transactional
     def prepare(self):
         """Ensure that the ``eventloops`` table exists.
 

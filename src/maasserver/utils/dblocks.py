@@ -15,7 +15,9 @@ __metaclass__ = type
 __all__ = [
     "DatabaseLock",
     "DatabaseXactLock",
+
     "DatabaseLockAttemptOutsideTransaction",
+    "DatabaseLockAttemptWithoutConnection",
     "DatabaseLockNotHeld",
 ]
 
@@ -29,12 +31,21 @@ from django.db import connection
 classid = 20120116
 
 
+class DatabaseLockAttemptWithoutConnection(Exception):
+    """A locking attempt was made without a preexisting connection.
+
+    :class:`DatabaseLock` should only be used with a preexisting connection.
+    While this restriction is not absolutely necessary, it's here to ensure
+    that users of :class:`DatabaseLock` take care with the lifecycle of their
+    database connection: a connection that is inadvertently closed (by Django,
+    by MAAS, by anything) will release all locks too.
+    """
+
+
 class DatabaseLockAttemptOutsideTransaction(Exception):
     """A locking attempt was made outside of a transaction.
 
-    :class:`DatabaseLock` should only be used within a transaction.
-    Django agressively closes connections outside of atomic blocks to
-    the extent that session-level locks are rendered unreliable at best.
+    :class:`DatabaseXactLock` should only be used within a transaction.
     """
 
 
@@ -125,8 +136,8 @@ class DatabaseLock(DatabaseLockBase):
     __slots__ = ()
 
     def __enter__(self):
-        if not in_transaction():
-            raise DatabaseLockAttemptOutsideTransaction(self)
+        if connection.connection is None:
+            raise DatabaseLockAttemptWithoutConnection(self)
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT pg_advisory_lock(%s, %s)", self)
 
