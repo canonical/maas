@@ -19,7 +19,6 @@ __all__ = [
 
 from operator import attrgetter
 import re
-from textwrap import dedent
 
 from django.db.models import (
     ForeignKey,
@@ -41,7 +40,6 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
-from maasserver.models.managers import BulkManager
 from maasserver.models.network import Network
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import (
@@ -142,35 +140,6 @@ def update_macs_cluster_interfaces(leases, cluster):
                     network.macaddress_set.add(mac_address)
 
 
-class MACAddressManager(BulkManager):
-    """Custom Manager with custom queries for MACAddress objects.
-    """
-
-    # Note: code using this query assumes that the MACs come back ordered
-    # by node_id; when we iterate across the results, we assume that the change
-    # in node_id means we need to start over. (for example, we might be naming
-    # interfaces "eth1" followed by "eth2", and when we see the node_id change,
-    # we'll start over at "eth0") The additional sorting by mac_address is
-    # just a bonus, for consistency sake.
-    # Also note that the key reason this code is using self.raw is the use
-    # of LEFT OUTER JOIN, which allows the selection of MACs *without* a
-    # corresponding Interface. (whereas an INNER JOIN, which would occur
-    # by default, would leave those rows out.)
-    find_macs_having_no_interface_query = dedent("""\
-        SELECT macaddress.*
-            FROM maasserver_macaddress AS macaddress
-            LEFT OUTER JOIN maasserver_interface AS iface
-                ON macaddress.id = iface.mac_id
-            WHERE iface.id IS NULL
-            ORDER BY macaddress.node_id, macaddress.mac_address
-        """)
-
-    def find_macs_having_no_interface(self):
-        """Find all MACs not linked to an interface.
-        """
-        return self.raw(self.find_macs_having_no_interface_query)
-
-
 class MACAddress(CleanSave, TimestampedModel):
     """A `MACAddress` represents a `MAC address`_ attached to a :class:`Node`.
 
@@ -196,8 +165,6 @@ class MACAddress(CleanSave, TimestampedModel):
         default=None, on_delete=SET_NULL)
 
     # future columns: tags, nic_name, metadata, bonding info
-
-    objects = MACAddressManager()
 
     class Meta(DefaultMeta):
         verbose_name = "MAC address"

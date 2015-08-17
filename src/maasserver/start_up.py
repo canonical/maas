@@ -38,7 +38,6 @@ from maasserver.models import (
     BootSourceSelection,
     NodeGroup,
 )
-from maasserver.models.macaddress import ensure_physical_interfaces_created
 from maasserver.triggers import register_all_triggers
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -189,9 +188,6 @@ def inner_start_up():
 
     # If there are no boot-source definitions yet, create defaults.
     ensure_boot_source_definition()
-
-    # If any MACs do not have an Interface linked to them, we need to fix that.
-    ensure_physical_interfaces_created()
 
     # Start import on upgrade if needed, but not until there's a good chance
     # than one or more clusters are connected.

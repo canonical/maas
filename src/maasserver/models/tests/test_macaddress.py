@@ -19,7 +19,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
-    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -32,17 +31,10 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
-    macaddress as macaddress_module,
     NodeGroupInterface,
     StaticIPAddress,
-    Subnet,
-)
-from maasserver.models.interface import (
-    Interface,
-    INTERFACE_TYPE_MAPPING,
 )
 from maasserver.models.macaddress import (
-    ensure_physical_interfaces_created,
     find_cluster_interface_responsible_for_ip,
     MACAddress,
     update_mac_cluster_interfaces,
@@ -59,8 +51,6 @@ from netaddr import (
 )
 from testtools import ExpectedException
 from testtools.matchers import (
-    AllMatch,
-    Contains,
     Equals,
     HasLength,
     Is,
@@ -1019,112 +1009,3 @@ class TestSetStaticIP(MAASServerTestCase):
 
         with ExpectedException(StaticIPAddressUnavailable):
             mac.set_static_ip(static_ip.ip, user, update_host_maps=False)
-
-
-class TestMACAddressManager(MAASServerTestCase):
-    def test_find_macs_having_no_interface(self):
-        orphaned = [
-            factory.make_MACAddress(iftype=None)
-            for _ in range(3)
-        ]
-        for iftype in INTERFACE_TYPE_MAPPING.keys():
-            mac = factory.make_MACAddress()
-            factory.make_Interface(iftype, mac=mac)
-        self.assertItemsEqual(
-            orphaned, MACAddress.objects.find_macs_having_no_interface())
-
-
-class TestEnsurePhysicalInterfacesCreated(MAASServerTestCase):
-    """Tests for `MACAddress.ensure_phyiscal_interfaces_created`."""
-
-    scenarios = (
-        ("WithCluster", dict(with_cluster=True)),
-        ("WithoutCluster", dict(with_cluster=False)),
-    )
-
-    def make_mac(self):
-        mac = factory.make_MACAddress(iftype=None)
-        if self.with_cluster:
-            ng = factory.make_NodeGroup()
-            ngi = factory.make_NodeGroupInterface(
-                nodegroup=ng, network=factory._make_random_network())
-            mac.cluster_interface = ngi
-            mac.save()
-        return mac
-
-    def make_mac_with_static_ip(self):
-        for _ in range(3):
-            mac = self.make_mac()
-            net = factory._make_random_network()
-            if mac.cluster_interface:
-                factory.make_StaticIPAddress(
-                    mac=mac, ip=unicode(IPAddress(
-                        mac.cluster_interface.subnet.get_cidr().first)))
-                self.assertIsNotNone(mac.cluster_interface.subnet)
-            else:
-                factory.make_StaticIPAddress(
-                    mac=mac, ip=unicode(IPAddress(net.first)))
-                factory.make_Subnet(cidr=net)
-
-    def test_creates_physical_interface(self):
-        self.make_mac()
-        self.assertThat(Interface.objects.all(), HasLength(0))
-        ensure_physical_interfaces_created()
-        self.assertThat(Interface.objects.all(), HasLength(1))
-
-    def test_ignores_macs_with_existing_interfaces(self):
-        mac = self.make_mac()
-        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac=mac)
-        self.assertThat(Interface.objects.all(), HasLength(1))
-        ensure_physical_interfaces_created()
-        self.assertThat(Interface.objects.all(), HasLength(1))
-
-    def test_associates_subnets_for_each_ip(self):
-        self.make_mac_with_static_ip()
-        self.assertThat(Subnet.objects.all(), HasLength(3))
-        ensure_physical_interfaces_created()
-        # Not using AllMatch() here, because we're checking that each
-        # individual object is internally consistent.
-        for ip in StaticIPAddress.objects.all():
-            self.expectThat(ip.subnet.get_cidr(), Contains(IPAddress(ip.ip)))
-
-    def test_creates_human_readable_interface_names(self):
-        node = factory.make_Node()
-        for _ in range(3):
-            mac = self.make_mac()
-            mac.node = node
-            mac.save()
-        ensure_physical_interfaces_created()
-        self.assertItemsEqual(
-            ['eth0', 'eth1', 'eth2'],
-            [interface.name for interface in Interface.objects.all()])
-
-    def test_creates_human_readable_interface_names_on_per_node_basis(self):
-        for _ in range(3):
-            node = factory.make_Node()
-            mac = self.make_mac()
-            mac.node = node
-            mac.save()
-        ensure_physical_interfaces_created()
-        self.assertThat(
-            [interface.name for interface in Interface.objects.all()],
-            AllMatch(Equals('eth0')))
-
-    def test_logs_warning_if_subnet_does_not_match(self):
-        self.make_mac_with_static_ip()
-        logger = self.patch(macaddress_module, "maaslog")
-        subnet = Subnet.objects.first()
-        subnet.cidr = IPNetwork('0.0.0.1/32')
-        subnet.gateway_ip = '0.0.0.1'
-        subnet.save()
-        ensure_physical_interfaces_created()
-        ip = StaticIPAddress.objects.first()
-        mac = MACAddress.objects.first()
-        self.assertThat(1, Equals(logger.warning.call_count))
-        self.assertThat(
-            logger.warning.call_args[0][0], Contains(unicode(ip.ip)))
-        self.assertThat(
-            logger.warning.call_args[0][0], Contains(unicode(mac)))
-        if self.with_cluster:
-            self.assertThat(
-                logger.warning.call_args[0][0], Contains('0.0.0.1/32'))
