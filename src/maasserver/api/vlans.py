@@ -16,6 +16,8 @@ __metaclass__ = type
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms_vlan import VLANForm
 from maasserver.models import (
     Fabric,
     VLAN,
@@ -34,7 +36,7 @@ DISPLAYED_VLAN_FIELDS = (
 class VlansHandler(OperationsHandler):
     """Manage VLANs on a fabric."""
     api_doc_section_name = "VLANs"
-    create = update = delete = None
+    update = delete = None
     fields = DISPLAYED_VLAN_FIELDS
 
     @classmethod
@@ -45,11 +47,25 @@ class VlansHandler(OperationsHandler):
     def read(self, request, fabric_id):
         """List all VLANs belonging to fabric.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NODE_PERMISSION.VIEW)
         return fabric.vlan_set.all()
+
+    def create(self, request, fabric_id):
+        """Create a VLAN.
+
+        :param name: Name of the VLAN.
+        :param vid: VLAN ID of the VLAN.
+        """
+        fabric = Fabric.objects.get_fabric_or_404(
+            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+        form = VLANForm(fabric=fabric, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
 
 class VlanHandler(OperationsHandler):
@@ -85,10 +101,27 @@ class VlanHandler(OperationsHandler):
             fabric_id, request.user, NODE_PERMISSION.VIEW)
         return get_object_or_404(VLAN, fabric=fabric, id=vlan_id)
 
+    def update(self, request, fabric_id, vlan_id):
+        """Update VLAN.
+
+        :param name: Name of the VLAN.
+        :param vid: VLAN ID of the VLAN.
+
+        Returns 404 if the fabric or VLAN is not found.
+        """
+        fabric = Fabric.objects.get_fabric_or_404(
+            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+        vlan = get_object_or_404(VLAN, fabric=fabric, id=vlan_id)
+        form = VLANForm(instance=vlan, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
     def delete(self, request, fabric_id, vlan_id):
         """Delete VLAN on fabric.
 
-        Returns 404 if the node or interface is not found.
+        Returns 404 if the fabric or VLAN is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NODE_PERMISSION.ADMIN)

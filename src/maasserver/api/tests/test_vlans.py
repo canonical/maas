@@ -67,6 +67,46 @@ class TestVlansAPI(APITestCase):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
+    def test_create(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan_name = factory.make_name("fabric")
+        vid = random.randint(1, 1000)
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {
+            "name": vlan_name,
+            "vid": vid,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(vlan_name, json.loads(response.content)['name'])
+        self.assertEqual(vid, json.loads(response.content)['vid'])
+
+    def test_create_admin_only(self):
+        fabric = factory.make_Fabric()
+        vlan_name = factory.make_name("fabric")
+        vid = random.randint(1, 1000)
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {
+            "name": vlan_name,
+            "vid": vid,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_requires_name_and_vid(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
+            "name": ["This field is required."],
+            "vid": [
+                "This field is required.",
+                "Vid must be between 0 and 4095."],
+            }, json.loads(response.content))
+
 
 class TestVlanAPI(APITestCase):
 
@@ -101,6 +141,36 @@ class TestVlanAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_update(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        uri = get_vlan_uri(vlan)
+        new_name = factory.make_name("vlan")
+        new_vid = random.randint(1, 1000)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "vid": new_vid,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(response.content)
+        vlan = reload_object(vlan)
+        self.assertEqual(new_name, parsed_vlan['name'])
+        self.assertEqual(new_name, vlan.name)
+        self.assertEqual(new_vid, parsed_vlan['vid'])
+        self.assertEqual(new_vid, vlan.vid)
+
+    def test_update_admin_only(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        uri = get_vlan_uri(vlan)
+        new_name = factory.make_name("vlan")
+        response = self.client.put(uri, {
+            "name": new_name,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_vlan(self):
         self.become_admin()
