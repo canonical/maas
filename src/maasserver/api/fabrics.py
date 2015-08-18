@@ -13,8 +13,13 @@ str = None
 
 __metaclass__ = type
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import (
+    admin_method,
+    OperationsHandler,
+)
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms_fabric import FabricForm
 from maasserver.models import Fabric
 from piston.utils import rc
 
@@ -29,7 +34,7 @@ DISPLAYED_FABRIC_FIELDS = (
 class FabricsHandler(OperationsHandler):
     """Manage fabrics."""
     api_doc_section_name = "Fabrics"
-    create = update = delete = None
+    update = delete = None
     fields = DISPLAYED_FABRIC_FIELDS
 
     @classmethod
@@ -41,11 +46,23 @@ class FabricsHandler(OperationsHandler):
         """List all fabrics."""
         return Fabric.objects.all()
 
+    @admin_method
+    def create(self, request):
+        """Create a fabric.
+
+        :param name: Name of the fabric.
+        """
+        form = FabricForm(data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
 
 class FabricHandler(OperationsHandler):
     """Manage fabric."""
     api_doc_section_name = "Fabric"
-    create = update = None
+    create = None
     model = Fabric
     fields = DISPLAYED_FABRIC_FIELDS
 
@@ -69,6 +86,21 @@ class FabricHandler(OperationsHandler):
         """
         return Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NODE_PERMISSION.VIEW)
+
+    def update(self, request, fabric_id):
+        """Update fabric.
+
+        :param name: Name of the fabric.
+
+        Returns 404 if the fabric is not found.
+        """
+        fabric = Fabric.objects.get_fabric_or_404(
+            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+        form = FabricForm(instance=fabric, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, fabric_id):
         """Delete fabric.

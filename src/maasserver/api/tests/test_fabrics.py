@@ -63,6 +63,35 @@ class TestFabricsAPI(APITestCase):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
+    def test_create(self):
+        self.become_admin()
+        fabric_name = factory.make_name("fabric")
+        uri = get_fabrics_uri()
+        response = self.client.post(uri, {
+            "name": fabric_name,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(fabric_name, json.loads(response.content)['name'])
+
+    def test_create_admin_only(self):
+        fabric_name = factory.make_name("fabric")
+        uri = get_fabrics_uri()
+        response = self.client.post(uri, {
+            "name": fabric_name,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_requires_name(self):
+        self.become_admin()
+        uri = get_fabrics_uri()
+        response = self.client.post(uri, {})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
+            "name": ["This field is required."],
+            }, json.loads(response.content))
+
 
 class TestFabricAPI(APITestCase):
 
@@ -99,6 +128,28 @@ class TestFabricAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_update(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        new_name = factory.make_name("fabric")
+        uri = get_fabric_uri(fabric)
+        response = self.client.put(uri, {
+            "name": new_name,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(new_name, json.loads(response.content)['name'])
+        self.assertEqual(new_name, reload_object(fabric).name)
+
+    def test_update_admin_only(self):
+        fabric = factory.make_Fabric()
+        new_name = factory.make_name("fabric")
+        uri = get_fabric_uri(fabric)
+        response = self.client.put(uri, {
+            "name": new_name,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_fabric(self):
         self.become_admin()
