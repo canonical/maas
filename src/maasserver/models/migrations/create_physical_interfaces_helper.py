@@ -29,6 +29,7 @@ __all__ = [
     "create_physical_interfaces",
 ]
 
+import datetime
 from textwrap import dedent
 
 from maasserver.enum import INTERFACE_TYPE
@@ -56,7 +57,31 @@ def update_interface_with_subnet_vlan(iface, subnet):
         iface.save()
 
 
-def create_physical_interfaces(MACAddress, Interface, Subnet, VLAN):
+def get_or_create_default_fabric(Fabric):
+    """Return the default Fabric or create it."""
+    now = datetime.datetime.now()
+    return Fabric.objects.get_or_create(
+        id=0,
+        defaults={
+            'id': 0,
+            'name': 'Default fabric',
+            'created': now,
+            'updated': now,
+        }
+    )
+
+
+def get_or_create_default_vlan(Fabric, VLAN):
+    """Return the default VLAN for Fabric."""
+    default_fabric, created = get_or_create_default_fabric(Fabric)
+    if created:
+        return VLAN.objects.create(
+            name='Default VLAN', vid=0, fabric=default_fabric)
+    else:
+        return default_fabric.vlan_set.all().order_by('id').first()
+
+
+def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
     """Create a PhysicalInterface for every MACAddress in the database that
     is not associated with a Interface."""
     # Go through each MAC that does not have an associated interface.
@@ -74,7 +99,7 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, VLAN):
         iface = Interface.objects.create(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL,
             name='eth' + unicode(index),
-            vlan=VLAN.objects.get_default_vlan()
+            vlan=get_or_create_default_vlan(Fabric, VLAN)
         )
         previous_node = current_node
 

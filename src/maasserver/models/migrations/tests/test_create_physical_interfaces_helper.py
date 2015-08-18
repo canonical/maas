@@ -26,6 +26,7 @@ import unittest
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import (
+    Fabric,
     Interface,
     MACAddress,
     StaticIPAddress,
@@ -62,6 +63,43 @@ class TestFindMacsHavingNoInterfaces(MAASServerTestCase):
             orphaned, helper.find_macs_having_no_interfaces(MACAddress))
 
 
+class TestGetOrCreateDefaultFabric(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetOrCreateDefaultFabric, self).setUp()
+        Fabric.objects.all().delete()
+
+    def test__creates_default(self):
+        fabric, created = helper.get_or_create_default_fabric(Fabric)
+        self.assertIsNotNone(fabric)
+        self.assertTrue(created, "Default fabric should have been created.")
+
+    def test__returns_existing_default_fabric(self):
+        default_fabric, _ = helper.get_or_create_default_fabric(Fabric)
+        self.assertEquals(
+            default_fabric, helper.get_or_create_default_fabric(Fabric)[0])
+
+
+class TestGetOrCreateDefaultVLAN(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetOrCreateDefaultVLAN, self).setUp()
+        Fabric.objects.all().delete()
+        VLAN.objects.all().delete()
+
+    def test__creates_default(self):
+        vlan = helper.get_or_create_default_vlan(Fabric, VLAN)
+        default_fabric, _ = helper.get_or_create_default_fabric(Fabric)
+        self.assertIsNotNone(vlan)
+        self.assertEquals(0, vlan.vid)
+        self.assertEquals(default_fabric, vlan.fabric)
+
+    def test__returns_existing_default_vlan(self):
+        default_vlan = helper.get_or_create_default_vlan(Fabric, VLAN)
+        self.assertEquals(
+            default_vlan, helper.get_or_create_default_vlan(Fabric, VLAN))
+
+
 class TestCreatePhysicalInterfaces(MAASServerTestCase):
 
     scenarios = (
@@ -96,20 +134,23 @@ class TestCreatePhysicalInterfaces(MAASServerTestCase):
     def test_creates_physical_interface(self):
         self.make_mac()
         self.assertThat(Interface.objects.all(), HasLength(0))
-        helper.create_physical_interfaces(MACAddress, Interface, Subnet, VLAN)
+        helper.create_physical_interfaces(
+            MACAddress, Interface, Subnet, Fabric, VLAN)
         self.assertThat(Interface.objects.all(), HasLength(1))
 
     def test_ignores_macs_with_existing_interfaces(self):
         mac = self.make_mac()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac=mac)
         self.assertThat(Interface.objects.all(), HasLength(1))
-        helper.create_physical_interfaces(MACAddress, Interface, Subnet, VLAN)
+        helper.create_physical_interfaces(
+            MACAddress, Interface, Subnet, Fabric, VLAN)
         self.assertThat(Interface.objects.all(), HasLength(1))
 
     def test_associates_subnets_for_each_ip(self):
         self.make_mac_with_static_ip()
         self.assertThat(Subnet.objects.all(), HasLength(3))
-        helper.create_physical_interfaces(MACAddress, Interface, Subnet, VLAN)
+        helper.create_physical_interfaces(
+            MACAddress, Interface, Subnet, Fabric, VLAN)
         # Not using AllMatch() here, because we're checking that each
         # individual object is internally consistent.
         for ip in StaticIPAddress.objects.all():
@@ -121,7 +162,8 @@ class TestCreatePhysicalInterfaces(MAASServerTestCase):
             mac = self.make_mac()
             mac.node = node
             mac.save()
-        helper.create_physical_interfaces(MACAddress, Interface, Subnet, VLAN)
+        helper.create_physical_interfaces(
+            MACAddress, Interface, Subnet, Fabric, VLAN)
         self.assertItemsEqual(
             ['eth0', 'eth1', 'eth2'],
             [interface.name for interface in Interface.objects.all()])
@@ -132,7 +174,8 @@ class TestCreatePhysicalInterfaces(MAASServerTestCase):
             mac = self.make_mac()
             mac.node = node
             mac.save()
-        helper.create_physical_interfaces(MACAddress, Interface, Subnet, VLAN)
+        helper.create_physical_interfaces(
+            MACAddress, Interface, Subnet, Fabric, VLAN)
         self.assertThat(
             [interface.name for interface in Interface.objects.all()],
             AllMatch(Equals('eth0')))

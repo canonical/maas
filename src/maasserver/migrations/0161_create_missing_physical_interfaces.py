@@ -14,7 +14,7 @@ class Migration(DataMigration):
         helper = import_module(
             'maasserver.models.migrations.create_physical_interfaces_helper')
         helper.create_physical_interfaces(
-            orm.MACAddress, orm.Interface, orm.Subnet, orm.VLAN)
+            orm.MACAddress, orm.Interface, orm.Subnet, orm.Fabric, orm.VLAN)
 
     def backwards(self, orm):
         # Nothing to do here. We leave the create interfaces.
