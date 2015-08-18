@@ -14,10 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
+from django.http import Http404
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_PERMISSION,
 )
 from maasserver.models import (
     Fabric,
@@ -28,6 +33,7 @@ from maasserver.models import (
 )
 from maasserver.models.interface import (
     BondInterface,
+    Interface,
     PhysicalInterface,
     VLANInterface,
 )
@@ -42,7 +48,86 @@ from testtools.matchers import (
 )
 
 
+class TestInterfaceManager(MAASServerTestCase):
+
+    def test_get_queryset_returns_all_interface_types(self):
+        mac = factory.make_MACAddress_with_Node(iftype=None)
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, mac=mac, parents=[physical])
+        vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, mac=mac, parents=[bond])
+        self.assertItemsEqual(
+            [physical, bond, vlan], Interface.objects.all())
+
+    def test_get_interface_or_404_returns_interface(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        user = factory.make_User()
+        self.assertEqual(
+            interface,
+            Interface.objects.get_interface_or_404(
+                node.system_id, interface.id, user, NODE_PERMISSION.VIEW))
+
+    def test_get_interface_or_404_returns_interface_for_admin(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        user = factory.make_admin()
+        self.assertEqual(
+            interface,
+            Interface.objects.get_interface_or_404(
+                node.system_id, interface.id, user, NODE_PERMISSION.ADMIN))
+
+    def test_get_interface_or_404_raises_Http404_when_invalid_id(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        user = factory.make_User()
+        self.assertRaises(
+            Http404,
+            Interface.objects.get_interface_or_404,
+            node.system_id, random.randint(100, 1000),
+            user, NODE_PERMISSION.VIEW)
+
+    def test_get_interface_or_404_raises_PermissionDenied_when_user(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        user = factory.make_User()
+        self.assertRaises(
+            PermissionDenied,
+            Interface.objects.get_interface_or_404,
+            node.system_id, interface.id,
+            user, NODE_PERMISSION.ADMIN)
+
+    def test_get_interfaces_for_node(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node, iftype=None)
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac=mac)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, mac=mac, parents=[physical])
+        vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, mac=mac, parents=[bond])
+        other_node = factory.make_Node()
+        other_mac = factory.make_MACAddress(node=other_node, iftype=None)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac=other_mac)
+        self.assertItemsEqual(
+            [physical, bond, vlan],
+            Interface.objects.get_interfaces_for_node(node))
+
+
 class InterfaceTest(MAASServerTestCase):
+
+    def test_get_type_returns_None(self):
+        self.assertIsNone(Interface.get_type())
 
     def test_creates_interface(self):
         name = factory.make_name('name')

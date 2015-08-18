@@ -21,6 +21,7 @@ __all__ = [
     ]
 
 
+from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import (
     CharField,
@@ -30,6 +31,8 @@ from django.db.models import (
     PROTECT,
     Q,
 )
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -74,6 +77,62 @@ def get_default_vlan():
     return VLAN.objects.get_default_vlan()
 
 
+class InterfaceManager(Manager):
+    """A Django manager managing one type of interface."""
+
+    def get_queryset(self):
+        """Return the `QuerySet` for the `Interface`s.
+
+        If this manager is on `PhysicalInterface`, `BondInterface`,
+        or `VLANInterface` it will filter only allow returning those
+        interfaces.
+        """
+        qs = super(InterfaceManager, self).get_query_set()
+        interface_type = self.model.get_type()
+        if interface_type is None:
+            # Not a specific interface type so we don't filter by the type.
+            return qs
+        else:
+            return qs.filter(type=interface_type)
+
+    def get_interface_or_404(self, system_id, interface_id, user, perm):
+        """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
+        exceptions if no `Interface` with this id exist, if the `Node` with
+        system_id doesn't exist, if the `Interface` doesn't exist on the
+        `Node`, or if the provided user has not the required permission on
+        this `Node` and `Interface`.
+
+        :param system_id: The system_id.
+        :type system_id: string
+        :param interface_id: The interface_id.
+        :type interface_id: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        interface = get_object_or_404(Interface, id=interface_id)
+        # get_node() is used here because each type calculates its node
+        # differently.
+        node = interface.get_node()
+        if node is None or node.system_id != system_id:
+            raise Http404()
+        if user.has_perm(perm, interface):
+            return interface
+        else:
+            raise PermissionDenied()
+
+    def get_interfaces_for_node(self, node):
+        """Return all interfaces that belong to `node`."""
+        return self.filter(mac__node=node)
+
+
 class Interface(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
@@ -81,20 +140,7 @@ class Interface(CleanSave, TimestampedModel):
         verbose_name_plural = "Interfaces"
         ordering = ('created', )
 
-    def __init__(self, *args, **kwargs):
-        type = kwargs.get('type', self.get_type())
-        kwargs['type'] = type
-        # Derive the concrete class from the interface's type.
-        super(Interface, self).__init__(*args, **kwargs)
-        klass = INTERFACE_TYPE_MAPPING.get(self.type)
-        if klass:
-            self.__class__ = klass
-        else:
-            raise ValueError("Unknown interface type: %s" % type)
-
-    @classmethod
-    def get_type(cls):
-        return INTERFACE_TYPE.PHYSICAL
+    objects = InterfaceManager()
 
     name = CharField(
         blank=False, editable=True, max_length=255,
@@ -127,12 +173,34 @@ class Interface(CleanSave, TimestampedModel):
     tags = ArrayField(
         dbtype="text", blank=True, null=False, default=[])
 
+    def __init__(self, *args, **kwargs):
+        type = kwargs.get('type', self.get_type())
+        kwargs['type'] = type
+        # Derive the concrete class from the interface's type.
+        super(Interface, self).__init__(*args, **kwargs)
+        klass = INTERFACE_TYPE_MAPPING.get(self.type)
+        if klass:
+            self.__class__ = klass
+        else:
+            raise ValueError("Unknown interface type: %s" % type)
+
+    @classmethod
+    def get_type(cls):
+        """Get the type of interface for this class.
+
+        Return `None` on `Interface`.
+        """
+        return None
+
     def __unicode__(self):
         return "name=%s, type=%s, mac=%s" % (
             self.name, self.type, self.mac)
 
     def get_node(self):
         return self.mac.node if self.mac else None
+
+    def get_name(self):
+        return self.name
 
     def update_ip_addresses(self, cidr_list):
         """Update the IP addresses linked to this interface.
@@ -407,25 +475,19 @@ def delete_children_interface_handler(sender, instance, **kwargs):
 models.signals.pre_delete.connect(delete_children_interface_handler)
 
 
-class InterfaceManager(Manager):
-    """A Django manager managing one type of interface."""
-
-    def get_queryset(self):
-        qs = super(InterfaceManager, self).get_query_set()
-        return qs.filter(type=self.model.get_type())
-
-
 class PhysicalInterface(Interface):
-    objects = InterfaceManager()
 
     class Meta(Interface.Meta):
         proxy = True
         verbose_name = "Physical interface"
         verbose_name_plural = "Physical interface"
 
+    @classmethod
+    def get_type(self):
+        return INTERFACE_TYPE.PHYSICAL
+
 
 class BondInterface(Interface):
-    objects = InterfaceManager()
 
     class Meta(Interface.Meta):
         proxy = True
@@ -445,7 +507,6 @@ def build_vlan_interface_name(vlan):
 
 
 class VLANInterface(Interface):
-    objects = InterfaceManager()
 
     class Meta(Interface.Meta):
         proxy = True

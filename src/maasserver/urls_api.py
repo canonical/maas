@@ -71,6 +71,10 @@ from maasserver.api.files import (
     FileHandler,
     FilesHandler,
 )
+from maasserver.api.interfaces import (
+    NodeInterfaceHandler,
+    NodeInterfacesHandler,
+)
 from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.api.license_keys import (
     LicenseKeyHandler,
@@ -188,6 +192,10 @@ bcache_cache_set_handler = RestrictedResource(
     BcacheCacheSetHandler, authentication=api_auth)
 bcache_cache_sets_handler = RestrictedResource(
     BcacheCacheSetsHandler, authentication=api_auth)
+node_interface_handler = RestrictedResource(
+    NodeInterfaceHandler, authentication=api_auth)
+node_interfaces_handler = RestrictedResource(
+    NodeInterfacesHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
@@ -292,6 +300,10 @@ urlpatterns += patterns(
     url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-set/'
         '(?P<cache_set_id>[^/]+)/$',
         bcache_cache_set_handler, name='bcache_cache_set_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/interfaces/(?P<interface_id>[^/]+)/$',
+        node_interface_handler, name='node_interface_handler'),
+    url(r'^nodes/(?P<system_id>[^/]+)/interfaces/$',
+        node_interfaces_handler, name='node_interfaces_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

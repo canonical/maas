@@ -61,10 +61,10 @@ class BlockDeviceManager(Manager):
         `Node`, or if the provided user has not the required permission on
         this `Node` and `BlockDevice`.
 
-        :param name: The system_id.
-        :type name: string
-        :param name: The blockdevice_id.
-        :type name: int
+        :param system_id: The system_id.
+        :type system_id: string
+        :param blockdevice_id: The blockdevice_id.
+        :type blockdevice_id: int
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.

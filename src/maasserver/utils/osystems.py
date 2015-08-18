@@ -72,7 +72,7 @@ def list_all_usable_hwe_kernels(releases):
     """Return dictionary of usable `kernels` for each os/release."""
     kernels = {}
     for osystem, osystems in releases.iteritems():
-        if not osystem in kernels:
+        if osystem not in kernels:
             kernels[osystem] = {}
         for release in osystems:
             os_release = osystem + '/' + release['name']

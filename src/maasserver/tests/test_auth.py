@@ -18,6 +18,7 @@ import httplib
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    INTERFACE_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
 )
@@ -270,6 +271,54 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         self.assertTrue(
             backend.has_perm(
                 admin, NODE_PERMISSION.ADMIN, factory.make_Fabric()))
+
+    def test_user_can_view_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertTrue(
+            backend.has_perm(
+                user, NODE_PERMISSION.VIEW,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+
+    def test_user_cannot_edit_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.EDIT,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+
+    def test_user_not_admin_of_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.ADMIN,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+
+    def test_admin_can_view_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.VIEW,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+
+    def test_admin_can_edit_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.EDIT,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+
+    def test_admin_is_admin_of_a_interface(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.ADMIN,
+                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
 
 
 class TestNodeVisibility(MAASServerTestCase):

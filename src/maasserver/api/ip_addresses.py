@@ -61,7 +61,6 @@ maaslog = get_maas_logger("ip_addresses")
 class IPAddressesHandler(OperationsHandler):
     """Manage IP addresses allocated by MAAS."""
     api_doc_section_name = "IP Addresses"
-
     model = StaticIPAddress
     fields = ('alloc_type', 'created', 'ip')
     create = update = delete = None
