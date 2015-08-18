@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-
+from django.db import IntegrityError
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -51,6 +51,13 @@ class InterfaceTest(MAASServerTestCase):
             name=name, mac=mac, type=INTERFACE_TYPE.PHYSICAL)
         self.assertThat(interface, MatchesStructure.byEquality(
             mac=mac, name=name, type=INTERFACE_TYPE.PHYSICAL))
+
+    def test_cannot_create_multiple_with_the_same_mac_and_name(self):
+        name = factory.make_name("eth")
+        mac = factory.make_MACAddress()
+        PhysicalInterface(mac=mac, name=name).save()
+        self.assertRaises(
+            IntegrityError, PhysicalInterface(mac=mac, name=name).save)
 
     def test_unicode_representation_contains_essential_data(self):
         name = factory.make_name('name')
