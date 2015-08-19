@@ -37,7 +37,7 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.osystems import make_osystem_with_releases
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -719,7 +719,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_User()
         factory.make_SSHKey(user)
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        osystem = make_osystem_with_releases(self)
+        osystem = make_usable_osystem(self)
         handler = NodeHandler(user, {})
         handler.action({
             "system_id": node.system_id,

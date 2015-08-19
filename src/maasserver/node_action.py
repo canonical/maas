@@ -33,6 +33,7 @@ from abc import (
 from collections import OrderedDict
 
 from crochet import TimeoutError
+from django.core.exceptions import ValidationError
 from maasserver import locks
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -49,6 +50,7 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from maasserver.utils.osystems import validate_osystem_and_distro_series
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
 from provisioningserver.rpc.exceptions import (
@@ -296,11 +298,13 @@ class Deploy(NodeAction):
             with locks.node_acquire:
                 self.node.acquire(self.user, token=None)
 
-        # Set the osystem in distro_series if provided and not empty.
         if osystem and distro_series:
-            self.node.osystem = osystem
-            self.node.distro_series = distro_series
-            self.node.save()
+            try:
+                self.node.osystem, self.node.distro_series = (
+                    validate_osystem_and_distro_series(osystem, distro_series))
+                self.node.save()
+            except ValidationError as e:
+                raise NodeActionError(e.message)
 
         try:
             self.node.start(self.user)

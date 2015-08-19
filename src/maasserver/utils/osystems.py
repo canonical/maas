@@ -25,6 +25,7 @@ __all__ = [
 
 from operator import itemgetter
 
+from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 
 
@@ -176,3 +177,27 @@ def list_commissioning_choices(osystems):
             for release in releases
             if release['can_commission']
             ]
+
+
+def validate_osystem_and_distro_series(osystem, distro_series):
+    """Validate `osystem` and `distro_series` are valid choices."""
+    if '/' in distro_series:
+        series_os, release = distro_series.split('/', 1)
+        if series_os != osystem:
+            raise ValidationError(
+                "%s in distro_series does not match with "
+                "operating system %s." % (distro_series, osystem))
+    else:
+        release = distro_series
+    release = release.replace('*', '')
+    usable_osystems = list_all_usable_osystems()
+    found_osystem = get_osystem_from_osystems(usable_osystems, osystem)
+    if found_osystem is None:
+        raise ValidationError(
+            "%s is not a support operating system." % osystem)
+    found_release = get_release_from_osystem(found_osystem, release)
+    if found_release is None:
+        raise ValidationError(
+            "%s/%s is not a support operating system and release "
+            "combination." % (osystem, release))
+    return osystem, release

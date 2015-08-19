@@ -48,7 +48,10 @@ from maasserver.node_status import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.osystems import make_osystem_with_releases
+from maasserver.testing.osystems import (
+    make_osystem_with_releases,
+    make_usable_osystem,
+)
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -422,21 +425,59 @@ class TestDeployAction(MAASServerTestCase):
         self.assertThat(
             node_start, MockCalledOnceWith(user))
 
+    def test_Deploy_raises_NodeActionError_for_invalid_os(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
+        self.patch(node, 'start')
+        os_name = factory.make_name("os")
+        release_name = factory.make_name("release")
+        extra = {
+            "osystem": os_name,
+            "distro_series": release_name,
+        }
+        error = self.assertRaises(
+            NodeActionError, Deploy(node, user).execute, **extra)
+        self.assertEquals(
+            "%s is not a support operating system." % os_name,
+            error.message)
+
     def test_Deploy_sets_osystem_and_series(self):
         user = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
-        osystem = make_osystem_with_releases(self)
+        osystem = make_usable_osystem(self)
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
         extra = {
-            "osystem": osystem["name"],
-            "distro_series": osystem["releases"][0]["name"],
+            "osystem": os_name,
+            "distro_series": release_name
         }
         Deploy(node, user).execute(**extra)
-        self.expectThat(node.osystem, Equals(osystem["name"]))
+        self.expectThat(node.osystem, Equals(os_name))
         self.expectThat(
-            node.distro_series, Equals(osystem["releases"][0]["name"]))
+            node.distro_series, Equals(release_name))
+
+    def test_Deploy_sets_osystem_and_series_strips_license_key_token(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
+        self.patch(node, 'start')
+        osystem = make_usable_osystem(self)
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
+        extra = {
+            "osystem": os_name,
+            "distro_series": release_name + '*'
+        }
+        Deploy(node, user).execute(**extra)
+        self.expectThat(node.osystem, Equals(os_name))
+        self.expectThat(
+            node.distro_series, Equals(release_name))
 
     def test_Deploy_doesnt_set_osystem_and_series_if_os_missing(self):
         user = factory.make_User()
