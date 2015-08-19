@@ -24,6 +24,7 @@ from maasserver.clusterrpc.testing.osystems import (
 )
 from maasserver.models import BootResource
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import osystems as osystems_module
 from maasserver.utils.osystems import (
@@ -37,6 +38,7 @@ from maasserver.utils.osystems import (
     list_release_choices,
     release_a_newer_than_b,
     validate_hwe_kernel,
+    validate_osystem_and_distro_series,
 )
 
 
@@ -257,6 +259,46 @@ class TestReleases(MAASServerTestCase):
             for release in comm_releases
             ]
         self.assertEqual(choices, list_commissioning_choices([osystem]))
+
+
+class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
+
+    def test__raises_error_of_osystem_and_distro_series_dont_match(self):
+        os = factory.make_name("os")
+        release = "%s/%s" % (
+            factory.make_name("os"), factory.make_name("release"))
+        error = self.assertRaises(
+            ValidationError, validate_osystem_and_distro_series, os, release)
+        self.assertEquals(
+            "%s in distro_series does not match with "
+            "operating system %s." % (release, os), error.message)
+
+    def test__raises_error_if_not_supported_osystem(self):
+        os = factory.make_name("os")
+        release = factory.make_name("release")
+        error = self.assertRaises(
+            ValidationError, validate_osystem_and_distro_series, os, release)
+        self.assertEquals(
+            "%s is not a support operating system." % os,
+            error.message)
+
+    def test__raises_error_if_not_supported_release(self):
+        osystem = make_usable_osystem(self)
+        release = factory.make_name("release")
+        error = self.assertRaises(
+            ValidationError, validate_osystem_and_distro_series,
+            osystem['name'], release)
+        self.assertEquals(
+            "%s/%s is not a support operating system and release "
+            "combination." % (osystem['name'], release),
+            error.message)
+
+    def test__returns_osystem_and_release_with_license_key_stripped(self):
+        osystem = make_usable_osystem(self)
+        release = osystem['default_release']
+        self.assertEquals(
+            (osystem['name'], release),
+            validate_osystem_and_distro_series(osystem['name'], release + '*'))
 
 
 class TestReleaseANewerThanB(MAASServerTestCase):
