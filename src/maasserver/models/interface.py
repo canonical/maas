@@ -318,7 +318,7 @@ class Interface(CleanSave, TimestampedModel):
             interface: None
             for interface in cluster_interfaces
             }
-        for sip in self.ip_addresses.all():
+        for sip in self.mac.ip_addresses.all():
             interface = find_cluster_interface_responsible_for_ip(
                 cluster_interfaces, IPAddress(sip.ip))
             if interface is not None:
