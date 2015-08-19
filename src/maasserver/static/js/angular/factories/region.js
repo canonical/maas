@@ -117,8 +117,8 @@ angular.module('MAAS').factory(
         };
 
         // Opens the websocket connection.
-        RegionConnection.prototype.connect = function(url) {
-            this.url = url;
+        RegionConnection.prototype.connect = function() {
+            this.url = this._buildUrl();
             this.autoReconnect = true;
             this.websocket = this.buildSocket(this.url);
 
@@ -142,7 +142,7 @@ angular.module('MAAS').factory(
                 });
                 if(self.autoReconnect) {
                     $timeout(function() {
-                        self.connect(self.url);
+                        self.connect();
                     }, self.retryTimeout);
                 }
             };
@@ -236,7 +236,7 @@ angular.module('MAAS').factory(
             };
             this.registerHandler("open", opened);
             this.registerHandler("error", errored);
-            this.connect(this._buildUrl());
+            this.connect();
             return defer.promise;
         };
 
