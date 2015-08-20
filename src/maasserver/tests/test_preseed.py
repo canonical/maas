@@ -44,6 +44,7 @@ from maasserver.preseed import (
     compose_curtin_maas_reporter,
     compose_curtin_network_preseed,
     compose_curtin_swap_preseed,
+    compose_curtin_verbose_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
     GENERIC_FILENAME,
@@ -861,6 +862,21 @@ class TestComposeCurtinKernel(MAASServerTestCase):
                           '  mapping: {}\n' +
                           '  package: linux-image-generic-lts-vivid\n'
                           ])
+
+
+class TestComposeCurtinVerbose(MAASServerTestCase):
+
+    def test__returns_empty_when_false(self):
+        Config.objects.set_config("curtin_verbose", False)
+        self.assertEqual([], compose_curtin_verbose_preseed())
+
+    def test__returns_verbosity_config(self):
+        Config.objects.set_config("curtin_verbose", True)
+        preseed = compose_curtin_verbose_preseed()
+        self.assertEquals({
+            "verbosity": 3,
+            "showtrace": True,
+            }, yaml.load(preseed[0]))
 
 
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):

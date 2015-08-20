@@ -244,6 +244,19 @@ def compose_curtin_kernel_preseed(node):
     return []
 
 
+def compose_curtin_verbose_preseed():
+    """Return the curtin options for the preseed that will tell curtin
+    to run with high verbosity.
+    """
+    if Config.objects.get_config("curtin_verbose"):
+        return [yaml.safe_dump({
+            "verbosity": 3,
+            "showtrace": True,
+            })]
+    else:
+        return []
+
+
 def get_curtin_userdata(node):
     """Return the curtin user-data.
 
@@ -257,6 +270,7 @@ def get_curtin_userdata(node):
     network_config = compose_curtin_network_preseed_for(node)
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
+    verbose_config = compose_curtin_verbose_preseed()
 
     # Get the storage configration if curtin supports custom storage.
     storage_config = compose_curtin_storage_config(node)
@@ -271,7 +285,7 @@ def get_curtin_userdata(node):
     return pack_install(
         configs=(
             [main_config] + reporter_config + storage_config +
-            network_config + swap_config + kernel_config),
+            network_config + swap_config + kernel_config + verbose_config),
         args=[installer_url])
 
 

@@ -319,6 +319,16 @@ CONFIG_ITEMS = {
                 (IMPORT_RESOURCES_SERVICE_PERIOD.total_seconds() / 60.0))
         }
     },
+    'curtin_verbose': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Run the fast-path installer with higher verbosity. This "
+                "provides more detail in the installation logs.")
+        }
+    },
 }
 
 

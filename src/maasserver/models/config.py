@@ -68,6 +68,8 @@ def get_default_config():
         # Third Party
         'enable_third_party_drivers': True,
         'enable_disk_erasing_on_release': False,
+        # Curtin.
+        'curtin_verbose': False,
         # # /settings
         }
 
