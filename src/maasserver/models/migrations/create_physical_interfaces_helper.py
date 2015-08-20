@@ -96,10 +96,12 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
         else:
             index += 1
         # Create a "dummy" interface. (this is a 'legacy' MACAddress)
+        now = datetime.datetime.now()
         iface = Interface.objects.create(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL,
             name='eth' + unicode(index),
-            vlan=get_or_create_default_vlan(Fabric, VLAN)
+            vlan=get_or_create_default_vlan(Fabric, VLAN),
+            created=now, updated=now,
         )
         previous_node = current_node
 
