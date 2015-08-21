@@ -314,11 +314,6 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
         if new_power_state == "unknown" or new_power_state == power_change:
             yield power_change_success(system_id, hostname, power_change)
             return
-        # Retry logic is handled by power driver
-        # Once all power types have had templates converted to power drivers
-        # this method will need to be re-factored.
-        if is_power_driver_available(power_type):
-            return
 
     # Failure: the power state of the node hasn't changed: mark it as
     # broken.
