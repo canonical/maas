@@ -125,7 +125,9 @@ from contextlib import (
     contextmanager,
 )
 from copy import deepcopy
+from itertools import islice
 import json
+import logging
 import os
 from os import environ
 import os.path
@@ -133,6 +135,8 @@ import re
 from shutil import copyfile
 import sqlite3
 from threading import RLock
+from time import time
+import traceback
 import uuid
 
 from formencode import (
@@ -157,6 +161,9 @@ from provisioningserver.utils.fs import (
     RunLock,
 )
 import yaml
+
+
+logger = logging.getLogger(__name__)
 
 # Default result for cluster UUID if not set
 UUID_NOT_SET = '** UUID NOT SET **'
@@ -536,20 +543,34 @@ class ConfigurationFile:
         **Note** that this returns a context manager which will save changes
         to the configuration on a clean exit.
         """
-        # Only one reader or writer at a time.
-        with RunLock(path).wait(timeout=5):
-            # Ensure `path` exists...
-            touch(path)
-            # before loading it in.
-            configfile = cls(path)
-            configfile.load()
-            try:
-                yield configfile
-            except:
-                raise
-            else:
-                if configfile.dirty:
-                    configfile.save()
+        time_opened = None
+        try:
+            # Only one reader or writer at a time.
+            with RunLock(path).wait(timeout=5.0):
+                time_opened = time()
+                # Ensure `path` exists...
+                touch(path)
+                # before loading it in.
+                configfile = cls(path)
+                configfile.load()
+                try:
+                    yield configfile
+                except:
+                    raise
+                else:
+                    if configfile.dirty:
+                        configfile.save()
+        finally:
+            if time_opened is not None:
+                time_open = time() - time_opened
+                if time_open >= 2.5:
+                    mini_stack = ", from ".join(
+                        "%s:%d" % (fn, lineno) for fn, lineno, _, _ in
+                        islice(reversed(traceback.extract_stack()), 2, 5))
+                    logger.warn(
+                        "Configuration file %s locked for %.1f seconds; this "
+                        "may starve other processes. Called from %s.", path,
+                        time_open, mini_stack)
 
 
 class ConfigurationMeta(type):

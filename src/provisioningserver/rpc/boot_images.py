@@ -44,7 +44,8 @@ def list_boot_images():
     global CACHED_BOOT_IMAGES
     if CACHED_BOOT_IMAGES is None:
         with ClusterConfiguration.open() as config:
-            CACHED_BOOT_IMAGES = tftppath.list_boot_images(config.tftp_root)
+            tftp_root = config.tftp_root
+        CACHED_BOOT_IMAGES = tftppath.list_boot_images(tftp_root)
     return CACHED_BOOT_IMAGES
 
 
