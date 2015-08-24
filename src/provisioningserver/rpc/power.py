@@ -24,7 +24,6 @@ import sys
 from provisioningserver.drivers.power import (
     get_error_message,
     PowerDriverRegistry,
-    PowerError,
 )
 from provisioningserver.events import (
     EVENT_TYPES,
@@ -101,10 +100,10 @@ def is_power_driver_available(power_type):
     return PowerDriverRegistry.get_item(power_type) is not None
 
 
-@asynchronous
+@asynchronous(timeout=15)
 @inlineCallbacks
 def power_change_failure(system_id, hostname, power_change, message):
-    """Deal with a node failing to be powered up or down."""
+    """Report a node that for which power control has failed."""
     assert power_change in ['on', 'off'], (
         "Unknown power change: %s" % power_change)
     maaslog.error(
@@ -124,48 +123,75 @@ def power_change_failure(system_id, hostname, power_change, message):
 
 
 @synchronous
-def perform_power_change(system_id, hostname, power_type, power_change,
-                         context):
+def perform_power_change(
+        system_id, hostname, power_type, power_change, context):
     """Issue the given `power_change` command.
 
-    If any exception is raised during the execution of the command,
-    mark the node as broken and re-raise the exception.
+    On failure the node will be marked as broken and the error will be
+    re-raised to the caller.
+
+    :deprecated: This relates to template-based power control.
     """
     action = PowerAction(power_type)
     try:
         return action.execute(power_change=power_change, **context)
     except PowerActionFail as error:
-        message = "Node could not be powered %s: %s" % (
-            power_change, error)
-        power_change_failure(
-            system_id, hostname, power_change, message).wait(15)
+        message = "Node could not be powered %s: %s" % (power_change, error)
+        power_change_failure(system_id, hostname, power_change, message)
         raise
 
 
-def perform_power_driver_change(system_id, hostname, power_type, power_change,
-                                context):
+@asynchronous
+def perform_power_driver_change(
+        system_id, hostname, power_type, power_change, context):
     """Execute power driver `power_change` method.
 
-    If any exception is raised during the execution of the method,
-    mark the node as broken and re-raise the exception.
+    On failure the node will be marked as broken and the error will be
+    re-raised to the caller.
     """
-    try:
-        power_driver = PowerDriverRegistry.get_item(power_type)
-        if power_change == 'on':
-            power_driver.on(**context)
-        elif power_change == 'off':
-            power_driver.off(**context)
-    except PowerError as error:
+    power_driver = PowerDriverRegistry.get_item(power_type)
+
+    if power_change == 'on':
+        d = power_driver.on(**context)
+    elif power_change == 'off':
+        d = power_driver.off(**context)
+
+    def power_change_failed(failure):
         message = "Node could not be powered %s: %s" % (
-            power_change, get_error_message(error))
-        power_change_failure(
-            system_id, hostname, power_change, message).wait(15)
-        raise
+            power_change, get_error_message(failure.value))
+        df = power_change_failure(system_id, hostname, power_change, message)
+        df.addCallback(lambda _: failure)  # Propagate the original error.
+        return df
+
+    return d.addErrback(power_change_failed)
+
+
+@asynchronous
+def power_state_update(system_id, state):
+    """Report to the region about a node's power state.
+
+    :param system_id: The system ID for the node.
+    :param state: Typically "on", "off", or "error".
+    """
+    client = getRegionClient()
+    return client(
+        UpdateNodePowerState,
+        system_id=system_id,
+        power_state=state)
 
 
 @asynchronous
 @inlineCallbacks
 def power_change_success(system_id, hostname, power_change):
+    """Report about a successful node power state change.
+
+    This updates the region's record of the node's power state, logs to the
+    MAAS log, and appends to the node's event log.
+
+    :param system_id: The system ID for the node.
+    :param hostname: The node's hostname, used in messages.
+    :param power_change: "on" or "off".
+    """
     assert power_change in ['on', 'off'], (
         "Unknown power change: %s" % power_change)
     yield power_state_update(system_id, power_change)
@@ -183,6 +209,14 @@ def power_change_success(system_id, hostname, power_change):
 @asynchronous
 @inlineCallbacks
 def power_change_starting(system_id, hostname, power_change):
+    """Report about a node power state change starting.
+
+    This logs to the MAAS log, and appends to the node's event log.
+
+    :param system_id: The system ID for the node.
+    :param hostname: The node's hostname, used in messages.
+    :param power_change: "on" or "off".
+    """
     assert power_change in ['on', 'off'], (
         "Unknown power change: %s" % power_change)
     maaslog.info(
@@ -196,13 +230,16 @@ def power_change_starting(system_id, hostname, power_change):
     yield send_event_node(event_type, system_id, hostname)
 
 
+# A policy used when waiting between retries of power changes. Deprecated:
+# this relates to template-based power control only.
 default_waiting_policy = (1, 2, 2, 4, 6, 8, 12)
 
 
 @asynchronous
 @deferred  # Always return a Deferred.
-def maybe_change_power_state(system_id, hostname, power_type,
-                             power_change, context, clock=reactor):
+def maybe_change_power_state(
+        system_id, hostname, power_type, power_change, context,
+        clock=reactor):
     """Attempt to change the power state of a node.
 
     If there is no power action already in progress, register this
@@ -214,7 +251,7 @@ def maybe_change_power_state(system_id, hostname, power_type,
     node on.
 
     :raises: PowerActionAlreadyInProgress if there's already a power
-    action in progress for this node.
+        action in progress for this node.
     """
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
@@ -227,10 +264,9 @@ def maybe_change_power_state(system_id, hostname, power_type,
 
     if current_power_change is None:
         # Arrange for the power change to happen later; do not make the caller
-        # wait, because it might take a long time. We set a timeout of two
-        # minutes so that if the power action doesn't return in a timely
-        # fashion (or fails silently or some such) it doesn't block other
-        # actions on the node.
+        # wait, because it might take a long time. We set a timeout so that if
+        # the power action doesn't return in a timely fashion (or fails
+        # silently or some such) it doesn't block other actions on the node.
         d = deferLater(
             clock, 0, deferWithTimeout, CHANGE_POWER_STATE_TIMEOUT,
             change_power_state, system_id, hostname, power_type, power_change,
@@ -273,32 +309,33 @@ def maybe_change_power_state(system_id, hostname, power_type,
 
 @asynchronous
 @inlineCallbacks
-def change_power_state(system_id, hostname, power_type, power_change, context,
-                       clock=reactor):
+def change_power_state(
+        system_id, hostname, power_type, power_change, context,
+        clock=reactor):
     """Change the power state of a node.
 
-    Monitor the result of the power change action by querying the
-    power state of the node and mark the node as failed if it doesn't
-    work.
+    This monitors the result of the power change by querying the power state
+    of the node, thus attempting to ensure that the requested change has taken
+    place.
+
+    Success is reported using `power_change_success`. Power-related failures
+    are reported using `power_change_failure`. Other failures must be reported
+    by the caller.
     """
     yield power_change_starting(system_id, hostname, power_change)
     # Use increasing waiting times to work around race conditions
     # that could arise when power-cycling the node.
     for waiting_time in default_waiting_policy:
-        # Perform power change.
-        try:
-            # Check if power_type has PowerDriver support.
-            if is_power_driver_available(power_type):
-                perform_power_driver_change(
-                    system_id, hostname, power_type, power_change, context)
-            else:
-                yield deferToThread(
-                    perform_power_change, system_id, hostname, power_type,
-                    power_change, context)
-        except PowerActionFail:
-            raise
-        # If the power_type doesn't support querying the power state:
-        # exit now.
+        if is_power_driver_available(power_type):
+            # There's a Python-based driver for this power type.
+            yield perform_power_driver_change(
+                system_id, hostname, power_type, power_change, context)
+        else:
+            # This power type is still template-based.
+            yield deferToThread(
+                perform_power_change, system_id, hostname, power_type,
+                power_change, context)
+        # Return now if we can't query the power state.
         if power_type not in QUERY_POWER_TYPES:
             return
         # Wait to let the node some time to change its power state.
@@ -327,19 +364,9 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
 
 
 @asynchronous
-def power_state_update(system_id, state):
-    """Update a node's power state"""
-    client = getRegionClient()
-    return client(
-        UpdateNodePowerState,
-        system_id=system_id,
-        power_state=state)
-
-
-@asynchronous
 @inlineCallbacks
 def power_query_failure(system_id, hostname, message):
-    """Deal with a node failing to be queried."""
+    """Report a node that for which power querying has failed."""
     maaslog.error(message)
     yield power_state_update(system_id, 'error')
     yield send_event_node(
@@ -349,24 +376,34 @@ def power_query_failure(system_id, hostname, message):
 
 @synchronous
 def perform_power_query(system_id, hostname, power_type, context):
-    """Issue the given `power_query` command.
+    """Query the node's power state.
 
-    No exception handling is performed here, this allows
-    `get_power_state` to perform multiple queries and only
-    log the final error.
+    No exception handling is performed here. This allows `get_power_state` to
+    perform multiple queries and only log the final error.
+
+    :param power_type: This must refer to one of the template-based power
+        drivers, and *not* to a Python-based one.
+
+    :deprecated: This relates to template-based power control.
     """
     action = PowerAction(power_type)
     # `power_change` is a misnomer here.
     return action.execute(power_change='query', **context)
 
 
-@inlineCallbacks
+@asynchronous
 def perform_power_driver_query(system_id, hostname, power_type, context):
-    """Issue the given `power_query` command for power driver."""
+    """Query the node's power state.
+
+    No exception handling is performed here. This allows `get_power_state` to
+    perform multiple queries and only log the final error.
+
+    :param power_type: This must refer to one of the Python-based power
+        drivers, and *not* to a template-based one.
+    """
     # Get power driver for given power type
     power_driver = PowerDriverRegistry[power_type]
-    power_state = yield power_driver.query(**context)
-    returnValue(power_state)
+    return power_driver.query(**context)
 
 
 @asynchronous

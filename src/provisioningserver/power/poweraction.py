@@ -1,7 +1,10 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Actions for power-related operations."""
+"""Actions for power-related operations.
+
+:deprecated: This relates to template-based power control.
+"""
 
 from __future__ import (
     absolute_import,
