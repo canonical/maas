@@ -76,7 +76,7 @@ def _gen_cluster_nodes_power_parameters(nodes):
     # This is meant to be temporary until all the power types support querying
     # the power state of a node. See the definition of QUERY_POWER_TYPES for
     # more information.
-    from provisioningserver.rpc.power import QUERY_POWER_TYPES
+    from provisioningserver.power import QUERY_POWER_TYPES
 
     nodes_unchecked = (
         nodes

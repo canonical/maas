@@ -122,12 +122,12 @@ from mock import (
     MagicMock,
 )
 from netaddr import IPAddress
+from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
-from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,

@@ -43,6 +43,8 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.network import discover_networks
+from provisioningserver.power.change import maybe_change_power_state
+from provisioningserver.power.query import get_power_state
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -71,10 +73,6 @@ from provisioningserver.rpc.osystems import (
     get_os_release_title,
     get_preseed_data,
     validate_license_key,
-)
-from provisioningserver.rpc.power import (
-    get_power_state,
-    maybe_change_power_state,
 )
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import (

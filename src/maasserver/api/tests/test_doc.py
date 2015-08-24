@@ -54,7 +54,7 @@ from mock import sentinel
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
 from piston.resource import Resource
-from provisioningserver.power_schema import make_json_field
+from provisioningserver.power.schema import make_json_field
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,

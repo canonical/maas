@@ -43,6 +43,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.twisted import always_succeed_with
 from provisioningserver.drivers import PowerTypeRegistry
+from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.cluster import (
     DescribePowerTypes,
     StartMonitors,
@@ -53,7 +54,6 @@ from provisioningserver.rpc.exceptions import (
     NodeStateViolation,
     NoSuchNode,
 )
-from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from simplejson import dumps
 from testtools import ExpectedException
 from testtools.matchers import (

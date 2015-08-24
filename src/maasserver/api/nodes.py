@@ -87,7 +87,7 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
+from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json

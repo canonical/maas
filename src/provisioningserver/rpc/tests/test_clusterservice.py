@@ -53,7 +53,10 @@ from mock import (
     Mock,
     sentinel,
 )
-from provisioningserver import concurrency
+from provisioningserver import (
+    concurrency,
+    power as power_module,
+)
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import make_subnet_config
@@ -62,11 +65,12 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.network import discover_networks
+from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     boot_images,
     cluster,
@@ -76,7 +80,6 @@ from provisioningserver.rpc import (
     exceptions,
     getRegionClient,
     osystems as osystems_rpc_module,
-    power as power_module,
     region,
     tags,
 )
@@ -92,7 +95,6 @@ from provisioningserver.rpc.monitors import (
     running_monitors,
 )
 from provisioningserver.rpc.osystems import gen_operating_systems
-from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
@@ -1626,13 +1628,13 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         power_state_update = self.patch(
             power_module, "power_state_update")
         perform_power_query = self.patch(
-            power_module, "perform_power_query")
+            power_module.query, "perform_power_query")
         perform_power_query.return_value = state
 
         # During the transition from template-based power drivers to Python
         # drivers, alias perform_power_driver_query to perform_power_query.
         self.patch(
-            power_module, "perform_power_driver_query",
+            power_module.query, "perform_power_driver_query",
             perform_power_query)
 
         arguments = {

@@ -19,7 +19,7 @@ __all__ = [
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from mock import Mock
-from provisioningserver import power_schema
+from provisioningserver.power import schema
 from testtools import monkey
 
 
@@ -36,5 +36,5 @@ class StaticPowerTypesFixture(Fixture):
         # controller when fetching power types.
         restore = monkey.patch(
             power_parameters, 'get_all_power_types_from_clusters',
-            Mock(return_value=power_schema.JSON_POWER_TYPE_PARAMETERS))
+            Mock(return_value=schema.JSON_POWER_TYPE_PARAMETERS))
         self.addCleanup(restore)

@@ -34,12 +34,12 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
+from provisioningserver import power
 from provisioningserver.power.poweraction import PowerAction
-from provisioningserver.power_schema import (
+from provisioningserver.power.schema import (
     JSON_POWER_TYPE_PARAMETERS,
     make_json_field,
 )
-from provisioningserver.rpc.power import is_power_driver_available
 
 
 class TestPowerActionRendering(MAASServerTestCase):
@@ -48,7 +48,7 @@ class TestPowerActionRendering(MAASServerTestCase):
     scenarios = [
         (type['name'], {'power_type': type['name']})
         for type in JSON_POWER_TYPE_PARAMETERS
-        if not is_power_driver_available(type['name'])
+        if not power.is_driver_available(type['name'])
     ]
 
     def make_random_parameters(self, power_change="on"):

@@ -92,6 +92,7 @@ from mock import (
 import netaddr
 from netaddr.ip import IPNetwork
 from provisioningserver.network import discover_networks
+from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -104,7 +105,6 @@ from provisioningserver.rpc.exceptions import (
     NoSuchNode,
 )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.region import (
     Authenticate,
     CommissionNode,

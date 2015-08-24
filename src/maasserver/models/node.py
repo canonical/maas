@@ -131,8 +131,8 @@ from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
-from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,

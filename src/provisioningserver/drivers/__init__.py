@@ -24,7 +24,7 @@ from abc import (
 )
 
 from jsonschema import validate
-from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.utils.registry import Registry
 
 # JSON schema representing the Django choices format as JSON; an array of

@@ -1,7 +1,12 @@
 from django.db.utils import ProgrammingError
 from maasserver import logger
-from provisioningserver.power_schema import IPMI_DRIVER
 from south.v2 import DataMigration
+
+# Snapshot from src/provisioningserver/power_schema.py.
+class IPMI_DRIVER:
+    DEFAULT = ''
+    LAN = 'LAN'
+    LAN_2_0 = 'LAN_2_0'
 
 
 class Migration(DataMigration):
