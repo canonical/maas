@@ -36,7 +36,7 @@
     }
 
     &.remove {
-        background-image: url('../img/icons/cross.svg'), none;
+        background-image: url('../img/icons/filter-remove.svg'), none;
     }
 
     &.warning {
@@ -58,6 +58,14 @@
     &.error {
         background-image: url('../img/icons/error.png');
         background-image: url('../img/icons/error.svg'), none;
+    }
+
+    &.partition {
+      background-image: url('../img/icons/partition.svg');
+    }
+
+    &.add {
+      background-image: url('../img/icons/add.svg');
     }
 }
 
@@ -130,6 +138,10 @@
 %margin-left,
 .margin-left {
     margin-left: 20px;
+
+    &--ten {
+        margin-left: 10px !important;
+    }
 }
 
 %padding-top,
@@ -144,7 +156,11 @@
 
 %padding-bottom,
 .padding-bottom {
-    padding-bottom: 20px;
+    padding-bottom: 20px !important;
+
+    &--ten {
+      padding-bottom: 10px !important;
+    }
 }
 
 %padding-left,
@@ -164,6 +180,10 @@
 
 .no-padding {
     padding: 0;
+}
+
+.no-padding-top {
+    padding-top: 0 !important;
 }
 
 .no-padding-left {

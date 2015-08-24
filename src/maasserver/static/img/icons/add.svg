@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <!-- Generator: Sketch 3.3.3 (12072) - http://www.bohemiancoding.com/sketch -->
+    <title>remove icon copy</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Storage-buttons-left" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g id="04.2-creating-lv" sketch:type="MSArtboardGroup" transform="translate(-1212.000000, -1844.000000)" fill="#B2B2B2">
+            <g id="Normal" sketch:type="MSLayerGroup" transform="translate(-16.000000, -11.000000)">
+                <g id="Storage-Copy" transform="translate(14.000000, 1273.000000)" sketch:type="MSShapeGroup">
+                    <g id="Avilable-disks-and-partitions" transform="translate(202.000000, 258.000000)">
+                        <g id="table-all">
+                            <g id="network-row-copy-3" transform="translate(0.000000, 313.000000)">
+                                <g id="actions-copy-5" transform="translate(990.000000, 10.000000)">
+                                    <path d="M37.1483077,4 L31.4190769,9.72923077 L25.6898462,4 L24,5.68984615 L29.7292308,11.4203077 L24,17.1495385 L25.6898462,18.8393846 L31.4190769,13.1101538 L37.1483077,18.8393846 L38.8393846,17.1495385 L33.1089231,11.4203077 L38.8393846,5.68984615 L37.1483077,4 Z" id="remove-icon-copy" transform="translate(32.000000, 12.000000) rotate(-315.000000) translate(-32.000000, -12.000000) "></path>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

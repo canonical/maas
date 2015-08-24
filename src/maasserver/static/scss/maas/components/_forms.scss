@@ -161,7 +161,7 @@ form {
         background-image: url('../img/icons/accordion-open.svg');
         background-repeat: no-repeat;
         background-position: top 16px right 10px;
-        padding: 6px 30px 7px 10px;
+        padding: 6px 30px 6px 10px;
 
         /* Removes firefox select styles & arrow */
         -moz-appearance: none;
@@ -366,6 +366,7 @@ form {
         margin-bottom: 0;
     }
 
+    input,
     input[type='submit']
     input[type='text'],
     input[type='number'],
@@ -374,7 +375,13 @@ form {
     input[type='email'],
     input[type='checkbox'],
     select {
-        margin-left: 10px;
+        margin-left: 20px;
+    }
+
+    fieldset {
+        width: auto;
+        display: inline-block;
+        margin: 0 40px 0 0;
     }
 }
 

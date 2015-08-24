@@ -189,18 +189,31 @@ table {
 
 .t1 {
     width: 1%;
+    min-width: 45px;
 }
 
 .t5 {
     width: 5%;
 }
 
+.t9 {
+  width: 9%;
+}
+
 .t10 {
     width: 10%;
 }
 
+.t11 {
+  width: 11%;
+}
+
 .t12 {
     width: 12.5%;
+}
+
+.t13 {
+  width: 13%;
 }
  /* 1/8 */
 .t15 {
@@ -222,6 +235,10 @@ table {
 .t25 {
     width: 25%;
 }
+
+.t29 {
+    width: 29%;
+}
    /* 1/4 */
 .t30 {
     width: 30%;
@@ -237,6 +254,10 @@ table {
 .t37 {
     width: 37.5%;
 }
+
+.t39 {
+    width: 39%;
+}
  /* 3/8 */
 .t40 {
     width: 40%;
@@ -248,6 +269,10 @@ table {
 
 .t50 {
     width: 50%;
+}
+
+.t54 {
+  width: 54%;
 }
    /* 1/2 */
 .t55 {
@@ -269,6 +294,11 @@ table {
 .t66 {
     width: 66.666%;
 }   /* 2/3 */
+
+.t69 {
+  width: 69%;
+}
+
 .t70 {
     width: 70%;
 }
@@ -297,6 +327,10 @@ table {
     width: 95%;
 }
 
+.t100 {
+  width: 100%;
+}
+
 #commissioning_scripts {
 
     .script-content.slider {
@@ -306,4 +340,81 @@ table {
             margin-top: 20px;
         }
     }
+}
+
+.table {
+  width: 100%;
+  display: table;
+  box-sizing: border-box;
+  table-layout: fixed;
+
+  .table-row {
+    float: left;
+    width: 100%;
+    display: table-row;
+    box-sizing: border-box;
+    border-bottom: 1px dotted #B2B2B2;
+    min-height: 50px;
+
+    &:hover {
+      background-color: #FFF;
+    }
+
+    &.active {
+      background-color: #FFF;
+    }
+  }
+
+  .table-cell {
+    display: table-cell;
+    padding: 13px 10px;
+    box-sizing: border-box;
+    min-height: 21px;
+
+    a {
+      color: $ubuntu-orange;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+
+  .table-head {
+    display: table-head;
+    width: 100%;
+    box-sizing: border-box;
+
+    .table-row {
+      border-bottom: 1px solid #B2B2B2;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
+
+    .table-cell {
+      color: #888;
+      font-weight: 400;
+
+      a {
+        color: #888;
+
+        &:hover {
+          color: #333;
+          border-bottom: 1px solid #333;
+          text-decoration: none;
+        }
+      }
+
+      .divide {
+          width: 1px;
+          display: inline-block;
+          background: #D2D2D2 none repeat scroll 0% 0%;
+          height: 10px;
+          padding: 0px;
+          margin: 0px 5px;
+      }
+    }
+  }
 }

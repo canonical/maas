@@ -379,6 +379,708 @@
                     <button class="cta-ubuntu"
                         data-ng-click="saveEditStorage()">Save changes</button>
                 </div>
+
+
+                <!--
+
+                // Mounted systems.
+
+                // This is the table created for all mounted block devices in Storage.
+                // The repeating table row to contain all mounted devices.
+
+                <div class="twelve-col padding-bottom">
+                    <h4>File System</h4>
+                    <section class="table details">
+                        <header class="table-head">
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                </div>
+                                <div class="table-cell t19">Mount point</div>
+                                <div class="table-cell t30">Size</div>
+                                <div class="table-cell t20">File system</div>
+                                <div class="table-cell t30">Name</div>
+                            </div>
+                        </header>
+                        <main class="table-body">
+                            <div class="table-row">
+                                <div class="table-cell t1"></div>
+                                <div class="table-cell t19">/uefi</div>
+                                <div class="table-cell t30">512 Mb</div>
+                                <div class="table-cell t20">fat32</div>
+                                <div class="table-cell t30">sda1</div>
+                            </div>
+                            <div class="table-row">
+                                <div class="table-cell t1"></div>
+                                <div class="table-cell t19">/root/uefi</div>
+                                <div class="table-cell t30">8.5 Gb</div>
+                                <div class="table-cell t20">fat32</div>
+                                <div class="table-cell t30">vg0-vgroot</div>
+                            </div>
+                        </main>
+                    </section>
+                </div>
+
+                -->
+
+                <!--
+
+                // Available disks & Block devices
+
+                // This is a normal available disks table showing 4 available disks
+                // Bellow the whole table are the controls for creating a RAID, BCache and LVM
+
+                <div class="twelve-col padding-bottom">
+                    <h4>Available disks and partitions</h4>
+                    <section class="table margin-bottom details">
+                        <header class="table-head">
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                    <input class="checkbox" type="checkbox" id="check-all" />
+                                    <label class="checkbox-label" for="check-all"></label>
+                                </div>
+                                <div class="table-cell t15">Name</div>
+                                <div class="table-cell t15">Size</div>
+                                <div class="table-cell t15">Device Type</div>
+                                <div class="table-cell t15">File system</div>
+                                <div class="table-cell t15">
+                                    <a>Model</a>
+                                    <span class="divide"></span>
+                                    <a>Serial</a>
+                                </div>
+                                <div class="table-cell t15">Tags</div>
+                                <div class="table-cell t9"></div>
+                            </div>
+                        </header>
+                        <main class="table-body">
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                    <input class="checkbox" type="checkbox" id="sda" />
+                                    <label class="checkbox-label" for="sda"></label>
+                                </div>
+                                <div class="table-cell t15">
+                                    <input type="text" value="sda" class="details__input">
+                                </div>
+                                <div class="table-cell t15">8.5 Gb</div>
+                                <div class="table-cell t15">Physical</div>
+                                <div class="table-cell t15">
+                                    <a class="details__controls--secondary">Format</a>
+                                </div>
+                                <div class="table-cell t15">QEMU HARDDISK</div>
+                                <div class="table-cell t15 ng-hide">937368252</div>
+                                <div class="table-cell t15">rotary, storage, machine</div>
+                                <div class="table-cell t9">
+                                    <div class="details__controls">
+                                        <a class="icon partition">Partition</a>
+                                        <a class="icon remove">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                    <input class="checkbox" type="checkbox" id="sdb" />
+                                    <label class="checkbox-label" for="sdb"></label>
+                                </div>
+                                <div class="table-cell t15">
+                                    <input type="text" value="sdb" class="details__input">
+                                </div>
+                                <div class="table-cell t15">8.5 Gb</div>
+                                <div class="table-cell t15">Physical</div>
+                                <div class="table-cell t15">
+                                    <a class="details__controls--secondary">Format</a>
+                                </div>
+                                <div class="table-cell t15">QEMU HARDDISK</div>
+                                <div class="table-cell t15 ng-hide">937368252</div>
+                                <div class="table-cell t15">rotary, storage, machine</div>
+                                <div class="table-cell t9">
+                                    <div class="details__controls">
+                                        <a class="icon partition">Partition</a>
+                                        <a class="icon remove">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                    <input class="checkbox" type="checkbox" id="sdc" />
+                                    <label class="checkbox-label" for="sdc"></label>
+                                </div>
+                                <div class="table-cell t15">
+                                    <input type="text" value="sdc" class="details__input">
+                                </div>
+                                <div class="table-cell t15">8.5 Gb</div>
+                                <div class="table-cell t15">Physical</div>
+                                <div class="table-cell t15">
+                                    <a class="details__controls--secondary">Format</a>
+                                </div>
+                                <div class="table-cell t15">QEMU HARDDISK</div>
+                                <div class="table-cell t15 ng-hide">937368252</div>
+                                <div class="table-cell t15">rotary, storage, machine</div>
+                                <div class="table-cell t9">
+                                    <div class="details__controls">
+                                        <a class="icon partition">Partition</a>
+                                        <a class="icon remove">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="table-cell t1">
+                                    <input class="checkbox" type="checkbox" id="sdd" />
+                                    <label class="checkbox-label" for="sdd"></label>
+                                </div>
+                                <div class="table-cell t15">
+                                    <input type="text" value="sdd" class="details__input">
+                                </div>
+                                <div class="table-cell t15">8.5 Gb</div>
+                                <div class="table-cell t15">Physical</div>
+                                <div class="table-cell t15">
+                                    <a class="details__controls--secondary">Format</a>
+                                </div>
+                                <div class="table-cell t15">QEMU HARDDISK</div>
+                                <div class="table-cell t15 ng-hide">937368252</div>
+                                <div class="table-cell t15">rotary, storage, machine</div>
+                                <div class="table-cell t9">
+                                    <div class="details__controls">
+                                        <a class="icon partition">Partition</a>
+                                        <a class="icon remove">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </section>
+                    <a class="link-cta-ubuntu secondary margin-right">Create RAID</a>
+                    <a class="link-cta-ubuntu secondary margin-right">Create BCache</a>
+                    <a class="link-cta-ubuntu secondary">Create LVM</a>
+                </div>
+
+                -->
+
+
+                <!--
+
+                // Used disks
+
+                // Once a disk has been used this table will contain that information
+                // and will be styled to look disabled
+                
+                <div class="twelve-col padding-bottom">
+                    <h4>Used disks</h4>
+                    <section class="table details">
+                        <header class="table-head">
+                            <div class="table-row">
+                                <div class="table-cell t1">&nbsp;</div>
+                                <div class="table-cell t19">Name</div>
+                                <div class="table-cell t15">Device type</div>
+                                <div class="table-cell t15">
+                                    <a>Model</a>
+                                    <span class="divide"></span>
+                                    <a>Serial</a>
+                                </div>
+                                <div class="table-cell t50">Used for</div>
+                            </div>
+                        </header>
+                        <main class="table-body">
+                            <div class="table-row details__used">
+                                <div class="table-cell t1">&nbsp;</div>
+                                <div class="table-cell t19">sda1</div>
+                                <div class="table-cell t15">Partition</div>
+                                <div class="table-cell t15">QEMU HARDDISK</div>
+                                <div class="table-cell t15 ng-hide">1234567890</div>
+                                <div class="table-cell t50">uefi</div>
+                            </div>
+                        </main>
+                    </section>
+                </div>
+
+                -->
+
+                <!--
+
+                // Available disks & Block devices (CREATE PARTITION ROW)
+
+                // Markup for a row when create a partition has been clicked. All
+                // Form elements creating the partition will be in details__dropdown
+                // and the original table-row has a class of active applied
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                        <input class="checkbox" type="checkbox" id="sdd" />
+                        <label class="checkbox-label" for="sdd"></label>
+                    </div>
+                    <div class="table-cell t15">
+                        <input type="text" value="sdd" class="details__input">
+                    </div>
+                    <div class="table-cell t15">8.5 Gb</div>
+                    <div class="table-cell t15">Physical</div>
+                    <div class="table-cell t15">
+                        <a class="details__controls--secondary">Format</a>
+                    </div>
+                    <div class="table-cell t15">QEMU HARDDISK</div>
+                    <div class="table-cell t15 ng-hide">937368252</div>
+                    <div class="table-cell t15">rotary, storage, test</div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a class="icon partition">Partition</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row padding-bottom--ten">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">
+                                <label>Name</label>
+                                <input type="text" value="sdd - part1">
+                            </div>
+                            <div class="table-cell t15">
+                                <label for="size">Size</label>
+                                <input type="text">
+                            </div>
+                            <div class="table-cell t15">
+                                <label>Device type</label>
+                                Partition
+                            </div>
+                            <div class="table-cell t15">
+                                <label for="file-system">File system</label>
+                                <select>
+                                    <option value="fat32">fat32</option>
+                                </select>
+                            </div>
+                            <div class="table-cell t30">
+                                <label for="mount">Mount point</label>
+                                <input type="text">
+                            </div>
+                            <div class="table-cell t9"></div>
+                        </div>
+                        <div class="table-row details__row">
+                            <div class="table-cell left">
+                                <button class="cta-ubuntu secondary">Save and add partition</button>
+                            </div>
+                            <div class="table-cell right">
+                                <a href="" class="link-cta-ubuntu text-button margin-left">Cancel</a>
+                                <button class="cta-ubuntu">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                -->
+
+                <!--
+
+                // Available disks & Block devices (MOUNT DISK)
+
+                // Markup for when format / mount has been clicks on a disk. Dropdown
+                // will show the filesystem and mountpoint to be applied to the disk
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                        <input class="checkbox" type="checkbox" id="sdb" />
+                        <label class="checkbox-label" for="sdb"></label>
+                    </div>
+                    <div class="table-cell t15">
+                        <input type="text" value="sdb" class="details__input">
+                    </div>
+                    <div class="table-cell t15">8.5 Gb</div>
+                    <div class="table-cell t15">Physical</div>
+                    <div class="table-cell t15">
+                        fat32 <a class="details__controls--secondary margin-left--ten">Mount</a>
+                    </div>
+                    <div class="table-cell t15">QEMU HARDDISK</div>
+                    <div class="table-cell t15 ng-hide">937368252</div>
+                    <div class="table-cell t15">
+                        <div class="details__tags">rotary, storage, test, hp, machine<span class="details__controls--secondary">, <a>edit</a></span></div>
+                    </div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a class="icon partition">Partition</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row padding-bottom--ten">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">
+                                <label for="filesys">Filesystem</label>
+                                <select name="filesys" id="filesys">
+                                    <option value="fat32">fat32</option>
+                                </select>
+                            </div>
+                            <div class="table-cell t30">
+                                <label for="mountpoint">Mountpoint</label>
+                                <input type="text" id="mountpoint">
+                            </div>
+                            <div class="table-cell t54">
+                            </div>
+                        </div>
+                        <div class="table-row details__row">
+                            <div class="table-cell right">
+                                  <a class="link-cta-ubuntu text-button">Cancel</a>
+                                  <button class="cta-ubuntu">Mount</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                -->
+
+                <!--
+
+                // Creating a Volume Group
+
+                // First state of creating a volume group. This row shows once you have
+                // grouped 2 or more disks to create a VG0
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                        <input class="checkbox" type="checkbox" id="vg0" />
+                        <label class="checkbox-label" for="vg0"></label>
+                    </div>
+                    <div class="table-cell t15"><input type="text" value="VG0" class="details__input"><span class="details__label"><a href="">3 Disks</a></span></div>
+                    <div class="table-cell t15">25.5 Gb <span class="details__label">Free: 25.5 Gb</span></div>
+                    <div class="table-cell t15">Volume group</div>
+                    <div class="table-cell t45"></div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a href="" class="icon add">Add LV</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row">
+                            <div class="table-cell">
+                                <button class="cta-ubuntu secondary">Add logical volume</button>
+                                <a href="" class="link-cta-ubuntu text-button margin-left">Remove volume group</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                // View disks in volume group
+
+                // Dropdown state for disks / members viewable in a Volume group
+                // or raid. If its a dropdown with info the class is called
+                // details__dropdown--info and is using the details__label to
+                // open or close the dropdown
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                        <input class="checkbox" type="checkbox" id="check-all" />
+                        <label class="checkbox-label" for="check-all"></label>
+                    </div>
+                    <div class="table-cell t15">
+                        <input type="text" value="VG0" class="details__input"><span class="details__label">
+                        <a href="">3 Disks</a></span></div>
+                    <div class="table-cell t15">25.5 Gb <span class="details__label">Free: 25.5 Gb</span></div>
+                    <div class="table-cell t15">Volume group</div>
+                    <div class="table-cell t45"></div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a href="" class="icon add">Add logic volume</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown--info">
+                        <div class="table-row">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">sda</div>
+                            <div class="table-cell t15">8.5 Gb</div>
+                            <div class="table-cell t15">Physical disk</div>
+                            <div class="table-cell t15"></div>
+                            <div class="table-cell t15">QEMU HARDDISK</div>
+                            <div class="table-cell t15 ng-hide">1234567890</div>
+                            <div class="table-cell t15">rotary, storage, test</div>
+                            <div class="table-cell t9"></div>
+                        </div>
+                        <div class="table-row">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">sdb</div>
+                            <div class="table-cell t15">8.5 Gb</div>
+                            <div class="table-cell t15">Physical disk</div>
+                            <div class="table-cell t15"></div>
+                            <div class="table-cell t15">QEMU HARDDISK</div>
+                            <div class="table-cell t15 ng-hide">1234567890</div>
+                            <div class="table-cell t15">rotary, storage, test</div>
+                            <div class="table-cell t9"></div>
+                        </div>
+                        <div class="table-row">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">sdc</div>
+                            <div class="table-cell t15">8.5 Gb</div>
+                            <div class="table-cell t15">Physical disk</div>
+                            <div class="table-cell t15"></div>
+                            <div class="table-cell t15">QEMU HARDDISK</div>
+                            <div class="table-cell t15 ng-hide">1234567890</div>
+                            <div class="table-cell t15">rotary, storage, test</div>
+                            <div class="table-cell t9"></div>
+                        </div>
+                    </div>
+                </div>
+
+
+                // Add a new Logical volume
+
+                // Similar markup style to partitioning a disk
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                        <input class="checkbox" type="checkbox" id="check-all" />
+                        <label class="checkbox-label" for="check-all"></label>
+                    </div>
+                    <div class="table-cell t15"><input type="text" value="VG0" class="details__input"><span class="details__label"><a href="">3 Disks</a></span></div>
+                    <div class="table-cell t15">25.5 Gb <span class="details__label">Free: 25.5 Gb</span></div>
+                    <div class="table-cell t15">Volume group</div>
+                    <div class="table-cell t45"></div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a href="" class="icon add">Add Logical volume</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row padding-bottom--ten">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15 details__field">
+                                <label for="name">Name</label>
+                                <input type="text" value="vg0 - lv0">
+                            </div>
+                            <div class="table-cell t15 details__field">
+                                <label for="size">Size</label>
+                                <input type="text">
+                            </div>
+                            <div class="table-cell t15 details__field">
+                                <label for="type">Device type</label>
+                                <span>Logical volume</span>
+                            </div>
+                            <div class="table-cell t15 details__field">
+                                <label for="file">File system</label>
+                                <select name="file" id="file">
+                                    <option value="fat32">fat32</option>
+                                </select>
+                            </div>
+                            <div class="table-cell t30 details__field">
+                                <label for="mount">Mount point</label>
+                                <input type="text">
+                            </div>
+                            <div class="table-cell t9"></div>
+                        </div>
+                        <div class="table-row details__row">
+                            <div class="table-cell left">
+                                <button class="cta-ubuntu secondary">Save and add another</button>
+                            </div>
+                            <div class="table-cell right">
+                                <a href="" class="link-cta-ubuntu text-button margin-left">Cancel</a>
+                                <button class="cta-ubuntu">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                -->
+
+                <!--
+
+                // Create RAID
+
+                // MArkup for creating a raid. This has multiple rows for the
+                // RAID settings, disks within the raid and then save / cancel controls.
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                      <input class="checkbox" type="checkbox" id="check-all" />
+                      <label class="checkbox-label" for="check-all"></label>
+                    </div>
+                    <div class="table-cell t15">
+                        <input type="text" value="raid0" class="details__input">
+                    </div>
+                    <div class="table-cell t15">34 Gb</div>
+                    <div class="table-cell t15">RAID</div>
+                    <div class="table-cell t45"></div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a class="icon partition">Partition</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row padding-bottom--ten">
+                          <div class="table-cell t1">
+                          </div>
+                          <div class="table-cell t15">
+                              <label for="type">RAID type</label>
+                              <select name="type" id="type">
+                                  <option value="raid5">RAID 5</option>
+                              </select>
+                          </div>
+                          <div class="table-cell t15">
+                              <label for="type">File system</label>
+                              <select name="type" id="type">
+                                  <option value="raid5">fat32</option>
+                              </select>
+                          </div>
+                          <div class="table-cell t30">
+                              <label for="mtPoint">Mount point</label>
+                              <input type="text">
+                          </div>
+                          <div class="table-cell t39"></div>
+                        </div>
+                        <div class="table-row details__row details__row--head">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">Name</div>
+                            <div class="table-cell t15">Size</div>
+                            <div class="table-cell t15">Device type</div>
+                            <div class="table-cell t10">Active</div>
+                            <div class="table-cell t15">Spare (Maximum 1)</div>
+                            <div class="table-cell t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sdb</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare">
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sdb</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare">
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sdb</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare">
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sdb</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare">
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row">
+                            <div class="table-cell right">
+                                <a href="" class="link-cta-ubuntu text-button">Cancel</a>
+                                <button class="cta-ubuntu">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                -->
+
+                <!--
+
+                // Create Bchache
+
+                <div class="table-row active">
+                    <div class="table-cell t1">
+                      <input class="checkbox" type="checkbox" id="check-all" />
+                      <label class="checkbox-label" for="check-all"></label>
+                    </div>
+                    <div class="table-cell t15">
+                        <input type="text" value="BChache0" class="details__input">
+                    </div>
+                    <div class="table-cell t15">34 Gb</div>
+                    <div class="table-cell t15">BChache</div>
+                    <div class="table-cell t45"></div>
+                    <div class="table-cell t9">
+                        <div class="details__controls">
+                            <a class="icon partition">Partition</a>
+                            <a class="icon remove">Delete</a>
+                        </div>
+                    </div>
+                    <div class="details__dropdown">
+                        <div class="table-row details__row padding-bottom--ten">
+                          <div class="table-cell t1">
+                          </div>
+                          <div class="table-cell t15">
+                              <label for="type">BCache setting</label>
+                              <select name="type" id="type">
+                                  <option value="raid5">Setting</option>
+                              </select>
+                          </div>
+                          <div class="table-cell t15">
+                              <label for="type">File system</label>
+                              <select name="type" id="type">
+                                  <option value="raid5">fat32</option>
+                              </select>
+                          </div>
+                          <div class="table-cell t30">
+                              <label for="mtPoint">Mount point</label>
+                              <input type="text">
+                          </div>
+                          <div class="table-cell t39"></div>
+                        </div>
+                        <div class="table-row details__row details__row--head">
+                            <div class="table-cell t1"></div>
+                            <div class="table-cell t15">Name</div>
+                            <div class="table-cell t15">Size</div>
+                            <div class="table-cell t15">Device type</div>
+                            <div class="table-cell t10">Caching</div>
+                            <div class="table-cell t15">Backing</div>
+                            <div class="table-cell t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sda</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare">
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row no-border">
+                            <div class="table-cell no-padding-top t1"></div>
+                            <div class="table-cell no-padding-top t15">sdb</div>
+                            <div class="table-cell no-padding-top t15">8.5 Gb</div>
+                            <div class="table-cell no-padding-top t15">Physical</div>
+                            <div class="table-cell no-padding-top t10">
+                                <input type="radio" name="active" value="active">
+                            </div>
+                            <div class="table-cell no-padding-top t15">
+                                <input type="radio" name="active" value="spare" selected>
+                            </div>
+                            <div class="table-cell no-padding-top t29"></div>
+                        </div>
+                        <div class="table-row details__row">
+                            <div class="table-cell right">
+                                <a href="" class="link-cta-ubuntu text-button">Cancel</a>
+                                <button class="cta-ubuntu">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                -->
             </form>
         </div>
     </div>
