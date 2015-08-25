@@ -11,6 +11,15 @@ See https://launchpad.net/maas/+milestone/1.8.2 for full details.
 Bug Fix Update
 --------------
 
+#1484696    Regenerate the connection URL on websocket client reconnect, to fix
+            CSRF after upgrade to 1.8.1.
+
+#1445942    Validate the osystem and distro_series when using the deploy action,
+            which fixes win2012r2 deployment issues.
+
+#1481940    Fix failure in MAAS startup messages by not generating dhcpd config
+            files when they are not in use.
+
 #1459865    Fix enlistment to always use the correct kernel parameters.
 
 
