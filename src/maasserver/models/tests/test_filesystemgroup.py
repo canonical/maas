@@ -36,6 +36,7 @@ from maasserver.models.filesystemgroup import (
     Bcache,
     BcacheManager,
     FilesystemGroup,
+    LVM_PE_SIZE,
     RAID,
     RAIDManager,
     VolumeGroup,
@@ -660,8 +661,8 @@ class TestFilesystemGroup(MAASServerTestCase):
                     fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device))
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=filesystems)
-        lvm_overhead = 3 * 256 * block_size
-        self.assertEquals(total_size - lvm_overhead, fsgroup.get_size())
+        extents = int(total_size / LVM_PE_SIZE)
+        self.assertEquals(extents * LVM_PE_SIZE, fsgroup.get_size())
 
     def test_get_size_returns_0_if_raid_without_filesystems(self):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
@@ -1227,8 +1228,10 @@ class TestFilesystemGroup(MAASServerTestCase):
                 filesystem_group=fsgroup, fstype=FILESYSTEM_TYPE.LVM_PV,
                 block_device=block_device)
         # Total space should be 50 GB minus the overhead.
-        lvm_overhead = 256 * block_size * 5
-        self.assertEqual((50 * 1000 ** 3) - lvm_overhead, fsgroup.get_size())
+        pv_total_size = 50 * 1000 ** 3
+        extents = int(pv_total_size / LVM_PE_SIZE)
+        usable_size = extents * LVM_PE_SIZE
+        self.assertEqual(usable_size, fsgroup.get_size())
 
         # Allocate two VirtualBlockDevice's
         factory.make_VirtualBlockDevice(
@@ -1238,7 +1241,7 @@ class TestFilesystemGroup(MAASServerTestCase):
 
         self.assertEqual(40 * 1000 ** 3, fsgroup.get_lvm_allocated_size())
         self.assertEqual(
-            (10 * 1000 ** 3) - lvm_overhead, fsgroup.get_lvm_free_space())
+            usable_size - (40 * 1000 ** 3), fsgroup.get_lvm_free_space())
 
     def test_get_virtual_block_device_block_size_returns_backing_for_bc(self):
         # This test is not included in the scenario below
