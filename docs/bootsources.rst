@@ -55,7 +55,12 @@ Starting from the configuration described above, you would need to:
 
 - Add the "Precise" selection (the selection '1' of the source '1')::
 
-    $ maas $PROFILE boot-source-selection create 1 os="ubuntu" release="precise" arches="amd64" subarches="*" labels="*"
+    $ maas $PROFILE boot-source-selections create 1 os="ubuntu" release="precise" arches="amd64" subarches="*" labels="*"
+
+After you've selected the additional boot sources you need to tell MAAS to
+start the import process by running the command::
+
+    $ maas $PROFILE boot-resources import
 
 Downloading the images from a different source
 ----------------------------------------------
