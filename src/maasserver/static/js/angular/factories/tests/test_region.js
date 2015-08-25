@@ -199,33 +199,37 @@ describe("RegionConnection", function() {
 
     describe("connect", function() {
 
-        var url = "http://test-url";
+        var url = "http://test-url", buildUrlSpy;
+        beforeEach(function() {
+            buildUrlSpy = spyOn(RegionConnection, "_buildUrl");
+            buildUrlSpy.and.returnValue(url);
+        });
 
         it("sets url", function() {
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             expect(RegionConnection.url).toBe(url);
         });
 
         it("sets autoReconnect to true", function() {
             RegionConnection.autoReconnect = false;
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             expect(RegionConnection.autoReconnect).toBe(true);
         });
 
         it("calls buildSocket with url", function() {
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             expect(RegionConnection.buildSocket).toHaveBeenCalledWith(url);
         });
 
         it("sets websocket handlers", function() {
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             expect(webSocket.onopen).not.toBeNull();
             expect(webSocket.onerror).not.toBeNull();
             expect(webSocket.onclose).not.toBeNull();
         });
 
         it("sets connect to true when onopen called", function() {
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             webSocket.onopen({});
             expect(RegionConnection.connected).toBe(true);
         });
@@ -236,13 +240,13 @@ describe("RegionConnection", function() {
                 expect(evt).toBe(evt_obj);
                 done();
             });
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             webSocket.onerror(evt_obj);
         });
 
         it("sets connect to false when onclose called", function() {
             RegionConnection.autoReconnect = false;
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             webSocket.onclose({});
             expect(RegionConnection.connected).toBe(false);
         });
@@ -250,7 +254,7 @@ describe("RegionConnection", function() {
         it("calls close handler when onclose called", function(done) {
             var evt_obj = {};
             RegionConnection.autoReconnect = false;
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             RegionConnection.registerHandler("close", function(evt) {
                 expect(evt).toBe(evt_obj);
                 done();
@@ -259,15 +263,16 @@ describe("RegionConnection", function() {
         });
 
         it("onclose calls connect when autoReconnect is true", function() {
-            RegionConnection.connect(url);
-            spyOn(RegionConnection, "connect");
+            RegionConnection.connect();
+            var new_url = "http://new-url";
+            buildUrlSpy.and.returnValue(new_url);
             webSocket.onclose({});
             $timeout.flush();
-            expect(RegionConnection.connect).toHaveBeenCalledWith(url);
+            expect(RegionConnection.url).toBe(new_url);
         });
 
         it("onclose sets error", function() {
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             webSocket.onclose();
             $timeout.flush();
             expect(RegionConnection.error).toBe(
@@ -277,7 +282,7 @@ describe("RegionConnection", function() {
         it("calls onMessage when onmessage called", function() {
             var sampleData = { sample: "data" };
             spyOn(RegionConnection, "onMessage");
-            RegionConnection.connect(url);
+            RegionConnection.connect();
             webSocket.onmessage({ data: angular.toJson(sampleData) });
             expect(RegionConnection.onMessage).toHaveBeenCalledWith(
                 sampleData);
