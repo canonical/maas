@@ -3,6 +3,132 @@ Changelog
 =========
 
 
+1.9.0 (alpha1)
+==============
+
+Important announcements
+-----------------------
+
+**LVM is now the default partitioning layout**
+ Starting from MAAS 1.9, all of the deployments will result on having
+ LVM configure for each of the machines. A Flat partitioning layout is not
+ longer used by default. (This, however, can be changed in the MAAS Settings
+ Page).
+
+**Re-commissioning required from VM's with VirtIO devices**
+ Starting from MAAS 1.9, storage partitioning and advance configuration is
+ supported natively (see below). In order for MAAS to correctly map
+ VirtIO devices in VM's, these VM nodes need to be re-commissioned.
+
+ If not re-comissioned, MAAS will prevent the deployment until done so.
+ Previously deployed nodes won't be affected, but will also have to be
+ re-commissioned if released.
+
+Major new features
+------------------
+
+**Storage Partitioning and Advanced Configuration**
+ MAAS now natively supports Storage Partitioning and Advanced Configuration.
+ This allows MAAS to deploy machines with different Storage Layouts, as
+ well as different complext partitioning configurations. Storage support
+ includes:
+
+ * LVM
+ * Bcache
+ * Software Raid
+ * Advanced partitioning
+
+ For more information refer to :ref:`storage`.
+
+Minor notable changes
+---------------------
+
+**Minimal Config Files for Daemons**
+ Starting from MAAS 1.9, minimal configuration files have been introduced
+ for both, the MAAS Region Controller and the MAAS Cluster Controller daemons.
+
+ *  The Region Controller (`maas-regiond`) has now dropped the usage of
+    `/etc/maas/maas_local_settings.py` in favor of `/etc/maas/regiond.conf`.
+    Available configuration options are now `database_host`, `database_name`,
+    `database_user`, `database_pass`, `maas_url`. MAAS will attempt to migrate
+    any configuration on upgrade, otherwise it will use sane defaults.
+
+ *  The Cluster Controller (`maas-clusterd`) has now dropped the usage of
+    `/etc/maas/pserv.yaml` and `/etc/maas/maas_cluster.conf` in favor of
+    `/etc/maas/clusterd.conf`. Available configuration options are now `maas_url`
+    and `cluster_uuid` only. MAAS will attempt to migrate any configuration
+    on upgrade, otherwise it will use sane defaults.
+
+**HWE Kernels**
+ MAAS now has a different approach to deploying Hardware Enablement
+ Kernels. Start from MAAS 1.9, the HWE kernels are no longer coupled
+ to subarchitectures of a machine. For each Ubuntu release, users
+ will be able to select any of the available HWE kernels for such
+ release, as well as set the minimum kernel the machine will be
+ deployed with by default.
+
+ For more information, see :ref:`hardware-enablement-kernels`.
+
+**Python Power Drivers**
+ Starting from MAAS 1.9, MAAS is moving away from using shell scripts
+ templates for Power Drivers. These are being migrated to MAAS'
+ internal control as power drivers. Currently supported are APC, MSCM,
+ MSFT OCS, SM15k, UCSM, Virsh, VMWare and IPMI.
+
+ Remaining Power Drivers include AMT, Fence CDU's, Moonshot.
+
+Known Problems & Workarounds
+----------------------------
+
+**Fail to deploy Trusty due to missing bcache-tools**
+ In order to correctly perform storage partitioning in Trusty+, the
+ new version of curtin used by MAAS requires bcache-tools to be
+ installed. However, these tools are not available in Trusty, hence
+ causing MAAS/curtin deployment failures when installing Trusty. An
+ SRU in Ubuntu Trusty for these tools is already in progress.
+
+ To work around the problem, a curtin custom configuration to install
+ bcache-tools can be used in `/etc/maas/preseeds/curtin_userdata`::
+
+  {{if node.get_distro_series() in ['trusty']}}
+  early_commands:
+    add_repo: ["add-apt-repository", "-y", "ppa:maas-maintainers/experimental"]
+  {{endif}}
+
+ See bug `1449099`_ for more information.
+
+.. _1449099:
+  https://bugs.launchpad.net/bugs/1449099
+
+**Fail to deploy LVM in Trusty**
+ MAAS fail to deploy Ubuntu Trusty with a LVM Storage layout, as
+ curtin will fail to perform the partitioning. See bug `1488632`_
+ for more information.
+
+.. _1488632:
+  https://bugs.launchpad.net/bugs/1488632
+
+
+1.8.2
+=====
+
+See https://launchpad.net/maas/+milestone/1.8.2 for full details.
+
+Bug Fix Update
+--------------
+
+#1484696    Regenerate the connection URL on websocket client reconnect, to fix
+            CSRF after upgrade to 1.8.1.
+
+#1445942    Validate the osystem and distro_series when using the deploy action,
+            which fixes win2012r2 deployment issues.
+
+#1481940    Fix failure in MAAS startup messages by not generating dhcpd config
+            files when they are not in use.
+
+#1459865    Fix enlistment to always use the correct kernel parameters.
+
+
 1.8.1
 =====
 
