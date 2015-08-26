@@ -315,6 +315,7 @@ from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
+from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
@@ -326,6 +327,7 @@ builtin_power_drivers = [
     HMCPowerDriver(),
     IPMIPowerDriver(),
     MicrosoftOCSPowerDriver(),
+    MoonshotIPMIPowerDriver(),
     MSCMPowerDriver(),
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),

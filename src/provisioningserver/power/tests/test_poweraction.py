@@ -202,28 +202,11 @@ class TestPowerAction(MAASTestCase):
             locate_config('templates/power'),
             PowerAction(power_type).get_config_basedir())
 
-    def test_moonshot_checks_state(self):
-        # We can't test the moonshot template in detail (and it may be
-        # customized), but by making it use "echo" instead of a real
-        # ipmi we can make it get a bogus answer from its status check.
-        # The bogus answer is actually the rest of the ipmi command
-        # line.  It will complain about this and fail.
-        action = PowerAction("moonshot")
-        script = action.render_template(
-            action.get_template(),
-            action.update_context(dict(
-                power_change='on', power_address='mysystem',
-                power_user='me', power_pass='me', power_hwaddress='me',
-                ipmitool='echo')),
-        )
-        output = action.run_shell(script)
-        self.assertIn("Got unknown power state from ipmipower", output)
-
 
 class TestTemplateContext(MAASTestCase):
 
     def make_stubbed_power_action(self):
-        power_action = PowerAction("moonshot")
+        power_action = PowerAction("amt")
         render_template = self.patch(power_action, "render_template")
         render_template.return_value = "echo done"
         return power_action
