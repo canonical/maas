@@ -31,6 +31,7 @@ from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     MockCalledOnceWith,
+    Provides,
 )
 from maastesting.testcase import (
     MAASTestCase,
@@ -49,6 +50,8 @@ from provisioningserver.utils.twisted import (
     deferToNewThread,
     deferWithTimeout,
     FOREVER,
+    IAsynchronous,
+    ISynchronous,
     PageFetcher,
     pause,
     reactor_sync,
@@ -120,6 +123,10 @@ class TestAsynchronousDecorator(MAASTestCase):
         # The arguments passed back match those passed in from
         # do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
+
+    def test__provides_marker_interface(self):
+        self.assertThat(return_args, Not(Provides(IAsynchronous)))
+        self.assertThat(asynchronous(return_args), Provides(IAsynchronous))
 
 
 noop = lambda: None
@@ -233,6 +240,10 @@ class TestSynchronousDecorator(MAASTestCase):
     def test_allows_call_in_any_thread_when_reactor_not_running(self):
         self.patch(reactor, "running", False)
         self.assertEqual(((3, 4), {"five": 5}), self.return_args(3, 4, five=5))
+
+    def test__provides_marker_interface(self):
+        self.assertThat(return_args, Not(Provides(ISynchronous)))
+        self.assertThat(synchronous(return_args), Provides(ISynchronous))
 
 
 class TestReactorSync(MAASTestCase):

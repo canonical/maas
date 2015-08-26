@@ -20,6 +20,8 @@ __all__ = [
     'deferToNewThread',
     'deferWithTimeout',
     'FOREVER',
+    'IAsynchronous',
+    'ISynchronous',
     'PageFetcher',
     'pause',
     'reactor_sync',
@@ -55,6 +57,7 @@ from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from twisted.python.threadable import isInIOThread
 from twisted.web.client import getPage
+from zope import interface
 
 
 undefined = object()
@@ -71,6 +74,15 @@ def deferred(func):
     def wrapper(*args, **kwargs):
         return maybeDeferred(func, *args, **kwargs)
     return wrapper
+
+
+class IAsynchronous(interface.Interface):
+    """Denotes that a call to the provider will result in the execution of
+    asynchronous or non-blocking code.
+
+    Absence of this interface does not mean that a call will definitely not
+    result in the execution of asynchronous/non-blocking code.
+    """
 
 
 def asynchronous(func=undefined, timeout=undefined):
@@ -91,9 +103,14 @@ def asynchronous(func=undefined, timeout=undefined):
     where the function itself handles time-outs, or where the called function
     doesn't actually defer work but just needs to run in the reactor thread.
 
+    It is possible to programmatically determine if a function has been thusly
+    decorated by checking if `IAsynchronous` is provided::
+
+      if IAsynchronous.providedBy(a_function):
+          ...  # a_function has been decorated with @asynchronous
+
     This also serves a secondary documentation purpose; functions decorated
     with this are readily identifiable as asynchronous.
-
     """
     if func is undefined:
         return partial(asynchronous, timeout=timeout)
@@ -122,7 +139,20 @@ def asynchronous(func=undefined, timeout=undefined):
         else:
             return func_in_reactor(*args, **kwargs).wait(timeout)
 
+    # This makes it possible to reliably determine programmatically if a
+    # function has been decorated with @asynchronous.
+    interface.directlyProvides(wrapper, IAsynchronous)
+
     return wrapper
+
+
+class ISynchronous(interface.Interface):
+    """Denotes that a call to the provider will result in the execution of
+    synchronous or blocking code.
+
+    Absence of this interface does not mean that a call will definitely not
+    result in the execution of synchronous/blocking code.
+    """
 
 
 def synchronous(func):
@@ -140,6 +170,12 @@ def synchronous(func):
     important, and will be appropriate to the environment in which it is
     utilised.
 
+    It is possible to programmatically determine if a function has been thusly
+    decorated by checking if `ISynchronous` is provided::
+
+      if ISynchronous.providedBy(a_function):
+          ...  # a_function has been decorated with @synchronous
+
     This also serves a secondary documentation purpose; functions decorated
     with this are readily identifiable as synchronous, or blocking.
 
@@ -156,6 +192,11 @@ def synchronous(func):
                 "reactor thread." % func.__name__)
         else:
             return func(*args, **kwargs)
+
+    # This makes it possible to reliably determine programmatically if a
+    # function has been decorated with @synchronous.
+    interface.directlyProvides(wrapper, ISynchronous)
+
     return wrapper
 
 
