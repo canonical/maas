@@ -26,7 +26,12 @@ from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    IAsynchronous,
+)
+from twisted.internet import reactor
+from twisted.internet.threads import deferToThreadPool
 
 
 class HandlerError(Exception):
@@ -181,9 +186,15 @@ class Handler:
 
     __metaclass__ = HandlerMetaclass
 
-    def __init__(self, user, backend_cache):
+    def __init__(self, user, backend_cache, threadpool=None):
         self.user = user
         self.cache = HandlerCache(self._meta.handler_name, backend_cache)
+        # Allowing a default threadpool, namely the reactor's threadpool, is a
+        # convenience when testing and not a decent production option.
+        if threadpool is None:
+            self.threadpool = reactor.getThreadPool()
+        else:
+            self.threadpool = threadpool
 
         # Holds a set of all pks that the client has loaded and has on their
         # end of the connection. This is used to inform the client of the
@@ -316,20 +327,33 @@ class Handler:
         """
         return get_QueryDict(params)
 
-    @synchronous
-    @transactional
-    def execute(self, method, params):
+    @asynchronous
+    def execute(self, method_name, params):
         """Execute the given method on the handler.
 
         Checks to make sure the method is valid and allowed perform executing
         the method.
         """
-        if method not in self._meta.allowed_methods:
-            raise HandlerNoSuchMethodError(method)
-        m = getattr(self, method, None)
-        if m is None:
-            raise HandlerNoSuchMethodError(method)
-        return m(params)
+        if method_name in self._meta.allowed_methods:
+            try:
+                method = getattr(self, method_name)
+            except AttributeError:
+                raise HandlerNoSuchMethodError(method_name)
+            else:
+                # Handler methods are predominantly transactional and thus
+                # blocking/synchronous. Genuinely non-blocking/asynchronous
+                # methods must out themselves explicitly.
+                if IAsynchronous.providedBy(method):
+                    # The @asynchronous decorator will DTRT.
+                    return method(params)
+                else:
+                    # This is going to block. For good measure we also assume
+                    # it's going to use the database.
+                    return deferToThreadPool(
+                        reactor, self.threadpool,
+                        transactional(method), params)
+        else:
+            raise HandlerNoSuchMethodError(method_name)
 
     def list(self, params):
         """List objects.

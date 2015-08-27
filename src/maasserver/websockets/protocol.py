@@ -266,16 +266,11 @@ class WebSocketProtocol(Protocol):
                 STATUSES.PROTOCOL_ERROR,
                 "Handler %s does not exist." % handler_name)
             return None
-        handler = handler_class(self.user, self.cache)
 
-        # Wrap the handler.execute method in transactional. This will insure
-        # the retry logic is performed and that any post_commit will be
-        # performed. The execution of this method is defered to a thread
-        # because it interacts with the database which is blocking.
-        transactional_execute = transactional(handler.execute)
-        d = deferToThreadPool(
-            reactor, self.factory.threadpool,
-            transactional_execute, method, message.get("params", {}))
+        handler = handler_class(
+            self.user, self.cache, self.factory.threadpool)
+
+        d = handler.execute(method, message.get("params", {}))
         d.addCallbacks(
             partial(self.sendResult, request_id),
             partial(self.sendError, request_id, handler, method))

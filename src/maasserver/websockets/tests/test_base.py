@@ -27,6 +27,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets import base
 from maasserver.websockets.base import (
     Handler,
     HandlerCache,
@@ -41,15 +42,19 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     MagicMock,
     sentinel,
 )
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     Equals,
     Is,
     IsInstance,
     MatchesStructure,
 )
+from testtools.testcase import ExpectedException
+from twisted.internet import reactor
 
 
 def make_handler(name, **kwargs):
@@ -392,24 +397,35 @@ class TestHandler(MAASServerTestCase):
 
     def test_execute_only_allows_meta_allowed_methods(self):
         handler = self.make_nodes_handler(allowed_methods=['list'])
-        self.assertRaises(
-            HandlerNoSuchMethodError,
-            handler.execute, "get", {})
+        with ExpectedException(HandlerNoSuchMethodError):
+            handler.execute("get", {}).wait()
 
     def test_execute_raises_HandlerNoSuchMethodError(self):
         handler = self.make_nodes_handler(allowed_methods=['extra_method'])
-        self.assertRaises(
-            HandlerNoSuchMethodError,
-            handler.execute, "extra_method", {})
+        with ExpectedException(HandlerNoSuchMethodError):
+            handler.execute("extra_method", {}).wait()
 
     def test_execute_calls_method_with_params(self):
+        # Methods are assumed by default to be synchronous and are called in a
+        # thread that originates from a specific threadpool.
         handler = self.make_nodes_handler()
-        params = {
-            "system_id": factory.make_name("system_id"),
-            }
-        mock_get = self.patch_autospec(handler, "get")
-        handler.execute("get", params)
-        self.assertThat(mock_get, MockCalledOnceWith(params))
+        params = {"system_id": factory.make_name("system_id")}
+        self.patch(base, "deferToThreadPool").return_value = sentinel.thing
+        result = handler.execute("get", params).wait()
+        self.assertThat(result, Is(sentinel.thing))
+        self.assertThat(base.deferToThreadPool, MockCalledOnceWith(
+            reactor, reactor.getThreadPool(), ANY, params))
+        [_, _, func, _] = base.deferToThreadPool.call_args[0]
+        self.assertThat(func.func, Equals(handler.get))
+
+    def test_execute_calls_asynchronous_method_with_params(self):
+        # An asynchronous method -- decorated with @asynchronous -- is called
+        # directly, not in a thread.
+        handler = self.make_nodes_handler()
+        handler.get = asynchronous(lambda params: sentinel.thing)
+        params = {"system_id": factory.make_name("system_id")}
+        result = handler.execute("get", params).wait()
+        self.assertThat(result, Is(sentinel.thing))
 
     def test_list(self):
         output = [
