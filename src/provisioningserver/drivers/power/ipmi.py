@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import os
 from subprocess import (
     PIPE,
     Popen,
@@ -50,8 +51,13 @@ class IPMIPowerDriver(PowerDriver):
     description = "IPMI Power Driver."
     settings = []
 
+    def get_c_environment(self):
+        env = os.environ.copy()
+        env['LC_ALL'] = 'C'
+        return env
+
     @staticmethod
-    def _issue_ipmi_chassis_config_command(command, change, address):
+    def _issue_ipmi_chassis_config_command(command, change, address, env):
         with NamedTemporaryFile() as tmp_config:
             # Write out the chassis configuration.
             tmp_config.write(IPMI_CONFIG)
@@ -60,7 +66,7 @@ class IPMIPowerDriver(PowerDriver):
             # XXX: Not using call_and_check here because we
             # need to check stderr.
             command = tuple(command) + ("--filename", tmp_config.name)
-            process = Popen(command, stdout=PIPE, stderr=PIPE)
+            process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
             stdout, stderr = process.communicate()
             stderr = stderr.strip()
         if "password invalid" in stderr:
@@ -70,10 +76,10 @@ class IPMIPowerDriver(PowerDriver):
                 "Failed to power %s %s: %s" % (change, address, stderr))
 
     @staticmethod
-    def _issue_ipmi_power_command(command, change, address):
+    def _issue_ipmi_power_command(command, change, address, env):
         command = tuple(command)  # For consistency when testing.
         try:
-            output = call_and_check(command)
+            output = call_and_check(command, env=env)
         except ExternalProcessError as e:
             raise PowerFatalError(
                 "Failed to power %s %s: %s" % (
@@ -98,6 +104,9 @@ class IPMIPowerDriver(PowerDriver):
 
         if is_set(mac_address) and not is_set(power_address):
             power_address = find_ip_via_arp(mac_address)
+
+        # Set environment variables
+        env = self.get_c_environment()
 
         # The `-W opensesspriv` workaround is required on many BMCs, and
         # should have no impact on BMCs that don't require it.
@@ -126,7 +135,7 @@ class IPMIPowerDriver(PowerDriver):
         # Before changing state run the chassis config command.
         if power_change in ("on", "off"):
             self._issue_ipmi_chassis_config_command(
-                ipmi_chassis_config_command, power_change, power_address)
+                ipmi_chassis_config_command, power_change, power_address, env)
 
         # Additional arguments for the power command.
         if power_change == 'on':
@@ -142,7 +151,7 @@ class IPMIPowerDriver(PowerDriver):
 
         # Update or query the power state.
         return self._issue_ipmi_power_command(
-            ipmipower_command, power_change, power_address)
+            ipmipower_command, power_change, power_address, env)
 
     def power_on(self, system_id, **kwargs):
         self._issue_ipmi_command('on', **kwargs)

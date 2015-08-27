@@ -92,15 +92,16 @@ class TestIPMIPowerDriver(MAASTestCase):
     def test__finds_power_address_from_mac_address(self):
         (power_address, power_user, power_pass, power_driver, power_off_mode,
          ipmipower, ipmi_chassis_config, params) = make_parameters()
-        params['mac_address'] = factory.make_mac_address()
-        params['power_address'] = random.choice((None, "", "   "))
-
+        driver = IPMIPowerDriver()
         ip_address = factory.make_ipv4_address()
         find_ip_via_arp = self.patch(ipmi_module, 'find_ip_via_arp')
         find_ip_via_arp.return_value = ip_address
         power_change = random.choice(("on", "off"))
+        env = driver.get_c_environment()
 
-        driver = IPMIPowerDriver()
+        params['mac_address'] = factory.make_mac_address()
+        params['power_address'] = random.choice((None, "", "   "))
+
         self.patch_autospec(driver, "_issue_ipmi_chassis_config_command")
         self.patch_autospec(driver, "_issue_ipmi_power_command")
         driver._issue_ipmi_command(power_change, **params)
@@ -108,7 +109,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         # The IP address is passed to _issue_ipmi_chassis_config_command.
         self.assertThat(
             driver._issue_ipmi_chassis_config_command,
-            MockCalledOnceWith(ANY, power_change, ip_address))
+            MockCalledOnceWith(ANY, power_change, ip_address, env))
         # The IP address is also within the command passed to
         # _issue_ipmi_chassis_config_command.
         self.assertThat(
@@ -117,7 +118,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         # The IP address is passed to _issue_ipmi_power_command.
         self.assertThat(
             driver._issue_ipmi_power_command,
-            MockCalledOnceWith(ANY, power_change, ip_address))
+            MockCalledOnceWith(ANY, power_change, ip_address, env))
         # The IP address is also within the command passed to
         # _issue_ipmi_power_command.
         self.assertThat(
@@ -131,7 +132,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         tmpfile.name = factory.make_name("filename")
 
         IPMIPowerDriver._issue_ipmi_chassis_config_command(
-            ["true"], sentinel.change, sentinel.addr)
+            ["true"], sentinel.change, sentinel.addr, None)
 
         self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
         self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
@@ -149,6 +150,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--cycle', '--on-if-off')
         ipmi_power_driver = IPMIPowerDriver()
+        env = ipmi_power_driver.get_c_environment()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (None, '')
@@ -160,9 +162,11 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.expectThat(
             popen_mock, MockCalledOnceWith(
-                ipmi_chassis_config_command, stdout=PIPE, stderr=PIPE))
+                ipmi_chassis_config_command, stdout=PIPE,
+                stderr=PIPE, env=env))
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmipower_command))
+            call_and_check_mock, MockCalledOnceWith(
+                ipmipower_command, env=env))
         self.expectThat(result, Equals('on'))
 
     def test__issue_ipmi_command_issues_power_off(self):
@@ -175,6 +179,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--off', )
         ipmi_power_driver = IPMIPowerDriver()
+        env = ipmi_power_driver.get_c_environment()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (None, '')
@@ -186,9 +191,11 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.expectThat(
             popen_mock, MockCalledOnceWith(
-                ipmi_chassis_config_command, stdout=PIPE, stderr=PIPE))
+                ipmi_chassis_config_command, stdout=PIPE,
+                stderr=PIPE, env=env))
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmipower_command))
+            call_and_check_mock, MockCalledOnceWith(
+                ipmipower_command, env=env))
         self.expectThat(result, Equals('off'))
 
     def test__issue_ipmi_command_issues_power_off_soft_mode(self):
@@ -202,6 +209,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--soft', )
         ipmi_power_driver = IPMIPowerDriver()
+        env = ipmi_power_driver.get_c_environment()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (None, '')
@@ -213,9 +221,11 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.expectThat(
             popen_mock, MockCalledOnceWith(
-                ipmi_chassis_config_command, stdout=PIPE, stderr=PIPE))
+                ipmi_chassis_config_command, stdout=PIPE,
+                stderr=PIPE, env=env))
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmipower_command))
+            call_and_check_mock, MockCalledOnceWith(
+                ipmipower_command, env=env))
         self.expectThat(result, Equals('off'))
 
     def test__issue_ipmi_command_issues_power_query(self):
@@ -225,6 +235,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--stat', )
         ipmi_power_driver = IPMIPowerDriver()
+        env = ipmi_power_driver.get_c_environment()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (None, '')
@@ -236,7 +247,8 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.expectThat(popen_mock, MockNotCalled())
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmipower_command))
+            call_and_check_mock, MockCalledOnceWith(
+                ipmipower_command, env=env))
         self.expectThat(result, Equals('other'))
 
     def test__issue_ipmi_command_issues_raises_power_auth_error(self):
