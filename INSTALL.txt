@@ -6,34 +6,23 @@ Installing MAAS
 
 There are two main ways to install MAAS:
 
- * :ref:`From Ubuntu's package archive on an existing Ubuntu
-   install. <pkg-install>`
+ * :ref:`From a package repository. <pkg-install>`
  * :ref:`As a fresh install from Ubuntu Server install
    media. <disc-install>`
 
-If you are interested in testing the latest development version you
-can also check out the very latest source and build MAAS — see
-the :doc:`hacking guide <hacking>` — or use the `Testing PPA`_ or the
-`Daily PPA`_. Note that these PPAs contain development versions of
-MAAS that are potentially unstable, so use with caution.
 
-.. _Testing PPA:
-  https://launchpad.net/~maas-maintainers/+archive/ubuntu/testing
-.. _Daily PPA:
-  https://launchpad.net/~maas-maintainers/+archive/ubuntu/dailybuilds
+MAAS Packages and Repositories
+------------------------------
 
+MAAS Packages
+^^^^^^^^^^^^^
 
-.. _pkg-install:
-
-Installing MAAS from the archive
---------------------------------
-
-Installing MAAS from packages is thankfully straightforward. There are
-actually several packages that go into making up a working MAAS
-install, but for convenience, many of these have been gathered into a
-virtual package called 'maas' which will install the necessary
-components for a 'seed cloud', that is a single server that will
-directly control a group of nodes. The main packages are:
+Installing MAAS from packages is straightforward. There are actually
+several packages that go into making up a working MAAS install, but
+for convenience, many of these have been gathered into a virtual
+package called 'maas' which will install the necessary components
+for a 'seed cloud', that is a single server that will directly
+control a group of nodes. The main packages are:
 
  * ``maas`` - seed cloud setup, which includes both the region
    controller and the cluster controller below.
@@ -41,6 +30,7 @@ directly control a group of nodes. The main packages are:
  * ``maas-cluster-controller`` - controls a group ("cluster") of nodes
    including DHCP management.
  * ``maas-dhcp``/``maas-dns`` - required when managing dhcp/dns.
+ * ``maas-proxy`` - required to provide a MAAS proxy.
 
 If you need to separate these services or want to deploy an additional
 cluster controller, you should install the corresponding packages
@@ -56,20 +46,56 @@ installed if you later set the options in the web interface to have
 MAAS manage DHCP/DNS). If you need to integrate your MAAS setup under
 an existing DHCP setup, see :ref:`manual-dhcp`
 
-.. note::
-  A more up-to-date MAAS is available for the most recent Ubuntu LTS
-  release in the Canonical cloud archive.  You can activate the archive
-  with ``sudo add-apt-repository cloud-archive:tools``.  Using packages
-  from this archive is recommended as it contains important fixes and
-  new features that are not always available in the Ubuntu archive.
+MAAS Package Repositories
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
+While MAAS is available in the Ubuntu Archives per each release of
+Ubuntu, the version might not be the latest. However, if you would like
+to install a newer version of MAAS (the latest stable release), this is
+available in the following PPA:
 
-Install packages
-^^^^^^^^^^^^^^^^
+ * `ppa:maas/stable`_
+
+.. Note::
+  The MAAS team also releases the latest development release of MAAS.
+  The development release is available in `ppa:maas/next`_. However, this
+  is meant to be used for testing and at your own risk.
+
+Adding MAAS package repository is simple. At the command line, type::
+
+  $ sudo add-apt-repository ppa:maas/stable
+
+You will be asked to confirm whether you would like to add this repository,
+and its key. Upon configumation, the following needs to be typed at the
+command line::
+
+  $ sudo apt-get update
+
+.. _ppa:maas/stable:
+  https://launchpad.net/~maas/+archive/ubuntu/stable
+.. _ppa:maas/next:
+  https://launchpad.net/~maas/+archive/ubuntu/next
+
+.. _pkg-install:
+
+Installing MAAS from the command line
+-------------------------------------
+
+Installing a Single Node MAAS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 At the command line, type::
 
-  $ sudo apt-get install maas maas-dhcp maas-dns
+  $ sudo apt-get install maas
+
+This will install both the MAAS Region Controller and the MAAS Cluster
+Controller, and will select sane defaults for the communication between
+the Cluster Controller and the Region Controller. After installation,
+you can access the Web Interface. Then, there are just a few more setup
+steps :ref:`post_install`
+
+Reconfiguring a MAAS Installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You will see a list of packages and a confirmation message to
 proceed. The exact list will obviously depend on what you already have
@@ -86,15 +112,39 @@ region controller (i.e. the web and API interface) from a different
 network address, for example where a server has several network
 interfaces.
 
-Once the configuration scripts have run you should see this message
-telling you that the system is ready to use:
+Adding Cluster Controllers
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. image:: media/install_controller-config.*
+If you would like to add addtional MAAS Cluster Controllers to your
+MAAS setup, you can do so by installing the Cluster Controller in a
+different Ubuntu machine. At the command line, type::
 
-The web server is started last, so you have to accept this message
-before the service is run and you can access the Web interface. Then
-there are just a few more setup steps :ref:`post_install`
+ $ sudo apt-get install maas-cluster-controller
 
+Once installed, you will need to input the shared secret, in order
+to allow the Cluster Controller to authenticate with the Region Controller.
+You can obtain the shared secret from the Region Controller. The
+shared secret can be copied from the Region Controller in::
+
+ /var/lib/maas/secret
+
+Once you have copied the secret, you can install it in the Cluster
+Controller. At the command line, type::
+
+ $ sudo maas-provision
+
+Once installed, you will need to reconfigure the Cluster Controller
+to correctly point to the API hostname or IP address of the Region
+Controller that's on the same network as the Cluster Controller:
+
+ $ sudo dpkg-reconfigure maas-cluster-controller
+
+The configuration for the MAAS Cluster Controller will automatically
+run and pop up this config screen:
+
+.. image:: media/install_cluster-config.*
+
+Once entered, the MAAS Cluster Controller configuration will request
 
 .. _disc-install:
 
