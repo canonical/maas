@@ -230,7 +230,7 @@ def release_a_newer_than_b(a, b):
     def get_release_num(release):
         release = release.lower()
         if 'hwe-' in release:
-            release = release.lstrip('hwe-')
+            release = release.replace('hwe-', '')
         return ord(release[0])
 
     # Compare release versions based off of the first letter of their

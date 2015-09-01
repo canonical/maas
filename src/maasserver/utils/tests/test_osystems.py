@@ -311,7 +311,7 @@ class TestReleaseANewerThanB(MAASServerTestCase):
         for i in alphabet:
             true_count = 0
             for j in alphabet:
-                if release_a_newer_than_b(i, j):
+                if release_a_newer_than_b('hwe-' + i, j):
                     true_count += 1
             previous_true += 1
             self.assertEqual(previous_true, true_count)
