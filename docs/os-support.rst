@@ -94,7 +94,7 @@ own images. However, ``maas-image-builder`` only supports the generation
 of CentOS and RHEL images. To install ``maas-image-builder``, please
 follow the instructions::
 
-  $ sudo apt-get add-apt-repository ppa:maas-maintainers/stable
+  $ sudo apt-add-repository ppa:maas-maintainers/stable
   $ sudo apt-get install maas-image-builder
 
 
