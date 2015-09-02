@@ -19,7 +19,6 @@ __all__ = [
 import logging
 from operator import itemgetter
 
-import crochet
 from lxml import etree
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
@@ -57,8 +56,17 @@ from provisioningserver.power.poweraction import (
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tags import merge_details_cleanly
-from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.threads import deferToThread
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferWithTimeout,
+)
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    CancelledError,
+    inlineCallbacks,
+    returnValue,
+)
+from twisted.internet.threads import deferToThreadPool
 
 
 maaslog = get_maas_logger("websockets.node")
@@ -518,61 +526,82 @@ class NodeHandler(TimestampedModelHandler):
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
 
+    def in_thread(self, func, *args, **kwargs):
+        return deferToThreadPool(
+            reactor, self.threadpool, func, *args, **kwargs)
+
+    @asynchronous
+    @inlineCallbacks
     def check_power(self, params):
         """Check the power state of the node."""
-        obj = self.get_object(params)
-        if not obj.installable:
-            raise HandlerError(
-                "%s: Unable to query power state; not an installable node" %
-                obj.hostname)
 
-        ng = obj.nodegroup
+        # XXX: This is largely the same function as
+        # update_power_state_of_node.
 
+        @transactional
+        def get_node_cluster_and_power_info():
+            obj = self.get_object(params)
+            if obj.installable:
+                node_info = obj.system_id, obj.hostname
+                nodegroup_info = obj.nodegroup.cluster_name, obj.nodegroup.uuid
+                try:
+                    power_info = obj.get_effective_power_info()
+                except UnknownPowerType:
+                    return node_info, nodegroup_info, None
+                else:
+                    return node_info, nodegroup_info, power_info
+            else:
+                raise HandlerError(
+                    "%s: Unable to query power state; not an "
+                    "installable node" % obj.hostname)
+
+        @transactional
+        def update_power_state(state):
+            obj = self.get_object(params)
+            obj.update_power_state(state)
+
+        # Grab info about the node, its cluster, and its power parameters from
+        # the database. If it can't be queried we can return early, but first
+        # update the node's power state with what we know we don't know.
+        node_info, cluster_info, power_info = (
+            yield self.in_thread(get_node_cluster_and_power_info))
+        if power_info is None or not power_info.can_be_queried:
+            yield self.in_thread(update_power_state, "unknown")
+            returnValue("unknown")
+
+        # Get a client to talk to the node's cluster. If we're not connected
+        # we can return early, albeit with an exception.
+        cluster_name, cluster_uuid = cluster_info
         try:
-            client = getClientFor(ng.uuid)
+            client = yield getClientFor(cluster_uuid)
         except NoConnectionsAvailable:
             maaslog.error(
                 "Unable to get RPC connection for cluster '%s' (%s)",
-                ng.cluster_name, ng.uuid)
+                cluster_name, cluster_uuid)
             raise HandlerError("Unable to connect to cluster controller")
 
-        state = None
+        # Query the power state via the node's cluster.
+        node_id, node_hostname = node_info
         try:
-            power_info = obj.get_effective_power_info()
-        except UnknownPowerType:
-            # Only raises this error when the node doesn't have a power type
-            # set. Return unknown because with no power type, we don't know
-            # its power state.
-            state = "unknown"
-        if not power_info.can_be_started:
-            # If its cannot be started then its not queryable.
-            state = "unknown"
-
-        if state is None:
-            call = client(
-                PowerQuery, system_id=obj.system_id, hostname=obj.hostname,
-                power_type=power_info.power_type,
+            response = yield deferWithTimeout(
+                POWER_QUERY_TIMEOUT, client, PowerQuery, system_id=node_id,
+                hostname=node_hostname, power_type=power_info.power_type,
                 context=power_info.power_parameters)
-            try:
-                state = call.wait(POWER_QUERY_TIMEOUT)['state']
-            except crochet.TimeoutError:
-                maaslog.error(
-                    "%s: Timed out waiting for power response in "
-                    "Node.power_state",
-                    obj.hostname)
-                state = "error"
-            except (NotImplementedError, PowerActionFail):
-                state = "error"
+        except CancelledError:
+            # We got fed up waiting. The query may later discover the node's
+            # power state but by then we won't be paying attention.
+            maaslog.error("%s: Timed-out querying power.", node_hostname)
+            state = "error"
+        except PowerActionFail:
+            # We discard the reason. That will have been logged elsewhere.
+            # Here we're signalling something very simple back to the user.
+            state = "error"
+        except NotImplementedError:
+            # The power driver has declared that it doesn't after all know how
+            # to query the power for this node, so "unknown" seems appropriate.
+            state = "unknown"
+        else:
+            state = response["state"]
 
-        @asynchronous
-        def update_power_state(state):
-            transactional_update = transactional(obj.update_power_state)
-            return deferToThread(transactional_update, state)
-
-        # Update the power_state of the node. This will cause the update to
-        # occur in a seperate thread wrapped with transactional. This will make
-        # sure the change is committed and retried if required. Not pushing
-        # this to another thread, would result in the entire power query being
-        # performed again.
-        update_power_state(state).wait(POWER_QUERY_TIMEOUT)
-        return state
+        yield self.in_thread(update_power_state, state)
+        returnValue(state)

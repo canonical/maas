@@ -19,7 +19,6 @@ from operator import itemgetter
 import random
 import re
 
-import crochet
 from django.contrib.auth.models import User
 from lxml import etree
 from maasserver.enum import NODE_STATUS
@@ -60,14 +59,17 @@ from maasserver.websockets.handlers.node import (
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.twisted import always_succeed_with
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+)
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
-from mock import Mock
+from mock import sentinel
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -75,6 +77,7 @@ from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
 from testtools.matchers import Equals
+from twisted.internet.defer import CancelledError
 from twisted.internet.threads import deferToThread
 
 
@@ -753,7 +756,7 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
     def call_check_power(self, node):
         params = {"system_id": node.system_id}
         handler = self.make_handler_with_user()
-        return handler.check_power(params)
+        return handler.check_power(params).wait()
 
     def prepare_rpc(self, nodegroup, side_effect=None):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -771,14 +774,13 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
         self.expectThat(reload_object(node).power_state, Equals(state))
 
     def test__raises_HandlerError_when_NoConnectionsAvailable(self):
-        node = factory.make_Node()
+        node = self.make_node().wait()
         user = factory.make_User()
         handler = NodeHandler(user, {})
         mock_getClientFor = self.patch(node_module, "getClientFor")
         mock_getClientFor.side_effect = NoConnectionsAvailable()
-        self.assertRaises(
-            HandlerError, handler.check_power,
-            {"system_id": node.system_id})
+        with ExpectedException(HandlerError):
+            handler.check_power({"system_id": node.system_id}).wait()
 
     def test__sets_power_state_to_unknown_when_no_power_type(self):
         node = self.make_node(power_type="").wait()
@@ -802,24 +804,20 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
             side_effect=always_succeed_with({"state": power_state}))
         self.assertCheckPower(node, power_state)
 
-    def test__sets_power_state_to_error_on_TimeoutError(self):
+    def test__sets_power_state_to_error_on_time_out(self):
         node = self.make_node().wait()
-        mock_client = Mock()
-        self.patch(
-            node_module, 'getClientFor').return_value = mock_client
-        mock_client().wait.side_effect = crochet.TimeoutError("error")
+        getClientFor = self.patch(node_module, 'getClientFor')
+        getClientFor.return_value = sentinel.client
+        deferWithTimeout = self.patch(node_module, 'deferWithTimeout')
+        deferWithTimeout.side_effect = always_fail_with(CancelledError())
         self.assertCheckPower(node, "error")
 
-    def test__sets_power_state_to_error_on_NotImplementedError(self):
+    def test__sets_power_state_to_unknown_on_NotImplementedError(self):
         node = self.make_node().wait()
-        self.prepare_rpc(
-            node.nodegroup,
-            side_effect=NotImplementedError())
-        self.assertCheckPower(node, "error")
+        self.prepare_rpc(node.nodegroup, side_effect=NotImplementedError())
+        self.assertCheckPower(node, "unknown")
 
     def test__sets_power_state_to_error_on_PowerActionFail(self):
         node = self.make_node().wait()
-        self.prepare_rpc(
-            node.nodegroup,
-            side_effect=PowerActionFail())
+        self.prepare_rpc(node.nodegroup, side_effect=PowerActionFail())
         self.assertCheckPower(node, "error")
