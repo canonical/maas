@@ -85,10 +85,13 @@ def get_cookie(cookies, cookie_name):
 
 
 class WebSocketProtocol(Protocol):
+    """The web-socket protocol that supports the web UI.
 
-    def __init__(self, factory):
+    :ivar factory: Set by the factory that spawned this protocol.
+    """
+
+    def __init__(self):
         self.messages = deque()
-        self.factory = factory
         self.user = None
         self.cache = {}
 
@@ -106,10 +109,19 @@ class WebSocketProtocol(Protocol):
 
         # Only add the client to the list of known clients if/when the
         # authentication succeeds.
-        def add_client(user):
-            if user is not None:
+        def authenticated(user):
+            if user is None:
+                # This user could not be authenticated. No further interaction
+                # should take place. The connection is already being dropped.
+                pass
+            else:
+                # This user is a keeper. Record it and process any message
+                # that have already been received.
+                self.user = user
+                self.processMessages()
                 self.factory.clients.append(self)
-        d.addCallback(add_client)
+
+        d.addCallback(authenticated)
 
     def connectionLost(self, reason):
         """Connection to the client has been lost."""
@@ -165,6 +177,9 @@ class WebSocketProtocol(Protocol):
 
         - Check that the CSRF token is valid.
         - Authenticate the user using the session id.
+
+        This returns the authenticated user or ``None``. The latter means that
+        the connection is being dropped, and that processing should cease.
         """
         # Check the CSRF token.
         tokens = parse_qs(
@@ -172,19 +187,16 @@ class WebSocketProtocol(Protocol):
         if tokens is None or csrftoken not in tokens:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
-            return
+            return None
 
         # Authenticate user.
         def got_user(user):
             if user is None:
                 self.loseConnection(
                     STATUSES.PROTOCOL_ERROR, "Failed to authenticate user.")
-                return
+                return None
             else:
-                self.user = user
-
-            self.processMessages()
-            return self.user
+                return user
 
         def got_user_error(failure):
             self.loseConnection(
@@ -325,6 +337,8 @@ class WebSocketFactory(Factory):
         requests.
     """
 
+    protocol = WebSocketProtocol
+
     def __init__(self):
         self.handlers = {}
         self.clients = []
@@ -398,9 +412,6 @@ class WebSocketFactory(Factory):
     @transactional
     def processNotify(self, handler, channel, action, obj_id):
         return handler.on_listen(channel, action, obj_id)
-
-    def buildProtocol(self, addr):
-        return WebSocketProtocol(self)
 
     def registerRPCEvents(self):
         """Register for connected and disconnected events from the RPC

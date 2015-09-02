@@ -46,7 +46,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import (
-    ANY,
     MagicMock,
     sentinel,
 )
@@ -100,6 +99,16 @@ class TestWebSocketProtocol(MAASServerTestCase):
     def get_written_transport_message(self, protocol):
         call = protocol.transport.write.call_args_list.pop()
         return json.loads(call[0][0])
+
+    def test_connectionMade_sets_user_and_processes_messages(self):
+        protocol, factory = self.make_protocol()
+        self.patch_autospec(protocol, "authenticate")
+        self.patch_autospec(protocol, "processMessages")
+        protocol.authenticate.return_value = defer.succeed(sentinel.user)
+        protocol.connectionMade()
+        self.addCleanup(protocol.connectionLost, "")
+        self.assertThat(protocol.user, Is(sentinel.user))
+        self.assertThat(protocol.processMessages, MockCalledOnceWith())
 
     def test_connectionMade_adds_self_to_factory_if_auth_succeeds(self):
         protocol, factory = self.make_protocol()
@@ -217,18 +226,6 @@ class TestWebSocketProtocol(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_authenticate_sets_user(self):
-        user, session_id = yield deferToThread(self.get_user_and_session_id)
-        csrftoken = maas_factory.make_name("csrftoken")
-        uri = self.make_ws_uri(csrftoken)
-        protocol, factory = self.make_protocol(
-            patch_authenticate=False, transport_uri=uri)
-        yield protocol.authenticate(session_id, csrftoken)
-        self.expectThat(
-            user, Equals(protocol.user))
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_user_is_None(self):
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
@@ -336,7 +333,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
         self.expectThat(mock_processMessages, MockCalledOnceWith())
 
     def test_processMessages_does_nothing_if_no_user(self):
-        protocol = WebSocketProtocol(None)
+        protocol = WebSocketProtocol()
         protocol.messages = deque([
             {"type": MSG_TYPE.REQUEST, "request_id": 1},
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
@@ -760,7 +757,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
             handler_class, sentinel.channel, sentinel.action, sentinel.obj_id)
         self.assertThat(
             handler_class, MockCalledOnceWith(
-                ANY, protocol.cache[handler_class._meta.handler_name],
+                user, protocol.cache[handler_class._meta.handler_name],
                 factory.threadpool))
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
