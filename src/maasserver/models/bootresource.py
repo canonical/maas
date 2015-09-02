@@ -121,9 +121,13 @@ class BootResourceManager(Manager):
             if (resource_set is not None and
                     resource_set.commissionable and
                     resource_set.installable):
-                arch, _ = resource.split_arch()
-                if 'kflavor' in resource.extra:
-                    arches.add('%s/%s' % (arch, resource.extra['kflavor']))
+                if 'hwe-' not in resource.architecture:
+                    arches.add(resource.architecture)
+                if 'subarches' in resource.extra:
+                    arch, _ = resource.split_arch()
+                    for subarch in resource.extra['subarches'].split(','):
+                        if 'hwe-' not in subarch:
+                            arches.add('%s/%s' % (arch, subarch.strip()))
         return sorted(arches)
 
     def get_commissionable_resource(self, osystem, series):
