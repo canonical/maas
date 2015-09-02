@@ -30,7 +30,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets import base
 from maasserver.websockets.base import (
     Handler,
-    HandlerCache,
     HandlerDoesNotExistError,
     HandlerNoSuchMethodError,
     HandlerPKError,
@@ -127,68 +126,6 @@ class TestHandlerMeta(MAASTestCase):
             list_fields=list_fields, list_exclude=list_exclude)
         self.assertEquals(list_fields, handler._meta.list_fields)
         self.assertEquals(list_exclude, handler._meta.list_exclude)
-
-
-class TestHandlerCache(MAASTestCase):
-
-    def test_sets_cache_prefix(self):
-        handler_name = factory.make_name("handler")
-        backend_cache = {}
-        cache = HandlerCache(handler_name, backend_cache)
-        self.assertEquals("%s_" % handler_name, cache._cache_prefix)
-
-    def test_sets_backend_cache(self):
-        handler_name = factory.make_name("handler")
-        backend_cache = {}
-        cache = HandlerCache(handler_name, backend_cache)
-        self.assertIs(backend_cache, cache._backend_cache)
-
-    def test_len_only_counts_entries_for_handler(self):
-        handler_name = factory.make_name("handler")
-        cache_entry = "%s_key" % handler_name
-        backend_cache = {
-            "other": factory.make_name("other_value"),
-            cache_entry: factory.make_name("value"),
-            }
-        cache = HandlerCache(handler_name, backend_cache)
-        self.assertEquals(1, len(cache))
-
-    def test_getitem_only_returns_entry_for_handler(self):
-        handler_name = factory.make_name("handler")
-        cache_entry = "%s_key" % handler_name
-        value = factory.make_name("value")
-        backend_cache = {
-            cache_entry: value,
-            }
-        cache = HandlerCache(handler_name, backend_cache)
-        self.assertEquals(value, cache["key"])
-
-    def test_setitem_places_entry_in_backend_cache_with_prefix(self):
-        handler_name = factory.make_name("handler")
-        backend_cache = {}
-        cache = HandlerCache(handler_name, backend_cache)
-        value = factory.make_name("value")
-        cache["key"] = value
-        self.assertEquals(value, backend_cache["%s_key" % handler_name])
-
-    def test_delitem_removes_entry_in_backend_cache_with_prefix(self):
-        handler_name = factory.make_name("handler")
-        cache_entry = "%s_key" % handler_name
-        backend_cache = {
-            cache_entry: factory.make_name("value"),
-            }
-        cache = HandlerCache(handler_name, backend_cache)
-        del cache["key"]
-        self.assertFalse(cache_entry in backend_cache)
-
-    def test_get_calls_get_on_the_backend_with_prefix(self):
-        handler_name = factory.make_name("handler")
-        cache = HandlerCache(handler_name, MagicMock())
-        default = factory.make_name("default")
-        cache.get("key", default=default)
-        self.assertThat(
-            cache._backend_cache.get,
-            MockCalledOnceWith("%s_key" % handler_name, default))
 
 
 class TestHandler(MAASServerTestCase):

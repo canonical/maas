@@ -84,7 +84,7 @@ class TestEventHandler(MAASServerTestCase):
         handler = EventHandler(user, cache)
         node = factory.make_Node()
         handler.list({"node_id": node.id})
-        self.assertEquals([node.id], cache["event_node_ids"])
+        self.assertEquals([node.id], cache["node_ids"])
 
     def test_list_only_returns_events_for_node(self):
         user = factory.make_User()

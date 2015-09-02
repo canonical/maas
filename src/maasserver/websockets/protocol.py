@@ -267,9 +267,7 @@ class WebSocketProtocol(Protocol):
                 "Handler %s does not exist." % handler_name)
             return None
 
-        handler = handler_class(
-            self.user, self.cache, self.factory.threadpool)
-
+        handler = self.buildHandler(handler_class)
         d = handler.execute(method, message.get("params", {}))
         d.addCallbacks(
             partial(self.sendResult, request_id),
@@ -313,6 +311,12 @@ class WebSocketProtocol(Protocol):
             }
         self.transport.write(json.dumps(notify_msg).encode("utf-8"))
 
+    def buildHandler(self, handler_class):
+        """Return an initialised instance of `handler_class`."""
+        handler_name = handler_class._meta.handler_name
+        handler_cache = self.cache.setdefault(handler_name, {})
+        return handler_class(self.user, handler_cache, self.factory.threadpool)
+
 
 class WebSocketFactory(Factory):
     """Factory for WebSocketProtocol.
@@ -321,10 +325,9 @@ class WebSocketFactory(Factory):
         requests.
     """
 
-    handlers = {}
-    clients = []
-
     def __init__(self):
+        self.handlers = {}
+        self.clients = []
         self.threadpool = ThreadPool(name=self.__class__.__name__)
         self.listener = PostgresListener()
         self.cacheHandlers()
@@ -384,7 +387,7 @@ class WebSocketFactory(Factory):
     @inlineCallbacks
     def onNotify(self, handler_class, channel, action, obj_id):
         for client in self.clients:
-            handler = handler_class(client.user, client.cache)
+            handler = client.buildHandler(handler_class)
             data = yield deferToThreadPool(
                 reactor, self.threadpool,
                 self.processNotify, handler, channel, action, obj_id)

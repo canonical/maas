@@ -132,41 +132,6 @@ class HandlerMetaclass(type):
         return new_class
 
 
-class HandlerCache:
-    """Persistent cache for the handler.
-
-    This cache will persistent its content as long as the client is connected
-    over the websocket. Once the client has disconnected this cache will be
-    cleared. Each websocket connection will have a different cache.
-    """
-
-    def __init__(self, handler_name, backend_cache):
-        self._cache_prefix = "%s_" % handler_name
-        self._backend_cache = backend_cache
-
-    def __len__(self):
-        return len([
-            key
-            for key in self._backend_cache.keys()
-            if key.startswith(self._cache_prefix)
-            ])
-
-    def __contains__(self, key):
-        return self._cache_prefix + key in self._backend_cache
-
-    def __getitem__(self, key):
-        return self._backend_cache[self._cache_prefix + key]
-
-    def __setitem__(self, key, value):
-        self._backend_cache[self._cache_prefix + key] = value
-
-    def __delitem__(self, key):
-        del self._backend_cache[self._cache_prefix + key]
-
-    def get(self, key, default=None):
-        return self._backend_cache.get(self._cache_prefix + key, default)
-
-
 class Handler:
     """Base handler for all handlers in the WebSocket protocol.
 
@@ -186,9 +151,9 @@ class Handler:
 
     __metaclass__ = HandlerMetaclass
 
-    def __init__(self, user, backend_cache, threadpool=None):
+    def __init__(self, user, cache, threadpool=None):
         self.user = user
-        self.cache = HandlerCache(self._meta.handler_name, backend_cache)
+        self.cache = cache
         # Allowing a default threadpool, namely the reactor's threadpool, is a
         # convenience when testing and not a decent production option.
         if threadpool is None:

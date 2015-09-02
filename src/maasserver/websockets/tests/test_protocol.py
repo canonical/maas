@@ -40,11 +40,13 @@ from maasserver.websockets.protocol import (
 )
 from maasserver.websockets.websockets import STATUSES
 from maastesting.matchers import (
+    IsFiredDeferred,
     MockCalledOnceWith,
     MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     MagicMock,
     sentinel,
 )
@@ -58,6 +60,7 @@ from twisted.internet import defer
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
+    succeed,
 )
 from twisted.internet.threads import deferToThread
 from twisted.python.threadpool import ThreadPool
@@ -495,6 +498,34 @@ class TestWebSocketProtocol(MAASServerTestCase):
 
         return deferToThread(delete_node)
 
+    def test_handleRequest_builds_handler(self):
+        protocol, factory = self.make_protocol()
+        protocol.user = sentinel.user
+
+        handler_class = MagicMock()
+        handler_name = maas_factory.make_name("handler")
+        handler_class._meta.handler_name = handler_name
+        handler = handler_class.return_value
+        handler.execute.return_value = succeed(None)
+
+        # Inject mock handler into the factory.
+        factory.handlers[handler_name] = handler_class
+
+        d = protocol.handleRequest({
+            "type": MSG_TYPE.REQUEST,
+            "request_id": random.randint(1, 999999),
+            "method": "%s.get" % handler_name,
+        })
+
+        self.assertThat(d, IsFiredDeferred())
+        self.assertThat(handler_class, MockCalledOnceWith(
+            protocol.user, protocol.cache[handler_name], factory.threadpool))
+        # The cache passed into the handler constructor *is* the one found in
+        # the protocol's cache; they're not merely equal.
+        self.assertIs(
+            protocol.cache[handler_name],
+            handler_class.call_args[0][1])
+
     @wait_for_reactor
     @inlineCallbacks
     def test_handleRequest_sends_response(self):
@@ -722,12 +753,20 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     def test_onNotify_creates_handler_class_with_protocol_cache(self):
         user = yield deferToThread(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
-        mock_class = MagicMock()
-        mock_class.return_value.on_listen.return_value = None
+        handler_class = MagicMock()
+        handler_class.return_value.on_listen.return_value = None
+        handler_class._meta.handler_name = maas_factory.make_name("handler")
         yield factory.onNotify(
-            mock_class, sentinel.channel, sentinel.action, sentinel.obj_id)
+            handler_class, sentinel.channel, sentinel.action, sentinel.obj_id)
+        self.assertThat(
+            handler_class, MockCalledOnceWith(
+                ANY, protocol.cache[handler_class._meta.handler_name],
+                factory.threadpool))
+        # The cache passed into the handler constructor *is* the one found in
+        # the protocol's cache; they're not merely equal.
         self.assertIs(
-            protocol.cache, mock_class.call_args[0][1])
+            protocol.cache[handler_class._meta.handler_name],
+            handler_class.call_args[0][1])
 
     @wait_for_reactor
     @inlineCallbacks
