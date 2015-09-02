@@ -604,11 +604,11 @@ class TestWithConnection(DjangoTransactionTestCase):
             self.assertTrue(context.active)
             return sentinel.result
 
-        self.assertFalse(context.active)
+        self.assertTrue(context.unused)
         self.assertThat(
             function(sentinel.arg, kwarg=sentinel.kwarg),
             Is(sentinel.result))
-        self.assertFalse(context.active)
+        self.assertTrue(context.used)
 
 
 class TestTransactional(DjangoTransactionTestCase):
