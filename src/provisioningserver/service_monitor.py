@@ -186,17 +186,17 @@ class ServiceMonitor:
 
         :return: tuple (exit code, output)
         """
-        # Force systemd to output in UTF-8 instead of unicode. This doesn't
-        # have any affect on upstart.
+        # Force systemd to output in UTF-8 by selecting the C.UTF-8 locale.
+        # This doesn't have any effect on upstart.
         env = os.environ.copy()
-        env["LANG"] = "en_US.UTF-8"
-        env["LC_CTYPE"] = "C"
+        env["LANG"] = "C.UTF-8"
+        env["LC_ALL"] = "C.UTF-8"
         process = Popen(
             ["sudo", "service", service_name, action],
             stdin=PIPE, stdout=PIPE,
             stderr=STDOUT, close_fds=True, env=env)
         output, _ = process.communicate()
-        return process.wait(), output.strip()
+        return process.wait(), output.decode("utf-8").strip()
 
     def _service_action(self, service, action):
         """Start or stop the service."""
