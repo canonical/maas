@@ -85,12 +85,9 @@ class PostgresListener:
     def stop(self):
         """Stop the listener."""
         self.autoReconnect = False
-        if self.connected():
-            reactor.removeReader(self)
-            self.cancelHandleNotify()
-            return deferToThread(self.stopConnection)
-        else:
-            return defer.succeed(None)
+        reactor.removeReader(self)
+        self.cancelHandleNotify()
+        return deferToThread(self.stopConnection)
 
     def connected(self):
         """Return True if connected."""
@@ -115,8 +112,23 @@ class PostgresListener:
         log.err(*args, **kwargs)
 
     def fileno(self):
-        """Return the fileno of the connection."""
-        return self.connection.connection.fileno()
+        """Return the fileno of the connection.
+
+        If the connection is not open, return `None`.
+        """
+        # The connection is often in an unexpected state here -- for
+        # unexplained reasons -- so be careful when unpealing layers.
+        connection_wrapper = self.connection
+        if connection_wrapper is None:
+            return None
+        else:
+            connection = connection_wrapper.connection
+            if connection is None:
+                return None
+            elif connection.closed:
+                return None
+            else:
+                return connection.fileno()
 
     def doRead(self):
         """Poll the connection and process any notifications."""
@@ -180,9 +192,15 @@ class PostgresListener:
     @synchronous
     def stopConnection(self):
         """Stop database connection."""
-        self.connection.commit()
-        self.connection.leave_transaction_management()
-        self.connection.close()
+        # The connection is often in an unexpected state here -- for
+        # unexplained reasons -- so be careful when unpealing layers.
+        connection_wrapper, self.connection = self.connection, None
+        if connection_wrapper is not None:
+            connection = connection_wrapper.connection
+            if connection is not None and not connection.closed:
+                connection_wrapper.commit()
+                connection_wrapper.leave_transaction_management()
+                connection_wrapper.close()
 
     def tryConnection(self):
         """Keep retrying to make the connection."""
@@ -190,6 +208,8 @@ class PostgresListener:
         def failureToConnect(failure):
             msgFormat = "Unable to connect to database: %(error)r"
             self.logMsg(format=msgFormat, error=failure.getErrorMessage())
+            # XXX: Consider using `return deferLater(...)` here, so that
+            # callers don't lose a handle on what's happening.
             reactor.callLater(3, self.tryConnection)
 
         d = deferToThread(self.startConnection)
