@@ -44,6 +44,7 @@ from provisioningserver.service_monitor import (
 )
 from provisioningserver.utils.testing import RegistryFixture
 from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestServiceMonitor(MAASTestCase):
@@ -294,22 +295,40 @@ class TestServiceMonitor(MAASTestCase):
         service_name = factory.make_name("service")
         action = factory.make_name("action")
         mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = ("", "")
+        mock_popen.return_value.communicate.return_value = (b"", b"")
         service_monitor._exec_service_action(service_name, action)
         self.assertEquals(
             ["sudo", "service", service_name, action],
             mock_popen.call_args[0][0])
 
-    def test__exec_service_action_calls_service_with_LC_CTYPE_in_env(self):
+    def test__exec_service_action_calls_service_with_LC_ALL_in_env(self):
         service_monitor = ServiceMonitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
         mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = ("", "")
+        mock_popen.return_value.communicate.return_value = (b"", b"")
         service_monitor._exec_service_action(service_name, action)
         self.assertEquals(
-            "C",
-            mock_popen.call_args[1]['env']['LC_CTYPE'])
+            "C.UTF-8",
+            mock_popen.call_args[1]['env']['LC_ALL'])
+
+    def test__exec_service_action_decodes_stdout(self):
+        # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
+        example_text = (
+            '\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf '
+            '\u16bb\u16d6 \u16d2\u16a2\u16de\u16d6 \u16a9\u16be \u16a6'
+            '\u16ab\u16d7 \u16da\u16aa\u16be\u16de\u16d6 \u16be\u16a9'
+            '\u16b1\u16a6\u16b9\u16d6\u16aa\u16b1\u16de\u16a2\u16d7 '
+            '\u16b9\u16c1\u16a6 \u16a6\u16aa \u16b9\u16d6\u16e5\u16ab'
+        )
+        service_monitor = ServiceMonitor()
+        service_name = factory.make_name("service")
+        action = factory.make_name("action")
+        mock_popen = self.patch(service_monitor_module, "Popen")
+        mock_popen.return_value.communicate.return_value = (
+            example_text.encode("utf-8"), b"")
+        _, output = service_monitor._exec_service_action(service_name, action)
+        self.assertThat(output, Equals(example_text))
 
     def test__service_action_calls__exec_service_action(self):
         service = self.make_service_driver(SERVICE_STATE.ON)
