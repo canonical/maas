@@ -22,6 +22,7 @@ from collections import Sequence
 from contextlib import contextmanager
 import doctest
 from importlib import import_module
+import os
 import types
 import unittest
 
@@ -127,6 +128,12 @@ class MAASTestCase(
         # (scenario-name, {instance-attribute-name: value, ...}),
         )
 
+    # The database may NOT be used in tests. See `checkDatabaseUse`. Use a
+    # subclass like `MAASServerTestCase` or `MAASTransactionalServerTestCase`
+    # instead, which will manage the database and transactions correctly.
+    database_use_possible = "DJANGO_SETTINGS_MODULE" in os.environ
+    database_use_permitted = False
+
     def setUp(self):
         super(MAASTestCase, self).setUp()
         self.setUpResources()
@@ -138,6 +145,16 @@ class MAASTestCase(
     def tearDown(self):
         self.tearDownResources()
         super(MAASTestCase, self).tearDown()
+        self.checkDatabaseUse()
+
+    def checkDatabaseUse(self):
+        """Enforce `database_use_permitted`."""
+        if self.database_use_possible and not self.database_use_permitted:
+            from django.db import connection
+            self.expectThat(
+                connection.connection, testtools.matchers.Is(None),
+                "Test policy forbids use of the database.")
+            connection.close()
 
     def tearDownResources(self):
         testresources.tearDownResources(

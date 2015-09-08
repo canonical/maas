@@ -140,6 +140,9 @@ class DjangoTestCase(
 
     client_class = SensibleClient
 
+    # The database may be used in tests. See `MAASTestCase` for details.
+    database_use_permitted = True
+
     def __get_connection_txid(self):
         """Get PostgreSQL's current transaction ID."""
         with closing(connection.cursor()) as cursor:
@@ -187,6 +190,9 @@ class DjangoTransactionTestCase(
     """
 
     client_class = SensibleClient
+
+    # The database may be used in tests. See `MAASTestCase` for details.
+    database_use_permitted = True
 
     def _fixture_teardown(self):
         super(DjangoTransactionTestCase, self)._fixture_teardown()

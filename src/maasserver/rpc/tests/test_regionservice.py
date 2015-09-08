@@ -68,7 +68,10 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import transactional
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
@@ -1681,7 +1684,7 @@ class TestRegionService(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionAdvertisingService(MAASTestCase):
+class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
     def tearDown(self):
         super(TestRegionAdvertisingService, self).tearDown()

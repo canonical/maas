@@ -141,7 +141,7 @@ class TestResetRequest(MAASTestCase):
         self.assertEqual({}, request.COOKIES)
 
 
-class TestDeleteOAuthNonce(MAASTestCase):
+class TestDeleteOAuthNonce(MAASServerTestCase):
     """Tests for :py:func:`maasserver.utils.views.delete_oauth_nonce`."""
 
     def test__deletes_nonce(self):

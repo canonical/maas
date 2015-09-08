@@ -67,7 +67,10 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTransactionTestCase
@@ -1071,7 +1074,7 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
                 self.assertEqual(content, written_data)
 
 
-class TestImportImages(MAASTestCase):
+class TestImportImages(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestImportImages, self).setUp()
@@ -1337,7 +1340,7 @@ class TestImportResourcesService(MAASTestCase):
         self.assertIsNone(extract_result(d))
 
 
-class TestImportResourcesPeriodically(MAASTestCase):
+class TestImportResourcesPeriodically(MAASServerTestCase):
     """Tests for `import_resources_periodically`."""
 
     def test__calls__import_resources_in_thread_if_auto(self):

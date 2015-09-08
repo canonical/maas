@@ -21,11 +21,11 @@ from maasserver.rpc.configuration import (
     get_archive_mirrors,
     get_proxies,
 )
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
 
 
-class TestGetArchiveMirrors(MAASTestCase):
+class TestGetArchiveMirrors(MAASServerTestCase):
 
     def test_returns_populated_dict_when_main_and_port_is_set(self):
         url = factory.make_parsed_url().geturl()
@@ -36,7 +36,7 @@ class TestGetArchiveMirrors(MAASTestCase):
             get_archive_mirrors())
 
 
-class TestGetProxies(MAASTestCase):
+class TestGetProxies(MAASServerTestCase):
 
     def test_returns_populated_dict_when_http_proxy_is_not_set(self):
         Config.objects.set_config("http_proxy", None)

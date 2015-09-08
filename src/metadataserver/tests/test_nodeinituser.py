@@ -16,7 +16,7 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.models import UserProfile
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import (
     get_node_init_user,
     user_name,
@@ -24,7 +24,7 @@ from metadataserver.nodeinituser import (
 from testtools import ExpectedException
 
 
-class TestNodeInitUser(MAASTestCase):
+class TestNodeInitUser(MAASServerTestCase):
     """Test the special "user" that makes metadata requests from nodes."""
 
     def test_always_returns_same_user(self):

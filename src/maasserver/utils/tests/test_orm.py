@@ -29,7 +29,10 @@ from django.db import (
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
-from maasserver.testing.testcase import SerializationFailureTestCase
+from maasserver.testing.testcase import (
+    MAASTransactionServerTestCase,
+    SerializationFailureTestCase,
+)
 from maasserver.utils import orm
 from maasserver.utils.orm import (
     commit_within_atomic_block,
@@ -769,7 +772,7 @@ class TestSavepoint(DjangoTransactionTestCase):
             self.expectThat(connection.savepoint_ids, HasLength(0))
 
 
-class TestOutsideAtomicBlock(MAASTestCase):
+class TestOutsideAtomicBlock(MAASTransactionServerTestCase):
     """Tests for `outside_atomic_block`."""
 
     def test__leaves_and_restores_atomic_block(self):
@@ -808,7 +811,7 @@ class TestOutsideAtomicBlock(MAASTestCase):
                 self.assertTrue(connection.in_atomic_block)
 
 
-class TestCommitWithinAtomicBlock(MAASTestCase):
+class TestCommitWithinAtomicBlock(MAASTransactionServerTestCase):
     """Tests for `commit_within_atomic_block`."""
 
     def test__relies_on_outside_atomic_block(self):

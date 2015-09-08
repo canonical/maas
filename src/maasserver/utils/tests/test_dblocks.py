@@ -21,8 +21,8 @@ from django.db import (
     connection,
     transaction,
 )
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils import dblocks
-from maastesting.testcase import MAASTestCase
 
 
 def get_locks():
@@ -38,7 +38,7 @@ def divide_by_zero():
     0 / 0  # In a transaction.
 
 
-class TestDatabaseLock(MAASTestCase):
+class TestDatabaseLock(MAASTransactionServerTestCase):
 
     def tearDown(self):
         super(TestDatabaseLock, self).tearDown()
@@ -156,7 +156,7 @@ class TestDatabaseLock(MAASTestCase):
             repr(lock))
 
 
-class TestDatabaseXactLock(MAASTestCase):
+class TestDatabaseXactLock(MAASTransactionServerTestCase):
 
     def test_create_lock(self):
         objid = self.getUniqueInteger()
