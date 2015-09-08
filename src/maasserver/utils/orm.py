@@ -14,6 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = [
     'commit_within_atomic_block',
+    'disable_all_database_connections',
+    'enable_all_database_connections',
+    'ExclusivelyConnected',
+    'FullyConnected',
     'gen_retry_intervals',
     'get_exception_class',
     'get_first',
@@ -28,6 +32,7 @@ __all__ = [
     'request_transaction_retry',
     'retry_on_serialization_failure',
     'savepoint',
+    'TotallyDisconnected',
     'transactional',
     'validate_in_transaction',
     'with_connection',
@@ -46,6 +51,7 @@ from time import sleep
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
     connection,
+    connections,
     transaction,
 )
 from django.db.transaction import TransactionManagementError
@@ -581,3 +587,117 @@ def validate_in_transaction(connection):
             "segfault when used outside of a transaction. This assertion has "
             "prevented the use of lobject() outside of a transaction. Please "
             "investigate.")
+
+
+class DisabledDatabaseConnection:
+    """Instances of this class raise exceptions when used.
+
+    Referencing an attribute elicits a :py:class:`RuntimeError`.
+
+    Specifically, this is useful to help prevent Django's
+    py:class:`~django.db.utils.ConnectionHandler` from handing out
+    usable database connections to code running in the event-loop's
+    thread (a.k.a. the reactor thread).
+    """
+
+    def __getattr__(self, name):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+    def __setattr__(self, name, value):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+    def __delattr__(self, name):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+
+def disable_all_database_connections():
+    """Replace all connections in this thread with unusable stubs.
+
+    Specifically, instances of :py:class:`~DisabledDatabaseConnection`.
+    This should help prevent accidental use of the database from the
+    reactor thread.
+
+    Why?
+
+    Database access means blocking IO, at least with the connections
+    that Django hands out. While blocking IO isn't forbidden in the
+    reactor thread, it ought to be avoided, because the reactor can't do
+    anything else while it's happening, like handling other IO, or
+    running delayed calls.
+
+    Django's transaction and connection management code also assumes
+    threads: it associates connections and transactions with the current
+    thread, using threading.local. Using the database from the reactor
+    thread is a recipe for intermingled transactions.
+    """
+    for alias in connections:
+        connection = connections[alias]
+        connections[alias] = DisabledDatabaseConnection()
+        connection.close()
+
+
+def enable_all_database_connections():
+    """Re-enable database connections in this thread after having...
+
+    ... been previously disabled with `disable_all_database_connections`.
+
+    See `disable_all_database_connections` for the rationale.
+    """
+    for alias in connections:
+        # isinstance() fails because it references __bases__.
+        if type(connections[alias]) is DisabledDatabaseConnection:
+            del connections[alias]
+
+
+class TotallyDisconnected:
+    """Context to disallow all database connections within a block."""
+
+    def __enter__(self):
+        """Disable all database connections, closing those that are open."""
+        disable_all_database_connections()
+
+    def __exit__(self, *exc_info):
+        """Enable all database connections, but don't actually connect."""
+        enable_all_database_connections()
+
+
+class ExclusivelyConnected:
+    """Context to only permit database connections within a block.
+
+    This blows up with `AssertionError` if a database connection is open when
+    the context is entered. On exit, all database connections open in the
+    current thread will be closed without niceties, and no effort is made to
+    suppress database failures at this point.
+    """
+
+    def __enter__(self):
+        """Assert that no connections are yet open."""
+        for alias in connections:
+            if connections[alias].connection is not None:
+                raise AssertionError("Connection %s is open." % (alias,))
+
+    def __exit__(self, *exc_info):
+        """Close database connections in the current thread."""
+        for alias in connections:
+            connections[alias].close()
+
+
+class FullyConnected:
+    """Context to ensure that all databases are connected.
+
+    On entry, connections will be establed to all defined databases. On exit,
+    they'll all be closed again. Simple.
+    """
+
+    def __enter__(self):
+        """Assert that no connections are yet open."""
+        for alias in connections:
+            connections[alias].ensure_connection()
+
+    def __exit__(self, *exc_info):
+        """Close database connections in the current thread."""
+        for alias in connections:
+            connections[alias].close()

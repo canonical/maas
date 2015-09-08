@@ -20,13 +20,13 @@ import random
 import crochet
 from django.db import connections
 from maasserver import eventloop
-from maasserver.eventloop import DisabledDatabaseConnection
 from maasserver.plugin import (
     MAX_THREADS,
     Options,
     RegionServiceMaker,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import DisabledDatabaseConnection
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,

@@ -27,7 +27,10 @@ from maasserver import (
 from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    DisabledDatabaseConnection,
+    transactional,
+)
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
@@ -197,7 +200,7 @@ class TestDisablingDatabaseConnections(MAASTestCase):
             # isinstance() fails because it references __bases__, so
             # compare types here.
             self.assertEqual(
-                eventloop.DisabledDatabaseConnection,
+                DisabledDatabaseConnection,
                 type(connection))
 
     @transactional
@@ -208,7 +211,7 @@ class TestDisablingDatabaseConnections(MAASTestCase):
             self.assertTrue(connection.is_usable())
 
     def test_DisabledDatabaseConnection(self):
-        connection = eventloop.DisabledDatabaseConnection()
+        connection = DisabledDatabaseConnection()
         self.assertRaises(RuntimeError, getattr, connection, "connect")
         self.assertRaises(RuntimeError, getattr, connection, "__call__")
         self.assertRaises(RuntimeError, setattr, connection, "foo", "bar")

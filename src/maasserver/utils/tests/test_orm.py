@@ -24,8 +24,10 @@ import time
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
     connection,
+    connections,
     transaction,
 )
+from django.db.backends import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
@@ -36,6 +38,11 @@ from maasserver.testing.testcase import (
 from maasserver.utils import orm
 from maasserver.utils.orm import (
     commit_within_atomic_block,
+    disable_all_database_connections,
+    DisabledDatabaseConnection,
+    enable_all_database_connections,
+    ExclusivelyConnected,
+    FullyConnected,
     get_first,
     get_one,
     get_psycopg2_exception,
@@ -52,6 +59,7 @@ from maasserver.utils.orm import (
     request_transaction_retry,
     retry_on_serialization_failure,
     savepoint,
+    TotallyDisconnected,
     validate_in_transaction,
 )
 from maastesting.djangotestcase import DjangoTransactionTestCase
@@ -863,3 +871,110 @@ class TestPsqlArray(MAASTestCase):
     def test__returns_cast_to_type(self):
         self.assertEqual(
             ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer"))
+
+
+class TestDisablingDatabaseConnections(DjangoTransactionTestCase):
+
+    def assertConnectionsEnabled(self):
+        for alias in connections:
+            self.assertThat(
+                connections[alias],
+                IsInstance(BaseDatabaseWrapper))
+
+    def assertConnectionsDisabled(self):
+        for alias in connections:
+            self.assertEqual(
+                DisabledDatabaseConnection,
+                type(connections[alias]))
+
+    def test_disable_and_enable_connections(self):
+        self.addCleanup(enable_all_database_connections)
+
+        # By default connections are enabled.
+        self.assertConnectionsEnabled()
+
+        # Disable all connections.
+        disable_all_database_connections()
+        self.assertConnectionsDisabled()
+
+        # Back to the start again.
+        enable_all_database_connections()
+        self.assertConnectionsEnabled()
+
+    def test_DisabledDatabaseConnection(self):
+        connection = DisabledDatabaseConnection()
+        self.assertRaises(RuntimeError, getattr, connection, "connect")
+        self.assertRaises(RuntimeError, getattr, connection, "__call__")
+        self.assertRaises(RuntimeError, setattr, connection, "foo", "bar")
+        self.assertRaises(RuntimeError, delattr, connection, "baz")
+
+
+class TestTotallyDisconnected(DjangoTransactionTestCase):
+    """Tests for `TotallyDisconnected`."""
+
+    def test__enter_closes_open_connections_and_disables_new_ones(self):
+        self.addCleanup(connection.close)
+        connection.ensure_connection()
+        with TotallyDisconnected():
+            self.assertRaises(RuntimeError, getattr, connection, "connect")
+        connection.ensure_connection()
+
+    def test__exit_removes_block_on_database_connections(self):
+        with TotallyDisconnected():
+            self.assertRaises(RuntimeError, getattr, connection, "connect")
+        connection.ensure_connection()
+
+
+class TestExclusivelyConnected(DjangoTransactionTestCase):
+    """Tests for `ExclusivelyConnected`."""
+
+    def test__enter_blows_up_if_there_are_open_connections(self):
+        self.addCleanup(connection.close)
+        connection.ensure_connection()
+        context = ExclusivelyConnected()
+        self.assertRaises(AssertionError, context.__enter__)
+
+    def test__enter_does_nothing_if_there_are_no_open_connections(self):
+        connection.close()
+        context = ExclusivelyConnected()
+        context.__enter__()
+
+    def test__exit_closes_open_connections(self):
+        self.addCleanup(connection.close)
+        connection.ensure_connection()
+        self.assertThat(connection.connection, Not(Is(None)))
+        context = ExclusivelyConnected()
+        context.__exit__()
+        self.assertThat(connection.connection, Is(None))
+
+
+class TestFullyConnected(DjangoTransactionTestCase):
+    """Tests for `FullyConnected`."""
+
+    def assertOpen(self, alias):
+        self.assertThat(connections[alias].connection, Not(Is(None)))
+
+    def assertClosed(self, alias):
+        self.assertThat(connections[alias].connection, Is(None))
+
+    def test__opens_and_closes_connections(self):
+        for alias in connections:
+            connections[alias].close()
+        for alias in connections:
+            self.assertClosed(alias)
+        with FullyConnected():
+            for alias in connections:
+                self.assertOpen(alias)
+        for alias in connections:
+            self.assertClosed(alias)
+
+    def test__closes_connections_even_if_open_on_entry(self):
+        for alias in connections:
+            connections[alias].ensure_connection()
+        for alias in connections:
+            self.assertOpen(alias)
+        with FullyConnected():
+            for alias in connections:
+                self.assertOpen(alias)
+        for alias in connections:
+            self.assertClosed(alias)
