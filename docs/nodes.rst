@@ -55,6 +55,12 @@ If you're setting up virtual machines to use as nodes with MAAS, you need
 to configure the power type as ``virsh``.  For MAAS to be able to use
 virsh, make sure you have the ``libvirt-bin`` package installed.
 
+.. note::
+
+  If you are assembling a set of VMs for testing or development, make
+  sure they have at least 512 MB (768 MB If you are deploying 15.10)
+  to avoid failures during deployment.
+
 The virsh power type takes two parameters:
 
 Power ID
