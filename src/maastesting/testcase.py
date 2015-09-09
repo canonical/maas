@@ -29,6 +29,7 @@ import unittest
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
+from maastesting.matchers import DocTestMatches
 from maastesting.scenarios import WithScenarios
 import mock
 from nose.proxy import ResultProxy
@@ -200,14 +201,14 @@ class MAASTestCase(
         matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
         self.assertThat(tested_object, matcher)
 
-    def assertDocTestMatches(self, expected, observed, flags=None):
+    def assertDocTestMatches(
+            self, expected, observed, flags=DocTestMatches.DEFAULT_FLAGS):
         """See if `observed` matches `expected`, a doctest sample.
 
         By default uses the doctest flags `NORMALIZE_WHITESPACE` and
         `ELLIPSIS`.
         """
-        self.assertThat(observed, testtools.matchers.DocTestMatches(
-            expected, self.doctest_flags if flags is None else flags))
+        self.assertThat(observed, DocTestMatches(expected, flags))
 
     def assertIdentical(self, expected, observed, msg=None):
         """Check if `expected` is `observed`.

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'DocTestMatches',
     'GreaterThanOrEqual',
     'HasAttribute',
     'IsCallable',
@@ -28,8 +29,10 @@ __all__ = [
     'Provides',
     ]
 
+import doctest
 from functools import partial
 
+from testtools import matchers
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
@@ -283,3 +286,16 @@ def GreaterThanOrEqual(value):
 
 def LessThanOrEqual(value):
     return MatchesAny(LessThan(value), Equals(value))
+
+
+class DocTestMatches(matchers.DocTestMatches):
+    """See if a string matches a doctest example.
+
+    This differs from testtools' matcher in that it, by default, normalises
+    white-space and allows the use of ellipsis. See `doctest` for details.
+    """
+
+    DEFAULT_FLAGS = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+
+    def __init__(self, example, flags=DEFAULT_FLAGS):
+        super(DocTestMatches, self).__init__(example, flags)
