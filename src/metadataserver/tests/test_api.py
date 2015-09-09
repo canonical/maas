@@ -483,6 +483,16 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
+    def test_signaling_installation_success_does_not_populate_tags(self):
+        populate_tags_for_single_node = self.patch(
+            api, "populate_tags_for_single_node")
+        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
+        self.assertThat(populate_tags_for_single_node, MockNotCalled())
+
     def test_signaling_installation_success_is_idempotent(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
@@ -667,7 +677,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(None, reload_object(node).owner)
+        self.assertIsNone(reload_object(node).owner)
 
     def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -676,6 +686,15 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+
+    def test_signaling_commissioning_failure_does_not_populate_tags(self):
+        populate_tags_for_single_node = self.patch(
+            api, "populate_tags_for_single_node")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
     def test_signalling_commissioning_failure_cancels_monitor(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -708,7 +727,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(None, reload_object(node).owner)
+        self.assertIsNone(reload_object(node).owner)
 
     def test_signaling_no_error_clears_existing_error(self):
         node = factory.make_Node(

@@ -60,6 +60,10 @@ class EVENT_TYPES:
     NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
     # Node status transition event.
     NODE_CHANGED_STATUS = "NODE_CHANGED_STATUS"
+    # Node status events
+    NODE_STATUS_EVENT = "NODE_STATUS_EVENT"
+    NODE_COMMISSIONING_EVENT = "NODE_COMMISSIONING_EVENT"
+    NODE_INSTALL_EVENT = "NODE_INSTALL_EVENT"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -110,6 +114,18 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_CHANGED_STATUS: EventDetail(
         description="Node changed status",
         level=INFO,
+    ),
+    EVENT_TYPES.NODE_STATUS_EVENT: EventDetail(
+        description="Node status event",
+        level=DEBUG,
+    ),
+    EVENT_TYPES.NODE_COMMISSIONING_EVENT: EventDetail(
+        description="Node commissioning",
+        level=DEBUG,
+    ),
+    EVENT_TYPES.NODE_INSTALL_EVENT: EventDetail(
+        description="Node installation",
+        level=DEBUG,
     ),
 }
 

@@ -22,7 +22,10 @@ __all__ = [
     'VersionIndexHandler',
     ]
 
+import base64
+import bz2
 import httplib
+import json
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -173,6 +176,206 @@ class IndexHandler(MetadataViewHandler):
     fields = ('latest', '2012-03-01')
 
 
+class StatusHandler(MetadataViewHandler):
+    read = update = delete = None
+
+    def create(self, request, system_id):
+        """Receive and process a status message from a node.
+
+        A node can call this to report progress of its
+        commissioning/installation process to the metadata server.
+
+        Calling this from a node that is not Allocated, Commissioning, Ready,
+        or Failed Tests will update the substatus_message node attribute.
+        Signaling completion more than once is not an error; all but the first
+        successful call are ignored.
+
+        This method accepts a single JSON-encoded object payload, described as
+        follows.
+
+        {
+            "event_type": "finish",
+            "origin": "curtin",
+            "description": "Finished XYZ",
+            "name": "cmd-install",
+            "result": "SUCCESS",
+            "files": [
+                {
+                    "name": "logs.tgz",
+                    "encoding": "base64",
+                    "content": "QXVnIDI1IDA3OjE3OjAxIG1hYXMtZGV2...
+                },
+                {
+                    "name": "results.log",
+                    "compression": "bzip2"
+                    "encoding": "base64",
+                    "content": "AAAAAAAAAAAAAAAAAAAAAAA...
+                }
+            ]
+        }
+
+        `event_type` can be "start", "progress" or "finish".
+
+        `origin` tells us the program that originated the call.
+
+        `description` is a human-readable, operator-friendly string that
+        conveys what is being done to the node and that can be presented on the
+        web UI.
+
+        `name` is the name of the activity that's being executed. It's
+        meaningful to the calling program and is a slash-separated path. We are
+        mainly concerned with top-level events (no slashes), which are used to
+        change the status of the node.
+
+        `result` can be "SUCCESS" or "FAILURE" indicating whether the activity
+        was successful or not.
+
+        `files`, when present, contains one or more files. The attribute `path`
+        tells us the name of the file, `compression` tells the compression we
+        used before applying the `encoding` and content is the encoded data
+        from the file. If the file being sent is the result of the execution of
+        a script, the `result` key will hold its value. If `result` is not
+        sent, it is interpreted as zero.
+
+        """
+
+        def _add_event_to_node_event_log(node, origin, description):
+            """Add an entry to the node's event log."""
+            if node.status == NODE_STATUS.COMMISSIONING:
+                type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
+            elif node.status == NODE_STATUS.DEPLOYING:
+                type_name = EVENT_TYPES.NODE_INSTALL_EVENT
+            else:
+                type_name = EVENT_TYPES.NODE_STATUS_EVENT
+
+            event_details = EVENT_DETAILS[type_name]
+            return Event.objects.register_event_and_event_type(
+                node.system_id, type_name, type_level=event_details.level,
+                type_description=event_details.description,
+                event_description="'%s' %s" % (origin, description))
+
+        def _retrieve_content(compression, encoding, content):
+            """Extract the content of the sent file."""
+            # Select the appropriate decompressor.
+            if compression is None:
+                decompress = lambda s: s
+            elif compression == 'bzip2':
+                decompress = bz2.decompress
+            else:
+                raise MAASAPIBadRequest(
+                    'Invalid compression: %s' % sent_file['compression'])
+
+            # Select the appropriate decoder.
+            if encoding == 'base64':
+                decode = base64.decodestring
+            else:
+                raise MAASAPIBadRequest(
+                    'Invalid encoding: %s' % sent_file['encoding'])
+
+            return decompress(decode(sent_file['content']))
+
+        def _save_commissioning_result(node, path, exit_status, content):
+            # Depending on the name of the file received, we need to invoke a
+            # function to process it.
+            if sent_file['path'] in BUILTIN_COMMISSIONING_SCRIPTS:
+                postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[path]['hook']
+                postprocess_hook(
+                    node=node, output=content, exit_status=exit_status)
+            return NodeResult.objects.store_data(
+                node, path, script_result=exit_status,
+                result_type=RESULT_TYPE.COMMISSIONING, data=Bin(content))
+
+        def _save_installation_result(node, path, content):
+            return NodeResult.objects.store_data(
+                node, path, script_result=0,
+                result_type=RESULT_TYPE.INSTALLATION, data=Bin(content))
+
+        def _is_top_level(activity_name):
+            """Top-level events do not have slashes in theit names."""
+            return '/' not in activity_name
+
+        node = get_queried_node(request)
+        payload = request.read()
+        message = json.loads(payload)
+
+        # Mandatory attributes.
+        try:
+            event_type = message['event_type']
+            origin = message['origin']
+            activity_name = message['name']
+            description = message['description']
+        except KeyError:
+            message = 'Missing parameter in status message %s' % payload
+            logger.error(message)
+            raise MAASAPIBadRequest(message)
+
+        # Optional attributes.
+        result = message.get('result')
+
+        # Add this event to the node event log.
+        _add_event_to_node_event_log(node, origin, description)
+
+        # Save attached files, if any.
+        for sent_file in message.get('files', []):
+
+            content = _retrieve_content(
+                compression=sent_file.get('compression'),
+                encoding=sent_file['encoding'],
+                content=sent_file['content'])
+
+            # Set the result type according to the node's status.
+            if node.status == NODE_STATUS.COMMISSIONING:
+                _save_commissioning_result(
+                    node, sent_file['path'], sent_file.get('result', 0),
+                    content)
+            elif node.status == NODE_STATUS.DEPLOYING:
+                _save_installation_result(node, sent_file['path'], content)
+            else:
+                raise MAASAPIBadRequest(
+                    "Invalid status for saving files: %d" % node.status)
+
+        # At the end of a top-level event, we change the node status.
+        if _is_top_level(activity_name) and event_type == 'finish':
+            if node.status == NODE_STATUS.COMMISSIONING:
+
+                # Ensure that any IP addresses are forcefully released in case
+                # the host didn't bother doing that. No static IPs are assigned
+                # at this stage, so we just deal with the dynamic ones.
+                node.delete_host_maps(set(node.dynamic_ip_addresses()))
+
+                node.stop_transition_monitor()
+
+                if result == 'SUCCESS':
+                    # Recalculate tags.
+                    populate_tags_for_single_node(Tag.objects.all(), node)
+                elif result == 'FAILURE':
+                    node.status = NODE_STATUS.FAILED_COMMISSIONING
+
+            elif node.status == NODE_STATUS.DEPLOYING:
+                if result == 'FAILURE':
+                    node.mark_failed(
+                        "Installation failed (refer to the installation log "
+                        "for more information).")
+            elif node.status == NODE_STATUS.DISK_ERASING:
+                if result == 'SUCCESS':
+                    # disk erasing complete, release node.
+                    node.release()
+                elif result == 'FAILURE':
+                    node.mark_failed("Failed to erase disks.")
+
+            # Deallocate the node if we enter any terminal state.
+            if node.status in [
+                    NODE_STATUS.READY,
+                    NODE_STATUS.FAILED_COMMISSIONING,
+                    NODE_STATUS.FAILED_DEPLOYMENT,
+                    NODE_STATUS.FAILED_DISK_ERASING]:
+                node.owner = None
+                node.error = 'failed: %s' % description
+
+        node.save()
+        return rc.ALL_OK
+
+
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
     create = update = delete = None
@@ -299,6 +502,11 @@ class VersionIndexHandler(MetadataViewHandler):
                 store_node_power_parameters(node, request)
             node.stop_transition_monitor()
             target_status = self.signaling_statuses.get(status)
+
+            # Recalculate tags when commissioning ends.
+            if target_status == NODE_STATUS.READY:
+                populate_tags_for_single_node(Tag.objects.all(), node)
+
         elif node.status == NODE_STATUS.DEPLOYING:
             self._store_installation_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
@@ -322,9 +530,6 @@ class VersionIndexHandler(MetadataViewHandler):
         # When moving to a terminal state, remove the allocation.
         node.owner = None
         node.error = request.POST.get('error', '')
-
-        # When moving to a successful terminal state, recalculate tags.
-        populate_tags_for_single_node(Tag.objects.all(), node)
 
         # Done.
         node.save()

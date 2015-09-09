@@ -31,6 +31,7 @@ from metadataserver.api import (
     EnlistVersionIndexHandler,
     IndexHandler,
     MetaDataHandler,
+    StatusHandler,
     UserDataHandler,
     VersionIndexHandler,
 )
@@ -49,6 +50,8 @@ index_handler = OperationsResource(
 commissioning_scripts_handler = OperationsResource(
     CommissioningScriptsHandler, authentication=api_auth)
 
+# Handlers for status reporting
+status_handler = OperationsResource(StatusHandler, authentication=api_auth)
 
 # Handlers for anonymous metadata operations.
 meta_data_anon_handler = OperationsResource(AnonMetaDataHandler)
@@ -71,6 +74,10 @@ enlist_version_index_handler = OperationsResource(EnlistVersionIndexHandler)
 # cloud-init tends to add these.
 node_patterns = patterns(
     '',
+    # The webhook-style status reporting handler.
+    url(
+        r'^status/(?P<system_id>[\w\-]+)$', status_handler,
+        name='metadata-status'),
     url(
         r'^/*(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_handler,
