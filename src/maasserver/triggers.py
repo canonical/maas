@@ -238,6 +238,131 @@ PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when the partition table on a block device is
+# updated.
+PARTITIONTABLE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id INTO node
+      FROM maasserver_node, maasserver_blockdevice
+        WHERE maasserver_node.id = maasserver_blockdevice.node_id
+        AND maasserver_blockdevice.id = %s;
+
+      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when the partition on a partition table is updated.
+PARTITION_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partitiontable
+      WHERE maasserver_node.id = maasserver_blockdevice.node_id
+      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+      AND maasserver_partitiontable.id = %s;
+
+      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when the filesystem on a partition is updated.
+FILESYSTEM_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable
+      WHERE maasserver_node.id = maasserver_blockdevice.node_id
+      AND maasserver_blockdevice.id = %s
+      OR (maasserver_blockdevice.id =
+              maasserver_partitiontable.block_device_id
+          AND maasserver_partitiontable.id =
+              maasserver_partition.partition_table_id
+          AND maasserver_partition.id = %s);
+
+      IF node.system_id != '' THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when the filesystemgroup is updated.
+FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable,
+           maasserver_filesystem
+      WHERE maasserver_node.id = maasserver_blockdevice.node_id
+      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+      AND maasserver_partitiontable.id =
+          maasserver_partition.partition_table_id
+      AND maasserver_partition.id = maasserver_filesystem.partition_id
+      AND (maasserver_filesystem.filesystem_group_id = %s
+          OR maasserver_filesystem.cache_set_id = %s);
+
+      IF node.system_id != '' THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when the cacheset is updated.
+CACHESET_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      SELECT system_id INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable,
+           maasserver_filesystem
+      WHERE maasserver_node.id = maasserver_blockdevice.node_id
+      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+      AND maasserver_partitiontable.id =
+          maasserver_partition.partition_table_id
+      AND maasserver_partition.id = maasserver_filesystem.partition_id
+      AND maasserver_filesystem.cache_set_id = %s;
+
+      IF node.system_id != '' THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -588,6 +713,109 @@ def register_all_triggers():
     register_trigger(
         "maasserver_virtualblockdevice",
         "nd_virtblockdevice_update_notify", "update")
+
+    # Partition table, update to linked user.
+    register_procedure(
+        PARTITIONTABLE_NODE_NOTIFY % (
+            'nd_partitiontable_link_notify', 'NEW.block_device_id'))
+    register_procedure(
+        PARTITIONTABLE_NODE_NOTIFY % (
+            'nd_partitiontable_update_notify', 'NEW.block_device_id'))
+    register_procedure(
+        PARTITIONTABLE_NODE_NOTIFY % (
+            'nd_partitiontable_unlink_notify', 'OLD.block_device_id'))
+    register_trigger(
+        "maasserver_partitiontable",
+        "nd_partitiontable_link_notify", "insert")
+    register_trigger(
+        "maasserver_partitiontable",
+        "nd_partitiontable_update_notify", "update")
+    register_trigger(
+        "maasserver_partitiontable",
+        "nd_partitiontable_unlink_notify", "delete")
+
+    # Partition, update to linked user.
+    register_procedure(
+        PARTITION_NODE_NOTIFY % (
+            'nd_partition_link_notify', 'NEW.partition_table_id'))
+    register_procedure(
+        PARTITION_NODE_NOTIFY % (
+            'nd_partition_update_notify', 'NEW.partition_table_id'))
+    register_procedure(
+        PARTITION_NODE_NOTIFY % (
+            'nd_partition_unlink_notify', 'OLD.partition_table_id'))
+    register_trigger(
+        "maasserver_partition",
+        "nd_partition_link_notify", "insert")
+    register_trigger(
+        "maasserver_partition",
+        "nd_partition_update_notify", "update")
+    register_trigger(
+        "maasserver_partition",
+        "nd_partition_unlink_notify", "delete")
+
+    # Filesystem, update to linked user.
+    register_procedure(
+        FILESYSTEM_NODE_NOTIFY % (
+            'nd_filesystem_link_notify', 'NEW.block_device_id',
+            'NEW.partition_id'))
+    register_procedure(
+        FILESYSTEM_NODE_NOTIFY % (
+            'nd_filesystem_update_notify', 'NEW.block_device_id',
+            'NEW.partition_id'))
+    register_procedure(
+        FILESYSTEM_NODE_NOTIFY % (
+            'nd_filesystem_unlink_notify', 'OLD.block_device_id',
+            'OLD.partition_id'))
+    register_trigger(
+        "maasserver_filesystem",
+        "nd_filesystem_link_notify", "insert")
+    register_trigger(
+        "maasserver_filesystem",
+        "nd_filesystem_update_notify", "update")
+    register_trigger(
+        "maasserver_filesystem",
+        "nd_filesystem_unlink_notify", "delete")
+
+    # Filesystemgroup, update to linked user.
+    register_procedure(
+        FILESYSTEMGROUP_NODE_NOTIFY % (
+            'nd_filesystemgroup_link_notify', 'NEW.id', 'NEW.cache_set_id'))
+    register_procedure(
+        FILESYSTEMGROUP_NODE_NOTIFY % (
+            'nd_filesystemgroup_update_notify', 'NEW.id', 'NEW.cache_set_id'))
+    register_procedure(
+        FILESYSTEMGROUP_NODE_NOTIFY % (
+            'nd_filesystemgroup_unlink_notify', 'OLD.id', 'OLD.cache_set_id'))
+    register_trigger(
+        "maasserver_filesystemgroup",
+        "nd_filesystemgroup_link_notify", "insert")
+    register_trigger(
+        "maasserver_filesystemgroup",
+        "nd_filesystemgroup_update_notify", "update")
+    register_trigger(
+        "maasserver_filesystemgroup",
+        "nd_filesystemgroup_unlink_notify", "delete")
+
+    # Cacheset, update to linked user.
+    register_procedure(
+        CACHESET_NODE_NOTIFY % (
+            'nd_cacheset_link_notify', 'NEW.id'))
+    register_procedure(
+        CACHESET_NODE_NOTIFY % (
+            'nd_cacheset_update_notify', 'NEW.id'))
+    register_procedure(
+        CACHESET_NODE_NOTIFY % (
+            'nd_cacheset_unlink_notify', 'OLD.id'))
+    register_trigger(
+        "maasserver_cacheset",
+        "nd_cacheset_link_notify", "insert")
+    register_trigger(
+        "maasserver_cacheset",
+        "nd_cacheset_update_notify", "update")
+    register_trigger(
+        "maasserver_cacheset",
+        "nd_cacheset_unlink_notify", "delete")
 
     # SSH key table, update to linked user.
     register_procedure(

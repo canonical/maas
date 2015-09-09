@@ -21,12 +21,17 @@ from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
+from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.partition import Partition
+from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -465,6 +470,96 @@ class TransactionalHelpersMixin:
         for key, value in params.items():
             setattr(blockdevice, key, value)
         return blockdevice.save()
+
+    @transactional
+    def create_partitiontable(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_PartitionTable(**params)
+
+    @transactional
+    def delete_partitiontable(self, id):
+        partitiontable = PartitionTable.objects.get(id=id)
+        partitiontable.delete()
+
+    @transactional
+    def update_partitiontable(self, id, params):
+        partitiontable = PartitionTable.objects.get(id=id)
+        for key, value in params.items():
+            setattr(partitiontable, key, value)
+        return partitiontable.save()
+
+    @transactional
+    def create_partition(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Partition(**params)
+
+    @transactional
+    def delete_partition(self, id):
+        partition = Partition.objects.get(id=id)
+        partition.delete()
+
+    @transactional
+    def update_partition(self, id, params):
+        partition = Partition.objects.get(id=id)
+        for key, value in params.items():
+            setattr(partition, key, value)
+        return partition.save()
+
+    @transactional
+    def create_filesystem(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Filesystem(**params)
+
+    @transactional
+    def delete_filesystem(self, id):
+        filesystem = Filesystem.objects.get(id=id)
+        filesystem.delete()
+
+    @transactional
+    def update_filesystem(self, id, params):
+        filesystem = Filesystem.objects.get(id=id)
+        for key, value in params.items():
+            setattr(filesystem, key, value)
+        return filesystem.save()
+
+    @transactional
+    def create_filesystemgroup(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_FilesystemGroup(**params)
+
+    @transactional
+    def delete_filesystemgroup(self, id):
+        filesystemgroup = FilesystemGroup.objects.get(id=id)
+        filesystemgroup.delete()
+
+    @transactional
+    def update_filesystemgroup(self, id, params):
+        filesystemgroup = FilesystemGroup.objects.get(id=id)
+        for key, value in params.items():
+            setattr(filesystemgroup, key, value)
+        return filesystemgroup.save()
+
+    @transactional
+    def create_cacheset(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_CacheSet(**params)
+
+    @transactional
+    def delete_cacheset(self, id):
+        cacheset = CacheSet.objects.get(id=id)
+        cacheset.delete()
+
+    @transactional
+    def update_cacheset(self, id, params):
+        cacheset = CacheSet.objects.get(id=id)
+        for key, value in params.items():
+            setattr(cacheset, key, value)
+        return cacheset.save()
 
     @transactional
     def create_sshkey(self, params=None):
@@ -1386,6 +1481,371 @@ class TestNodeBlockDeviceListener(
             yield deferToThread(
                 self.update_virtualblockdevice, blockdevice.id, {
                     "uuid": factory.make_UUID()
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodePartitionTableListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_partitiontable tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_partitiontable, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partitiontable = yield deferToThread(
+            self.create_partitiontable, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_partitiontable, partitiontable.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partitiontable = yield deferToThread(
+            self.create_partitiontable, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_partitiontable, partitiontable.id, {
+                    "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodePartitionListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_partition tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_partition, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(
+            self.create_partition, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_partition, partition.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            # Only downsize the partition otherwise the test may fail due
+            # to the random number being generated is greater than the mock
+            # available disk space
+            yield deferToThread(self.update_partition, partition.id, {
+                "size": random.randint(3000 * 1000, partition.size)
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeFilesystemListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_filesystem tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_filesystem, {"partition": partition})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+        filesystem = yield deferToThread(
+            self.create_filesystem, {"partition": partition})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_filesystem, filesystem.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+        filesystem = yield deferToThread(
+            self.create_filesystem, {"partition": partition})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_filesystem, filesystem.id, {
+                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeFilesystemgroupListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_filesystemgroup tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_filesystemgroup, {"node": node})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        filesystemgroup = yield deferToThread(
+            self.create_filesystemgroup, {
+                "node": node, "group_type": "raid-5"})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.delete_filesystemgroup, filesystemgroup.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        filesystemgroup = yield deferToThread(
+            self.create_filesystemgroup, {
+                "node": node, "group_type": "raid-5"})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_filesystemgroup, filesystemgroup.id, {
+                    "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeCachesetListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_cacheset tables that notifies its node."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_cacheset, {"node": node, "partition": partition})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+        cacheset = yield deferToThread(
+            self.create_cacheset, {"node": node, "partition": partition})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_cacheset, cacheset.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        partition = yield deferToThread(self.create_partition, {"node": node})
+        cacheset = yield deferToThread(
+            self.create_cacheset, {"node": node, "partition": partition})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_cacheset, cacheset.id, {
+                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
