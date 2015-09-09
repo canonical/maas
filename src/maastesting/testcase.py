@@ -135,6 +135,7 @@ class MAASTestCase(
     database_use_permitted = False
 
     def setUp(self):
+        self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()
         self.setUpResources()
 
@@ -146,6 +147,12 @@ class MAASTestCase(
         self.tearDownResources()
         super(MAASTestCase, self).tearDown()
         self.checkDatabaseUse()
+
+    def maybeCloseDatabaseConnections(self):
+        """Close database connections if their use is not permitted."""
+        if self.database_use_possible and not self.database_use_permitted:
+            from django.db import connection
+            connection.close()
 
     def checkDatabaseUse(self):
         """Enforce `database_use_permitted`."""

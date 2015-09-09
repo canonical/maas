@@ -46,6 +46,7 @@ from itertools import (
     repeat,
     takewhile,
 )
+import threading
 from time import sleep
 
 from django.core.exceptions import MultipleObjectsReturned
@@ -602,15 +603,18 @@ class DisabledDatabaseConnection:
 
     def __getattr__(self, name):
         raise RuntimeError(
-            "Database connections in the event-loop are disabled.")
+            "Database connections in this thread (%s) are "
+            "disabled." % threading.currentThread().name)
 
     def __setattr__(self, name, value):
         raise RuntimeError(
-            "Database connections in the event-loop are disabled.")
+            "Database connections in this thread (%s) are "
+            "disabled." % threading.currentThread().name)
 
     def __delattr__(self, name):
         raise RuntimeError(
-            "Database connections in the event-loop are disabled.")
+            "Database connections in this thread (%s) are "
+            "disabled." % threading.currentThread().name)
 
 
 def disable_all_database_connections():
