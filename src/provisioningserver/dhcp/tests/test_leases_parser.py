@@ -176,37 +176,37 @@ class TestLeasesParsers(MAASTestCase):
         return self.sample_lease_entry % params
 
     def test_parse_leases_copes_with_empty_file(self):
-        self.assertEqual({}, self.parse(""))
+        self.assertEqual([], self.parse(""))
 
     def test_parse_leases_parses_IPv4_lease(self):
         ip = factory.make_ipv4_address()
         mac = factory.make_mac_address()
         leases = self.parse(self.make_lease_entry(ip, mac))
-        self.assertEqual({ip: mac}, leases)
+        self.assertEqual([(ip, mac)], leases)
 
     def test_parse_leases_parses_IPv6_lease(self):
         ip = unicode(factory.make_ipv6_address())
         mac = factory.make_mac_address()
         leases = self.parse(self.make_lease_entry(ip, mac))
-        self.assertEqual({ip: mac}, leases)
+        self.assertEqual([(ip, mac)], leases)
 
     def test_parse_leases_parses_IPv4_host(self):
         ip = factory.make_ipv4_address()
         mac = factory.make_mac_address()
         lease = self.make_host_entry(ip, mac)
         leases = self.parse(lease)
-        self.assertEqual({ip: mac}, leases)
+        self.assertEqual([(ip, mac)], leases)
 
     def test_parse_leases_parses_IPv6_host(self):
         ip = factory.make_ipv6_address()
         mac = factory.make_mac_address()
         leases = self.parse(self.make_host_entry(ip, mac))
-        self.assertEqual({unicode(ip): mac}, leases)
+        self.assertEqual([(unicode(ip), mac)], leases)
 
     def test_parse_leases_parses_full_sized_IPv6_address(self):
         ip = 'fc00:0001:0000:0000:0000:0000:0000:0000'
         leases = self.parse(self.make_host_entry(ip))
-        self.assertEqual([ip], leases.keys())
+        self.assertEqual([ip], [ipx for ipx, mac in leases])
 
     def test_parse_leases_copes_with_misleading_values(self):
         params = {
@@ -232,8 +232,8 @@ class TestLeasesParsers(MAASTestCase):
             }
             """ % params))
         self.assertEqual(
-            {params['ip1']: params['mac1'],
-             params['ip2']: params['mac2']},
+            [(params['ip1'], params['mac1']),
+             (params['ip2'], params['mac2'])],
             leases)
 
     def test_parse_leases_parses_host_rubout(self):
@@ -242,7 +242,7 @@ class TestLeasesParsers(MAASTestCase):
                 deleted;
             }
             """ % factory.make_mac_address()))
-        self.assertEqual({}, leases)
+        self.assertEqual([], leases)
 
     def test_parse_leases_ignores_incomplete_lease_at_end(self):
         params = {
@@ -257,7 +257,7 @@ class TestLeasesParsers(MAASTestCase):
             lease %(incomplete_ip)s {
                 starts 5 2010/01/01 00:00:05;
             """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+        self.assertEqual([(params['ip'], params['mac'])], leases)
 
     def test_parse_leases_ignores_comments(self):
         params = {
@@ -272,7 +272,7 @@ class TestLeasesParsers(MAASTestCase):
             } # Comment right after closing brace (ignored).
             # End comment (ignored).
             """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+        self.assertEqual([(params['ip'], params['mac'])], leases)
 
     def test_parse_leases_ignores_expired_leases(self):
         params = {
@@ -285,7 +285,7 @@ class TestLeasesParsers(MAASTestCase):
                 ends 1 2001/01/01 00:00:00;
             }
             """ % params))
-        self.assertEqual({}, leases)
+        self.assertEqual([], leases)
 
     def test_parse_leases_treats_never_as_eternity(self):
         params = {
@@ -298,7 +298,7 @@ class TestLeasesParsers(MAASTestCase):
                 ends never;
             }
             """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+        self.assertEqual([(params['ip'], params['mac'])], leases)
 
     def test_parse_leases_treats_missing_end_date_as_eternity(self):
         params = {
@@ -310,9 +310,9 @@ class TestLeasesParsers(MAASTestCase):
                 hardware ethernet %(mac)s;
             }
             """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+        self.assertEqual([(params['ip'], params['mac'])], leases)
 
-    def test_parse_leases_takes_latest_lease_for_address(self):
+    def test_parse_leases_takes_all_leases_for_address(self):
         params = {
             'ip': factory.make_ipv4_address(),
             'old_owner': factory.make_mac_address(),
@@ -326,7 +326,10 @@ class TestLeasesParsers(MAASTestCase):
                 hardware ethernet %(new_owner)s;
             }
             """ % params))
-        self.assertEqual({params['ip']: params['new_owner']}, leases)
+        self.assertEqual(
+            [(params['ip'], params['old_owner']),
+             (params['ip'], params['new_owner'])],
+            leases)
 
     def test_parse_leases_recognizes_host_deleted_statement_as_rubout(self):
         params = {
@@ -341,7 +344,7 @@ class TestLeasesParsers(MAASTestCase):
                 deleted;
             }
             """ % params))
-        self.assertEqual({}, leases)
+        self.assertEqual([], leases)
 
     def test_host_declaration_is_like_an_unexpired_lease(self):
         params = {
@@ -354,7 +357,7 @@ class TestLeasesParsers(MAASTestCase):
                 fixed-address %(ip)s;
             }
             """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+        self.assertEqual([(params['ip'], params['mac'])], leases)
 
 
 class TestLeasesParserFast(MAASTestCase):
@@ -379,7 +382,7 @@ class TestLeasesParserFast(MAASTestCase):
             """ % params))
         # The lease has expired so it doesn't shadow the host stanza,
         # and so the MAC returned is from the host stanza.
-        self.assertEqual({params["ip"]: params["mac1"]}, leases)
+        self.assertEqual([(params["ip"], params["mac1"])], leases)
 
     def test_active_lease_shadows_earlier_host_stanza(self):
         params = {
@@ -399,7 +402,9 @@ class TestLeasesParserFast(MAASTestCase):
             }
             """ % params))
         # The lease hasn't expired, so shadows the earlier host stanza.
-        self.assertEqual({params["ip"]: params["mac2"]}, leases)
+        self.assertEqual(
+            [(params["ip"], params["mac1"]), (params["ip"], params["mac2"])],
+            leases)
 
     def test_host_stanza_shadows_earlier_active_lease(self):
         params = {
@@ -420,7 +425,9 @@ class TestLeasesParserFast(MAASTestCase):
             """ % params))
         # The lease hasn't expired, but the host entry is later, so it
         # shadows the earlier lease stanza.
-        self.assertEqual({params["ip"]: params["mac1"]}, leases)
+        self.assertEqual(
+            [(params["ip"], params["mac2"]), (params["ip"], params["mac1"])],
+            leases)
 
 
 class TestLeasesParserFunctions(MAASTestCase):
@@ -458,13 +465,13 @@ class TestLeasesParserFunctions(MAASTestCase):
     def test_gather_leases_finds_current_leases(self):
         lease = fake_parsed_lease()
         self.assertEqual(
-            {getattr(lease, 'fixed-address'): lease.hardware.mac},
+            [(getattr(lease, 'fixed-address'), lease.hardware.mac)],
             gather_leases([lease]))
 
     def test_gather_leases_ignores_expired_leases(self):
         earlier = '1 2001/01/01 00:00:00'
         lease = fake_parsed_lease(ends=earlier)
-        self.assertEqual({}, gather_leases([lease]))
+        self.assertEqual([], gather_leases([lease]))
 
     def test_gather_leases_combines_expired_and_current_leases(self):
         earlier = '1 2001/01/01 00:00:00'
@@ -475,7 +482,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_lease(ip=ip, mac=old_owner, ends=earlier),
             fake_parsed_lease(ip=ip, mac=new_owner),
             ]
-        self.assertEqual({ip: new_owner}, gather_leases(leases))
+        self.assertEqual([(ip, new_owner)], gather_leases(leases))
 
     def test_gather_leases_ignores_ordering(self):
         earlier = '1 2001/01/01 00:00:00'
@@ -486,19 +493,19 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_lease(ip=ip, mac=new_owner),
             fake_parsed_lease(ip=ip, mac=old_owner, ends=earlier),
             ]
-        self.assertEqual({ip: new_owner}, gather_leases(leases))
+        self.assertEqual([(ip, new_owner)], gather_leases(leases))
 
     def test_gather_leases_ignores_host_declarations(self):
-        self.assertEqual({}, gather_leases([fake_parsed_host()]))
+        self.assertEqual([], gather_leases([fake_parsed_host()]))
 
     def test_gather_hosts_finds_hosts(self):
         host = fake_parsed_host()
         self.assertEqual(
-            {getattr(host, 'fixed-address'): host.hardware.mac},
+            [(getattr(host, 'fixed-address'), host.hardware.mac)],
             gather_hosts([host]))
 
     def test_gather_hosts_ignores_unaccompanied_rubouts(self):
-        self.assertEqual({}, gather_hosts([fake_parsed_rubout()]))
+        self.assertEqual([], gather_hosts([fake_parsed_rubout()]))
 
     def test_gather_hosts_ignores_rubbed_out_entries(self):
         ip = factory.make_ipv4_address()
@@ -506,7 +513,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         hosts = [
             fake_parsed_host(ip=ip, mac=mac)
             ] + get_fake_parsed_rubouts(ip=ip, mac=mac)
-        self.assertEqual({}, gather_hosts(hosts))
+        self.assertEqual([], gather_hosts(hosts))
 
     def test_gather_hosts_follows_reassigned_host(self):
         ip = factory.make_ipv4_address()
@@ -517,7 +524,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac) + [
             fake_parsed_host(ip=ip, mac=new_owner)
         ]
-        self.assertEqual({ip: new_owner}, gather_hosts(hosts))
+        self.assertEqual([(ip, new_owner)], gather_hosts(hosts))
 
     def test_is_lease_and_is_host_recognize_lease(self):
         params = {
@@ -588,7 +595,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_host(ip=ip, mac=mac),
             fake_parsed_lease(ip=ip, ends=earlier),
             ]
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))
 
     def test_combine_entries_accepts_expired_lease_followed_by_host(self):
         ip = factory.make_ipv4_address()
@@ -598,7 +605,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_lease(ip=ip, ends=earlier),
             fake_parsed_host(ip=ip, mac=mac),
             ]
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))
 
     def test_combine_entries_accepts_old_rubout_followed_by_lease(self):
         ip = factory.make_ipv4_address()
@@ -610,7 +617,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_rubout(key=ip),
             fake_parsed_lease(ip=ip, mac=mac),
             ]
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))
 
     def test_combine_entries_accepts_rubout_followed_by_current_lease(self):
         ip = factory.make_ipv4_address()
@@ -621,7 +628,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac) + [
             fake_parsed_lease(ip=ip, mac=mac),
         ]
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))
 
     def test_combine_entries_ignores_rubout_followed_by_expired_lease(self):
         ip = factory.make_ipv4_address()
@@ -632,7 +639,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac) + [
             fake_parsed_lease(ip=ip, mac=mac, ends=earlier),
         ]
-        self.assertEqual({}, combine_entries(entries))
+        self.assertEqual([], combine_entries(entries))
 
     def test_combine_entries_ignores_expired_lease_followed_by_rubout(self):
         ip = factory.make_ipv4_address()
@@ -642,7 +649,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_host(ip=ip, mac=mac),
             fake_parsed_lease(ip=ip, mac=mac, ends=earlier)
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac)
-        self.assertEqual({}, combine_entries(entries))
+        self.assertEqual([], combine_entries(entries))
 
     def test_combine_entries_accepts_valid_lease_followed_by_rubout(self):
         ip = factory.make_ipv4_address()
@@ -651,7 +658,7 @@ class TestLeasesParserFunctions(MAASTestCase):
             fake_parsed_host(ip=ip, mac=mac),
             fake_parsed_lease(ip=ip, mac=mac),
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac)
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))
 
     def test_combine_entries_accepts_reassigned_host(self):
         ip = factory.make_ipv4_address()
@@ -662,4 +669,4 @@ class TestLeasesParserFunctions(MAASTestCase):
         ] + get_fake_parsed_rubouts(ip=ip, mac=mac) + [
             fake_parsed_host(ip=ip, mac=mac),
         ]
-        self.assertEqual({ip: mac}, combine_entries(entries))
+        self.assertEqual([(ip, mac)], combine_entries(entries))

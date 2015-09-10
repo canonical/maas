@@ -17,7 +17,15 @@ __all__ = []
 
 import random
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+)
 from maasserver.models.subnet import (
     create_cidr,
     Subnet,
@@ -85,6 +93,57 @@ class CreateCidrTest(MAASServerTestCase):
         self.assertEqual("169.254.0.0/16", cidr)
 
 
+class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
+
+    def test__user_view_returns_subnet(self):
+        user = factory.make_User()
+        subnet = factory.make_Subnet()
+        self.assertEquals(
+            subnet,
+            Subnet.objects.get_subnet_or_404(
+                subnet.id, user, NODE_PERMISSION.VIEW))
+
+    def test__user_edit_raises_PermissionError(self):
+        user = factory.make_User()
+        subnet = factory.make_Subnet()
+        self.assertRaises(
+            PermissionDenied,
+            Subnet.objects.get_subnet_or_404,
+            subnet.id, user, NODE_PERMISSION.EDIT)
+
+    def test__user_admin_raises_PermissionError(self):
+        user = factory.make_User()
+        subnet = factory.make_Subnet()
+        self.assertRaises(
+            PermissionDenied,
+            Subnet.objects.get_subnet_or_404,
+            subnet.id, user, NODE_PERMISSION.ADMIN)
+
+    def test__admin_view_returns_subnet(self):
+        admin = factory.make_admin()
+        subnet = factory.make_Subnet()
+        self.assertEquals(
+            subnet,
+            Subnet.objects.get_subnet_or_404(
+                subnet.id, admin, NODE_PERMISSION.VIEW))
+
+    def test__admin_edit_returns_subnet(self):
+        admin = factory.make_admin()
+        subnet = factory.make_Subnet()
+        self.assertEquals(
+            subnet,
+            Subnet.objects.get_subnet_or_404(
+                subnet.id, admin, NODE_PERMISSION.EDIT))
+
+    def test__admin_admin_returns_subnet(self):
+        admin = factory.make_admin()
+        subnet = factory.make_Subnet()
+        self.assertEquals(
+            subnet,
+            Subnet.objects.get_subnet_or_404(
+                subnet.id, admin, NODE_PERMISSION.ADMIN))
+
+
 class SubnetTest(MAASServerTestCase):
 
     def assertIPBestMatchesSubnet(self, ip, expected):
@@ -135,34 +194,42 @@ class SubnetTest(MAASServerTestCase):
 
     def test_get_subnets_with_ip_finds_matching_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv4_network())
-        self.assertIPBestMatchesSubnet(subnet.get_cidr().first, subnet)
-        self.assertIPBestMatchesSubnet(subnet.get_cidr().last, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().first, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().last, subnet)
 
     def test_get_subnets_with_ip_finds_most_specific_subnet(self):
         subnet1 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/8'))
         subnet2 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/16'))
         subnet3 = factory.make_Subnet(cidr=IPNetwork('10.0.0.0/24'))
-        self.assertIPBestMatchesSubnet(subnet1.get_cidr().first, subnet3)
-        self.assertIPBestMatchesSubnet(subnet1.get_cidr().last, subnet1)
-        self.assertIPBestMatchesSubnet(subnet2.get_cidr().last, subnet2)
-        self.assertIPBestMatchesSubnet(subnet3.get_cidr().last, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().first, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().last, subnet1)
+        self.assertIPBestMatchesSubnet(subnet2.get_ipnetwork().last, subnet2)
+        self.assertIPBestMatchesSubnet(subnet3.get_ipnetwork().last, subnet3)
 
     def test_get_subnets_with_ip_finds_matching_ipv6_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv6_network())
-        self.assertIPBestMatchesSubnet(subnet.get_cidr().first, subnet)
-        self.assertIPBestMatchesSubnet(subnet.get_cidr().last, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().first, subnet)
+        self.assertIPBestMatchesSubnet(subnet.get_ipnetwork().last, subnet)
 
     def test_get_subnets_with_ip_finds_most_specific_ipv6_subnet(self):
         subnet1 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/32'))
         subnet2 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/48'))
         subnet3 = factory.make_Subnet(cidr=IPNetwork('2001:db8::/64'))
-        self.assertIPBestMatchesSubnet(subnet1.get_cidr().first, subnet3)
-        self.assertIPBestMatchesSubnet(subnet1.get_cidr().last, subnet1)
-        self.assertIPBestMatchesSubnet(subnet2.get_cidr().last, subnet2)
-        self.assertIPBestMatchesSubnet(subnet3.get_cidr().last, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().first, subnet3)
+        self.assertIPBestMatchesSubnet(subnet1.get_ipnetwork().last, subnet1)
+        self.assertIPBestMatchesSubnet(subnet2.get_ipnetwork().last, subnet2)
+        self.assertIPBestMatchesSubnet(subnet3.get_ipnetwork().last, subnet3)
 
     def test_get_subnets_with_ip_returns_empty_list_if_not_found(self):
         network = factory._make_random_network()
         factory.make_Subnet()
         self.assertIPBestMatchesSubnet(network.first - 1, None)
         self.assertIPBestMatchesSubnet(network.first + 1, None)
+
+    def test_get_managed_cluster_interface(self):
+        subnet = factory.make_Subnet()
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet)
+        self.assertEquals(ngi, subnet.get_managed_cluster_interface())

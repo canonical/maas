@@ -23,17 +23,13 @@ __all__ = [
     'parse_leases',
     ]
 
-from collections import (
-    defaultdict,
-    OrderedDict,
-)
+from collections import defaultdict
 from datetime import datetime
 from itertools import chain
 import re
 
 from provisioningserver.dhcp.leases_parser import (
     get_host_ip,
-    get_host_key,
     get_host_mac,
     has_expired,
     is_host,
@@ -57,9 +53,9 @@ def find_lease_starts(leases_contents):
     results = defaultdict(dict)
     for match in re_entry.finditer(leases_contents):
         stanza, address = match.groups()
-        results[stanza][address] = match.start()
+        results[stanza][match.start()] = address
     return chain.from_iterable(
-        mapping.itervalues() for mapping in results.itervalues())
+        mapping.keys() for mapping in results.itervalues())
 
 
 def extract_leases(leases_contents):
@@ -75,21 +71,15 @@ def extract_leases(leases_contents):
 
 
 def parse_leases(leases_contents):
-    results = OrderedDict()
+    results = []
     now = datetime.utcnow()
     for entry in extract_leases(leases_contents):
         if is_lease(entry):
             if not has_expired(entry, now):
-                results[entry.host] = (entry.hardware.mac, entry.host)
+                results.append((entry.host, entry.hardware.mac))
         elif is_host(entry):
             mac = get_host_mac(entry)
             ip = get_host_ip(entry)
-            key = get_host_key(entry)
-            if ip is None or mac is None:
-                if key in results:
-                    del results[key]
-            else:
-                results[key] = (mac, ip)
-    return {
-        val[1]: val[0] for _, val in results.items()
-    }
+            if ip and mac:
+                results.append((ip, mac))
+    return results

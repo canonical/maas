@@ -20,11 +20,13 @@ import json
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    INTERFACE_TYPE,
     NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
+from maasserver.fields import MAC
 from maasserver.models import (
     Node,
     node as node_module,
@@ -211,7 +213,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         diane = get_one(Node.objects.filter(hostname='diane'))
         self.assertItemsEqual(
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
-            [mac.mac_address for mac in diane.macaddress_set.all()])
+            [interface.mac_address for interface in diane.interface_set.all()])
 
     def test_POST_new_initializes_nodegroup_to_master_by_default(self):
         hostname = factory.make_name('host')
@@ -282,7 +284,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
         mac = 'aa:bb:cc:dd:ee:ff'
-        factory.make_MACAddress_with_Node(mac)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac_address=MAC(mac))
         architecture = make_usable_architecture(self)
         response = self.client.post(
             reverse('nodes_handler'),
@@ -534,8 +536,6 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'hostname',
                 'owner',
                 'system_id',
-                'macaddress_set',
-                'pxe_mac',
                 'architecture',
                 'min_hwe_kernel',
                 'hwe_kernel',
@@ -639,8 +639,8 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname',
                 'owner',
                 'system_id',
-                'macaddress_set',
                 'pxe_mac',
+                'macaddress_set',
                 'architecture',
                 'min_hwe_kernel',
                 'hwe_kernel',
@@ -799,8 +799,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname',
                 'owner',
                 'system_id',
-                'macaddress_set',
                 'pxe_mac',
+                'macaddress_set',
                 'architecture',
                 'min_hwe_kernel',
                 'hwe_kernel',

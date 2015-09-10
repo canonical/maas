@@ -214,12 +214,21 @@ NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
     OrderedDict(NODEGROUPINTERFACE_MANAGEMENT_CHOICES))
 
 
+class IPADDRESS_FAMILY:
+    """The vocabulary of possible IP family for `StaticIPAddress`."""
+    IPv4 = 4
+    IPv6 = 6
+
+
 class IPADDRESS_TYPE:
     """The vocabulary of possible types of `StaticIPAddress`."""
-    # Automatically assigned IP address for a node or device.
-    # MUST be within a cluster interface range.
-    # MUST NOT be assigned to a MAC address with a STICKY address of
-    # the same address family.
+    # Note: when this enum is changed, the custom SQL query
+    # in StaticIPAddressManager.get_hostname_ip_mapping() must also
+    # be changed.
+
+    # Automatically assigned IP address for a node or device out of the
+    # connected clusters managed range. MUST NOT be assigned to a Interface
+    # with a STICKY address of the same address family.
     AUTO = 0
 
     # User-specified static IP address for a node or device.
@@ -235,8 +244,26 @@ class IPADDRESS_TYPE:
     # leases file.
     USER_RESERVED = 4
 
-    # Assigned by a MAAS-managed DHCP server.
+    # Assigned to tell the interface that it should DHCP from a managed
+    # clusters dynamic range or from an external DHCP server.
     DHCP = 5
+
+    # IP address was discovered on the interface during commissioning and/or
+    # lease parsing. Only commissioning or lease parsing creates these IP
+    # addresses.
+    DISCOVERED = 6
+
+
+IPADDRESS_TYPE_CHOICES = (
+    (IPADDRESS_TYPE.AUTO, "Auto"),
+    (IPADDRESS_TYPE.STICKY, "Sticky"),
+    (IPADDRESS_TYPE.USER_RESERVED, "User reserved"),
+    (IPADDRESS_TYPE.DHCP, "DHCP"),
+    (IPADDRESS_TYPE.DISCOVERED, "Discovered"),
+    )
+
+
+IPADDRESS_TYPE_CHOICES_DICT = OrderedDict(IPADDRESS_TYPE_CHOICES)
 
 
 class POWER_STATE:
@@ -464,10 +491,15 @@ CACHE_MODE_TYPE_CHOICES = (
 
 class INTERFACE_TYPE:
     """The vocabulary of possible types for `Interface`."""
+    # Note: when these constants are changed, the custom SQL query
+    # in StaticIPAddressManager.get_hostname_ip_mapping() must also
+    # be changed.
     PHYSICAL = 'physical'
     BOND = 'bond'
     VLAN = 'vlan'
     ALIAS = 'alias'
+    # Interface that is created when it is not linked to a node.
+    UNKNOWN = 'unknown'
 
 
 INTERFACE_TYPE_CHOICES = (
@@ -475,7 +507,24 @@ INTERFACE_TYPE_CHOICES = (
     (INTERFACE_TYPE.BOND, "Bond"),
     (INTERFACE_TYPE.VLAN, "VLAN interface"),
     (INTERFACE_TYPE.ALIAS, "Alias"),
+    (INTERFACE_TYPE.UNKNOWN, "Unknown"),
     )
 
 
 INTERFACE_TYPE_CHOICES_DICT = OrderedDict(INTERFACE_TYPE_CHOICES)
+
+
+class INTERFACE_LINK_TYPE:
+    """The vocabulary of possible types to link a `Subnet` to a `Interface`."""
+    AUTO = 'auto'
+    DHCP = 'dhcp'
+    STATIC = 'static'
+    LINK_UP = 'link_up'
+
+
+INTERFACE_LINK_TYPE_CHOICES = (
+    (INTERFACE_LINK_TYPE.AUTO, "Auto IP"),
+    (INTERFACE_LINK_TYPE.DHCP, "DHCP"),
+    (INTERFACE_LINK_TYPE.STATIC, "Static IP"),
+    (INTERFACE_LINK_TYPE.LINK_UP, "Link up"),
+    )

@@ -14,8 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import random
-
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -25,16 +23,10 @@ from maasserver.forms import (
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     NodeGroupInterfaceForm,
 )
-from maasserver.models import (
-    Network,
-    NodeGroupInterface,
-)
+from maasserver.models import NodeGroupInterface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.interfaces import (
-    get_name_and_vlan_from_cluster_interface,
-)
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import (
     IPAddress,
@@ -44,7 +36,6 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     Equals,
-    MatchesStructure,
     StartsWith,
 )
 
@@ -427,79 +418,43 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             ["%s.%s" % (conflicting_hostname, conflicting_domain)])
         self.assertEqual(expected_duplicates, duplicates)
 
-
-class TestNodeGroupInterfaceFormNetworkCreation(MAASServerTestCase):
-    """Tests for when NodeGroupInterfaceForm creates a Network."""
-
-    def test_creates_network_name(self):
+    def test_creates_subnet_for_interface(self):
         int_settings = factory.get_interface_fields()
         int_settings['interface'] = 'eth0:1'
         interface = make_ngi_instance()
         form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
         self.assertTrue(form.is_valid())
-        form.save()
-        [network] = Network.objects.all()
-        expected, _ = get_name_and_vlan_from_cluster_interface(
-            interface.nodegroup.name, interface.interface)
-        self.assertEqual(expected, network.name)
+        ngi = form.save()
+        self.assertIsNotNone(ngi.subnet)
 
-    def test_sets_vlan_tag(self):
-        int_settings = factory.get_interface_fields()
-        vlan_tag = random.randint(1, 10)
-        int_settings['interface'] = 'eth0.%s' % vlan_tag
-        interface = make_ngi_instance()
-        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+    def test_updates_subnet_cidr_and_name_if_subnet_mask_changed(self):
+        network = factory._make_random_network(slash=24)
+        nodegroup = factory.make_NodeGroup()
+        subnet = factory.make_Subnet(name=unicode(network.cidr), cidr=network)
+        ngi = factory.make_NodeGroupInterface(nodegroup, subnet=subnet)
+        # Update the network from a /24 to a /16
+        form = NodeGroupInterfaceForm(
+            data=dict(subnet_mask='255.255.0.0'), instance=ngi)
+        # form.subnet_mask = '255.255.0.0'
+        self.assertTrue(form.is_valid())
+        ngi = form.save()
+        new_network = IPNetwork(unicode(network.ip) + "/16")
+        self.assertThat(ngi.network, Equals(new_network.cidr))
+        self.assertThat(ngi.subnet.name, Equals(unicode(new_network.cidr)))
+
+    def test_updating_cidr_does_not_create_new_subnet(self):
+        network = factory._make_random_network(slash=24)
+        nodegroup = factory.make_NodeGroup()
+        subnet = factory.make_Subnet(cidr=network)
+        ngi = factory.make_NodeGroupInterface(nodegroup, subnet=subnet)
+        # Update the network from a /24 to a /16
+        form = NodeGroupInterfaceForm(
+            data=dict(subnet_mask='255.255.0.0'), instance=ngi)
+        # form.subnet_mask = '255.255.0.0'
         self.assertTrue(form.is_valid())
         form.save()
-        [network] = Network.objects.all()
-        self.assertEqual(vlan_tag, network.vlan_tag)
-
-    def test_vlan_tag_is_None_if_no_vlan(self):
-        int_settings = factory.get_interface_fields()
-        int_settings['interface'] = 'eth0:1'
-        interface = make_ngi_instance()
-        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
-        self.assertTrue(form.is_valid())
-        form.save()
-        [network] = Network.objects.all()
-        self.assertIs(None, network.vlan_tag)
-
-    def test_sets_network_values(self):
-        int_settings = factory.get_interface_fields()
-        interface = make_ngi_instance()
-        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
-        self.assertTrue(form.is_valid())
-        form.save()
-        [network] = Network.objects.all()
-        expected_net_address = unicode(interface.network.network)
-        expected_netmask = unicode(interface.network.netmask)
-        self.assertThat(
-            network, MatchesStructure.byEquality(
-                ip=expected_net_address,
-                netmask=expected_netmask))
-
-    def test_does_not_create_new_network_if_already_exists(self):
-        int_settings = factory.get_interface_fields()
-        interface = make_ngi_instance()
-        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
-        # The easiest way to pre-create the same network is just to save
-        # the form twice.
-        self.assertTrue(form.is_valid())
-        form.save()
-        [existing_network] = Network.objects.all()
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertItemsEqual([existing_network], Network.objects.all())
-
-    def test_creates_many_unique_networks(self):
-        names = ('eth0', 'eth0:1', 'eth0.1', 'eth0:1.2')
-        for name in names:
-            int_settings = factory.get_interface_fields()
-            int_settings['interface'] = name
-            interface = make_ngi_instance()
-            form = NodeGroupInterfaceForm(
-                data=int_settings, instance=interface)
-            self.assertTrue(form.is_valid(), form._errors)
-            form.save()
-
-        self.assertEqual(len(names), len(Network.objects.all()))
+        # new_network = IPNetwork(unicode(network.ip) + "/16")
+        from maasserver.models import Subnet
+        # print(list(Subnet.objects.all()))
+        # self.assertThat(ngi.network, Equals(new_network.cidr))
+        self.assertThat(Subnet.objects.count(), Equals(1))

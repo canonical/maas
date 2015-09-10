@@ -19,6 +19,10 @@ from unittest import skip
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.node_constraint_filter_forms import (
@@ -203,6 +207,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
         patch_usable_architectures(self, [arch])
         return arch
 
+    def create_node_on_subnets(self, subnets):
+        node = factory.make_Node()
+        for subnet in subnets:
+            nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+                interface=nic, subnet=subnet)
+        return node
+
     def test_strict_form_checks_unknown_constraints(self):
         data = {'unknown_constraint': 'boo'}
         form = AcquireNodeForm.Strict(data=data)
@@ -284,58 +297,76 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_filters_by_name(self):
-        networks = factory.make_Networks(5)
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
             ]
-        # Filter for this network.  Take one in the middle to avoid
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+            ]
+        # Filter for this subnet.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {macs[pick].node},
-            {'networks': [networks[pick].name]})
+            {nodes[pick]},
+            {'networks': [subnets[pick].name]})
 
     def test_networks_filters_by_ip(self):
-        networks = factory.make_Networks(5)
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
             ]
-        # Filter for this network.  Take one in the middle to avoid
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+            ]
+        # Filter for this subnet.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {macs[pick].node},
-            {'networks': ['ip:%s' % networks[pick].ip]})
+            {nodes[pick]},
+            {'networks': [
+                'ip:%s' % factory.pick_ip_in_network(
+                    subnets[pick].get_ipnetwork())]})
 
     def test_networks_filters_by_vlan_tag(self):
-        vlan_tags = list(range(5))
-        networks = [factory.make_Network(vlan_tag=tag) for tag in vlan_tags]
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
+        vlan_tags = list(range(1, 6))
+        subnets = [
+            factory.make_Subnet(vlan=factory.make_VLAN(vid=tag))
+            for tag in vlan_tags
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
             ]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {macs[pick].node},
+            {nodes[pick]},
             {'networks': ['vlan:%d' % vlan_tags[pick]]})
 
-    def test_networks_filter_ignores_macs_on_other_networks(self):
-        network = factory.make_Network()
-        node = factory.make_Node()
-        factory.make_MACAddress(node=node, networks=[network])
-        factory.make_MACAddress(node=node, networks=[factory.make_Network()])
-        self.assertConstrainedNodes({node}, {'networks': [network.name]})
+    def test_networks_filter_ignores_macs_on_other_subnets(self):
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        factory.make_Node_with_Interface_on_Subnet()
+        self.assertConstrainedNodes({node}, {'networks': [subnet.name]})
 
-    def test_networks_filter_ignores_other_networks_on_mac(self):
-        networks = factory.make_Networks(3)
-        mac = factory.make_MACAddress_with_Node(networks=networks)
+    def test_networks_filter_ignores_other_subnets_on_mac(self):
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
+        ]
+        node = factory.make_Node()
+        for subnet in subnets:
+            nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+                interface=nic, subnet=subnet)
         self.assertConstrainedNodes(
-            {mac.node},
-            {'networks': [networks[1].name]})
+            {node},
+            {'networks': [subnets[1].name]})
 
     def test_invalid_networks(self):
         form = AcquireNodeForm(data={'networks': 'ip:10.0.0.0'})
@@ -358,96 +389,103 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
-        networks = factory.make_Networks(3)
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
+        ]
         [
-            network_by_name,
-            network_by_ip,
-            network_by_vlan,
-        ] = networks
-        if network_by_vlan.vlan_tag is None:
-            # For this test we need network_by_vlan to be a VLAN.
-            network_by_vlan.vlan_tag = factory.make_vlan_tag(
-                but_not=[network.vlan_tag for network in networks])
-            network_by_vlan.save()
+            subnet_by_name,
+            subnet_by_ip,
+            subnet_by_vlan,
+        ] = subnets
 
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_name, network_by_ip])
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_name, network_by_vlan])
-        right_mac = factory.make_MACAddress_with_Node(
-            networks=[network_by_name, network_by_ip, network_by_vlan])
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_ip, network_by_vlan])
-        factory.make_MACAddress_with_Node(networks=[])
+        self.create_node_on_subnets([subnet_by_name, subnet_by_ip])
+        self.create_node_on_subnets([subnet_by_name, subnet_by_vlan])
+        node = self.create_node_on_subnets(
+            [subnet_by_name, subnet_by_ip, subnet_by_vlan])
+        self.create_node_on_subnets([subnet_by_ip, subnet_by_vlan])
+        self.create_node_on_subnets([])
 
         self.assertConstrainedNodes(
-            {right_mac.node},
+            {node},
             {
                 'networks': [
-                    network_by_name.name,
-                    'ip:%s' % network_by_ip.ip,
-                    'vlan:%d' % network_by_vlan.vlan_tag,
+                    subnet_by_name.name,
+                    'ip:%s' % factory.pick_ip_in_network(
+                        subnet_by_ip.get_ipnetwork()),
+                    'vlan:%d' % subnet_by_vlan.vlan.vid,
                     ],
             })
 
-    def test_networks_ignores_other_networks(self):
-        [this_network, other_network] = factory.make_Networks(2)
-        mac = factory.make_MACAddress_with_Node(
-            networks=[this_network, other_network])
+    def test_networks_ignores_other_subnets(self):
+        [this_subnet, other_subnet] = [
+            factory.make_Subnet()
+            for _ in range(2)
+        ]
+        node = self.create_node_on_subnets([this_subnet, other_subnet])
         self.assertConstrainedNodes(
-            [mac.node],
-            {'networks': [this_network.name]})
+            [node],
+            {'networks': [this_subnet.name]})
 
     def test_not_networks_filters_by_name(self):
-        networks = factory.make_Networks(2)
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
-            ]
+        [subnet, not_subnet] = [
+            factory.make_Subnet()
+            for _ in range(2)
+        ]
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         self.assertConstrainedNodes(
-            {macs[0].node},
-            {'not_networks': [networks[1].name]})
+            {node},
+            {'not_networks': [not_subnet.name]})
 
     def test_not_networks_filters_by_ip(self):
-        networks = factory.make_Networks(2)
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
-            ]
+        [subnet, not_subnet] = [
+            factory.make_Subnet()
+            for _ in range(2)
+        ]
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         self.assertConstrainedNodes(
-            {macs[0].node},
-            {'not_networks': ['ip:%s' % networks[1].ip]})
+            {node},
+            {'not_networks': ['ip:%s' % factory.pick_ip_in_network(
+                not_subnet.get_ipnetwork())]})
 
     def test_not_networks_filters_by_vlan_tag(self):
-        vlan_tags = range(2)
-        networks = [factory.make_Network(vlan_tag=tag) for tag in vlan_tags]
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for network in networks
+        vlan_tags = list(range(1, 3))
+        subnets = [
+            factory.make_Subnet(vlan=factory.make_VLAN(vid=tag))
+            for tag in vlan_tags
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
             ]
         self.assertConstrainedNodes(
-            {macs[0].node},
+            {nodes[0]},
             {'not_networks': ['vlan:%d' % vlan_tags[1]]})
 
-    def test_not_networks_accepts_nodes_without_network_connections(self):
-        macless_node = factory.make_Node()
-        unconnected_mac = factory.make_MACAddress_with_Node(networks=[])
+    def test_not_networks_accepts_nodes_without_subnet_connections(self):
+        interfaceless_node = factory.make_Node()
+        unconnected_node = factory.make_Node()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=unconnected_node)
         self.assertConstrainedNodes(
-            {macless_node, unconnected_mac.node},
-            {'not_networks': [factory.make_Network().name]})
+            {interfaceless_node, unconnected_node},
+            {'not_networks': [factory.make_Subnet().name]})
 
-    def test_not_networks_excludes_node_with_any_mac_on_not_networks(self):
-        network = factory.make_Network()
-        node = factory.make_Node()
-        factory.make_MACAddress(node=node, networks=[network])
-        factory.make_MACAddress(node=node, networks=[factory.make_Network()])
-        self.assertConstrainedNodes([], {'not_networks': [network.name]})
+    def test_not_networks_exclude_node_with_any_interface_on_not_subnets(self):
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        other_subnet = factory.make_Subnet()
+        other_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+            interface=other_nic, subnet=other_subnet)
+        self.assertConstrainedNodes([], {'not_networks': [subnet.name]})
 
-    def test_not_networks_excludes_node_with_mac_on_any_not_networks(self):
-        networks = factory.make_Networks(3)
-        not_network = networks[1]
-        factory.make_MACAddress_with_Node(networks=[not_network])
-        self.assertConstrainedNodes([], {'not_networks': [not_network.name]})
+    def test_not_networks_excludes_node_with_interface_on_any_not_subnet(self):
+        factory.make_Subnet()
+        not_subnet = factory.make_Subnet()
+        factory.make_Node_with_Interface_on_Subnet(subnet=not_subnet)
+        self.assertConstrainedNodes([], {'not_networks': [not_subnet.name]})
 
     def test_invalid_not_networks(self):
         form = AcquireNodeForm(data={'not_networks': 'ip:10.0.0.0'})
@@ -470,38 +508,33 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_not_networks_combines_filters(self):
-        networks = factory.make_Networks(5)
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(5)
+        ]
         [
-            network_by_name,
-            network_by_ip,
-            network_by_vlan,
-            other_network,
-            remaining_network,
-        ] = networks
-        if network_by_vlan.vlan_tag is None:
-            # For this test we need network_by_vlan to be a VLAN.
-            network_by_vlan.vlan_tag = factory.make_vlan_tag(
-                but_not=[network.vlan_tag for network in networks])
-            network_by_vlan.save()
+            subnet_by_name,
+            subnet_by_ip,
+            subnet_by_vlan,
+            other_subnet,
+            remaining_subnet,
+        ] = subnets
 
-        factory.make_MACAddress_with_Node(networks=[network_by_name])
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_name, network_by_ip])
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_name, network_by_vlan])
-        factory.make_MACAddress_with_Node(networks=[network_by_vlan])
-        factory.make_MACAddress_with_Node(
-            networks=[network_by_vlan, other_network])
-        right_mac = factory.make_MACAddress_with_Node(
-            networks=[remaining_network])
+        self.create_node_on_subnets([subnet_by_name])
+        self.create_node_on_subnets([subnet_by_name, subnet_by_ip])
+        self.create_node_on_subnets([subnet_by_name, subnet_by_vlan])
+        self.create_node_on_subnets([subnet_by_vlan])
+        self.create_node_on_subnets([subnet_by_vlan, other_subnet])
+        node = self.create_node_on_subnets([remaining_subnet])
 
         self.assertConstrainedNodes(
-            {right_mac.node},
+            {node},
             {
                 'not_networks': [
-                    network_by_name.name,
-                    'ip:%s' % network_by_ip.ip,
-                    'vlan:%d' % network_by_vlan.vlan_tag,
+                    subnet_by_name.name,
+                    'ip:%s' % factory.pick_ip_in_network(
+                        subnet_by_ip.get_ipnetwork()),
+                    'vlan:%d' % subnet_by_vlan.vlan.vid,
                     ],
             })
 
@@ -857,16 +890,19 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_returns_distinct_nodes(self):
-        network = factory.make_Network()
         node = factory.make_Node()
-        # Create multiple NICs for `node` connected to `network`.
-        [
-            factory.make_MACAddress(node=node, networks=[network])
-            for _ in range(3)
-            ]
+        subnet = factory.make_Subnet()
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+            interface=nic1, subnet=subnet)
+        nic2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+            interface=nic2, subnet=subnet)
         self.assertConstrainedNodes(
             {node},
-            {'networks': [network.name]})
+            {'networks': [subnet.name]})
 
     def test_describe_constraints_returns_empty_if_no_constraints(self):
         form = AcquireNodeForm(data={})
@@ -919,8 +955,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'mem': randint(1024, 256 * 1024),
             'tags': [factory.make_Tag().name],
             'not_tags': [factory.make_Tag().name],
-            'networks': [factory.make_Network().name],
-            'not_networks': [factory.make_Network().name],
+            'networks': [factory.make_Subnet().name],
+            'not_networks': [factory.make_Subnet().name],
             'connected_to': [factory.make_mac_address()],
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
@@ -937,6 +973,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             constraint.split('=', 1)[0]
             for constraint in form.describe_constraints().split()
             }
+
         self.assertItemsEqual(constraints.keys(), described_constraints)
 
 

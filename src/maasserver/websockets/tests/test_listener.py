@@ -20,13 +20,13 @@ import random
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
-from maasserver.models.macaddress import MACAddress
+from maasserver.models.interface import Interface
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
@@ -253,9 +253,9 @@ class TransactionalHelpersMixin:
         node.delete()
 
     @transactional
-    def get_node_pxe_mac(self, system_id):
+    def get_node_boot_interface(self, system_id):
         node = Node.objects.get(system_id=system_id)
-        return node.get_pxe_mac()
+        return node.get_boot_interface()
 
     @transactional
     def create_nodegroup(self, params=None):
@@ -287,6 +287,17 @@ class TransactionalHelpersMixin:
         for key, value in params.items():
             setattr(interface, key, value)
         return interface.save()
+
+    @transactional
+    def update_nodegroupinterface_subnet_mask(self, id, subnet_mask):
+        interface = NodeGroupInterface.objects.get(id=id)
+        # This is now a special case, since the subnet_mask no longer
+        # belongs to the NodeGroupInterface. We'll need to explicitly
+        # save *only* the Subnet, without saving the NodeGroupInterface.
+        # Otherwise, Django will ignorantly update the table, and our
+        # test case may pass with a false-positive.
+        interface.subnet_mask = subnet_mask
+        interface.subnet.save()
 
     @transactional
     def delete_nodegroupinterface(self, id):
@@ -388,17 +399,6 @@ class TransactionalHelpersMixin:
         sip.delete()
 
     @transactional
-    def create_dhcplease(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_DHCPLease(**params)
-
-    @transactional
-    def delete_dhcplease(self, id):
-        lease = DHCPLease.objects.get(id=id)
-        lease.delete()
-
-    @transactional
     def create_noderesult(self, params=None):
         if params is None:
             params = {}
@@ -410,22 +410,22 @@ class TransactionalHelpersMixin:
         result.delete()
 
     @transactional
-    def create_macaddress(self, params=None):
+    def create_interface(self, params=None):
         if params is None:
             params = {}
-        return factory.make_MACAddress(**params)
+        return factory.make_Interface(INTERFACE_TYPE.PHYSICAL, **params)
 
     @transactional
-    def delete_macaddress(self, id):
-        mac = MACAddress.objects.get(id=id)
-        mac.delete()
+    def delete_interface(self, id):
+        interface = Interface.objects.get(id=id)
+        interface.delete()
 
     @transactional
-    def update_macaddress(self, id, params):
-        mac = MACAddress.objects.get(id=id)
+    def update_interface(self, id, params):
+        interface = Interface.objects.get(id=id)
         for key, value in params.items():
-            setattr(mac, key, value)
-        return mac.save()
+            setattr(interface, key, value)
+        return interface.save()
 
     @transactional
     def create_blockdevice(self, params=None):
@@ -747,6 +747,28 @@ class TestClusterInterfaceListener(
                 self.update_nodegroupinterface,
                 interface.id,
                 {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_nodegroup_update_handler_on_update_subnet_mask(self):
+        yield deferToThread(register_all_triggers)
+        nodegroup = yield deferToThread(self.create_nodegroup)
+        interface = yield deferToThread(
+            self.create_nodegroupinterface, nodegroup,
+            params=dict(ip='10.0.0.1', subnet_mask='255.255.255.0'))
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_nodegroupinterface_subnet_mask,
+                interface.id, '255.255.0.0')
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
@@ -1106,15 +1128,15 @@ class TestNodeEventListener(
 class TestNodeStaticIPAddressListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_macstaticipaddresslink table that notifies its node."""
+    maasserver_interfacestaticipaddresslink table that notifies its node."""
 
     scenarios = (
         ('node', {
-            'params': {'installable': True, 'mac': True},
+            'params': {'installable': True, 'interface': True},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False, 'mac': True},
+            'params': {'installable': False, 'interface': True},
             'listener': 'device',
             }),
     )
@@ -1124,62 +1146,8 @@ class TestNodeStaticIPAddressListener(
     def test__calls_handler_with_update_on_create(self):
         yield deferToThread(register_all_triggers)
         node = yield deferToThread(self.create_node, self.params)
-        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
-
-        listener = PostgresListener()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
-        try:
-            yield deferToThread(self.create_staticipaddress, {"mac": pxe_mac})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % node.system_id), dv.value)
-        finally:
-            yield listener.stop()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
-        sip = yield deferToThread(
-            self.create_staticipaddress, {"mac": pxe_mac})
-
-        listener = PostgresListener()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
-        try:
-            yield deferToThread(self.delete_staticipaddress, sip.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % node.system_id), dv.value)
-        finally:
-            yield listener.stop()
-
-
-class TestNodeDHCPLeaseListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
-    """End-to-end test of both the listeners code and the triggers on
-    maasserver_dhcplease table that notifies its node."""
-
-    scenarios = (
-        ('node', {
-            'params': {'installable': True, 'mac': True},
-            'listener': 'node',
-            }),
-        ('device', {
-            'params': {'installable': False, 'mac': True},
-            'listener': 'device',
-            }),
-    )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
 
         listener = PostgresListener()
         dv = DeferredValue()
@@ -1187,7 +1155,7 @@ class TestNodeDHCPLeaseListener(
         yield listener.start()
         try:
             yield deferToThread(
-                self.create_dhcplease, {"mac": pxe_mac.mac_address})
+                self.create_staticipaddress, {"interface": interface})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1198,16 +1166,17 @@ class TestNodeDHCPLeaseListener(
     def test__calls_handler_with_update_on_delete(self):
         yield deferToThread(register_all_triggers)
         node = yield deferToThread(self.create_node, self.params)
-        pxe_mac = yield deferToThread(self.get_node_pxe_mac, node.system_id)
-        lease = yield deferToThread(
-            self.create_dhcplease, {"mac": pxe_mac.mac_address})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        sip = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_dhcplease, lease.id)
+            yield deferToThread(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1266,10 +1235,10 @@ class TestNodeNodeResultListener(
             yield listener.stop()
 
 
-class TestNodeMACAddressListener(
+class TestNodeInterfaceListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_macaddress table that notifies its node."""
+    maasserver_interface table that notifies its node."""
 
     scenarios = (
         ('node', {
@@ -1293,7 +1262,7 @@ class TestNodeMACAddressListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_macaddress, {"node": node})
+            yield deferToThread(self.create_interface, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1304,14 +1273,14 @@ class TestNodeMACAddressListener(
     def test__calls_handler_with_update_on_delete(self):
         yield deferToThread(register_all_triggers)
         node = yield deferToThread(self.create_node, self.params)
-        mac = yield deferToThread(self.create_macaddress, {"node": node})
+        interface = yield deferToThread(self.create_interface, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_macaddress, mac.id)
+            yield deferToThread(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1322,14 +1291,14 @@ class TestNodeMACAddressListener(
     def test__calls_handler_with_update_on_update(self):
         yield deferToThread(register_all_triggers)
         node = yield deferToThread(self.create_node, self.params)
-        mac = yield deferToThread(self.create_macaddress, {"node": node})
+        interface = yield deferToThread(self.create_interface, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_macaddress, mac.id, {
+            yield deferToThread(self.update_interface, interface.id, {
                 "mac_address": factory.make_MAC()
                 })
             yield dv.get(timeout=2)
@@ -1343,7 +1312,7 @@ class TestNodeMACAddressListener(
         yield deferToThread(register_all_triggers)
         node1 = yield deferToThread(self.create_node, self.params)
         node2 = yield deferToThread(self.create_node, self.params)
-        mac = yield deferToThread(self.create_macaddress, {"node": node1})
+        interface = yield deferToThread(self.create_interface, {"node": node1})
         dvs = [DeferredValue(), DeferredValue()]
 
         def set_defer_value(*args):
@@ -1356,7 +1325,7 @@ class TestNodeMACAddressListener(
         listener.register(self.listener, set_defer_value)
         yield listener.start()
         try:
-            yield deferToThread(self.update_macaddress, mac.id, {
+            yield deferToThread(self.update_interface, interface.id, {
                 "node": node2
                 })
             yield dvs[0].get(timeout=2)

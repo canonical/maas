@@ -151,13 +151,12 @@ def gather_leases(hosts_and_leases):
     """Find current leases among `hosts_and_leases`."""
     now = datetime.utcnow()
     # If multiple leases for the same address are valid at the same
-    # time, for whatever reason, the dict will contain the one that was
-    # last appended to the leases file.
-    return {
-        lease.host: lease.hardware.mac
+    # time, for whatever reason, the list will contain all of them.
+    return [
+        (lease.host, lease.hardware.mac)
         for lease in filter(is_lease, hosts_and_leases)
         if not has_expired(lease, now)
-    }
+    ]
 
 
 def get_host_mac(host):
@@ -213,32 +212,31 @@ def gather_hosts(hosts_and_leases):
     for host in filter(is_host, hosts_and_leases):
         host_maps[get_host_key(host)] = (get_host_mac(host), get_host_ip(host))
     # Now filter out mappings where the last entry was a rubout.
-    return {
-        val[1]: val[0]
+    return [
+        (val[1], val[0])
         for _, val in host_maps.items()
         if val[1] and val[0]
-    }
+    ]
 
 
 def combine_entries(entries):
     """Combine the hosts and leases declarations in a parsed leases file.
 
     :param entries: Parsed host/leases entries from a leases file.
-    :return: A dict mapping leased IP addresses to the respective MAC
+    :return: A list mapping leased IP addresses to the respective MAC
         addresses that currently own them (regardless of whether they
         were found in a lease or in a host declaration).
     """
     leases = gather_leases(entries)
-    leases.update(gather_hosts(entries))
-    return leases
+    return leases + gather_hosts(entries)
 
 
 def parse_leases(leases_contents):
     """Parse contents of a leases file.
 
     :param leases_contents: Contents (as unicode) of the leases file.
-    :return: A dict mapping each currently leased IP address to the MAC
-        address that it is associated with.
+    :return: A list mapping each currently leased IP address to the MAC
+        address that it is associated with, with possible duplicates.
     """
     entries = lease_parser.searchString(leases_contents)
     return combine_entries(entries)

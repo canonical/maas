@@ -142,14 +142,16 @@ class TestHelpers(DjangoTestCase):
             MAASAPINotFound, get_node_for_mac, factory.make_mac_address())
 
     def test_get_node_for_mac_finds_node_by_mac(self):
-        mac = factory.make_MACAddress_with_Node()
-        self.assertEqual(mac.node, get_node_for_mac(mac.mac_address))
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
+        self.assertEqual(iface.node, get_node_for_mac(iface.mac_address))
 
     def test_get_queried_node_looks_up_by_mac_if_given(self):
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
         self.assertEqual(
-            mac.node,
-            get_queried_node(object(), for_mac=mac.mac_address))
+            iface.node,
+            get_queried_node(object(), for_mac=iface.mac_address))
 
     def test_get_queried_node_looks_up_oauth_key_by_default(self):
         node = factory.make_Node()
@@ -441,7 +443,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup, mac=True)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup, interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -477,7 +479,7 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installation_success_leaves_node_deploying(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
@@ -486,7 +488,7 @@ class TestInstallingAPI(MAASServerTestCase):
     def test_signaling_installation_success_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
@@ -534,7 +536,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def setUp(self):
         super(TestCommissioningAPI, self).setUp()
         self.patch(Node, 'stop_transition_monitor')
-        self.patch(Node, 'delete_host_maps')
+        self.patch(Node, 'release_leases')
 
     def test_commissioning_scripts(self):
         script = factory.make_CommissioningScript()
@@ -911,32 +913,60 @@ class TestCommissioningAPI(MAASServerTestCase):
             (httplib.BAD_REQUEST, "Failed to parse JSON power_parameters"),
             (response.status_code, response.content))
 
-    def test_signal_clears_dynamic_ip_address_leases_if_not_WORKING(self):
+    def test_signal_calls_release_leases_if_not_WORKING(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        ips = [factory.make_ipv4_address() for _ in range(2)]
-        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertThat(node.delete_host_maps, MockCalledOnceWith(set(ips)))
+        self.assertThat(node.release_leases, MockCalledOnceWith())
 
-    def test_signal_does_not_clear_dynamic_ip_address_leases_if_WORKING(self):
+    def test_signal_does_not_call_release_leases_if_WORKING(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        ips = [factory.make_ipv4_address() for _ in range(2)]
-        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertThat(node.delete_host_maps, MockNotCalled())
+        self.assertThat(node.release_leases, MockNotCalled())
 
-    def test_signal_doesnt_clear_dynamic_ip_leases_if_not_commissioning(self):
+    def test_signal_doesnt_call_release_leases_if_not_commissioning(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        ips = [factory.make_ipv4_address() for _ in range(2)]
-        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertThat(node.delete_host_maps, MockNotCalled())
+        self.assertThat(node.release_leases, MockNotCalled())
+
+    def test_signal_calls_sets_initial_network_config_if_OK(self):
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockCalledOnceWith(node))
+
+    def test_signal_doesnt_call_sets_initial_network_config_if_WORKING(self):
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='WORKING', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockNotCalled())
+
+    def test_signal_doesnt_call_sets_initial_network_config_if_FAILED(self):
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='FAILED', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockNotCalled())
 
 
 class TestDiskErasingAPI(MAASServerTestCase):
@@ -963,22 +993,24 @@ class TestDiskErasingAPI(MAASServerTestCase):
 class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_retrieves_node_metadata_by_mac(self):
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
         url = reverse(
             'metadata-meta-data-by-mac',
-            args=['latest', mac.mac_address, 'instance-id'])
+            args=['latest', iface.mac_address, 'instance-id'])
         response = self.client.get(url)
         self.assertEqual(
-            (httplib.OK, mac.node.system_id),
+            (httplib.OK, iface.node.system_id),
             (response.status_code, response.content))
 
     def test_api_retrieves_node_userdata_by_mac(self):
-        mac = factory.make_MACAddress_with_Node(
-            node=factory.make_Node(status=NODE_STATUS.COMMISSIONING))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.COMMISSIONING)
+        iface = node.get_boot_interface()
         user_data = factory.make_string().encode('ascii')
-        NodeUserData.objects.set_user_data(mac.node, user_data)
+        NodeUserData.objects.set_user_data(iface.node, user_data)
         url = reverse(
-            'metadata-user-data-by-mac', args=['latest', mac.mac_address])
+            'metadata-user-data-by-mac', args=['latest', iface.mac_address])
         response = self.client.get(url)
         self.assertEqual(
             (httplib.OK, user_data),
@@ -986,10 +1018,11 @@ class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_normally_disallows_anonymous_node_metadata_access(self):
         self.patch(settings, 'ALLOW_UNSAFE_METADATA_ACCESS', False)
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
         url = reverse(
             'metadata-meta-data-by-mac',
-            args=['latest', mac.mac_address, 'instance-id'])
+            args=['latest', iface.mac_address, 'instance-id'])
         response = self.client.get(url)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 

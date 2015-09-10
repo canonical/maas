@@ -23,6 +23,7 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Event,
+    Node,
     Tag,
 )
 from maasserver.testing.factory import factory
@@ -102,7 +103,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertFalse(Event.objects.filter(node=node2).exists())
 
     def test_status_installation_success_leaves_node_deploying(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -122,7 +123,8 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_comissioning_success_populates_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -137,8 +139,28 @@ class TestStatusAPI(MAASServerTestCase):
             populate_tags_for_single_node,
             MockCalledOnceWith(ANY, node))
 
+    def test_status_comissioning_success_sets_node_network_configuration(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        client = make_node_client(node=node)
+        payload = {
+            'event_type': 'finish',
+            'result': 'SUCCESS',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+        }
+        response = call_status(client, node, payload)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockCalledOnceWith(node))
+
     def test_status_commissioning_failure_leaves_node_failed(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -159,7 +181,7 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_commissioning_failure_clears_owner(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.COMMISSIONING, owner=user)
+            interface=True, status=NODE_STATUS.COMMISSIONING, owner=user)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -176,7 +198,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertIsNone(reload_object(node).owner)
 
     def test_status_installation_failure_leaves_node_failed(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -197,7 +219,7 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_installation_failure_clears_owner(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DEPLOYING, owner=user)
+            interface=True, status=NODE_STATUS.DEPLOYING, owner=user)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -216,7 +238,8 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -232,7 +255,8 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
     def test_status_erasure_failure_leaves_node_failed(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DISK_ERASING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DISK_ERASING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -253,7 +277,8 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_erasure_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DISK_ERASING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DISK_ERASING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -271,7 +296,7 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_erasure_failure_clears_owner(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DISK_ERASING, owner=user)
+            interface=True, status=NODE_STATUS.DISK_ERASING, owner=user)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -288,7 +313,8 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertIsNone(reload_object(node).owner)
 
     def test_status_with_file_bad_encoder_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         contents = 'These are the contents of the file.'
         encoded_content = base64.encodestring(bz2.compress(contents))
@@ -312,7 +338,8 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertEqual('Invalid encoding: uuencode', response.content)
 
     def test_status_with_file_bad_compression_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         contents = 'These are the contents of the file.'
         encoded_content = base64.encodestring(bz2.compress(contents))
@@ -336,7 +363,8 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertEqual('Invalid compression: jpeg', response.content)
 
     def test_status_with_file_no_compression_succeeds(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         contents = 'These are the contents of the file.'
         encoded_content = base64.encodestring(contents)
@@ -377,7 +405,7 @@ class TestStatusAPI(MAASServerTestCase):
                 NODE_STATUS.FAILED_RELEASING,
                 NODE_STATUS.DISK_ERASING,
                 NODE_STATUS.FAILED_DISK_ERASING]:
-            node = factory.make_Node(mac=True, status=node_status)
+            node = factory.make_Node(interface=True, status=node_status)
             client = make_node_client(node=node)
             contents = 'These are the contents of the file.'
             encoded_content = base64.encodestring(bz2.compress(contents))
@@ -408,7 +436,7 @@ class TestStatusAPI(MAASServerTestCase):
         for node_status, target_status in [
                 (NODE_STATUS.COMMISSIONING, NODE_STATUS.FAILED_COMMISSIONING),
                 (NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT)]:
-            node = factory.make_Node(mac=True, status=node_status)
+            node = factory.make_Node(interface=True, status=node_status)
             client = make_node_client(node=node)
             contents = 'These are the contents of the file.'
             encoded_content = base64.encodestring(bz2.compress(contents))
@@ -436,7 +464,8 @@ class TestStatusAPI(MAASServerTestCase):
 
     def test_status_with_results_succeeds(self):
         """Adding a script result should succeed"""
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         contents = 'These are the contents of the file.'
         encoded_content = base64.encodestring(bz2.compress(contents))
@@ -466,7 +495,8 @@ class TestStatusAPI(MAASServerTestCase):
     def test_status_with_results_no_script_result_defaults_to_zero(self):
         """Adding a script result should succeed without a return code defaults
         it to zero."""
-        node = factory.make_Node(mac=True, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         contents = 'These are the contents of the file.'
         encoded_content = base64.encodestring(bz2.compress(contents))
@@ -492,7 +522,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertEqual(0, node_result.script_result)
 
     def test_status_with_missing_event_type_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'result': 'SUCCESS',
@@ -505,7 +535,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertIn('Missing parameter in status message', response.content)
 
     def test_status_with_missing_origin_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -518,7 +548,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertIn('Missing parameter in status message', response.content)
 
     def test_status_with_missing_name_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',
@@ -531,7 +561,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertIn('Missing parameter in status message', response.content)
 
     def test_status_with_missing_description_fails(self):
-        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         payload = {
             'event_type': 'finish',

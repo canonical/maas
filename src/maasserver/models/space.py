@@ -20,11 +20,13 @@ __all__ = [
 
 import datetime
 
+from django.core.exceptions import PermissionDenied
 from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
 )
+from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -52,6 +54,30 @@ class SpaceManager(Manager):
             }
         )
         return space
+
+    def get_space_or_404(self, id, user, perm):
+        """Fetch a `Space` by its id.  Raise exceptions if no `Space` with
+        this id exists or if the provided user has not the required permission
+        to access this `Space`.
+
+        :param id: The space_id.
+        :type id: int
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param perm: The permission to assert that the user has on the node.
+        :type perm: unicode
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        space = get_object_or_404(self.model, id=id)
+        if user.has_perm(perm, space):
+            return space
+        else:
+            raise PermissionDenied()
 
 
 class Space(CleanSave, TimestampedModel):

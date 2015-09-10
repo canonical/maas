@@ -22,6 +22,7 @@ from maasserver.api.support import (
 )
 from maasserver.api.utils import get_optional_list
 from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
@@ -36,7 +37,11 @@ from maasserver.forms import (
     DeviceWithMACsForm,
     ReleaseIPForm,
 )
-from maasserver.models import MACAddress
+from maasserver.models import (
+    StaticIPAddress,
+    Subnet,
+)
+from maasserver.models.interface import Interface
 from maasserver.models.node import Device
 from piston.utils import rc
 
@@ -45,7 +50,7 @@ DISPLAYED_DEVICE_FIELDS = (
     'system_id',
     'hostname',
     'owner',
-    ('macaddress_set', ('mac_address',)),
+    'macaddress_set',
     'parent',
     'tag_names',
     'ip_addresses',
@@ -84,6 +89,14 @@ class DeviceHandler(OperationsHandler):
         if node.owner is None:
             return None
         return node.owner.username
+
+    @classmethod
+    def macaddress_set(handler, device):
+        return [
+            {"mac_address": "%s" % interface.mac_address}
+            for interface in device.interface_set.all()
+            if interface.mac_address
+        ]
 
     def read(self, request, system_id):
         """Read a specific device.
@@ -169,23 +182,26 @@ class DeviceHandler(OperationsHandler):
         else:
             raw_mac = request.POST.get('mac_address', None)
             if raw_mac is None:
-                mac_address = device.get_primary_mac()
+                interface = device.get_boot_interface()
             else:
                 try:
-                    mac_address = MACAddress.objects.get(
+                    interface = Interface.objects.get(
                         mac_address=raw_mac, node=device)
-                except MACAddress.DoesNotExist:
+                except Interface.DoesNotExist:
                     raise MAASAPIBadRequest(
                         "mac_address %s not found on the device" % raw_mac)
             requested_address = request.POST.get('requested_address', None)
             if requested_address is None:
-                sticky_ips = mac_address.claim_static_ips(
-                    alloc_type=IPADDRESS_TYPE.STICKY,
-                    requested_address=requested_address, update_host_maps=True)
+                sticky_ips = interface.claim_static_ips(
+                    requested_address=requested_address)
             else:
-                sticky_ip = mac_address.set_static_ip(
-                    requested_address, request.user, update_host_maps=True)
-                sticky_ips = [sticky_ip]
+                subnet = Subnet.objects.get_best_subnet_for_ip(
+                    requested_address)
+                sticky_ips = [
+                    interface.link_subnet(
+                        INTERFACE_LINK_TYPE.STATIC, subnet,
+                        ip_address=requested_address),
+                ]
 
             maaslog.info(
                 "%s: Sticky IP address(es) allocated: %s", device.hostname,
@@ -208,31 +224,36 @@ class DeviceHandler(OperationsHandler):
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
+
+        address = request.POST.get('address', None)
+        if address is not None and address.strip() == '':
+            raise MAASAPIBadRequest(
+                {'address': ["Cannot be empty if supplied."]})
+
+        deallocated_ips = []
+        if address:
+            sip = StaticIPAddress.objects.filter(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip=address,
+                interface__node=device).first()
+            if sip is None:
+                raise MAASAPIBadRequest(
+                    "%s is not a sticky IP address on device: %s",
+                    address, device.hostname)
+            for interface in sip.interface_set.all():
+                interface.unlink_ip_address(sip)
+            deallocated_ips.append(address)
         else:
-            address = request.POST.get('address', None)
+            for interface in device.interface_set.all():
+                for ip_address in interface.ip_addresses.filter(
+                        alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False):
+                    if ip_address.ip:
+                        interface.unlink_ip_address(ip_address)
+                        deallocated_ips.append(ip_address.ip)
 
-            if address is not None and address.strip() == '':
-                raise MAASAPIBadRequest(
-                    {'address':
-                     "Cannot be empty if supplied."})
-
-            # Note: this call handles deleting the host maps, and updating the
-            # DNS zones (unlike the claim_static_ips() call in mac_address
-            # used above)
-            deallocated_ips = device.deallocate_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
-
-            if len(deallocated_ips) == 0 and address is not None:
-                raise MAASAPIBadRequest(
-                    "%s: could not deallocate sticky IP address: %s" %
-                    (device.hostname, address))
-            else:
-                maaslog.info(
-                    "%s: Sticky IP address(es) deallocated: %s",
-                    device.hostname,
-                    ', '.join(unicode(ip) for ip in deallocated_ips))
-
-            return device
+        maaslog.info(
+            "%s: Sticky IP address(es) deallocated: %s", device.hostname,
+            ', '.join(unicode(ip) for ip in deallocated_ips))
+        return device
 
 
 class DevicesHandler(OperationsHandler):
@@ -284,17 +305,16 @@ class DevicesHandler(OperationsHandler):
         devices = Device.devices.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
-            devices = devices.filter(macaddress__mac_address__in=match_macs)
+            devices = devices.filter(interface__mac_address__in=match_macs)
         match_hostnames = get_optional_list(request.GET, 'hostname')
         if match_hostnames is not None:
             devices = devices.filter(hostname__in=match_hostnames)
 
         # Prefetch related objects that are needed for rendering the result.
-        devices = devices.prefetch_related('macaddress_set__node')
-        devices = devices.prefetch_related('macaddress_set__ip_addresses')
+        devices = devices.prefetch_related('interface_set__node')
+        devices = devices.prefetch_related('interface_set__ip_addresses')
         devices = devices.prefetch_related('tags')
         devices = devices.select_related('nodegroup')
-        devices = devices.prefetch_related('nodegroup__dhcplease_set')
         devices = devices.prefetch_related('nodegroup__nodegroupinterface_set')
         devices = devices.prefetch_related('zone')
         return devices.order_by('id')

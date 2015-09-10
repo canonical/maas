@@ -9,7 +9,6 @@ from __future__ import (
     unicode_literals,
     )
 
-
 str = None
 
 __metaclass__ = type
@@ -28,6 +27,8 @@ from django.db.models import (
     Manager,
     PROTECT,
 )
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUP_STATUS,
@@ -255,11 +256,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         blank=True, editable=True, max_length=255, default='',
         help_text="Network interface (e.g. 'eth1').")
 
-    router_ip = MAASIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None,
-        verbose_name="Router IP",
-        help_text="IP of this network's router given to DHCP clients")
-
     ip_range_low = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="DHCP dynamic IP range low value",
@@ -288,6 +284,12 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     @property
     def broadcast_ip(self):
+        """Compatibility layer to return the broadcast IP of the attached
+        Subnet's CIDR (or an empty string if there is no Subnet).
+
+        (This property exists because NodeGroupInterface previously contained
+        a broadcast_ip field.)
+        """
         if self.subnet is None:
             return ''
         return unicode(IPNetwork(self.subnet.cidr).broadcast)
@@ -299,9 +301,27 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     @property
     def subnet_mask(self):
+        """Compatibility layer to return the subnet mask of the attached
+        Subnet's CIDR (or an empty string if there is no Subnet).
+
+        (This property exists because NodeGroupInterface previously contained
+        a subnet_mask field.)
+        """
         if self.subnet is None:
             return ''
         return unicode(IPNetwork(self.subnet.cidr).netmask)
+
+    @property
+    def router_ip(self):
+        """Compatibility layer to return the router IP address for the attached
+        Subnet (or an empty string if a router_id cannot be found).
+
+        (This property exists because NodeGroupInterface previously contained
+        a router_ip field.)
+        """
+        if self.subnet is None or not self.subnet.gateway_ip:
+            return ''
+        return unicode(self.subnet.gateway_ip)
 
     @subnet_mask.setter
     def subnet_mask(self, value):
@@ -318,15 +338,19 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             self.subnet = None
             return
 
-        # Circular imports
-        from maasserver.models import Subnet, Space
-        cidr = make_network(self.ip, value).cidr
-        subnet, _ = Subnet.objects.get_or_create(cidr=unicode(cidr), defaults={
-            'name': unicode(cidr),
-            'cidr': unicode(cidr),
-            'space': Space.objects.get_default_space()
-        })
-        self.subnet = subnet
+        cidr = unicode(make_network(self.ip, value).cidr)
+        if self.subnet:
+            self.subnet.update_cidr(cidr)
+        else:
+            # Circular imports
+            from maasserver.models import Subnet, Space
+            subnet, _ = Subnet.objects.get_or_create(
+                cidr=cidr, defaults={
+                    'name': cidr,
+                    'cidr': cidr,
+                    'space': Space.objects.get_default_space()
+                })
+            self.subnet = subnet
 
     @property
     def network(self):
@@ -586,3 +610,13 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_network_config_if_managed()
         self.clean_ip_ranges()
         self.clean_overlapping_networks()
+
+
+@receiver(post_save, sender=NodeGroupInterface)
+def post_save_NodeGroupInterface(sender, instance, created, **kwargs):
+    """If a NodeGroupInterface is saved, ensure its corresponding Subnet
+    is also updated."""
+    # Note: If the NodeGroupInterface is being saved for the first time,
+    # the Subnet will have already been explicitly created already.
+    if not created and instance.subnet:
+        instance.subnet.save()

@@ -218,5 +218,5 @@ class TestUpdateLeases(PservTestCase):
             }
             """ % params)
         self.assertEqual(
-            (get_write_time(leases_file), {params['ip']: params['mac']}),
+            (get_write_time(leases_file), [(params['ip'], params['mac'])]),
             parse_leases_file())

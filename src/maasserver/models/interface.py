@@ -8,6 +8,8 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from maasserver.utils import get_one
+
 
 str = None
 
@@ -18,10 +20,12 @@ __all__ = [
     'PhysicalInterface',
     'Interface',
     'VLANInterface',
+    'UnknownInterface',
     ]
 
 
-from django.core.exceptions import PermissionDenied
+from collections import defaultdict
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 from django.db.models import (
     CharField,
@@ -30,40 +34,41 @@ from django.db.models import (
     ManyToManyField,
     PROTECT,
     Q,
+    BooleanField,
 )
+from maasserver.clusterrpc.dhcp import remove_host_maps
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import (
     INTERFACE_TYPE,
+    INTERFACE_LINK_TYPE,
     INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
+    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
-    StaticIPAddressTypeClash,
+    StaticIPAddressUnavailable,
 )
 from maasserver.fields import (
     JSONObjectField,
-    MAC,
     VerboseRegexValidator,
+    MACAddressField,
 )
+from maasserver.clusterrpc.dhcp import update_host_maps
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.macaddress import (
-    find_cluster_interface_responsible_for_ip,
-)
-from maasserver.models.nodegroupinterface import (
-    raise_if_address_inside_dynamic_range,
-)
+from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.space import Space
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.ipaddr import get_first_and_last_usable_host_in_network
 from netaddr import (
     IPAddress,
     IPNetwork,
 )
 from provisioningserver.logger import get_maas_logger
-
 
 maaslog = get_maas_logger("interface")
 
@@ -75,6 +80,29 @@ INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
     return VLAN.objects.get_default_vlan()
+
+
+def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
+    """Pick the cluster interface whose subnet contains `ip_address`.
+
+    :param cluster_interfaces: An iterable of `NodeGroupInterface`.
+    :param ip_address: An `IPAddress`.
+    :return: The cluster interface from `cluster_interfaces` whose subnet
+        contains `ip_address`, or `None`.
+    """
+    for interface in cluster_interfaces:
+        if (interface.subnet is not None and
+                ip_address in interface.subnet.get_ipnetwork()):
+            return interface
+    return None
+
+
+def get_subnet_family(subnet):
+    """Return the IPADDRESS_FAMILY for the `subnet`."""
+    if subnet is not None:
+        return subnet.get_ipnetwork().version
+    else:
+        return None
 
 
 class InterfaceManager(Manager):
@@ -94,6 +122,11 @@ class InterfaceManager(Manager):
             return qs
         else:
             return qs.filter(type=interface_type)
+
+    def get_by_ip(self, static_ip_address):
+        """Given the specified StaticIPAddress, return the Interface it's on.
+        """
+        return self.filter(ip_addresses=static_ip_address)
 
     def get_interface_or_404(self, system_id, interface_id, user, perm):
         """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
@@ -128,10 +161,6 @@ class InterfaceManager(Manager):
         else:
             raise PermissionDenied()
 
-    def get_interfaces_for_node(self, node):
-        """Return all interfaces that belong to `node`."""
-        return self.filter(mac__node=node)
-
 
 class Interface(CleanSave, TimestampedModel):
 
@@ -141,6 +170,8 @@ class Interface(CleanSave, TimestampedModel):
         ordering = ('created', )
 
     objects = InterfaceManager()
+
+    node = ForeignKey('Node', editable=False, null=True, blank=True)
 
     name = CharField(
         blank=False, editable=True, max_length=255,
@@ -162,7 +193,7 @@ class Interface(CleanSave, TimestampedModel):
     ip_addresses = ManyToManyField(
         'StaticIPAddress', editable=True, blank=True, null=True)
 
-    mac = ForeignKey('MACAddress', editable=True, blank=True, null=True)
+    mac_address = MACAddressField(unique=False, null=True, blank=True)
 
     ipv4_params = JSONObjectField(blank=True, default="")
 
@@ -172,6 +203,8 @@ class Interface(CleanSave, TimestampedModel):
 
     tags = ArrayField(
         dbtype="text", blank=True, null=False, default=[])
+
+    enabled = BooleanField(default=True)
 
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
@@ -194,16 +227,59 @@ class Interface(CleanSave, TimestampedModel):
 
     def __unicode__(self):
         return "name=%s, type=%s, mac=%s" % (
-            self.name, self.type, self.mac)
+            self.name, self.type, self.mac_address)
 
     def get_node(self):
-        return self.mac.node if self.mac else None
+        return self.node
 
     def get_name(self):
         return self.name
 
+    def get_links(self):
+        """Return the definition of links connected to this interface.
+
+        Example definition:
+        {
+            "id": 1,
+            "mode": "dhcp",
+            "ip": "192.168.1.2",
+            "subnet": <Subnet object>
+        }
+
+        'ip' and 'subnet' are optional and are only present if the
+        `StaticIPAddress` has an IP address and/or subnet.
+        """
+        links = []
+        for ip_address in self.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            link_type = ip_address.get_interface_link_type()
+            link = {
+                "id": ip_address.id,
+                "mode": link_type,
+            }
+            ip, subnet = ip_address.get_ip_and_subnet()
+            if ip:
+                link["ip_address"] = "%s" % ip
+            if subnet:
+                link["subnet"] = subnet
+            links.append(link)
+        return links
+
+    def only_has_link_up(self):
+        """Return True if this interface is only set to LINK_UP."""
+        ip_addresses = self.ip_addresses.exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        link_modes = set(
+            ip.get_interface_link_type()
+            for ip in ip_addresses
+        )
+        return link_modes == set([INTERFACE_LINK_TYPE.LINK_UP])
+
     def update_ip_addresses(self, cidr_list):
         """Update the IP addresses linked to this interface.
+
+        This only updates the DISCOVERED IP addresses connected to this
+        interface. All other IPADDRESS_TYPE's are left alone.
 
         :param cidr_list: A list of IP/network addresses using the CIDR format
         e.g. ['192.168.12.1/24', 'fe80::9e4e:36ff:fe3b:1c94/64'] to which the
@@ -212,7 +288,10 @@ class Interface(CleanSave, TimestampedModel):
         # Circular imports.
         from maasserver.models import StaticIPAddress, Subnet, Fabric
 
-        connected_ip_addresses = set()
+        # Delete all current DISCOVERED IP address on this interface. As new
+        # ones are about to be added.
+        StaticIPAddress.objects.filter(
+            interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
 
         # XXX:fabric - Using the default Fabric for now.
         fabric = Fabric.objects.get_default_fabric()
@@ -220,6 +299,9 @@ class Interface(CleanSave, TimestampedModel):
             network = IPNetwork(ip)
             cidr = unicode(network.cidr)
             address = unicode(network.ip)
+
+            # Find the Subnet for each IP address seen (will be used later
+            # to create or update the Subnet)
             try:
                 subnet = Subnet.objects.get(cidr=cidr, vlan__fabric=fabric)
             except Subnet.DoesNotExist:
@@ -231,80 +313,117 @@ class Interface(CleanSave, TimestampedModel):
                     "Creating subnet %s connected to interface %s "
                     "of node %s.", cidr, self, self.get_node())
 
-            # This code needs to deal with both:
-            # - legacy statically configured IPs (subnet=None, mac=mac) for
-            #   which the link to the interface was implicitly done through
-            #   the MAC field
-            # - newly configured IPs (fabric=fabric, interface=interface) for
-            #   which the link is explicitly done to the interface object.
-            try:
-                ip_address = StaticIPAddress.objects.get(
-                    Q(subnet=None, macaddress=self.mac) | Q(
-                        subnet=subnet, interface=self),
-                    ip=address)
-            except StaticIPAddress.DoesNotExist:
-                pass
-            else:
-                # Update legacy static IPs.
-                if ip_address.subnet is None:
-                    ip_address.subnet = subnet
-                    ip_address.save()
-                connected_ip_addresses.add(ip_address)
-                continue
-
-            # Handle conflicting IP records.
-            set_address = None
-            try:
-                ip_address = StaticIPAddress.objects.get(
-                    (Q(subnet=None) & ~Q(macaddress=self.mac)) |
-                    (Q(subnet=subnet) & ~Q(interface=self)),
-                    ip=address)
-            except StaticIPAddress.DoesNotExist:
-                set_address = address
-            else:
-                if ip_address.alloc_type != IPADDRESS_TYPE.DHCP:
-                    maaslog.warning(
-                        "IP address %s is already assigned to node %s",
-                        address, self.get_node())
+            # First check if this IP address exists in the database (at all).
+            prev_address = get_one(
+                StaticIPAddress.objects.filter(ip=address))
+            if prev_address is not None:
+                if prev_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
+                    # Previous address was a discovered address so we can
+                    # delete it without and messages.
+                    if prev_address.is_linked_to_one_unknown_interface():
+                        prev_address.interface_set.all().delete()
+                    prev_address.delete()
+                elif prev_address.interface_set.count() == 0:
+                    # Previous address is just hanging around, this should not
+                    # happen. But just in-case we delete the IP address.
+                    prev_address.delete()
                 else:
-                    # Handle conflicting DHCP address: the records might be
-                    # out of date: if the conflicting IP address is a DHCP
-                    # address, set its IP to None (but keep the record since it
-                    # materializes the interface<->subnet link).
-                    ip_address.ip = None
-                    ip_address.save()
-                    set_address = address
+                    ngi = subnet.get_managed_cluster_interface()
+                    if ngi is not None:
+                        # Subnet is managed by MAAS and the IP address is
+                        # not DISCOVERED then we have a big problem as MAAS
+                        # should not allow IP address to be allocated in a
+                        # managed dynamic range.
+                        alloc_name = prev_address.get_log_name_for_alloc_type()
+                        node = prev_address.get_node()
+                        maaslog.warn(
+                            "%s IP address (%s)%s was deleted because "
+                            "it was handed out by the MAAS DHCP server "
+                            "from the dynamic range.",
+                            alloc_name, prev_address.ip,
+                            " on " + node.fqdn if node is not None else '')
+                        prev_address.delete()
+                    else:
+                        # This is an external DHCP server where the subnet is
+                        # not managed by MAAS. It is possible that the user
+                        # did something wrong and set a static IP address on
+                        # another node to an IP address inside the same range
+                        # that the DHCP server provides.
+                        alloc_name = prev_address.get_log_name_for_alloc_type()
+                        node = prev_address.get_node()
+                        maaslog.warn(
+                            "%s IP address (%s)%s was deleted because "
+                            "it was handed out by an external DHCP "
+                            "server.",
+                            alloc_name, prev_address.ip,
+                            " on " + node.fqdn if node is not None else '')
+                        prev_address.delete()
 
-            # Add/update DHCP address.
-            try:
-                ip_address = StaticIPAddress.objects.get(
-                    subnet=subnet, interface=self,
-                    alloc_type=IPADDRESS_TYPE.DHCP)
-            except StaticIPAddress.DoesNotExist:
-                ip_address = StaticIPAddress.objects.create(
-                    ip=set_address, subnet=subnet,
-                    alloc_type=IPADDRESS_TYPE.DHCP)
-            else:
-                ip_address.ip = set_address
-                ip_address.save()
-            connected_ip_addresses.add(ip_address)
-
-        existing_ip_addresses = set(self.ip_addresses.all())
-
-        for ip_address in existing_ip_addresses - connected_ip_addresses:
-            self.ip_addresses.remove(ip_address)
-        for ip_address in connected_ip_addresses - existing_ip_addresses:
-            self.ip_addresses.add(ip_address)
+            # Create the newly discovered IP address.
+            new_address = StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
+                subnet=subnet)
+            new_address.save()
+            self.ip_addresses.add(new_address)
 
     def get_cluster_interface(self):
-        """Returns the cluster interface for this Interface, or None
-        if it is unspecified or cannot be found."""
-        return self.mac.get_cluster_interface() if self.mac else None
+        """Return the cluster interface for this Interface
+
+        This is the cluster interface that is setup to manage the network at
+        the Layer 2 level (broadcast - DHCP).
+        """
+        return self.get_cluster_interfaces().first()
+
+    def get_cluster_interfaces(self):
+        """Return the cluster interfaces for this Interface.
+        """
+        is_on_device_with_parent = (
+            self.node is not None and
+            not self.node.installable and
+            self.node.parent is not None)
+        if is_on_device_with_parent:
+            # Use the parents cluster interfaces.
+            parent_nic = self.node.parent.get_boot_interface()
+            if parent_nic is not None:
+                return parent_nic.get_cluster_interfaces()
+            else:
+                return []
+        else:
+            has_interface = Q(subnet__staticipaddress__interface=self)
+            has_dhcp = ~Q(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+            interfaces = NodeGroupInterface.objects.filter(
+                has_interface & has_dhcp)
+            return interfaces.order_by(
+                'subnet__staticipaddress__alloc_type', 'id')
 
     def get_attached_clusters_with_static_ranges(self):
-        return (
-            self.mac.get_attached_clusters_with_static_ranges()
-            if self.mac else None)
+        """Return the cluster interface for this Interface if it has a
+        static range defined.
+
+        This is the cluster interface that is setup to manage the network at
+        the Layer 2 level (broadcast - DHCP) with a static range.
+        """
+        is_on_device_with_parent = (
+            self.node is not None and
+            not self.node.installable and
+            self.node.parent is not None)
+        if is_on_device_with_parent:
+            # Use the parents cluster interfaces.
+            parent_nic = self.node.parent.get_boot_interface()
+            if parent_nic is not None:
+                return parent_nic.get_attached_clusters_with_static_ranges()
+            else:
+                return []
+        else:
+            has_interface = Q(subnet__staticipaddress__interface=self)
+            has_dhcp = ~Q(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+            has_static_range = (
+                Q(static_ip_range_low__isnull=False) &
+                Q(static_ip_range_high__isnull=False))
+            interfaces = NodeGroupInterface.objects.filter(
+                has_interface & has_dhcp & has_static_range)
+            return interfaces.order_by(
+                'subnet__staticipaddress__alloc_type', 'id')
 
     def _map_allocated_addresses(self, cluster_interfaces):
         """Gather already allocated static IP addresses for this Interface.
@@ -318,7 +437,12 @@ class Interface(CleanSave, TimestampedModel):
             interface: None
             for interface in cluster_interfaces
             }
-        for sip in self.mac.ip_addresses.all():
+        for sip in self.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            if sip.ip is None:
+                continue
+            # XXX mpontillo 2015-08-24
+            # This function should go via the Subnet table.
             interface = find_cluster_interface_responsible_for_ip(
                 cluster_interfaces, IPAddress(sip.ip))
             if interface is not None:
@@ -330,10 +454,11 @@ class Interface(CleanSave, TimestampedModel):
             user=None):
         """Allocate a `StaticIPAddress` for this MAC."""
         # Avoid circular imports.
-        from maasserver.models import (
-            MACStaticIPAddressLink,
-            StaticIPAddress,
-            )
+        from maasserver.models import StaticIPAddress
+
+        # If the this interface already has a DHCP IP address assigned we
+        # delete it and assign the static ip address.
+        self.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.DHCP).delete()
 
         new_sip = StaticIPAddress.objects.allocate_new(
             cluster_interface.network,
@@ -342,123 +467,539 @@ class Interface(CleanSave, TimestampedModel):
             cluster_interface.ip_range_low,
             cluster_interface.ip_range_high,
             alloc_type, requested_address=requested_address,
-            user=user)
-        # XXX mpontillo 2015-08-11 remove this once everything is using
-        # the link from the interface table.
-        MACStaticIPAddressLink(mac_address=self.mac, ip_address=new_sip).save()
+            user=user, subnet=cluster_interface.subnet)
         new_sip.interface_set.add(self)
         return new_sip
 
-    def claim_static_ips(
-            self, alloc_type=IPADDRESS_TYPE.AUTO, requested_address=None,
-            fabric=None, user=None, update_host_maps=True):
+    def _get_first_static_allocation_for_cluster(self, cluster, ip_family):
+        """Return the `StaticIPAddress` that is in the `cluster`'s hostmaps."""
+        first_ips = StaticIPAddress.objects.filter_by_ip_family(ip_family)
+        first_ips = first_ips.filter(
+            interface__mac_address=self.mac_address,
+            subnet__nodegroupinterface__nodegroup=cluster)
+        first_ips = first_ips.filter(
+            alloc_type__in=[
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+            ], ip__isnull=False)
+        first_ips = [
+            ip
+            for ip in first_ips.order_by('id')
+            if ip.ip
+        ]
+        if len(first_ips) > 0:
+            return first_ips[0]
+        else:
+            return None
+
+    def _has_static_allocation_on_cluster(self, cluster, ip_family):
+        """Return True if a `StaticIPAddress` already exists for this
+        interfaces `mac_address` for the `cluster`.
+
+        We use this method to check that only one update_host_maps call is
+        performed per MAC address on the cluster.
+        """
+        first_ip = self._get_first_static_allocation_for_cluster(
+            cluster, ip_family)
+        return first_ip is not None
+
+    def _is_first_static_allocation_on_cluster(self, static_ip, cluster):
+        """Return True if `static_ip` was the IP address that was written
+        as the hostmap in the cluster.
+        """
+        ip_family = IPAddress(static_ip.ip).version
+        first_ip = self._get_first_static_allocation_for_cluster(
+            cluster, ip_family)
+        if first_ip is not None and static_ip.id == first_ip.id:
+            return True
+        else:
+            return False
+
+    def _update_host_maps(self, cluster, ip):
+        """Update the hostmap on the cluster and given IP address."""
+        update_host_maps_failures = list(
+            update_host_maps({
+                cluster: {
+                    ip.ip: mac_address.get_raw()
+                    for mac_address in ip.get_mac_addresses()
+                }
+            }))
+        num_failures = len(update_host_maps_failures)
+        if num_failures != 0:
+            # We've hit an error, release the IP address and
+            # raise the error to the caller.
+            ip.delete()
+            update_host_maps_failures[0].raiseException()
+
+    def _remove_host_maps(self, cluster, ip):
+        """Remove the hostmap on the cluster and given IP address."""
+        removal_mapping = {
+            cluster: set().union(
+                {ip.ip},
+                set(
+                    mac_address.get_raw()
+                    for mac_address in ip.get_mac_addresses()
+                ))
+        }
+        remove_host_maps_failures = list(
+            remove_host_maps(removal_mapping))
+        if len(remove_host_maps_failures) != 0:
+            # There's only ever one failure here.
+            remove_host_maps_failures[0].raiseException()
+
+    def _update_dns_zones(self, other_nodegroups=[]):
+        """Updates DNS for the list of `other_nodegroups` and the `NodeGroup`
+        for the node attached to this interface."""
+        from maasserver.dns import config
+        nodegroups = set(other_nodegroups)
+        node = self.get_node()
+        if node is not None and node.nodegroup is not None:
+            nodegroups.add(node.nodegroup)
+        config.dns_update_zones(nodegroups)
+
+    def _remove_link_dhcp(self, subnet_family=None):
+        """Removes the DHCP links if they have no subnet or if the linked
+        subnet is in the same `subnet_family`."""
+        for ip in self.ip_addresses.all().select_related('subnet'):
+            if (ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and
+                    ip.get_interface_link_type() == INTERFACE_LINK_TYPE.DHCP):
+                if (subnet_family is None or ip.subnet is None or
+                        ip.subnet.get_ipnetwork().version == subnet_family):
+                    ip.delete()
+
+    def _remove_link_up(self):
+        """Removes the LINK_UP link if it exists."""
+        for ip in self.ip_addresses.all():
+            if (ip.alloc_type != IPADDRESS_TYPE.DISCOVERED and
+                    ip.get_interface_link_type() == (
+                        INTERFACE_LINK_TYPE.LINK_UP)):
+                ip.delete()
+
+    def _link_subnet_auto(self, subnet):
+        """Link interface to subnet using AUTO."""
+        ip_address = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip=None, subnet=subnet)
+        ip_address.save()
+        self.ip_addresses.add(ip_address)
+        self._remove_link_dhcp(get_subnet_family(subnet))
+        self._remove_link_up()
+        return ip_address
+
+    def _link_subnet_dhcp(self, subnet):
+        """Link interface to subnet using DHCP."""
+        self._remove_link_dhcp(get_subnet_family(subnet))
+        ip_address = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip=None, subnet=subnet)
+        ip_address.save()
+        self.ip_addresses.add(ip_address)
+        self._remove_link_up()
+        return ip_address
+
+    def _link_subnet_static(
+            self, subnet, ip_address=None, alloc_type=None, user=None):
+        """Link interface to subnet using STATIC."""
+        valid_alloc_types = [
+            IPADDRESS_TYPE.STICKY,
+            IPADDRESS_TYPE.USER_RESERVED,
+        ]
+        if alloc_type is not None and alloc_type not in valid_alloc_types:
+            raise ValueError(
+                "Invalid alloc_type for STATIC mode: %s" % alloc_type)
+        elif alloc_type is None:
+            alloc_type = IPADDRESS_TYPE.STICKY
+        if alloc_type == IPADDRESS_TYPE.STICKY:
+            # Just to be sure STICKY always has a NULL user.
+            user = None
+
+        ngi = None
+        has_allocations = False
+        if subnet is not None:
+            ngi = subnet.get_managed_cluster_interface()
+            if ngi is not None:
+                has_allocations = self._has_static_allocation_on_cluster(
+                    ngi.nodegroup, get_subnet_family(subnet))
+
+        if ip_address:
+            ip_address = IPAddress(ip_address)
+            if subnet is not None and ip_address not in subnet.get_ipnetwork():
+                raise StaticIPAddressOutOfRange(
+                    "IP address is not in the given subnet '%s'." % subnet)
+            if (ngi is not None and
+                    ip_address in ngi.get_dynamic_ip_range()):
+                raise StaticIPAddressOutOfRange(
+                    "IP address is inside a managed dynamic range %s-%s." % (
+                        ngi.ip_range_low, ngi.ip_range_high))
+
+            # Try to get the requested IP address.
+            static_ip, created = StaticIPAddress.objects.get_or_create(
+                ip="%s" % ip_address,
+                defaults={
+                    'alloc_type': alloc_type,
+                    'user': user,
+                    'subnet': subnet,
+                })
+            if not created:
+                raise StaticIPAddressUnavailable(
+                    "IP address is already in use.")
+            else:
+                self.ip_addresses.add(static_ip)
+                self.save()
+        else:
+            if ngi is not None:
+                network = ngi.network
+                static_ip_range_low = ngi.static_ip_range_low
+                static_ip_range_high = ngi.static_ip_range_high
+            else:
+                network = subnet.get_ipnetwork()
+                static_ip_range_low, static_ip_range_high = (
+                    get_first_and_last_usable_host_in_network(network))
+
+            static_ip = StaticIPAddress.objects.allocate_new(
+                network, static_ip_range_low, static_ip_range_high,
+                None, None, alloc_type=alloc_type, subnet=subnet, user=user)
+            self.ip_addresses.add(static_ip)
+
+        # Need to update the hostmaps on the cluster, if this subnet
+        # has a managed interface.
+        if ngi is not None and not has_allocations:
+            self._update_host_maps(ngi.nodegroup, static_ip)
+
+        # Was successful at creating the STATIC link. Remove the DHCP and
+        # LINK_UP link if it exists.
+        self._remove_link_dhcp(get_subnet_family(subnet))
+        self._remove_link_up()
+
+        # Update the DNS zones.
+        if ngi is not None:
+            self._update_dns_zones([ngi.nodegroup])
+        else:
+            self._update_dns_zones()
+        return static_ip
+
+    def _link_subnet_link_up(self, subnet):
+        """Link interface to subnet using LINK_UP."""
+        self._remove_link_up()
+        ip_address = StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet)
+        ip_address.save()
+        self.ip_addresses.add(ip_address)
+        self.save()
+        self._remove_link_dhcp(get_subnet_family(subnet))
+        return ip_address
+
+    def link_subnet(
+            self, mode, subnet, ip_address=None, alloc_type=None, user=None):
+        """Link interface to subnet using the provided mode.
+
+        :param mode: Mode of the link. See `INTERFACE_LINK_TYPE`
+            for vocabulary.
+        :param subnet: Subnet to link to. This can be None for `DHCP`
+            and `LINK_UP`.
+        :param ip_address: IP address in `subnet` to give to the interface.
+            Only used for `STATIC` mode and if not given one will be selected.
+        :param alloc_type: Allocation type for the link. This is only used for
+            link mode STATIC.
+        :param user: When alloc_type is set to USER_RESERVED, this user will
+            be set on the link.
+        """
+        if mode == INTERFACE_LINK_TYPE.AUTO:
+            return self._link_subnet_auto(subnet)
+        elif mode == INTERFACE_LINK_TYPE.DHCP:
+            return self._link_subnet_dhcp(subnet)
+        elif mode == INTERFACE_LINK_TYPE.STATIC:
+            return self._link_subnet_static(
+                subnet, ip_address=ip_address,
+                alloc_type=alloc_type, user=user)
+        elif mode == INTERFACE_LINK_TYPE.LINK_UP:
+            return self._link_subnet_link_up(subnet)
+        else:
+            raise ValueError("Unknown mode: %s" % mode)
+
+    def force_auto_or_dhcp_link(self):
+        """Force the interface to come up with an AUTO linked to a managed
+        subnet on the same VLAN as the interface. If no managed subnet could
+        be identified then its just set to DHCP.
+        """
+        found_subnet = None
+        for subnet in self.vlan.subnet_set.all():
+            ngi = subnet.get_managed_cluster_interface()
+            if ngi is not None:
+                found_subnet = subnet
+                break
+        if found_subnet is not None:
+            return self.link_subnet(INTERFACE_LINK_TYPE.AUTO, found_subnet)
+        else:
+            return self.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
+
+    def ensure_link_up(self):
+        """Ensure that if no subnet links exists that at least a LINK_UP
+        exists."""
+        has_links = self.ip_addresses.exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).count() > 0
+        if has_links:
+            # Nothing to do, already has links.
+            return
+        else:
+            # Use an associated subnet if it exists, else it will just be a
+            # LINK_UP without a subnet.
+            discovered_address = self.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                subnet__isnull=False).first()
+            if discovered_address is not None:
+                subnet = discovered_address.subnet
+            else:
+                subnet = None
+            self.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, subnet)
+
+    def _unlink_static_ip(self, static_ip, update_cluster=True):
+        """Unlink the STATIC IP address from the interface."""
+        registered_on_cluster = False
+        ngi = None
+        if static_ip.subnet is not None:
+            ngi = static_ip.subnet.get_managed_cluster_interface()
+            if ngi is not None:
+                registered_on_cluster = (
+                    self._is_first_static_allocation_on_cluster(
+                        static_ip, ngi.nodegroup))
+            if registered_on_cluster:
+                # This IP address was registered as a hostmap on the cluster.
+                # Need to remove the hostmap on the cluster before it can
+                # be deleted.
+                self._remove_host_maps(ngi.nodegroup, static_ip)
+        static_ip.delete()
+
+        # If this IP address was registered on the cluster and now has been
+        # deleted we need to register the next assigned IP address to the
+        # cluster hostmap.
+        if registered_on_cluster and ngi is not None and update_cluster:
+            new_hostmap_ip = self._get_first_static_allocation_for_cluster(
+                ngi.nodegroup, IPAddress(static_ip.ip).version)
+            if new_hostmap_ip is not None:
+                self._update_host_maps(ngi.nodegroup, new_hostmap_ip)
+
+        # Update the DNS zones.
+        if ngi is not None:
+            self._update_dns_zones([ngi.nodegroup])
+        else:
+            self._update_dns_zones()
+
+    def unlink_ip_address(self, ip_address, update_cluster=True):
+        """Remove the `IPAddress` link on interface.
+
+        :param update_cluster: Setting to False should only be done when the
+            cluster should not get an update_host_maps call with the next
+            available IP for the interface's MAC address. This is only set to
+            False when the interface is being deleted.
+        """
+        mode = ip_address.get_interface_link_type()
+        if mode == INTERFACE_LINK_TYPE.STATIC:
+            self._unlink_static_ip(ip_address, update_cluster=update_cluster)
+        else:
+            ip_address.delete()
+        # Always ensure that an interface that is enabled without any links
+        # gets a LINK_UP link.
+        if self.enabled:
+            self.ensure_link_up()
+
+    def unlink_subnet_by_id(self, link_id):
+        """Remove the `IPAddress` link on interface by its ID."""
+        ip_address = self.ip_addresses.get(id=link_id)
+        self.unlink_ip_address(ip_address)
+
+    def claim_auto_ips(self):
+        """Claim IP addresses for this interfaces AUTO IP addresses."""
+        affected_nodegroups = set()
+        assigned_addresses = []
+        for auto_ip in self.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.AUTO):
+            if not auto_ip.ip:
+                ngi, assigned_ip = self._claim_auto_ip(auto_ip)
+                if ngi is not None:
+                    affected_nodegroups.add(ngi.nodegroup)
+                assigned_addresses.append(assigned_ip)
+        self._update_dns_zones(affected_nodegroups)
+        return assigned_addresses
+
+    def _claim_auto_ip(self, auto_ip):
+        """Claim an IP address for the `auto_ip`."""
+        # Check if already has a hostmap allocated for this MAC address.
+        subnet = auto_ip.subnet
+        ngi = subnet.get_managed_cluster_interface()
+        if ngi is not None:
+            has_allocations = self._has_static_allocation_on_cluster(
+                ngi.nodegroup, get_subnet_family(subnet))
+        else:
+            has_allocations = False
+
+        # Create a new AUTO IP.
+        if ngi is not None:
+            network = ngi.network
+            static_ip_range_low = ngi.static_ip_range_low
+            static_ip_range_high = ngi.static_ip_range_high
+        else:
+            network = subnet.get_ipnetwork()
+            static_ip_range_low, static_ip_range_high = (
+                get_first_and_last_usable_host_in_network(network))
+        new_ip = StaticIPAddress.objects.allocate_new(
+            network, static_ip_range_low, static_ip_range_high,
+            None, None, alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet)
+        self.ip_addresses.add(new_ip)
+
+        # Update the hostmap for the new IP address if needed.
+        if ngi is not None and not has_allocations:
+            self._update_host_maps(ngi.nodegroup, new_ip)
+
+        # Made it this far then the AUTO IP address has been assigned and the
+        # hostmap has been updated if needed. We can now remove the original
+        # empty AUTO IP address.
+        auto_ip.delete()
+        return ngi, new_ip
+
+    def release_auto_ips(self):
+        """Release all AUTO IP address for this interface that have an IP
+        address assigned."""
+        affected_nodegroups = set()
+        released_addresses = []
+        for auto_ip in self.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.AUTO):
+            if auto_ip.ip:
+                ngi, released_ip = self._release_auto_ip(auto_ip)
+                if ngi is not None:
+                    affected_nodegroups.add(ngi.nodegroup)
+                released_addresses.append(released_ip)
+        self._update_dns_zones(affected_nodegroups)
+        return released_addresses
+
+    def _release_auto_ip(self, auto_ip):
+        """Release the IP address assigned to the `auto_ip`."""
+        registered_on_cluster = False
+        ngi = None
+        if auto_ip.subnet is not None:
+            ngi = auto_ip.subnet.get_managed_cluster_interface()
+            if ngi is not None:
+                registered_on_cluster = (
+                    self._is_first_static_allocation_on_cluster(
+                        auto_ip, ngi.nodegroup))
+            if registered_on_cluster:
+                # This IP address was registered as a hostmap on the cluster.
+                # Need to remove the hostmap on the cluster before it can
+                # be cleared.
+                self._remove_host_maps(ngi.nodegroup, auto_ip)
+        ip_family = IPAddress(auto_ip.ip).version
+        auto_ip.ip = None
+        auto_ip.save()
+
+        # If this IP address was registered on the cluster and now has been
+        # deleted we need to register the next assigned IP address to the
+        # cluster hostmap.
+        if registered_on_cluster and ngi is not None:
+            new_hostmap_ip = self._get_first_static_allocation_for_cluster(
+                ngi.nodegroup, ip_family)
+            if new_hostmap_ip is not None:
+                self._update_host_maps(ngi.nodegroup, new_hostmap_ip)
+        return ngi, auto_ip
+
+    def claim_static_ips(self, requested_address=None):
         """Assign static IP addresses to this Interface.
 
         Allocates one address per managed cluster interface connected to this
         MAC. Typically this will be either just one IPv4 address, or an IPv4
         address and an IPv6 address.
-        Calls update_host_maps() on the related Node in order to update
-        any DHCP mappings.
 
-        :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
-            This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
         :param requested_address: Optional IP address to claim.  Must be in
             the range defined on some cluter interface to which this
-            MACAddress is related. If given, no allocations will be made on
+            interface is related. If given, no allocations will be made on
             any other cluster interfaces the MAC may be connected to.
-        :param user: Optional User who will be given ownership of any
-            `StaticIPAddress`es claimed.
-        :param update_host_maps: If True, will update any relevant DHCP
-            mappings in addition to allocating the address.
         :return: A list of :class:`StaticIPAddress`.  Returns empty if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the
-            cluster_interface.  If an IP address was already allocated, the
-            function will return it rather than allocate a new one.
-        :raises: StaticIPAddressExhaustion if there are not enough IPs left.
-        :raises: StaticIPAddressTypeClash if an IP already exists with a
-            different type.
-        :raises: StaticIPAddressOutOfRange if the requested_address is not in
-            the cluster interface's defined range.
-        :raises: StaticIPAddressUnavailable if the requested_address is already
-            allocated.
-        :raises: StaticIPAddressForbidden if the address occurs within
-            an existing dynamic range within the specified fabric.
+            cluster_interface.
         """
-        if fabric is not None:
-            raise NotImplementedError("Fabrics are not yet supported.")
-
         # This method depends on a database isolation level of SERIALIZABLE
         # (or perhaps REPEATABLE READ) to avoid race conditions.
 
-        # Every IP address we allocate is managed by one cluster interface.
-        # We're only interested in cluster interfaces with a static range.
-        # The check for a static range is deliberately kept vague; Django uses
-        # different representations for "none" values in IP addresses.
-        if self.get_cluster_interface() is None:
-            # No known cluster interface.  Nothing we can do.
-            maaslog.error(
-                "Tried to allocate an IP to interface <%s>, but its cluster "
-                "interface is not known", unicode(self))
-            return []
-        cluster_interfaces = self.get_attached_clusters_with_static_ranges()
-        if len(cluster_interfaces) == 0:
-            # There were cluster interfaces, but none of them had a static
-            # range.  Can't allocate anything.
-            return []
+        # If the interface already has static addresses then we just return
+        # those.
+        existing_statics = [
+            ip_address
+            for ip_address in self.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False)
+            if ip_address.ip
+        ]
+        if len(existing_statics) > 0:
+            return existing_statics
 
-        if requested_address is not None:
-            # A specific IP address was requested.  We restrict our attention
-            # to the cluster interface that is responsible for that address.
-            # In addition, claiming addresses inside a dynamic range on the
-            # requested fabric is not allowed.
-            raise_if_address_inside_dynamic_range(requested_address, fabric)
-            cluster_interface = find_cluster_interface_responsible_for_ip(
-                cluster_interfaces, IPAddress(requested_address))
-            if cluster_interface is None:
+        # Get the last subnets this interface DHCP'd from. This with be either
+        # one IPv4, one IPv6, or both IPv4 and IPv6.
+        if (self.node is not None and
+                not self.node.installable and
+                self.node.parent is not None):
+            # If this interface is on a device then we need to look for
+            # discovered addresses on all the Node's interfaces.
+            discovered_ips = StaticIPAddress.objects.none()
+            for interface in self.node.parent.interface_set.all():
+                ip_addresses = interface.ip_addresses.filter(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED)
+                ip_addresses = ip_addresses.order_by(
+                    'id').select_related("subnet")
+                discovered_ips |= ip_addresses
+        else:
+            discovered_ips = self.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED)
+            discovered_ips = discovered_ips.order_by(
+                'id').select_related("subnet")
+
+        if requested_address is None:
+            # No requested address so claim a STATIC IP on all DISCOVERED
+            # subnets for this interface.
+            static_ips = []
+            for discovered_ip in discovered_ips:
+                subnet = discovered_ip.subnet
+                ngi = subnet.get_managed_cluster_interface()
+                if ngi is not None:
+                    static_ips.append(
+                        self.link_subnet(
+                            INTERFACE_LINK_TYPE.STATIC, subnet))
+
+            # No valid subnets could be used to claim a STATIC IP address.
+            if not any(static_ips):
+                maaslog.error(
+                    "Tried to allocate an IP to interface <%s>, but its "
+                    "cluster interface is not known.", unicode(self))
+                return []
+            else:
+                return static_ips
+        else:
+            # Find the DISCOVERED subnet that the requested_address falls into.
+            found_subnet = None
+            for discovered_ip in discovered_ips:
+                if (IPAddress(requested_address) in
+                        discovered_ip.subnet.get_ipnetwork()):
+                    found_subnet = discovered_ip.subnet
+                    break
+
+            if found_subnet:
+                return [
+                    self.link_subnet(
+                        INTERFACE_LINK_TYPE.STATIC, found_subnet,
+                        ip_address=requested_address),
+                ]
+            else:
                 raise StaticIPAddressOutOfRange(
-                    "Requested IP address %s is not in a subnet managed by "
-                    "any cluster interface." % requested_address)
-            cluster_interfaces = [cluster_interface]
+                    "requested_address '%s' is not in a managed subnet for "
+                    "this interface '%s'" % (requested_address, self.name))
 
-        allocations = self._map_allocated_addresses(cluster_interfaces)
-
-        # Check if we already have a full complement of static IP addresses
-        # allocated, none of which are the same type.
-        if (None not in allocations.values() and alloc_type not in
-                [a.alloc_type for a in allocations.values()]):
-            raise StaticIPAddressTypeClash(
-                "MAC address %s already has IP addresses of different "
-                "types than the ones requested." % self)
-
-        new_allocations = []
-        # Allocate IP addresses on all relevant cluster interfaces where this
-        # MAC does not have any address allocated yet.
-        for interface in cluster_interfaces:
-            if allocations[interface] is None:
-                # No IP address yet on this cluster interface. Get one.
-                static_ip = self._allocate_static_address(
-                    interface, alloc_type, requested_address, user=user)
-                allocations[interface] = static_ip
-                mac_address = MAC(self.mac.mac_address)
-                new_allocations.append(
-                    (static_ip.ip, mac_address.get_raw()))
-
-        # Note: the previous behavior of the product (MAAS < 1.8) was to
-        # update host maps with *every* address, not just changed addresses.
-        # This should only impact separately-claimed IPv6 and IPv4 addresses.
-        if update_host_maps:
-            if self.get_node() is not None:
-                self.get_node().update_host_maps(new_allocations)
-            self.mac.update_related_dns_zones()
-        # We now have a static IP allocated to each of our cluster interfaces.
-        # Ignore the clashes.  Return the ones that have the right type: those
-        # are either matching pre-existing allocations or fresh ones.
-        return [
-            sip
-            for sip in allocations.values()
-            if sip.alloc_type == alloc_type
-            ]
+    def delete(self, remove_ip_address=True):
+        # We set the _skip_ip_address_removal so the signal can use it to
+        # skip removing the IP addresses. This is normally only done by the
+        # lease parser, because it will delete UnknownInterface's when the
+        # lease goes away. We don't need to tell the cluster to remove the
+        # lease then.
+        if not remove_ip_address:
+            self._skip_ip_address_removal = True
+        super(Interface, self).delete()
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
@@ -467,12 +1008,73 @@ class InterfaceRelationship(CleanSave, TimestampedModel):
 
 
 def delete_children_interface_handler(sender, instance, **kwargs):
-    """Remove children interface when the parent gets removed."""
+    """Remove children interface that no longer have a parent when the
+    parent gets removed."""
     if type(instance) in ALL_INTERFACE_TYPES:
-        [rel.child.delete() for rel in instance.children_relationships.all()]
+        for rel in instance.children_relationships.all():
+            # Use cached QuerySet instead of `count()`.
+            if len(rel.child.parents.all()) == 1:
+                # Last parent of the child, so delete the child.
+                rel.child.delete()
 
 
 models.signals.pre_delete.connect(delete_children_interface_handler)
+
+
+def delete_related_ip_addresses(sender, instance, **kwargs):
+    """Remove any related IP addresses that no longer will have any interfaces
+    linked to them."""
+    if type(instance) in ALL_INTERFACE_TYPES:
+        # Skip the removal if requested when the interface was deleted.
+        should_skip = (
+            hasattr(instance, "_skip_ip_address_removal") and
+            instance._skip_ip_address_removal)
+        if should_skip:
+            return
+
+        # Unlink all links.
+        for ip_address in instance.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            if ip_address.interface_set.count() == 1:
+                # This is the last interface linked to this IP address.
+                # Remove its link to the interface before the interface
+                # is deleted.
+                instance.unlink_ip_address(
+                    ip_address, update_cluster=False)
+
+        # Remove all DISCOVERED IP addresses by calling remove_host_maps with
+        # the IP addresses. This will make sure the leases are released on the
+        # cluster that holds the lease.
+        removal_mapping = defaultdict(set)
+        for ip_address in instance.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip__isnull=False):
+            if ip_address.interface_set.count() == 1:
+                # This is the last interface linked to this discovered IP
+                # address.
+                if ip_address.ip and ip_address.subnet is not None:
+                    ngi = ip_address.subnet.get_managed_cluster_interface()
+                    if ngi is not None:
+                        removal_mapping[ngi.nodegroup].add(ip_address.ip)
+                ip_address.delete()
+        if len(removal_mapping) > 0:
+            remove_host_maps_failures = list(
+                remove_host_maps(removal_mapping))
+            if len(remove_host_maps_failures) != 0:
+                # There's only ever one failure here.
+                remove_host_maps_failures[0].raiseException()
+
+
+models.signals.pre_delete.connect(delete_related_ip_addresses)
+
+
+def resave_children_interface_handler(sender, instance, **kwargs):
+    """Re-save all of the children interfaces to update their information."""
+    if type(instance) in ALL_INTERFACE_TYPES:
+        for rel in instance.children_relationships.all():
+            rel.child.save()
+
+
+models.signals.post_save.connect(resave_children_interface_handler)
 
 
 class PhysicalInterface(Interface):
@@ -485,6 +1087,41 @@ class PhysicalInterface(Interface):
     @classmethod
     def get_type(self):
         return INTERFACE_TYPE.PHYSICAL
+
+    def is_enabled(self):
+        return self.enabled
+
+    def clean(self):
+        super(PhysicalInterface, self).clean()
+        # Node and MAC address is always required for a physical interface.
+        validation_errors = {}
+        if self.node is None:
+            validation_errors["node"] = ["This field cannot be blank."]
+        if self.mac_address is None:
+            validation_errors["mac_address"] = ["This field cannot be blank."]
+        if len(validation_errors) > 0:
+            raise ValidationError(validation_errors)
+
+        # MAC address must be unique for all other PhysicalInterface's.
+        other_interfaces = PhysicalInterface.objects.filter(
+            mac_address=self.mac_address)
+        if self.id is not None:
+            other_interfaces = other_interfaces.exclude(id=self.id)
+        other_interfaces = other_interfaces.all()
+        if len(other_interfaces) > 0:
+            raise ValidationError({
+                "mac_address": [
+                    "This MAC address is already in use by %s." % (
+                        other_interfaces[0].node.hostname)]
+                })
+
+        # No parents are allow for a physical interface.
+        if self.id is not None:
+            # Use the precache so less queries are made.
+            if len(self.parents.all()) > 0:
+                raise ValidationError({
+                    "parents": ["A physical interface cannot have parents."]
+                    })
 
 
 class BondInterface(Interface):
@@ -499,11 +1136,104 @@ class BondInterface(Interface):
         return INTERFACE_TYPE.BOND
 
     def get_node(self):
-        return self.parents.first().get_node()
+        if self.id is None:
+            return None
+        else:
+            parent = self.parents.first()
+            if parent is not None:
+                return parent.get_node()
+            else:
+                return None
+
+    def is_enabled(self):
+        if self.id is None:
+            return True
+        else:
+            is_enabled = {
+                parent.is_enabled()
+                for parent in self.parents.all()
+            }
+            return True in is_enabled
+
+    def clean(self):
+        super(BondInterface, self).clean()
+        # Validate that the MAC address is not None.
+        if not self.mac_address:
+            raise ValidationError({
+                "mac_address": ["This field cannot be blank."]
+                })
+
+        # Parent interfaces on this bond must be from the same node and can
+        # only be physical interfaces.
+        if self.id is not None:
+            nodes = {
+                parent.node
+                for parent in self.parents.all()
+            }
+            if len(nodes) > 1:
+                raise ValidationError({
+                    "parents": [
+                        "Parent interfaces do not belong to the same node."]
+                    })
+            parent_types = {
+                parent.get_type()
+                for parent in self.parents.all()
+            }
+            if parent_types != set([INTERFACE_TYPE.PHYSICAL]):
+                raise ValidationError({
+                    "parents": ["Only physical interfaces can be bonded."]
+                    })
+
+        # Validate that this bond interface is using either a new MAC address
+        # or a MAC address from one of its parents. This validation is only
+        # done once the interface has been saved once. That is because if its
+        # done before it would always fail. As the validation would see that
+        # its soon to be parents MAC address is already in use.
+        if self.id is not None:
+            interfaces = Interface.objects.filter(mac_address=self.mac_address)
+            parent_ids = [
+                parent.id
+                for parent in self.parents.all()
+            ]
+            children_ids = [
+                rel.child.id
+                for rel in self.children_relationships.all()
+            ]
+            bad_interfaces = []
+            for interface in interfaces:
+                if self.id == interface.id:
+                    # Self in database so ignore.
+                    continue
+                elif interface.id in parent_ids:
+                    # One of the parent MAC addresses.
+                    continue
+                elif interface.id in children_ids:
+                    # One of the children MAC addresses.
+                    continue
+                else:
+                    # Its not unique and its not a parent interface if we
+                    # made it this far.
+                    bad_interfaces.append(interface)
+            if len(bad_interfaces) > 0:
+                raise ValidationError({
+                    "mac_address": [
+                        "This MAC address is already in use by %s." % (
+                            bad_interfaces[0].node.hostname)]
+                    })
+
+    def save(self, *args, **kwargs):
+        # Set the node of this bond to the same as its parents.
+        self.node = self.get_node()
+        # Set the enabled status based on its parents.
+        self.enabled = self.is_enabled()
+        super(BondInterface, self).save(*args, **kwargs)
 
 
-def build_vlan_interface_name(vlan):
-    return "vlan%d" % vlan.vid
+def build_vlan_interface_name(parent, vlan):
+    if parent:
+        return "%s.%d" % (parent.get_name(), vlan.vid)
+    else:
+        return "unknown.%d" % vlan.vid
 
 
 class VLANInterface(Interface):
@@ -518,19 +1248,114 @@ class VLANInterface(Interface):
         return INTERFACE_TYPE.VLAN
 
     def get_node(self):
-        # Return the node of the first parent.  The assertion that all the
-        # parents are on the same node will be enforced at the form level.
-        return self.parents.first().get_node()
+        if self.id is None:
+            return None
+        else:
+            parent = self.parents.first()
+            if parent is not None:
+                return parent.get_node()
+            else:
+                return None
+
+    def is_enabled(self):
+        if self.id is None:
+            return True
+        else:
+            parent = self.parents.first()
+            if parent is not None:
+                return parent.is_enabled()
+            else:
+                return True
 
     def get_name(self):
-        return build_vlan_interface_name(self.vlan)
+        if self.id is not None:
+            parent = self.parents.first()
+            if parent is not None:
+                return build_vlan_interface_name(parent, self.vlan)
+        # self.vlan is always something valid.
+        return "vlan%d" % self.vlan.vid
+
+    def clean(self):
+        super(VLANInterface, self).clean()
+        if self.id is not None:
+            # Use the precache here instead of the count() method.
+            parents = self.parents.all()
+            parent_count = len(parents)
+            if parent_count == 0 or parent_count > 1:
+                raise ValidationError({
+                    "parents": ["VLAN interface must have exactly one parent."]
+                    })
+            parent = parents[0]
+            if parent.get_type() not in [
+                    INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.BOND]:
+                raise ValidationError({
+                    "parents": [
+                        "VLAN interface can only be created on a physical "
+                        "or bond interface."]
+                    })
 
     def save(self, *args, **kwargs):
+        # Set the node of this VLAN to the same as its parents.
+        self.node = self.get_node()
+
+        # Set the enabled status based on its parents.
+        self.enabled = self.is_enabled()
+
+        # Set the MAC address to the same as its parent.
+        if self.id is not None:
+            parent = self.parents.first()
+            if parent is not None:
+                self.mac_address = parent.mac_address
+
         # Auto update the interface name.
         new_name = self.get_name()
         if self.name != new_name:
             self.name = new_name
         return super(VLANInterface, self).save(*args, **kwargs)
+
+
+class UnknownInterface(Interface):
+
+    class Meta(Interface.Meta):
+        proxy = True
+        verbose_name = "Unknown interface"
+        verbose_name_plural = "Unknown interfaces"
+
+    @classmethod
+    def get_type(self):
+        return INTERFACE_TYPE.UNKNOWN
+
+    def get_node(self):
+        return None
+
+    def clean(self):
+        super(UnknownInterface, self).clean()
+        if self.node is not None:
+            raise ValidationError({
+                "node": ["This field must be blank."]
+                })
+
+        # No other interfaces can have this MAC address.
+        other_interfaces = Interface.objects.filter(
+            mac_address=self.mac_address)
+        if self.id is not None:
+            other_interfaces = other_interfaces.exclude(id=self.id)
+        other_interfaces = other_interfaces.all()
+        if len(other_interfaces) > 0:
+            raise ValidationError({
+                "mac_address": [
+                    "This MAC address is already in use by %s." % (
+                        other_interfaces[0].node.hostname)]
+                })
+
+        # Cannot have any parents.
+        if self.id is not None:
+            # Use the precache here instead of the count() method.
+            parents = self.parents.all()
+            if len(parents) > 0:
+                raise ValidationError({
+                    "parents": ["A unknown interface cannot have parents."]
+                    })
 
 
 INTERFACE_TYPE_MAPPING = {
@@ -540,6 +1365,7 @@ INTERFACE_TYPE_MAPPING = {
         PhysicalInterface,
         BondInterface,
         VLANInterface,
+        UnknownInterface,
     ]
 }
 

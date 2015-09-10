@@ -115,34 +115,3 @@ def get_preseed_data(
             preseed_type, Node(node_system_id, node_hostname),
             Token(consumer_key, token_key, token_secret),
             metadata_url.geturl())
-
-
-def compose_curtin_network_preseed(os_name, interfaces, auto_interfaces,
-                                   ips_mapping, gateways_mapping,
-                                   disable_ipv4, nameservers, netmasks):
-    """Compose Curtin network preseed for a node.
-
-    :param os_name: Identifying name of the operating system for which a
-        preseed should be generated.
-    :param interfaces: A list of interface/MAC pairs for the node.
-    :param auto_interfaces: A list of MAC addresses whose network interfaces
-        should come up automatically on node boot.
-    :param ips_mapping: A dict mapping MAC addresses to lists of the
-        corresponding network interfaces' IP addresses.
-    :param gateways_mapping: A dict mapping MAC addresses to lists of the
-        corresponding network interfaces' default gateways.
-    :param disable_ipv4: Should this node be installed without IPv4 networking?
-    :param nameservers: List of DNS servers.
-    :param netmasks: A dict mapping IP dadresses from `ips_mapping` to their
-        respective netmasks.
-    :return: Preseed data, as JSON.
-    """
-    try:
-        osystem = OperatingSystemRegistry[os_name]
-    except KeyError:
-        raise exceptions.NoSuchOperatingSystem(os_name)
-    else:
-        return osystem.compose_curtin_network_preseed(
-            interfaces, auto_interfaces, ips_mapping=ips_mapping,
-            gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4,
-            nameservers=nameservers, netmasks=netmasks)

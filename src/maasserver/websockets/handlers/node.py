@@ -20,7 +20,10 @@ import logging
 from operator import itemgetter
 
 from lxml import etree
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODE_PERMISSION,
+)
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.config import Config
@@ -78,9 +81,8 @@ class NodeHandler(TimestampedModelHandler):
         queryset = (
             Node.nodes.filter(installable=True)
                 .select_related('nodegroup', 'pxe_mac', 'owner')
-                .prefetch_related('macaddress_set')
-                .prefetch_related('macaddress_set__networks')
-                .prefetch_related('nodegroup__nodegroupinterface_set')
+                .prefetch_related('interface_set__ip_addresses__subnet__vlan')
+                .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
                 .prefetch_related('zone')
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
@@ -99,7 +101,8 @@ class NodeHandler(TimestampedModelHandler):
         exclude = [
             "installable",
             "parent",
-            "pxe_mac",
+            "boot_interface",
+            "boot_cluster_ip",
             "token",
             "netboot",
             "agent_name",
@@ -114,7 +117,6 @@ class NodeHandler(TimestampedModelHandler):
             "cpu_count",
             "memory",
             "power_state",
-            "pxe_mac",
             "zone",
         ]
         listen_channels = [
@@ -177,12 +179,12 @@ class NodeHandler(TimestampedModelHandler):
         data["memory"] = obj.display_memory()
 
         data["extra_macs"] = [
-            "%s" % mac_address.mac_address
+            "%s" % mac_address
             for mac_address in obj.get_extra_macs()
         ]
-        pxe_mac = obj.get_pxe_mac()
-        if pxe_mac is not None:
-            data["pxe_mac"] = "%s" % pxe_mac
+        boot_interface = obj.get_boot_interface()
+        if boot_interface is not None:
+            data["pxe_mac"] = "%s" % boot_interface.mac_address
             data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
         else:
             data["pxe_mac"] = data["pxe_mac_vendor"] = ""
@@ -200,18 +202,15 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
         ]
-        data["networks"] = self.dehydrate_networks(obj)
         if not for_list:
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
             data["hwe_kernel"] = obj.hwe_kernel
 
             # Network
-            mac_addresses = obj.macaddress_set.all().prefetch_related(
-                'ip_addresses').order_by('id')
             interfaces = [
-                self.dehydrate_interface(mac_address, obj)
-                for mac_address in mac_addresses
+                self.dehydrate_interface(interface, obj)
+                for interface in obj.interface_set.all().order_by('id')
             ]
             data["interfaces"] = sorted(
                 interfaces, key=itemgetter("is_pxe"), reverse=True)
@@ -257,51 +256,41 @@ class NodeHandler(TimestampedModelHandler):
             "serial": blockdevice.serial,
         }
 
-    def dehydrate_interface(self, mac_address, obj):
-        """Dehydrate a `mac_address` into a interface definition."""
+    def dehydrate_interface(self, interface, obj):
+        """Dehydrate a `interface` into a interface definition."""
         # Statically assigned ip addresses.
-        ip_addresses = [
-            {
-                "type": "static",
-                "alloc_type": ip_address.alloc_type,
-                "ip_address": "%s" % ip_address.ip,
-            }
-            for ip_address in mac_address.ip_addresses.all()
-        ]
-
-        # Dynamically assigned ip addresses come from parsing the leases file.
-        # This will also contain the statically assigned ip addresses as they
-        # show up in the leases file. Remove any that already appear in the
-        # static ip address table.
-        static_addresses = [
-            ip_address["ip_address"]
-            for ip_address in ip_addresses
-        ]
-        ip_addresses += [
-            {
-                "type": "dynamic",
-                "ip_address": lease.ip,
-            }
-            for lease in obj.nodegroup.dhcplease_set.all()
-            if (lease.mac == mac_address.mac_address and
-                lease.ip not in static_addresses)
-        ]
+        ip_addresses = []
+        subnets = set()
+        for ip_address in interface.ip_addresses.all():
+            if ip_address.subnet is not None:
+                subnets.add(ip_address.subnet)
+            if ip_address.ip:
+                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                    ip_addresses.append({
+                        "type": "static",
+                        "alloc_type": ip_address.alloc_type,
+                        "ip_address": "%s" % ip_address.ip,
+                    })
+                else:
+                    ip_addresses.append({
+                        "type": "dynamic",
+                        "ip_address": "%s" % ip_address.ip,
+                    })
 
         # Connected networks.
         networks = [
             {
-                "id": network.id,
-                "name": network.name,
-                "ip": network.ip,
-                "cidr": "%s" % network.get_network().cidr,
-                "vlan": network.vlan_tag,
+                "id": subnet.id,
+                "name": subnet.name,
+                "cidr": "%s" % subnet.get_ipnetwork(),
+                "vlan": subnet.vlan.vid,
             }
-            for network in mac_address.networks.all()
+            for subnet in subnets
         ]
         return {
-            "id": mac_address.id,
-            "is_pxe": mac_address == obj.pxe_mac,
-            "mac_address": "%s" % mac_address.mac_address,
+            "id": interface.id,
+            "is_pxe": interface == obj.boot_interface,
+            "mac_address": "%s" % interface.mac_address,
             "ip_addresses": ip_addresses,
             "networks": networks,
         }
@@ -367,14 +356,6 @@ class NodeHandler(TimestampedModelHandler):
             }
             for event in events
         ]
-
-    def dehydrate_networks(self, obj):
-        """Dehydrate all the networks this node belongs to."""
-        return list({
-            network.name
-            for mac_address in obj.macaddress_set.all()
-            for network in mac_address.get_networks()
-        })
 
     def get_all_storage_tags(self, physicalblockdevices):
         """Return list of all storage tags in `physicalblockdevices`."""

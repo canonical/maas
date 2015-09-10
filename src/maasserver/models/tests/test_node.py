@@ -31,7 +31,6 @@ from maasserver import preseed as preseed_module
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.dns import config as dns_config
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -46,24 +45,19 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
 )
-from maasserver.exceptions import (
-    NodeStateViolation,
-    StaticIPAddressTypeClash,
-    StaticIPAddressUnavailable,
-)
+from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
     Device,
+    Interface,
     LicenseKey,
-    MACAddress,
     Node,
     node as node_module,
     PhysicalInterface,
 )
 from maasserver.models.node import PowerInfo
 from maasserver.models.signals import power as node_query
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
@@ -73,10 +67,7 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc import monitors as monitors_module
-from maasserver.rpc.testing.fixtures import (
-    MockLiveRegionToClusterRPCFixture,
-    RunningClusterRPCFixture,
-)
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
@@ -88,16 +79,11 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
-from maasserver.utils import ignore_unused
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
 )
-from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -114,14 +100,12 @@ from metadataserver.user_data import (
     commissioning,
     disk_erasing,
 )
-import mock
 from mock import (
-    call,
     ANY,
-    sentinel,
+    call,
     MagicMock,
+    sentinel,
 )
-from netaddr import IPAddress
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
@@ -139,7 +123,6 @@ from testtools.matchers import (
     HasLength,
     Is,
     IsInstance,
-    MatchesListwise,
     MatchesStructure,
     Not,
 )
@@ -147,18 +130,8 @@ from twisted.internet import (
     defer,
     reactor,
 )
-from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python.failure import Failure
-
-
-def make_active_lease(nodegroup=None):
-    """Create a `DHCPLease` on a managed `NodeGroupInterface`."""
-    lease = factory.make_DHCPLease(nodegroup=nodegroup)
-    factory.make_NodeGroupInterface(
-        lease.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-    return lease
 
 
 class TestNode(MAASServerTestCase):
@@ -269,104 +242,60 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(token=token)
         self.assertEqual(token, node.token)
 
-    def test_add_mac_address(self):
+    def test_add_physical_interface(self):
         mac = factory.make_mac_address()
         node = factory.make_Node()
-        node.add_mac_address(mac)
-        macs = MACAddress.objects.filter(node=node, mac_address=mac).count()
-        self.assertEqual(1, macs)
+        node.add_physical_interface(mac)
+        interfaces = PhysicalInterface.objects.filter(
+            node=node, mac_address=mac).count()
+        self.assertEqual(1, interfaces)
 
     def test_add_already_attached_mac_address_doesnt_raise_error(self):
-        """Re-adding a MACAddress should not fail"""
+        """Re-adding a MAC address should not fail"""
         node = factory.make_Node()
-        mac = factory.make_MACAddress(node=node)
-        mac_as_string = unicode(mac.mac_address)
-        added_mac = node.add_mac_address(mac_as_string)
-        self.assertEqual(added_mac, mac)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        mac = unicode(interface.mac_address)
+        added_interface = node.add_physical_interface(mac)
+        self.assertEqual(added_interface, interface)
 
-    def test_add_mac_address_attached_to_another_node_raises_error(self):
-        """Adding a MACAddress that's already in use in another node should
+    def test_add_physical_interface_attached_another_node_raises_error(self):
+        """Adding a MAC address that's already in use in another node should
         fail"""
         node1 = factory.make_Node()
         node2 = factory.make_Node()
-        mac2 = factory.make_MACAddress(node=node2)
-        mac2_as_string = unicode(mac2.mac_address)
-        self.assertRaises(ValidationError, node1.add_mac_address,
-                          mac2_as_string)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node2)
+        mac = unicode(interface.mac_address)
+        self.assertRaises(
+            ValidationError, node1.add_physical_interface, mac)
 
-    def test_add_mac_address_sets_cluster_interface(self):
-        # If a DHCPLease exists for this mac, ensure the
-        # cluster_interface is set on the basis of that lease.
-        cluster = factory.make_NodeGroup()
-        cluster_interface = factory.make_NodeGroupInterface(nodegroup=cluster)
-        ip_in_range = cluster_interface.static_ip_range_low
-        mac_address = factory.make_mac_address()
-        factory.make_DHCPLease(
-            mac=mac_address, ip=ip_in_range, nodegroup=cluster)
-        node = factory.make_Node(nodegroup=cluster)
-
-        node.add_mac_address(mac_address)
-        self.assertEqual(
-            cluster_interface, node.get_primary_mac().cluster_interface)
-
-    def test_add_mac_address_adds_interface(self):
+    def test_add_physical_interface_adds_interface(self):
         mac = factory.make_mac_address()
         node = factory.make_Node()
-        node.add_mac_address(mac)
-        ifaces = PhysicalInterface.objects.filter(mac__mac_address=mac)
+        node.add_physical_interface(mac)
+        ifaces = PhysicalInterface.objects.filter(mac_address=mac)
         self.assertEqual(1, ifaces.count())
         self.assertEqual('eth0', ifaces.first().name)
 
-    def test_add_mac_addresses_adds_interfaces(self):
+    def test_add_physical_interface_adds_interfaces(self):
         node = factory.make_Node()
-        node.add_mac_address(factory.make_mac_address())
-        node.add_mac_address(factory.make_mac_address())
+        node.add_physical_interface(factory.make_mac_address())
+        node.add_physical_interface(factory.make_mac_address())
         ifaces = PhysicalInterface.objects.all()
         self.assertEqual(2, ifaces.count())
         self.assertEqual(
             ['eth0', 'eth1'], list(ifaces.order_by('id').values_list(
                 'name', flat=True)))
 
-    def test_add_mac_addresses_adds_interfaces_with_sequential_names(self):
-        mac = factory.make_MACAddress_with_Node(iftype=None)
+    def test_add_physical_interface_adds_with_sequential_names(self):
+        node = factory.make_Node()
         factory.make_Interface(
-            type=INTERFACE_TYPE.PHYSICAL, mac=mac, name='eth4000')
-        mac.node.add_mac_address(factory.make_mac_address())
+            INTERFACE_TYPE.PHYSICAL, node=node, name='eth4000')
+        node.add_physical_interface(factory.make_mac_address())
         ifaces = PhysicalInterface.objects.all()
         self.assertEqual(2, ifaces.count())
         self.assertEqual(
             ['eth4000', 'eth4001'], list(ifaces.order_by('id').values_list(
                 'name', flat=True)))
-
-    def test_remove_mac_address(self):
-        mac = factory.make_mac_address()
-        node = factory.make_Node()
-        node.add_mac_address(mac)
-        node.remove_mac_address(mac)
-        self.assertItemsEqual(
-            [],
-            MACAddress.objects.filter(node=node, mac_address=mac))
-
-    def test_get_primary_mac_returns_mac_address(self):
-        node = factory.make_Node()
-        mac = factory.make_mac_address()
-        node.add_mac_address(mac)
-        self.assertEqual(mac, node.get_primary_mac().mac_address)
-
-    def test_get_primary_mac_returns_None_if_node_has_no_mac(self):
-        node = factory.make_Node()
-        self.assertIsNone(node.get_primary_mac())
-
-    def test_get_primary_mac_returns_oldest_mac(self):
-        node = factory.make_Node()
-        macs = [factory.make_mac_address() for counter in range(3)]
-        offset = timedelta(0)
-        for mac in macs:
-            mac_address = node.add_mac_address(mac)
-            mac_address.created += offset
-            mac_address.save()
-            offset += timedelta(1)
-        self.assertEqual(macs[0], node.get_primary_mac().mac_address)
 
     def test_get_osystem_returns_default_osystem(self):
         node = factory.make_Node(osystem='')
@@ -396,93 +325,17 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(osystem=osystem, distro_series=series)
         self.assertEqual(license_key, node.get_effective_license_key())
 
-    def test_delete_node_deletes_managed_node_when_changed_to_unmanaged(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        factory.make_DHCPLease(
-            nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all().first().mac_address)
-        interface = node.nodegroup.nodegroupinterface_set.all().first()
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        self.useFixture(RunningClusterRPCFixture())
-        node.delete()
-        self.assertItemsEqual([], Node.objects.all())
-
-    def test_delete_node_deletes_related_mac(self):
+    def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
-        mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        interface = node.add_physical_interface('AA:BB:CC:DD:EE:FF')
         node.delete()
-        self.assertRaises(
-            MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
+        self.assertIsNone(reload_object(interface))
 
     def test_can_delete_allocated_node(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         system_id = node.system_id
         node.delete()
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
-
-    def test_delete_node_also_deletes_related_static_IPs(self):
-        self.patch_autospec(node_module, "remove_host_maps")
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        primary_mac = node.get_primary_mac()
-        random_alloc_type = factory.pick_enum(
-            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        primary_mac.claim_static_ips(
-            alloc_type=random_alloc_type, update_host_maps=False)
-        node.delete()
-        self.assertItemsEqual([], StaticIPAddress.objects.all())
-
-    def test_delete_node_also_deletes_static_dhcp_maps(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        primary_mac = node.get_primary_mac()
-        deallocation = set(sum([
-            [static_ip_address.ip] + list(
-                [
-                    unicode(mac.mac_address)
-                    for mac in static_ip_address.get_mac_addresses()
-                ])
-            for static_ip_address in
-            primary_mac.claim_static_ips(
-                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)],
-            []))
-        node.delete()
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: deallocation}))
-
-    def test_delete_node_also_deletes_dhcp_host_map(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        lease = factory.make_DHCPLease(
-            nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all().first().mac_address)
-        node.delete()
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: {lease.ip}}))
-
-    def test_delete_node_removes_multiple_host_maps(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
-        mac.cluster_interface = (
-            node.nodegroup.nodegroupinterface_set.all().first())
-        mac.save()
-        lease1 = factory.make_DHCPLease(
-            nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all().first().mac_address)
-        lease2 = factory.make_DHCPLease(
-            nodegroup=node.nodegroup,
-            mac=mac.mac_address)
-        node.delete()
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: {lease1.ip, lease2.ip}},
-            ))
 
     def test_set_random_hostname_set_hostname(self):
         node = factory.make_Node()
@@ -544,14 +397,14 @@ class TestNode(MAASServerTestCase):
     def test_get_effective_power_parameters_adds_mac_if_no_params_set(self):
         node = factory.make_Node()
         mac = factory.make_mac_address()
-        node.add_mac_address(mac)
+        node.add_physical_interface(mac)
         self.assertEqual(
             mac, node.get_effective_power_parameters()['mac_address'])
 
     def test_get_effective_power_parameters_adds_no_mac_if_params_set(self):
         node = factory.make_Node(power_parameters={'foo': 'bar'})
         mac = factory.make_mac_address()
-        node.add_mac_address(mac)
+        node.add_physical_interface(mac)
         self.assertNotIn('mac', node.get_effective_power_parameters())
 
     def test_get_effective_power_parameters_adds_empty_power_off_mode(self):
@@ -1114,10 +967,10 @@ class TestNode(MAASServerTestCase):
                 call(
                     node_module.power_off_node, node.system_id, node.hostname,
                     node.nodegroup.uuid, expected_power_info),
-                # Also a call to deallocate static IP addresses.
+                # Also a call to deallocate AUTO IP addresses.
                 call(
                     reactor.callLater, 0, deferToThread,
-                    node.deallocate_static_ip_addresses),
+                    node.release_auto_ips),
             ))
 
     def test_release_node_that_has_power_off(self):
@@ -1157,119 +1010,54 @@ class TestNode(MAASServerTestCase):
             [], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
 
-    def test_dynamic_ip_addresses_queries_leases(self):
+    def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
-        leases = [
-            factory.make_DHCPLease(
-                nodegroup=node.nodegroup, mac=mac.mac_address)
-            for mac in macs]
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(3)
+        ]
+        ip_addresses = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
+            for interface in interfaces[:2]
+        ]
+        # Empty ip should not appear
+        factory.make_StaticIPAddress(
+            ip="", alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            interface=interfaces[2])
         self.assertItemsEqual(
-            [lease.ip for lease in leases], node.dynamic_ip_addresses())
-
-    def test_dynamic_ip_addresses_uses_result_cache(self):
-        # dynamic_ip_addresses has a specialized code path for the case where
-        # the node group's set of DHCP leases is already cached in Django's
-        # ORM.  This test exercises that code path.
-        node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
-        leases = [
-            factory.make_DHCPLease(
-                nodegroup=node.nodegroup, mac=mac.mac_address)
-            for mac in macs]
-        # Other nodes in the nodegroup have leases, but those are not
-        # relevant here.
-        factory.make_DHCPLease(nodegroup=node.nodegroup)
-
-        # Don't address the node directly; address it through a query with
-        # prefetched DHCP leases, to ensure that the query cache for those
-        # leases on the nodegroup will be populated.
-        query = Node.objects.filter(id=node.id)
-        query = query.prefetch_related('nodegroup__dhcplease_set')
-        # The cache is populated.  This is the condition that triggers the
-        # separate code path in Node.dynamic_ip_addresses().
-        self.assertIsNotNone(
-            query[0].nodegroup.dhcplease_set.all()._result_cache)
-
-        # dynamic_ip_addresses() still returns the node's leased addresses.
-        num_queries, addresses = count_queries(query[0].dynamic_ip_addresses)
-        # It only takes one query: to get the node's MAC addresses.
-        self.assertEqual(1, num_queries)
-        # The result is not a query set, so this isn't hiding a further query.
-        no_queries, _ = count_queries(list, addresses)
-        self.assertEqual(0, no_queries)
-        # We still get exactly the right IP addresses.
-        self.assertItemsEqual([lease.ip for lease in leases], addresses)
-
-    def test_dynamic_ip_addresses_filters_by_mac_addresses(self):
-        node = factory.make_Node()
-        # Another node in the same nodegroup has some IP leases.  The one thing
-        # that tells ip_addresses what nodes these leases belong to are their
-        # MAC addresses.
-        other_node = factory.make_Node(nodegroup=node.nodegroup)
-        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
-        for mac in macs:
-            factory.make_DHCPLease(
-                nodegroup=node.nodegroup, mac=mac.mac_address)
-        # The other node's leases do not get mistaken for ones that belong to
-        # our original node.
-        self.assertItemsEqual([], other_node.dynamic_ip_addresses())
+            [ip.ip for ip in ip_addresses], node.dynamic_ip_addresses())
 
     def test_static_ip_addresses_returns_static_ip_addresses(self):
         node = factory.make_Node()
-        [mac2, mac3] = [
-            factory.make_MACAddress(node=node) for _ in range(2)]
-        ip1 = factory.make_StaticIPAddress(mac=mac2)
-        ip2 = factory.make_StaticIPAddress(mac=mac3)
+        [interface1, interface2] = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(2)
+        ]
+        ip1 = factory.make_StaticIPAddress(interface=interface1)
+        ip2 = factory.make_StaticIPAddress(interface=interface2)
         # Create another node with a static IP address.
-        other_node = factory.make_Node(nodegroup=node.nodegroup, mac=True)
-        factory.make_StaticIPAddress(mac=other_node.macaddress_set.all()[0])
+        other_node = factory.make_Node(
+            nodegroup=node.nodegroup, interface=True)
+        factory.make_StaticIPAddress(interface=other_node.get_boot_interface())
         self.assertItemsEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
-
-    def test_static_ip_addresses_uses_result_cache(self):
-        # static_ip_addresses has a specialized code path for the case where
-        # the node's static IPs are already cached in Django's ORM.  This
-        # test exercises that code path.
-        node = factory.make_Node()
-        [mac2, mac3] = [
-            factory.make_MACAddress(node=node) for _ in range(2)]
-        ip1 = factory.make_StaticIPAddress(mac=mac2)
-        ip2 = factory.make_StaticIPAddress(mac=mac3)
-
-        # Don't address the node directly; address it through a query with
-        # prefetched static IPs, to ensure that the query cache for those
-        # IP addresses.
-        query = Node.objects.filter(id=node.id)
-        query = query.prefetch_related('macaddress_set__ip_addresses')
-
-        # dynamic_ip_addresses() still returns the node's leased addresses.
-        num_queries, addresses = count_queries(query[0].static_ip_addresses)
-        self.assertEqual(0, num_queries)
-        # The result is not a query set, so this isn't hiding a further query.
-        self.assertIsInstance(addresses, list)
-        # We still get exactly the right IP addresses.
-        self.assertItemsEqual([ip1.ip, ip2.ip], addresses)
 
     def test_ip_addresses_returns_static_ip_addresses_if_allocated(self):
         # If both static and dynamic IP addresses are present, the static
         # addresses take precedence: they are allocated and deallocated in
         # a synchronous fashion whereas the dynamic addresses are updated
         # periodically.
-        node = factory.make_Node(mac=True, disable_ipv4=False)
-        mac = node.macaddress_set.all()[0]
-        # Create a dynamic IP attached to the node.
-        factory.make_DHCPLease(
-            nodegroup=node.nodegroup, mac=mac.mac_address)
-        # Create a static IP attached to the node.
-        ip = factory.make_StaticIPAddress(mac=mac)
+        node = factory.make_Node(interface=True, disable_ipv4=False)
+        interface = node.get_boot_interface()
+        ip = factory.make_StaticIPAddress(interface=interface)
         self.assertItemsEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
-        node = factory.make_Node(mac=True, disable_ipv4=False)
-        lease = factory.make_DHCPLease(
-            nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all()[0].mac_address)
-        self.assertItemsEqual([lease.ip], node.ip_addresses())
+        node = factory.make_Node(disable_ipv4=False)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
+        self.assertItemsEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_includes_static_ipv4_addresses_by_default(self):
         node = factory.make_Node(disable_ipv4=False)
@@ -1316,40 +1104,42 @@ class TestNode(MAASServerTestCase):
         self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_get_interfaces_returns_all_connected_interfaces(self):
-        mac = factory.make_MACAddress_with_Node(iftype=None)
+        node = factory.make_Node()
         phy1 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=node)
         phy2 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=node)
         phy3 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=node)
         vlan = factory.make_Interface(
-            type=INTERFACE_TYPE.VLAN, parents=[phy1])
+            INTERFACE_TYPE.VLAN, parents=[phy1])
         bond = factory.make_Interface(
-            type=INTERFACE_TYPE.BOND, parents=[phy2, phy3])
+            INTERFACE_TYPE.BOND, parents=[phy2, phy3])
         vlan_bond = factory.make_Interface(
-            type=INTERFACE_TYPE.VLAN, parents=[bond])
+            INTERFACE_TYPE.VLAN, parents=[bond])
 
         self.assertItemsEqual(
             [phy1, phy2, phy3, vlan, bond, vlan_bond],
-            mac.node.get_interfaces())
+            node.interface_set.all())
 
     def test_get_interfaces_ignores_interface_on_other_nodes(self):
-        other_mac = factory.make_MACAddress_with_Node(iftype=None)
+        other_node = factory.make_Node()
         factory.make_Interface(
-            mac=other_mac, type=INTERFACE_TYPE.PHYSICAL)
-        mac = factory.make_MACAddress_with_Node(iftype=None)
+            INTERFACE_TYPE.PHYSICAL, node=other_node)
+        node = factory.make_Node()
         phy = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=node)
         vlan = factory.make_Interface(
-            type=INTERFACE_TYPE.VLAN, parents=[phy])
+            INTERFACE_TYPE.VLAN, parents=[phy])
 
         self.assertItemsEqual(
-            [phy, vlan], mac.node.get_interfaces())
+            [phy, vlan], node.interface_set.all())
 
     def test_get_interface_names_returns_interface_name(self):
-        mac = factory.make_MACAddress_with_Node(ifname='eth0')
-        self.assertEquals(['eth0'], mac.node.get_interface_names())
+        node = factory.make_Node()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
+        self.assertEquals(['eth0'], node.get_interface_names())
 
     def test_get_next_ifname_names_returns_sane_default(self):
         node = factory.make_Node()
@@ -1364,45 +1154,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         self.assertEquals('eth12', node.get_next_ifname(
             ifnames=['eth10', 'eth11']))
-
-    def test_get_static_ip_mappings_returns_static_ip_and_mac(self):
-        node = factory.make_Node(mac=True, disable_ipv4=False)
-        [mac] = node.macaddress_set.all()
-        sip = factory.make_StaticIPAddress(mac=mac)
-        self.assertEqual(
-            [(sip.ip, mac.mac_address)],
-            node.get_static_ip_mappings())
-
-    def test_get_static_ip_mappings_returns_mappings_for_all_macs(self):
-        node = factory.make_Node(disable_ipv4=False)
-        mac1 = factory.make_MACAddress(node=node)
-        mac2 = factory.make_MACAddress(node=node)
-        sip1 = factory.make_StaticIPAddress(mac=mac1)
-        sip2 = factory.make_StaticIPAddress(mac=mac2)
-        self.assertItemsEqual(
-            [
-                (sip1.ip, mac1.mac_address),
-                (sip2.ip, mac2.mac_address),
-            ],
-            node.get_static_ip_mappings())
-
-    def test_get_static_ip_mappings_includes_multiple_addresses(self):
-        node = factory.make_Node(mac=True, disable_ipv4=False)
-        [mac] = node.macaddress_set.all()
-        sip1 = factory.make_StaticIPAddress(mac=mac)
-        sip2 = factory.make_StaticIPAddress(mac=mac)
-        self.assertItemsEqual(
-            [
-                (sip1.ip, mac.mac_address),
-                (sip2.ip, mac.mac_address),
-            ],
-            node.get_static_ip_mappings())
-
-    def test_get_static_ip_mappings_ignores_dynamic_addresses(self):
-        node = factory.make_Node(mac=True, disable_ipv4=False)
-        [mac] = node.macaddress_set.all()
-        factory.make_DHCPLease(nodegroup=node.nodegroup, mac=mac.mac_address)
-        self.assertEqual([], node.get_static_ip_mappings())
 
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
@@ -1444,72 +1195,42 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertThat(node_stop, MockNotCalled())
 
-    def test_release_deallocates_static_ip_when_node_is_off(self):
+    def test_release_releases_auto_ips_when_node_is_off(self):
         user = factory.make_User()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+        node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.OFF)
-        deallocate_static_ip_addresses_later = self.patch_autospec(
-            node, "deallocate_static_ip_addresses_later")
+        release_auto_ips_later = self.patch_autospec(
+            node, "release_auto_ips_later")
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses_later, MockCalledOnceWith())
+            release_auto_ips_later, MockCalledOnceWith())
 
-    def test_release_deallocates_static_ip_when_node_cannot_be_queried(self):
+    def test_release_release_auto_ips_when_node_cannot_be_queried(self):
         user = factory.make_User()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+        node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='ether_wake')
-        deallocate_static_ip_addresses_later = self.patch_autospec(
-            node, "deallocate_static_ip_addresses_later")
+        release_auto_ips_later = self.patch_autospec(
+            node, "release_auto_ips_later")
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses_later, MockCalledOnceWith())
+            release_auto_ips_later, MockCalledOnceWith())
 
-    def test_release_doesnt_deallocate_static_ip_when_node_releasing(self):
+    def test_release_doesnt_release_auto_ips_when_node_releasing(self):
         user = factory.make_User()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+        node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='virsh')
-        deallocate_static_ip_addresses_later = self.patch_autospec(
-            node, "deallocate_static_ip_addresses_later")
+        release_auto_ips_later = self.patch_autospec(
+            node, "release_auto_ips_later")
         self.patch_autospec(node, 'stop')
         self.patch(node, 'start_transition_monitor')
         node.release()
         self.assertThat(
-            deallocate_static_ip_addresses_later, MockNotCalled())
-
-    def test_deallocate_static_ip_deletes_static_ip_host_maps(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        user = factory.make_User()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED)
-        sips = node.get_primary_mac().claim_static_ips(update_host_maps=False)
-        node.deallocate_static_ip_addresses()
-        expected = set(sum(
-            [[sip.ip.format(), unicode(node.get_primary_mac().mac_address)]
-                for sip in sips], []))
-
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: expected}))
-
-    def test_deallocate_static_ip_updates_dns(self):
-        # silence remove_host_maps
-        self.patch_autospec(node_module, "remove_host_maps")
-        dns_update_zones = self.patch(dns_config.dns_update_zones)
-        nodegroup = factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ENABLED)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
-            owner=factory.make_User(), power_type='ether_wake')
-        node.get_primary_mac().claim_static_ips(update_host_maps=False)
-        node.deallocate_static_ip_addresses()
-        self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
+            release_auto_ips_later, MockNotCalled())
 
     def test_release_logs_and_raises_errors_in_stopping(self):
         node = factory.make_Node(
@@ -1619,11 +1340,10 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_Node(
-            status=NODE_STATUS.NEW, power_type='ether_wake')
+            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
         node_start = self.patch(node, 'start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = lambda user, user_data: post_commit()
-        factory.make_MACAddress(node=node)
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -1959,35 +1679,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(architecture=full_arch)
         self.assertEqual((main_arch, sub_arch), node.split_arch())
 
-    def test_mac_addresses_on_managed_interfaces_returns_only_managed(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        mac_with_interface = node.get_primary_mac()
-
-        mac_with_no_interface = factory.make_MACAddress(node=node)
-        unmanaged_interface = factory.make_NodeGroupInterface(
-            nodegroup=node.nodegroup,
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac_with_unmanaged_interface = factory.make_MACAddress_with_Node(
-            node=node, cluster_interface=unmanaged_interface)
-        ignore_unused(mac_with_no_interface, mac_with_unmanaged_interface)
-
-        observed = node.mac_addresses_on_managed_interfaces()
-        self.assertItemsEqual([mac_with_interface], observed)
-
-    def test_mac_addresses_on_managed_interfaces_returns_empty_if_none(self):
-        node = factory.make_Node(mac=True)
-        observed = node.mac_addresses_on_managed_interfaces()
-        self.assertItemsEqual([], observed)
-
-    def test_mac_addresses_on_m_i_uses_parent_for_noninstallable_nodes(self):
-        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        node = factory.make_Node(mac=True, installable=False, parent=parent)
-        mac_with_interface = node.get_primary_mac()
-        self.assertItemsEqual(
-            [mac_with_interface], node.mac_addresses_on_managed_interfaces())
-
     def test_mark_failed_updates_status(self):
         self.disable_node_query()
         nodes_mapping = {
@@ -2134,24 +1825,24 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
 
-    def test_update_power_state_deallocates_static_ips_if_releasing(self):
+    def test_update_power_state_release_auto_ips_if_releasing(self):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
-        deallocate_static_ip_addresses_later = self.patch_autospec(
-            node, 'deallocate_static_ip_addresses_later')
+        release_auto_ips_later = self.patch_autospec(
+            node, 'release_auto_ips_later')
         self.patch(node, 'stop_transition_monitor')
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(
-            deallocate_static_ip_addresses_later, MockCalledOnceWith())
+            release_auto_ips_later, MockCalledOnceWith())
 
-    def test_update_power_state_doesnt_deallocates_static_ips_if_not_off(self):
+    def test_update_power_state_doesnt_release_auto_ips_if_not_off(self):
         node = factory.make_Node(
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
-        deallocate_static_ip_addresses_later = self.patch_autospec(
-            node, 'deallocate_static_ip_addresses_later')
+        release_auto_ips_later = self.patch_autospec(
+            node, 'release_auto_ips_later')
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(deallocate_static_ip_addresses_later, MockNotCalled())
+        self.assertThat(release_auto_ips_later, MockNotCalled())
 
     def test_end_deployment_changes_state(self):
         self.disable_node_query()
@@ -2230,59 +1921,71 @@ class TestNode(MAASServerTestCase):
             preseed_module, 'get_boot_images_for').return_value = [boot_image]
         self.assertEqual('install', node.get_boot_purpose())
 
-    def test_pxe_mac_default_is_none(self):
+    def test_boot_interface_default_is_none(self):
         node = factory.make_Node()
-        self.assertIsNone(node.pxe_mac)
+        self.assertIsNone(node.boot_interface)
 
-    def test_get_pxe_mac_returns_pxe_mac_if_pxe_mac_set(self):
-        node = factory.make_Node(mac=True)
-        node.pxe_mac = factory.make_MACAddress(node=node)
+    def test_get_boot_interface_returns_boot_interface_if_set(self):
+        node = factory.make_Node(interface=True)
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
         node.save()
-        self.assertEqual(node.pxe_mac, node.get_pxe_mac())
+        self.assertEqual(node.boot_interface, node.get_boot_interface())
 
-    def test_get_pxe_mac_returns_first_macaddress_if_pxe_mac_unset(self):
-        node = factory.make_Node(mac=True)
-        [factory.make_MACAddress(node=node) for _ in range(3)]
+    def test_get_boot_interface_returns_first_interface_if_unset(self):
+        node = factory.make_Node(interface=True)
+        for _ in range(3):
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         self.assertEqual(
-            node.macaddress_set.order_by('id').first(), node.get_pxe_mac())
+            node.interface_set.order_by('id').first(),
+            node.get_boot_interface())
 
-    def test_pxe_mac_deletion_does_not_delete_node(self):
-        node = factory.make_Node(mac=True)
-        node.pxe_mac = factory.make_MACAddress(node=node)
+    def test_boot_interface_deletion_does_not_delete_node(self):
+        node = factory.make_Node(interface=True)
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
         node.save()
-        node.pxe_mac.delete()
+        node.boot_interface.delete()
         self.assertThat(reload_object(node), Not(Is(None)))
 
     def test_get_pxe_mac_vendor_returns_vendor(self):
         node = factory.make_Node()
-        mac = factory.make_MACAddress(address='ec:a8:6b:fd:ae:3f', node=node)
-        node.pxe_mac = mac
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address='ec:a8:6b:fd:ae:3f',
+            node=node)
         node.save()
         self.assertEqual(
             "ELITEGROUP COMPUTER SYSTEMS CO., LTD.",
             node.get_pxe_mac_vendor())
 
-    def test_get_extra_macs_returns_all_but_pxe_mac(self):
+    def test_get_extra_macs_returns_all_but_boot_interface_mac(self):
         node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for _ in xrange(3)]
-        # Do not set the pxe mac to the first mac to make sure the pxe mac
-        # (and not the first created) is excluded from the list returned by
-        # `get_extra_macs`.
-        pxe_mac_index = 1
-        node.pxe_mac = macs[pxe_mac_index]
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in xrange(3)
+        ]
+        # Do not set the boot interface to the first interface to make sure the
+        # boot interface (and not the first created) is excluded from the list
+        # returned by `get_extra_macs`.
+        boot_interface_index = 1
+        node.boot_interface = interfaces[boot_interface_index]
         node.save()
-        del macs[pxe_mac_index]
-        self.assertItemsEqual(
-            macs,
-            node.get_extra_macs())
+        del interfaces[boot_interface_index]
+        self.assertItemsEqual([
+            interface.mac_address
+            for interface in interfaces
+            ], node.get_extra_macs())
 
-    def test_get_extra_macs_returns_all_but_first_mac_if_no_pxe_mac(self):
+    def test_get_extra_macs_returns_all_but_first_interface_if_not_boot(self):
         node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for _ in xrange(3)]
-        node.save()
-        self.assertItemsEqual(
-            macs[1:],
-            node.get_extra_macs())
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in xrange(3)
+        ]
+        self.assertItemsEqual([
+            interface.mac_address
+            for interface in interfaces[1:]
+            ], node.get_extra_macs())
 
     def test__clear_storage_configuration_removes_all_related_objects(self):
         node = factory.make_Node()
@@ -2348,43 +2051,43 @@ class TestNode(MAASServerTestCase):
             "Virtual block device on another virtual block device should have "
             "been removed.")
 
-    def test_pxe_mac_displays_error_if_not_hosts_mac(self):
-        node0 = factory.make_Node()
-        factory.make_MACAddress(node=node0)
+    def test_boot_interface_displays_error_if_not_hosts_interface(self):
+        node0 = factory.make_Node(interface=True)
         node1 = factory.make_Node()
-        mac1 = factory.make_MACAddress(node=node1)
-        node0.pxe_mac = mac1
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node1)
+        node0.boot_interface = interface
         exception = self.assertRaises(ValidationError, node0.save)
-        msg = {'pxe_mac': ["Must be one of the node's mac addresses."]}
+        msg = {'boot_interface': ["Must be one of the node's interfaces."]}
         self.assertEqual(msg, exception.message_dict)
 
-    def test_pxe_mac_accepts_valid_mac(self):
+    def test_boot_interface_accepts_valid_interface(self):
         node = factory.make_Node()
-        mac = factory.make_MACAddress(node=node)
-        node.pxe_mac = mac
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        node.boot_interface = interface
         node.save()
 
 
-class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
+class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):
 
     def test__returns_true_if_managed(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        self.assertTrue(node.is_pxe_mac_on_managed_interface())
+        node = factory.make_Node_with_Interface_on_Subnet()
+        self.assertTrue(node.is_boot_interface_on_managed_interface())
 
-    def test__returns_false_if_no_pxe_mac(self):
+    def test__returns_false_if_no_boot_interface(self):
         node = factory.make_Node()
-        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+        self.assertFalse(node.is_boot_interface_on_managed_interface())
 
     def test__returns_false_if_no_attached_cluster_interface(self):
         node = factory.make_Node()
-        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
         node.save()
-        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+        self.assertFalse(node.is_boot_interface_on_managed_interface())
 
     def test__returns_false_if_cluster_interface_unmanaged(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+        node = factory.make_Node_with_Interface_on_Subnet(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+        self.assertFalse(node.is_boot_interface_on_managed_interface())
 
 
 class NodeRoutersTest(MAASServerTestCase):
@@ -2441,11 +2144,6 @@ class NodeManagerTest(MAASServerTestCase):
         else:
             status = NODE_STATUS.ALLOCATED
         return factory.make_Node(status=status, owner=user, **kwargs)
-
-    def make_node_with_mac(self, user=None, **kwargs):
-        node = self.make_node(user, **kwargs)
-        mac = factory.make_MACAddress(node=node)
-        return node, mac
 
     def make_user_data(self):
         """Create a blob of arbitrary user-data."""
@@ -2753,184 +2451,154 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
             }]))
 
 
-class TestClaimStaticIPAddresses(MAASServerTestCase):
-    """Tests for `Node.claim_static_ip_addresses` and
-    deallocate_static_ip_addresses"""
+class TestNodeNetworking(MAASServerTestCase):
+    """Tests for methods on the `Node` related to networking."""
 
-    def test__returns_empty_list_if_no_iface(self):
+    def test_release_leases_calls_remove_host_maps_with_leases(self):
         node = factory.make_Node()
-        self.assertEqual([], node.claim_static_ip_addresses())
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(3)
+        ]
+        removal_mappings = {}
+        for interface in interfaces:
+            subnet = factory.make_Subnet(vlan=interface.vlan)
+            nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+            factory.make_NodeGroupInterface(
+                nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+                subnet=subnet)
+            lease_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=lease_ip,
+                subnet=subnet, interface=interface)
+            removal_mappings[nodegroup] = set([lease_ip])
+        mock_remove_host_maps = self.patch(node_module, "remove_host_maps")
+        node.release_leases()
+        self.assertThat(
+            mock_remove_host_maps, MockCalledOnceWith(removal_mappings))
 
-    def test__returns_empty_list_if_no_iface_on_managed_network(self):
+    def test_claim_auto_ips_calls_claim_auto_ips_on_all_interfaces(self):
         node = factory.make_Node()
-        factory.make_MACAddress(node=node)
-        self.assertEqual([], node.claim_static_ip_addresses())
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(3)
+        ]
+        mock_claim_auto_ips = self.patch_autospec(Interface, "claim_auto_ips")
+        node.claim_auto_ips()
+        # Since the interfaces are not ordered, which they dont need to be
+        # we extract the passed interface to each call.
+        observed_interfaces = [
+            call[0][0]
+            for call in mock_claim_auto_ips.call_args_list
+        ]
+        self.assertItemsEqual(interfaces, observed_interfaces)
 
-    def test__returns_mapping_for_iface_on_managed_network(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        static_mappings = node.claim_static_ip_addresses(
-            update_host_maps=False)
-        [static_ip] = node.static_ip_addresses()
-        [mac_address] = node.macaddress_set.all()
-        self.assertEqual(
-            [(static_ip, unicode(mac_address))],
-            static_mappings)
-
-    def test__returns_mapping_for_pxe_mac_interface(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        node.pxe_mac = factory.make_MACAddress(node=node)
-        node.save()
-        [managed_interface] = node.nodegroup.get_managed_interfaces()
-        node.pxe_mac.cluster_interface = managed_interface
-        node.pxe_mac.save()
-        static_mappings = node.claim_static_ip_addresses(
-            update_host_maps=False)
-        [static_ip] = node.static_ip_addresses()
-        mac_address = node.get_pxe_mac()
-        self.assertEqual(
-            [(static_ip, unicode(mac_address))],
-            static_mappings)
-
-    def test__ignores_mac_address_with_non_auto_addresses(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        mac_address = node.macaddress_set.first()
-        mac_address.claim_static_ips(
-            IPADDRESS_TYPE.STICKY, update_host_maps=False)
-        self.assertRaises(
-            StaticIPAddressTypeClash, mac_address.claim_static_ips)
-        static_mappings = node.claim_static_ip_addresses()
-        self.assertEqual([], static_mappings)
-
-    def test__claims_and_releases_sticky_ip_address(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        user = factory.make_User()
-        network = factory.make_ipv4_network(slash=24)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-
-        ngi = node.get_pxe_mac().cluster_interface
-        static_range = ngi.get_static_ip_range()
-
-        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)[0]
-
-        self.expectThat(static_range, Contains(IPAddress(pxe_ip)))
-
-        mac = MACAddress.objects.get(mac_address=pxe_mac)
-        ip = mac.ip_addresses.first()
-        self.expectThat(ip.ip, Equals(pxe_ip))
-        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
-
-        deallocated = node.deallocate_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
-
-        self.expectThat(deallocated, HasLength(2))
-        self.expectThat(deallocated, Equals(set([pxe_ip, pxe_mac])))
-        self.expectThat(remove_host_maps.call_count, Equals(1))
-
-    def test__claims_specific_sticky_ip_address(self):
-        user = factory.make_User()
-        network = factory.make_ipv4_network(slash=24)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-        ngi = node.get_pxe_mac().cluster_interface
-        first_ip = ngi.get_static_ip_range()[0]
-
-        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
-            update_host_maps=False)[0]
-        mac = MACAddress.objects.get(mac_address=pxe_mac)
-        ip = mac.ip_addresses.first()
-        self.expectThat(IPAddress(ip.ip), Equals(first_ip))
-        self.expectThat(ip.ip, Equals(pxe_ip))
-        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
-
-    def test__claim_specific_sticky_ip_address_twice_fails(self):
-        user = factory.make_User()
-        network = factory.make_ipv4_network(slash=24)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-        node2 = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-        ngi = node.get_pxe_mac().cluster_interface
-        first_ip = ngi.get_static_ip_range()[0]
-
-        node.claim_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
-            update_host_maps=False)
-        with ExpectedException(StaticIPAddressUnavailable):
-            node2.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip,
-                update_host_maps=False)
-
-    def test__deallocate_static_ip_addresses_later_calls_deallocate(self):
-        clock = self.patch(node_module, "reactor", Clock())
+    def test_release_auto_ips_calls_release_auto_ips_on_all_interfaces(self):
         node = factory.make_Node()
-        with post_commit_hooks:
-            # This sets up a post-commit hook with then schedules a later
-            # execution of the deallocation.
-            node.deallocate_static_ip_addresses_later()
-        self.assertThat(clock.getDelayedCalls(), HasLength(1))
-        [call] = clock.getDelayedCalls()
-        self.assertThat(call, MatchesStructure(
-            time=Equals(0.0),
-            func=Is(deferToThread),
-            args=MatchesListwise([
-                Equals(node.deallocate_static_ip_addresses),
-            ]),
-            kw=Equals({}),
-        ))
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(3)
+        ]
+        mock_release_auto_ips = self.patch_autospec(
+            Interface, "release_auto_ips")
+        node.release_auto_ips()
+        # Since the interfaces are not ordered, which they dont need to be
+        # we extract the passed interface to each call.
+        observed_interfaces = [
+            call[0][0]
+            for call in mock_release_auto_ips.call_args_list
+        ]
+        self.assertItemsEqual(interfaces, observed_interfaces)
 
+    def test_release_auto_ips_later_calls_with_post_commit_do(self):
+        mock_post_commit_do = self.patch_autospec(
+            node_module, "post_commit_do")
+        node = factory.make_Node()
+        node.release_auto_ips_later()
+        self.assertThat(
+            mock_post_commit_do,
+            MockCalledOnceWith(
+                reactor.callLater, 0,
+                deferToThread, node.release_auto_ips))
 
-class TestClaimStaticIPAddressesTransactional(MAASTransactionServerTestCase):
-    """The following TestClaimStaticIPAddresses tests require
-        MAASTransactionServerTestCase, and thus have been separated
-        from the TestClaimStaticIPAddresses above.
-    """
+    def test__clear_networking_configuration(self):
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        dhcp_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="", interface=nic0)
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic0)
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=nic1)
+        mock_unlink_ip_address = self.patch_autospec(
+            Interface, "unlink_ip_address")
+        node._clear_networking_configuration()
+        # Since the interfaces are not ordered, which they dont need to be
+        # we extract the passed interface to each call.
+        observed_interfaces = set(
+            call[0][0]
+            for call in mock_unlink_ip_address.call_args_list
+        )
+        # Since the IP address are not ordered, which they dont need to be
+        # we extract the passed IP address to each call.
+        observed_ip_address = [
+            call[0][1]
+            for call in mock_unlink_ip_address.call_args_list
+        ]
+        self.assertItemsEqual([nic0, nic1], observed_interfaces)
+        self.assertItemsEqual(
+            [dhcp_ip, static_ip, auto_ip], observed_ip_address)
 
-    def test__claims_and_deallocates_multiple_sticky_ip_addresses(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        user = factory.make_User()
-        network = factory.make_ipv4_network(slash=24)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-        cluster_if = node.get_primary_mac().cluster_interface
+    def test_set_initial_networking_configuration_auto_on_boot_nic(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        boot_interface = node.get_boot_interface()
+        subnet = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).first().subnet
+        node._clear_networking_configuration()
+        node.set_initial_networking_configuration()
+        boot_interface = reload_object(boot_interface)
+        auto_ip = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).first()
+        self.assertIsNotNone(auto_ip)
+        self.assertEquals(subnet, auto_ip.subnet)
 
-        macs = []
+    def test_set_initial_networking_configuration_auto_on_managed_subnet(self):
+        node = factory.make_Node()
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=boot_interface.vlan)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet)
+        node.set_initial_networking_configuration()
+        boot_interface = reload_object(boot_interface)
+        auto_ip = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).first()
+        self.assertIsNotNone(auto_ip)
+        self.assertEquals(subnet, auto_ip.subnet)
+
+    def test_set_initial_networking_configuration_link_up_on_enabled(self):
+        node = factory.make_Node()
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        enabled_interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, enabled=True)
+            for _ in range(3)
+        ]
         for _ in range(3):
-            mac = factory.make_MACAddress(
-                node=node, cluster_interface=cluster_if)
-            macs.append(mac)
-
-        with transaction.atomic():
-            pxe_ip, pxe_mac = node.claim_static_ip_addresses(
-                alloc_type=IPADDRESS_TYPE.STICKY, update_host_maps=False)[0]
-
-        mac = MACAddress.objects.get(mac_address=pxe_mac)
-        ip = mac.ip_addresses.all()[0]
-        self.expectThat(ip.ip, Equals(pxe_ip))
-        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
-
-        sips = []
-        for mac in macs:
-            with transaction.atomic():
-                sips.append(node.claim_static_ip_addresses(
-                    mac=mac, alloc_type=IPADDRESS_TYPE.STICKY,
-                    update_host_maps=False)[0])
-
-        # try removing just the IP on the PXE MAC first
-        deallocated = node.deallocate_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
-
-        self.expectThat(deallocated, HasLength(2))
-
-        # try removing the remaining IP addresses now
-        deallocated = node.deallocate_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY)
-        self.expectThat(deallocated, HasLength(2 * len(macs)))
-        self.expectThat(remove_host_maps.call_count, Equals(2))
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, enabled=False)
+        mock_ensure_link_up = self.patch_autospec(Interface, "ensure_link_up")
+        node.set_initial_networking_configuration()
+        # Since the interfaces are not ordered, which they dont need to be
+        # we extract the passed interface to each call.
+        observed_interfaces = set(
+            call[0][0]
+            for call in mock_ensure_link_up.call_args_list
+        )
+        self.assertItemsEqual(enabled_interfaces, observed_interfaces)
 
 
 class TestDeploymentStatus(MAASServerTestCase):
@@ -2977,8 +2645,8 @@ class TestNode_Start(MAASServerTestCase):
         protocol.PowerOn.side_effect = always_succeed_with({})
         return protocol
 
-    def make_acquired_node_with_mac(self, user, nodegroup=None):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+    def make_acquired_node_with_interface(self, user, nodegroup=None):
+        node = factory.make_Node_with_Interface_on_Subnet(
             nodegroup=nodegroup, status=NODE_STATUS.READY, with_boot_disk=True)
         self.prepare_rpc_to_cluster(node.nodegroup)
         node.acquire(user)
@@ -2988,11 +2656,11 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node = self.make_acquired_node_with_interface(user, nodegroup)
         user_data = factory.make_bytes()
 
         with post_commit_hooks:
-            node.start(user, user_data=user_data, update_host_maps=False)
+            node.start(user, user_data=user_data)
 
         nud = NodeUserData.objects.get(node=node)
         self.assertEqual(user_data, nud.data)
@@ -3001,105 +2669,47 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node = self.make_acquired_node_with_interface(user, nodegroup)
         user_data = factory.make_bytes()
         NodeUserData.objects.set_user_data(node, user_data)
 
         with post_commit_hooks:
-            node.start(user, user_data=None, update_host_maps=False)
+            node.start(user, user_data=None)
 
         self.assertFalse(NodeUserData.objects.filter(node=node).exists())
 
-    def test__claims_static_ip_addresses(self):
+    def test__claims_auto_ip_addresses(self):
         user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node = self.make_acquired_node_with_interface(user, nodegroup)
 
-        claim_static_ip_addresses = self.patch_autospec(
-            node, "claim_static_ip_addresses")
-        claim_static_ip_addresses.return_value = {}
+        claim_auto_ips = self.patch_autospec(
+            node, "claim_auto_ips")
 
         with post_commit_hooks:
             node.start(user)
 
         self.expectThat(
-            claim_static_ip_addresses, MockCalledOnceWith(
-                update_host_maps=True))
+            claim_auto_ips, MockCalledOnceWith())
 
-    def test__only_claims_static_addresses_when_allocated(self):
+    def test__only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node = self.make_acquired_node_with_interface(user, nodegroup)
         node.status = NODE_STATUS.BROKEN
         node.save()
 
-        claim_static_ip_addresses = self.patch_autospec(
-            node, "claim_static_ip_addresses", spec_set=False)
-        claim_static_ip_addresses.return_value = {}
+        claim_auto_ips = self.patch_autospec(
+            node, "claim_auto_ips", spec_set=False)
 
         with post_commit_hooks:
-            node.start(user, update_host_maps=False)
+            node.start(user)
 
-        # No calls are made to claim_static_ip_addresses, since the node
+        # No calls are made to claim_auto_ips, since the node
         # isn't ALLOCATED.
-        self.assertThat(claim_static_ip_addresses, MockNotCalled())
-
-    def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
-        self.patch(
-            node, 'is_pxe_mac_on_managed_interface').return_value = False
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        with post_commit_hooks:
-            node.start(user)
-        self.assertThat(update_host_maps, MockNotCalled())
-
-    def test__updates_host_maps(self):
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
-
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = []  # No failures.
-
-        with post_commit_hooks:
-            node.start(user)
-
-        # Host maps are updated.
-        self.assertThat(
-            update_host_maps, MockCalledOnceWith({
-                node.nodegroup: {
-                    ip_address.ip: mac.mac_address
-                    for ip_address in mac.ip_addresses.all()
-                }
-                for mac in node.mac_addresses_on_managed_interfaces()
-            }))
-
-    def test__propagates_errors_when_updating_host_maps(self):
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
-
-        exception_type = factory.make_exception_type()
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = [
-            Failure(exception_type("Please, don't do that.")),
-        ]
-
-        self.assertRaises(exception_type, node.start, user)
-
-    def test__updates_dns(self):
-        dns_update_zones = self.patch(dns_config.dns_update_zones)
-        self.patch(Node, "update_host_maps")
-
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
-
-        with post_commit_hooks:
-            node.start(user)
-
-        self.assertThat(
-            dns_update_zones, MockCalledOnceWith([node.nodegroup]))
+        self.assertThat(claim_auto_ips, MockNotCalled())
 
     def test__set_zone(self):
         """Verifies whether the set_zone sets the node's zone"""
@@ -3110,7 +2720,7 @@ class TestNode_Start(MAASServerTestCase):
 
     def test__starts_nodes(self):
         user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        node = self.make_acquired_node_with_interface(user)
         power_info = node.get_effective_power_info()
 
         power_on_node = self.patch(node_module, "power_on_node")
@@ -3118,7 +2728,7 @@ class TestNode_Start(MAASServerTestCase):
         self.patch_autospec(node, '_start_transition_monitor_async')
 
         with post_commit_hooks:
-            node.start(user, update_host_maps=False)
+            node.start(user)
 
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
@@ -3144,17 +2754,17 @@ class TestNode_Start(MAASServerTestCase):
             PraiseBeToJTVException("Defiance is futile"))
 
         user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        node = self.make_acquired_node_with_interface(user)
 
         with ExpectedException(PraiseBeToJTVException):
             with post_commit_hooks:
-                node.start(user, update_host_maps=False)
+                node.start(user)
 
     def test__marks_allocated_node_as_deploying(self):
         user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        node = self.make_acquired_node_with_interface(user)
         with post_commit_hooks:
-            node.start(user, update_host_maps=False)
+            node.start(user)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -3164,18 +2774,17 @@ class TestNode_Start(MAASServerTestCase):
         # exercise the whole of start().
         node = factory.make_Node(
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
-            owner=user)
-        factory.make_MACAddress(node=node)
+            owner=user, interface=True)
         power_on_node = self.patch(node_module, "power_on_node")
         power_on_node.return_value = defer.succeed(None)
         with post_commit_hooks:
-            node.start(user, update_host_maps=False)
+            node.start(user)
         self.assertEqual(
             NODE_STATUS.DEPLOYED, reload_object(node).status)
 
     def test__does_not_try_to_start_nodes_that_cant_be_started_by_MAAS(self):
         user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        node = self.make_acquired_node_with_interface(user)
         power_info = PowerInfo(
             can_be_started=False,
             can_be_stopped=True,
@@ -3185,98 +2794,59 @@ class TestNode_Start(MAASServerTestCase):
         )
         self.patch(node, 'get_effective_power_info').return_value = power_info
         power_on_node = self.patch(node_module, "power_on_node")
-        node.start(user, update_host_maps=False)
+        node.start(user)
         self.assertThat(power_on_node, MockNotCalled())
 
     def test__does_not_start_nodes_the_user_cannot_edit(self):
         power_on_node = self.patch_autospec(node_module, "power_on_node")
         owner = factory.make_User()
-        node = self.make_acquired_node_with_mac(owner)
+        node = self.make_acquired_node_with_interface(owner)
 
         user = factory.make_User()
         with ExpectedException(PermissionDenied):
-            node.start(user, update_host_maps=False)
+            node.start(user)
             self.assertThat(power_on_node, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
         power_on_node = self.patch_autospec(node_module, "power_on_node")
         owner = factory.make_User()
-        node = self.make_acquired_node_with_mac(owner)
+        node = self.make_acquired_node_with_interface(owner)
 
         admin = factory.make_admin()
         with post_commit_hooks:
-            node.start(admin, update_host_maps=False)
+            node.start(admin)
 
         self.expectThat(
             power_on_node, MockCalledOnceWith(
                 node.system_id, node.hostname, node.nodegroup.uuid,
                 node.get_effective_power_info()))
 
-    def test__releases_static_ips_when_power_action_fails(self):
+    def test__releases_auto_ips_when_power_action_fails(self):
         exception_type = factory.make_exception_type()
 
         mock_getClientFor = self.patch(power_module, 'getClientFor')
         mock_getClientFor.return_value = defer.fail(
             exception_type("He's fallen in the water!"))
 
-        deallocate_ips = self.patch(
-            node_module.StaticIPAddress.objects, 'deallocate_by_node')
-
         user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        node = self.make_acquired_node_with_interface(user)
 
-        with ExpectedException(exception_type):
-            with post_commit_hooks:
-                node.start(user, update_host_maps=False)
-
-        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
-
-    def test__releases_static_ips_when_update_host_maps_fails(self):
-        exception_type = factory.make_exception_type()
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = [
-            Failure(exception_type("You steaming nit, you!"))
-        ]
-        deallocate = self.patch(
-            node_module.StaticIPAddress, 'deallocate')
-
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
+        release_auto_ips = self.patch_autospec(
+            node, "release_auto_ips")
 
         with ExpectedException(exception_type):
             with post_commit_hooks:
                 node.start(user)
 
-        self.assertThat(
-            deallocate, MockCalledOnceWith())
-
-    def test_update_host_maps_updates_given_nodegroup_list(self):
-        user = factory.make_User()
-        node = self.make_acquired_node_with_mac(user)
-
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = []  # No failures.
-
-        claims = {mock.sentinel.ip: mock.sentinel.mac}
-        # Create a bunch of nodegroups
-        all_nodegroups = [factory.make_NodeGroup() for _ in range(5)]
-        # Select some nodegroups.
-        nodegroups = all_nodegroups[2:]
-        node.update_host_maps(claims, nodegroups)
-
-        # Host maps are updated.
-        self.assertThat(
-            update_host_maps, MockCalledOnceWith({
-                nodegroup: claims
-                for nodegroup in nodegroups
-            }))
+        self.assertThat(release_auto_ips, MockCalledOnceWith())
 
 
 class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
 
-    def make_node_with_mac(self, user, nodegroup=None, power_type="virsh"):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+    def make_node_with_interface(
+            self, user, nodegroup=None, power_type="virsh"):
+        node = factory.make_Node_with_Interface_on_Subnet(
             nodegroup=nodegroup, status=NODE_STATUS.READY,
             power_type=power_type, with_boot_disk=True)
         node.acquire(user)
@@ -3286,7 +2856,7 @@ class TestNode_Stop(MAASServerTestCase):
         power_off_node = self.patch_autospec(node_module, "power_off_node")
 
         user = factory.make_User()
-        node = self.make_node_with_mac(user)
+        node = self.make_node_with_interface(user)
         expected_power_info = node.get_effective_power_info()
 
         stop_mode = factory.make_name('stop-mode')
@@ -3305,7 +2875,7 @@ class TestNode_Stop(MAASServerTestCase):
     def test__does_not_stop_nodes_the_user_cannot_edit(self):
         power_off_node = self.patch_autospec(node_module, "power_off_node")
         owner = factory.make_User()
-        node = self.make_node_with_mac(owner)
+        node = self.make_node_with_interface(owner)
 
         user = factory.make_User()
         self.assertRaises(PermissionDenied, node.stop, user)
@@ -3314,7 +2884,7 @@ class TestNode_Stop(MAASServerTestCase):
     def test__allows_admin_to_stop_any_node(self):
         power_off_node = self.patch_autospec(node_module, "power_off_node")
         owner = factory.make_User()
-        node = self.make_node_with_mac(owner)
+        node = self.make_node_with_interface(owner)
         expected_power_info = node.get_effective_power_info()
 
         stop_mode = factory.make_name('stop-mode')
@@ -3333,7 +2903,7 @@ class TestNode_Stop(MAASServerTestCase):
         # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
         # won't attempt to power it off.
         user = factory.make_User()
-        node = self.make_node_with_mac(user)
+        node = self.make_node_with_interface(user)
         node.power_type = ""
         node.save()
 
@@ -3345,7 +2915,7 @@ class TestNode_Stop(MAASServerTestCase):
         # If the node has a power_type that doesn't allow MAAS to power
         # the node off, stop() won't attempt to send the power command.
         user = factory.make_User()
-        node = self.make_node_with_mac(user, power_type="ether_wake")
+        node = self.make_node_with_interface(user, power_type="ether_wake")
         node.save()
 
         power_off_node = self.patch_autospec(node_module, "power_off_node")
@@ -3360,7 +2930,7 @@ class TestNode_Stop(MAASServerTestCase):
             fake_exception_type("Soon be the weekend!"))
 
         user = factory.make_User()
-        node = self.make_node_with_mac(user)
+        node = self.make_node_with_interface(user)
 
         with ExpectedException(fake_exception_type):
             with post_commit_hooks:
@@ -3368,14 +2938,14 @@ class TestNode_Stop(MAASServerTestCase):
 
     def test__returns_None_if_power_action_not_sent(self):
         user = factory.make_User()
-        node = self.make_node_with_mac(user, power_type="")
+        node = self.make_node_with_interface(user, power_type="")
 
         self.patch_autospec(node_module, "power_off_node")
         self.assertThat(node.stop(user), Is(None))
 
     def test__returns_Deferred_if_power_action_sent(self):
         user = factory.make_User()
-        node = self.make_node_with_mac(user, power_type="virsh")
+        node = self.make_node_with_interface(user, power_type="virsh")
 
         self.patch_autospec(node_module, "power_off_node")
         with post_commit_hooks:

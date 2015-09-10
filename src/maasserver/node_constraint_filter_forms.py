@@ -15,6 +15,10 @@ __all__ = [
     ]
 
 
+from abc import (
+    ABCMeta,
+    abstractmethod,
+)
 from collections import defaultdict
 import itertools
 from itertools import chain
@@ -31,17 +35,20 @@ from maasserver.forms import (
 )
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
-    Network,
     PhysicalBlockDevice,
+    Subnet,
     Tag,
+    VLAN,
     Zone,
 )
-from maasserver.models.network import parse_network_spec
+from maasserver.models.subnet import SUBNET_NAME_VALIDATOR
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
 )
+from netaddr import IPAddress
+from netaddr.core import AddrFormatError
 
 # Matches the storage constraint from Juju. Format is an optional label,
 # followed by an optional colon, then size (which is mandatory) followed by an
@@ -346,6 +353,169 @@ def nodes_by_storage(storage):
     return nodes
 
 
+def strip_type_tag(type_tag, specifier):
+    """Return a network specifier minus its type tag."""
+    prefix = type_tag + ':'
+    assert specifier.startswith(prefix)
+    return specifier[len(prefix):]
+
+
+class SubnetSpecifier:
+    """A :class:`SubnetSpecifier` identifies a :class:`Subnet`.
+
+    For example, in placement constraints, a user may specify that a node
+    must be attached to a certain subnet.  They identify the subnet through
+    a subnet specifier, which may be its name (`dmz`), an IP address
+    (`ip:10.12.0.0`), or a VLAN tag (`vlan:15` or `vlan:0xf`).
+
+    Each type of subnet specifier has its own `SubnetSpecifier`
+    implementation class.  The class constructor validates and parses a
+    subnet specifier of its type, and the object knows how to retrieve
+    whatever subnet it identifies from the database.
+    """
+    __metaclass__ = ABCMeta
+
+    # Most subnet specifiers start with a type tag followed by a colon, e.g.
+    # "ip:10.1.0.0".
+    type_tag = None
+
+    @abstractmethod
+    def find_subnet(self):
+        """Load the identified :class:`Subnet` from the database.
+
+        :raise Subnet.DoesNotExist: If no subnet matched the specifier.
+        :return: The :class:`Subnet`.
+        """
+
+
+class NameSpecifier(SubnetSpecifier):
+    """Identify a subnet by its name.
+
+    This type of subnet specifier has no type tag; it's just the name.  A
+    subnet name cannot contain colon (:) characters.
+    """
+
+    def __init__(self, spec):
+        SUBNET_NAME_VALIDATOR(spec)
+        self.name = spec
+
+    def find_subnet(self):
+        return Subnet.objects.get(name=self.name)
+
+
+class IPSpecifier(SubnetSpecifier):
+    """Identify a subnet by any IP address it contains.
+
+    The IP address is prefixed with a type tag `ip:`, e.g. `ip:10.1.1.0`.
+    It can name any IP address within the subnet, including its base address,
+    its broadcast address, or any host address that falls in its IP range.
+    """
+    type_tag = 'ip'
+
+    def __init__(self, spec):
+        ip_string = strip_type_tag(self.type_tag, spec)
+        try:
+            self.ip = IPAddress(ip_string)
+        except AddrFormatError as e:
+            raise ValidationError("Invalid IP address: %s." % e)
+
+    def find_subnet(self):
+        subnets = list(Subnet.objects.get_subnets_with_ip(self.ip))
+        if len(subnets) > 0:
+            return subnets[0]
+        raise Subnet.DoesNotExist()
+
+
+class VLANSpecifier(SubnetSpecifier):
+    """Identify a subnet by its (nonzero) VLAN tag.
+
+    This only applies to VLANs.  The VLAN tag is a numeric value prefixed with
+    a type tag of `vlan:`, e.g. `vlan:12`.  Tags may also be given in
+    hexadecimal form: `vlan:0x1a`.  This is case-insensitive.
+    """
+    type_tag = 'vlan'
+
+    def __init__(self, spec):
+        vlan_string = strip_type_tag(self.type_tag, spec)
+        if vlan_string.lower().startswith('0x'):
+            # Hexadecimal.
+            base = 16
+        else:
+            # Decimal.
+            base = 10
+        try:
+            self.vlan_tag = int(vlan_string, base)
+        except ValueError:
+            raise ValidationError("Invalid VLAN tag: '%s'." % vlan_string)
+        if self.vlan_tag <= 0 or self.vlan_tag >= 0xfff:
+            raise ValidationError("VLAN tag out of range (1-4094).")
+
+    def find_subnet(self):
+        # The best we can do since we now support a more complex model is
+        # get the first VLAN with the VID and the first subnet in that VLAN.
+        vlans = VLAN.objects.filter(vid=self.vlan_tag)
+        if len(vlans) > 0:
+            subnet = vlans[0].subnet_set.first()
+            if subnet is not None:
+                return subnet
+        raise Subnet.DoesNotExist()
+
+
+SPECIFIER_CLASSES = [NameSpecifier, IPSpecifier, VLANSpecifier]
+
+SPECIFIER_TAGS = {
+    spec_class.type_tag: spec_class
+    for spec_class in SPECIFIER_CLASSES
+}
+
+
+def get_specifier_type(specifier):
+    """Obtain the specifier class that knows how to parse `specifier`.
+
+    :raise ValidationError: If `specifier` does not match any accepted type of
+        network specifier.
+    :return: A concrete `NetworkSpecifier` subclass that knows how to parse
+        `specifier`.
+    """
+    if ':' in specifier:
+        type_tag, _ = specifier.split(':', 1)
+    else:
+        type_tag = None
+    specifier_class = SPECIFIER_TAGS.get(type_tag)
+    if specifier_class is None:
+        raise ValidationError(
+            "Invalid network specifier type: '%s'." % type_tag)
+    return specifier_class
+
+
+def parse_subnet_spec(spec):
+    """Parse a network specifier; return it as a `NetworkSpecifier` object.
+
+    :raise ValidationError: If `spec` is malformed.
+    """
+    specifier_class = get_specifier_type(spec)
+    return specifier_class(spec)
+
+
+def get_subnet_from_spec(spec):
+    """Find a single `Subnet` from a given network specifier.
+
+    Note: This exists for a backward compatability layer for how MAAS used to
+    do networking. It might not always be correct since the model is now more
+    complex, but it will atleast still work.
+
+    :raise ValidationError: If `spec` is malformed.
+    :raise Subnet.DoesNotExist: If the subnet specifier does not match
+        any known subnet.
+    :return: The one `Subnet` matching `spec`.
+    """
+    specifier = parse_subnet_spec(spec)
+    try:
+        return specifier.find_subnet()
+    except Subnet.DoesNotExist:
+        raise Subnet.DoesNotExist("No subnet matching '%s'." % spec)
+
+
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
@@ -369,13 +539,13 @@ class AcquireNodeForm(RenamableFieldsForm):
         label="Not having tags", required=False)
 
     networks = ValidatorMultipleChoiceField(
-        validator=parse_network_spec, label="Attached to networks",
+        validator=parse_subnet_spec, label="Attached to networks",
         required=False, error_messages={
             'invalid_list': "Invalid parameter: list of networks required.",
             })
 
     not_networks = ValidatorMultipleChoiceField(
-        validator=parse_network_spec, label="Not attached to networks",
+        validator=parse_subnet_spec, label="Not attached to networks",
         required=False, error_messages={
             'invalid_list': "Invalid parameter: list of networks required.",
             })
@@ -482,8 +652,8 @@ class AcquireNodeForm(RenamableFieldsForm):
         if value is None:
             return None
         try:
-            return [Network.objects.get_from_spec(spec) for spec in value]
-        except Network.DoesNotExist as e:
+            return [get_subnet_from_spec(spec) for spec in value]
+        except Subnet.DoesNotExist as e:
             raise ValidationError(e.message)
 
     def clean_not_networks(self):
@@ -491,8 +661,8 @@ class AcquireNodeForm(RenamableFieldsForm):
         if value is None:
             return None
         try:
-            return [Network.objects.get_from_spec(spec) for spec in value]
-        except Network.DoesNotExist as e:
+            return [get_subnet_from_spec(spec) for spec in value]
+        except Subnet.DoesNotExist as e:
             raise ValidationError(e.message)
 
     def clean(self):
@@ -611,19 +781,19 @@ class AcquireNodeForm(RenamableFieldsForm):
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
 
         # Filter by networks.
-        networks = self.cleaned_data.get(self.get_field_name('networks'))
-        if networks is not None:
-            for network in set(networks):
+        subnets = self.cleaned_data.get(self.get_field_name('networks'))
+        if subnets is not None:
+            for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
-                    macaddress__networks=network)
+                    interface__ip_addresses__subnet=subnet)
 
         # Filter by not_networks.
-        not_networks = self.cleaned_data.get(
+        not_subnets = self.cleaned_data.get(
             self.get_field_name('not_networks'))
-        if not_networks is not None:
-            for not_network in set(not_networks):
+        if not_subnets is not None:
+            for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
-                    macaddress__networks=not_network)
+                    interface__ip_addresses__subnet=not_subnet)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

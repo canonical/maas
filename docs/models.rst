@@ -8,7 +8,6 @@ MAAS Objects
    maasserver.models
    maasserver.models.config
    maasserver.models.filestorage
-   maasserver.models.macaddress
    maasserver.models.node
    maasserver.models.nodegroup
    maasserver.models.sshkey

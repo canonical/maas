@@ -39,13 +39,15 @@ from maasserver.dns.config import (
     zone_serial,
 )
 from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
     Config,
-    node as node_module,
+    interface as interface_module,
 )
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -387,11 +389,13 @@ class TestDNSServer(MAASServerTestCase):
             nodegroup = self.create_managed_nodegroup()
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_Node(nodegroup=nodegroup, disable_ipv4=False)
-        mac = factory.make_MACAddress(node=node, cluster_interface=interface)
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
         static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
-        staticaddress = factory.make_StaticIPAddress(ip=static_ip, mac=mac)
+        staticaddress = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip=static_ip,
+            subnet=interface.subnet, interface=nic)
         dns_update_zones_now(nodegroup)
         return nodegroup, node, staticaddress
 
@@ -549,9 +553,8 @@ class TestDNSConfigModifications(TestDNSServer):
             ["%s." % node.fqdn], self.dig_reverse_resolve(lease.ip))
         # Edit nodegroup's network information to '192.168.44.1/24'
         interface.ip = '192.168.44.7'
-        interface.router_ip = '192.168.44.14'
-        interface.broadcast_ip = '192.168.44.255'
-        interface.netmask = '255.255.255.0'
+        interface.subnet_mask = '255.255.255.0'
+        interface.subnet.gateway_ip = '192.168.44.14'
         interface.ip_range_low = '192.168.44.0'
         interface.ip_range_high = '192.168.44.128'
         interface.static_ip_range_low = '192.168.44.129'
@@ -597,7 +600,7 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        self.patch_autospec(node_module, "remove_host_maps")
+        self.patch_autospec(interface_module, "remove_host_maps")
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         node.delete()
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
@@ -620,7 +623,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.assertEqual(0, recorder.call_count)
 
 
-class TestDNSBackwardCompat(TestDNSServer):
+class TestDNSDynamicIPAddresses(TestDNSServer):
     """Allocated nodes with IP addresses in the dynamic range get a DNS
     record.
     """
@@ -633,15 +636,16 @@ class TestDNSBackwardCompat(TestDNSServer):
         node = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
             disable_ipv4=False)
-        mac = factory.make_MACAddress(node=node, cluster_interface=interface)
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         # Get an IP in the dynamic range.
         ip_range = IPRange(
             interface.ip_range_low, interface.ip_range_high)
         ip = "%s" % random.choice(ip_range)
-        lease = factory.make_DHCPLease(
-            nodegroup=nodegroup, mac=mac.mac_address, ip=ip)
+        ip_obj = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
+            subnet=interface.subnet, interface=nic)
         dns_update_zones_now(nodegroup)
-        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+        self.assertDNSMatches(node.hostname, nodegroup.name, ip_obj.ip)
 
 
 class TestIPv6DNS(TestDNSServer):
@@ -685,11 +689,11 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         self.assertEqual([], get_trusted_networks())
 
     def test__returns_single_network(self):
-        net = factory.make_Network()
-        expected = [unicode(net.get_network().cidr)]
+        subnet = factory.make_Subnet()
+        expected = [unicode(subnet.cidr)]
         self.assertEqual(expected, get_trusted_networks())
 
     def test__returns_many_networks(self):
-        nets = [factory.make_Network() for _ in xrange(random.randint(1, 5))]
-        expected = [unicode(net.get_network().cidr) for net in nets]
+        subnets = [factory.make_Subnet() for _ in xrange(random.randint(1, 5))]
+        expected = [unicode(subnet.cidr) for subnet in subnets]
         self.assertEqual(expected, get_trusted_networks())

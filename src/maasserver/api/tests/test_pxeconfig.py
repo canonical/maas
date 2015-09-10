@@ -33,13 +33,14 @@ from maasserver.api.pxeconfig import (
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
+    INTERFACE_TYPE,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
     Config,
     Event,
-    MACAddress,
+    Interface,
     Node,
 )
 from maasserver.preseed import (
@@ -161,7 +162,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
             preseed_module,
             'get_boot_images_for').return_value = [image]
         params = self.get_default_params()
-        params['mac'] = factory.make_MACAddress(node=node).mac_address
+        params['mac'] = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node).mac_address
         return params
 
     def get_pxeconfig(self, params=None):
@@ -203,7 +205,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
-        params = dict(mac=factory.make_mac_address(delimiter='-'))
+        params = dict(
+            mac=factory.make_mac_address(delimiter='-'),
+            local=factory.make_ipv4_address())
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
@@ -278,19 +282,19 @@ class TestPXEConfigAPI(MAASServerTestCase):
         domain = factory.make_name('domain')
         full_hostname = '.'.join([host, domain])
         node = factory.make_Node(hostname=full_hostname)
-        mac = factory.make_MACAddress(node=node)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = interface.mac_address
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(host, pxe_config.get('hostname'))
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
-        mac = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         params = self.get_default_params()
-        params['mac'] = mac
+        params['mac'] = interface.mac_address
         self.assertEqual(
-            mac.node.nodegroup.name,
+            interface.node.nodegroup.name,
             self.get_pxeconfig(params).get('domain'))
 
     def get_without_param(self, param):
@@ -359,7 +363,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
-        node = MACAddress.objects.get(mac_address=params['mac']).node
+        node = Interface.objects.get(mac_address=params['mac']).node
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             compose_preseed_url(node),
@@ -385,7 +389,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.patch(server_address, 'resolve_hostname').return_value = {ip}
         nodegroup = factory.make_NodeGroup(maas_url=ng_url, network=network)
         params = self.get_mac_params()
-        node = MACAddress.objects.get(mac_address=params['mac']).node
+        node = Interface.objects.get(mac_address=params['mac']).node
         node.nodegroup = nodegroup
         node.save()
 
@@ -432,9 +436,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(None, pxe_config['extra_opts'])
 
     def test_pxeconfig_returns_commissioning_for_insane_state(self):
-        mac = factory.make_MACAddress_with_Node()
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = nic.mac_address
         pxe_config = self.get_pxeconfig(params)
         # The 'purpose' of the PXE config is 'commissioning' here
         # even if the 'purpose' returned by node.get_boot_purpose
@@ -444,11 +448,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual('commissioning', pxe_config['purpose'])
 
     def test_pxeconfig_returns_commissioning_for_ready_node(self):
-        mac = factory.make_MACAddress_with_Node()
-        mac.node.status = NODE_STATUS.READY
-        mac.node.save()
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        nic.node.status = NODE_STATUS.READY
+        nic.node.save()
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = nic.mac_address
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual('commissioning', pxe_config['purpose'])
 
@@ -476,11 +480,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
             pxeconfig_module,
             'get_boot_images_for').return_value = [generic_image, hwe_s_image]
         node = factory.make_Node(
-            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
+            interface=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             architecture="amd64/hwe-s")
         params = self.get_default_params()
         params['cluster_uuid'] = nodegroup.uuid
-        params['mac'] = node.get_primary_mac()
+        params['mac'] = node.get_boot_interface().mac_address
         params['arch'] = "amd64"
         params['subarch'] = "hwe-s"
 
@@ -489,9 +493,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def test_pxeconfig_calls_event_log_pxe_request(self):
         node = factory.make_Node()
-        mac = factory.make_MACAddress(node=node)
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = nic.mac_address
         event_log_pxe_request = self.patch_autospec(
             pxeconfig_module, 'event_log_pxe_request')
         self.client.get(reverse('pxeconfig'), params)
@@ -513,54 +517,91 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 description,
                 Event.objects.get(node=node).description)
 
-    def test_pxeconfig_sets_pxe_mac_when_empty(self):
-        node = factory.make_Node(mac=True)
-        mac = node.macaddress_set.first()
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        self.client.get(reverse('pxeconfig'), params)
-        node = reload_object(node)
-        self.assertEqual(mac, node.pxe_mac)
-
-    def test_pxeconfig_updates_pxe_mac_when_changed(self):
-        node = factory.make_Node()
-        node.pxe_mac = factory.make_MACAddress(node=node)
-        node.save()
-        mac = factory.make_MACAddress(node=node)
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        self.client.get(reverse('pxeconfig'), params)
-        node = reload_object(node)
-        self.assertEqual(mac, node.pxe_mac)
-
-    def test_pxeconfig_doesnt_update_pxe_mac_when_same(self):
-        node = factory.make_Node()
-        node.pxe_mac = factory.make_MACAddress(node=node)
+    def test_pxeconfig_sets_boot_interface_when_empty(self):
+        node = factory.make_Node(interface=True)
+        nic = node.get_boot_interface()
+        node.boot_interface = None
         node.save()
         params = self.get_default_params()
-        params['mac'] = node.pxe_mac.mac_address
+        params['mac'] = nic.mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(nic, node.boot_interface)
+
+    def test_pxeconfig_updates_boot_interface_when_changed(self):
+        node = factory.make_Node(interface=True)
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        node.save()
+        nic = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        params = self.get_default_params()
+        params['mac'] = nic.mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(nic, node.boot_interface)
+
+    def test_pxeconfig_doesnt_update_boot_interface_when_same(self):
+        node = factory.make_Node()
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        params = self.get_default_params()
+        params['mac'] = node.boot_interface.mac_address
+        node.boot_cluster_ip = params['local']
+        node.save()
+        mock_save = self.patch(Node, 'save')
+        self.client.get(reverse('pxeconfig'), params)
+        self.assertThat(mock_save, MockNotCalled())
+
+    def test_pxeconfig_sets_boot_cluster_ip_when_empty(self):
+        node = factory.make_Node(interface=True)
+        params = self.get_default_params()
+        params['mac'] = node.get_boot_interface().mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(params['local'], node.boot_cluster_ip)
+
+    def test_pxeconfig_updates_boot_cluster_ip_when_changed(self):
+        node = factory.make_Node(interface=True)
+        node.boot_cluster_ip = factory.make_ipv4_address()
+        node.save()
+        params = self.get_default_params()
+        params['mac'] = node.get_boot_interface().mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(params['local'], node.boot_cluster_ip)
+
+    def test_pxeconfig_doesnt_update_boot_cluster_ip_when_same(self):
+        node = factory.make_Node()
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        params = self.get_default_params()
+        params['mac'] = node.boot_interface.mac_address
+        node.boot_cluster_ip = params['local']
+        node.save()
         mock_save = self.patch(Node, 'save')
         self.client.get(reverse('pxeconfig'), params)
         self.assertThat(mock_save, MockNotCalled())
 
     def test_pxeconfig_updates_bios_boot_method(self):
-        node = factory.make_Node(mac=True)
-        mac = node.macaddress_set.first()
+        node = factory.make_Node(interface=True)
+        nic = node.get_boot_interface()
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = nic.mac_address
         params['bios_boot_method'] = 'pxe'
         self.client.get(reverse('pxeconfig'), params)
         node = reload_object(node)
         self.assertEqual('pxe', node.bios_boot_method)
 
-    def test_pxeconfig_deosnt_update_bios_boot_method_when_same(self):
-        node = factory.make_Node(mac=True, bios_boot_method='uefi')
-        mac = node.macaddress_set.first()
-        node.pxe_mac = mac
-        node.save()
+    def test_pxeconfig_doesnt_update_bios_boot_method_when_same(self):
+        node = factory.make_Node(interface=True, bios_boot_method='uefi')
+        nic = node.get_boot_interface()
         params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params['mac'] = nic.mac_address
         params['bios_boot_method'] = 'uefi'
+        node.boot_interface = nic
+        node.boot_cluster_ip = params['local']
+        node.save()
         mock_save = self.patch(Node, 'save')
         self.client.get(reverse('pxeconfig'), params)
         self.assertThat(mock_save, MockNotCalled())
@@ -579,13 +620,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
             pxeconfig_module,
             'get_boot_images_for').return_value = [os_image]
         node = factory.make_Node(
-            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
+            interface=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             osystem=os_image['osystem'],
             distro_series=os_image['release'],
             architecture=architecture)
         params = self.get_default_params()
         params['cluster_uuid'] = nodegroup.uuid
-        params['mac'] = node.get_primary_mac()
+        params['mac'] = node.get_boot_interface().mac_address
         params_out = self.get_pxeconfig(params)
         self.assertEqual(osystem, params_out["osystem"])
         self.assertEqual(release, params_out["release"])
@@ -603,12 +644,12 @@ class TestPXEConfigAPI(MAASServerTestCase):
             pxeconfig_module,
             'get_boot_images_for').return_value = [ubuntu_image]
         node = factory.make_Node(
-            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
+            interface=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             osystem='ubuntu', distro_series=ubuntu_image['release'],
             architecture=architecture)
         params = self.get_default_params()
         params['cluster_uuid'] = nodegroup.uuid
-        params['mac'] = node.get_primary_mac()
+        params['mac'] = node.get_boot_interface().mac_address
         params_out = self.get_pxeconfig(params)
         self.assertEqual(ubuntu_image['release'], params_out["release"])
 
@@ -622,25 +663,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         node = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.DISK_ERASING,
-            osystem=factory.make_name("centos"), mac=True,
+            osystem=factory.make_name("centos"), interface=True,
             distro_series=factory.make_name("release"))
         params = self.get_default_params()
         params['cluster_uuid'] = nodegroup.uuid
-        params['mac'] = node.get_primary_mac()
+        params['mac'] = node.get_boot_interface().mac_address
         params_out = self.get_pxeconfig(params)
         self.assertEqual(commissioning_osystem, params_out['osystem'])
         self.assertEqual(commissioning_series, params_out['release'])
-
-    def test_pxeconfig_updates_cluster_interface_for_request_mac(self):
-        params = self.get_mac_params()
-        node = factory.make_Node(mac=True)
-        params['cluster_uuid'] = node.nodegroup.uuid
-        params['mac'] = node.get_primary_mac()
-        update_mac_cluster_interfaces = self.patch(
-            pxeconfig_module, 'update_mac_cluster_interfaces')
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertThat(
-            update_mac_cluster_interfaces,
-            MockCalledOnceWith(
-                params['remote'], unicode(params['mac']), node.nodegroup))

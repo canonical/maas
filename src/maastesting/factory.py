@@ -270,11 +270,15 @@ class Factory:
         else:
             return self.make_ipv6_network()
 
+    def pick_ip_in_dynamic_range(self, ngi):
+        first = ngi.get_dynamic_ip_range().first
+        last = ngi.get_dynamic_ip_range().last
+        return unicode(IPAddress(random.randrange(first, last)))
+
     def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:
             but_not = []
         but_not = [IPAddress(but) for but in but_not if but is not None]
-        address = IPAddress(random.randint(network.first, network.last))
         for _ in range(100):
             address = IPAddress(random.randint(network.first, network.last))
             if address not in but_not:

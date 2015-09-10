@@ -66,22 +66,23 @@ class VLANTest(MAASServerTestCase):
         self.assertTrue(vlan.fabric.is_default())
 
     def test_vlan_interfaces_are_deleted_when_related_vlan_is_deleted(self):
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node()
         parent = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=node)
         vlan = factory.make_VLAN()
         interface = factory.make_Interface(
-            vlan=vlan, type=INTERFACE_TYPE.VLAN, parents=[parent])
+            INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent])
         vlan.delete()
         self.assertItemsEqual(
             [], VLANInterface.objects.filter(id=interface.id))
 
     def test_interfaces_are_reconnected_when_vlan_is_deleted(self):
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node()
         vlan = factory.make_VLAN()
         fabric = vlan.fabric
         interface = factory.make_Interface(
-            mac=mac, vlan=vlan, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL,
+            node=node, vlan=vlan)
         vlan.delete()
         reconnected_interfaces = PhysicalInterface.objects.filter(
             id=interface.id)
@@ -94,12 +95,11 @@ class VLANTest(MAASServerTestCase):
         # Here we test a corner case: we test that the DB refuses to
         # leave an interface without a VLAN in case the reconnection
         # fails when a VLAN is deleted.
-        mac = factory.make_MACAddress_with_Node()
         vlan = factory.make_VLAN()
         # Break 'manage_connected_interfaces'.
         self.patch(vlan, 'manage_connected_interfaces')
         factory.make_Interface(
-            mac=mac, vlan=vlan, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         with ExpectedException(ProtectedError):
             vlan.delete()
 

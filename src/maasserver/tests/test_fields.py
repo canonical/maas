@@ -25,7 +25,10 @@ from django.db import (
     DatabaseError,
 )
 from django.db.models import BinaryField
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    NODEGROUPINTERFACE_MANAGEMENT,
+)
 from maasserver.fields import (
     EditableBinaryField,
     IPListFormField,
@@ -39,7 +42,7 @@ from maasserver.fields import (
     VerboseRegexValidator,
 )
 from maasserver.models import (
-    MACAddress,
+    Interface,
     NodeGroup,
 )
 from maasserver.testing.factory import factory
@@ -225,11 +228,11 @@ class TestMAC(MAASServerTestCase):
             [addr])
 
     def test_django_serializes_MAC_to_JSON(self):
-        mac = factory.make_MACAddress_with_Node()
-        query = MACAddress.objects.filter(id=mac.id)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        query = Interface.objects.filter(id=interface.id)
         output = serializers.serialize('json', query)
-        self.assertIn(json.dumps(mac.mac_address.get_raw()), output)
-        self.assertIn('"%s"' % mac.mac_address.get_raw(), output)
+        self.assertIn(json.dumps(interface.mac_address.get_raw()), output)
+        self.assertIn('"%s"' % interface.mac_address.get_raw(), output)
 
     def test_register_mac_type_is_idempotent(self):
         register_mac_type(connection.cursor())
@@ -270,9 +273,9 @@ class TestVerboseRegexField(MAASServerTestCase):
 class TestMACAddressField(MAASServerTestCase):
 
     def test_mac_address_is_stored_normalized_and_loaded(self):
-        stored_mac = factory.make_MACAddress_with_Node(' AA-bb-CC-dd-EE-Ff ')
-        stored_mac.save()
-        loaded_mac = MACAddress.objects.get(id=stored_mac.id)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=' AA-bb-CC-dd-EE-Ff ')
+        loaded_mac = Interface.objects.get(id=interface.id)
         self.assertEqual('aa:bb:cc:dd:ee:ff', loaded_mac.mac_address)
 
     def test_accepts_colon_separated_octets(self):

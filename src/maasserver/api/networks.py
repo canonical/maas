@@ -17,6 +17,7 @@ __all__ = [
     'NetworksHandler',
     ]
 
+import re
 
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
@@ -26,39 +27,68 @@ from maasserver.api.support import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import (
-    NetworkConnectMACsForm,
-    NetworkDisconnectMACsForm,
-    NetworkForm,
-    NetworksListingForm,
-)
+from maasserver.forms import NetworksListingForm
 from maasserver.models import (
-    Network,
+    Interface,
     Node,
+    Subnet,
 )
-from maasserver.utils.orm import get_one
 from piston.utils import rc
 
 
+def convert_to_network_name(subnet):
+    """Convert the name of the subnet to a network name."""
+    return "subnet-%d" % subnet.id
+
+
+def convert_from_network_name(name):
+    """Convert the name of the network to a subnet ID."""
+    match = re.search(r"subnet-(?P<id>[0-9]+)", name)
+    if match is None:
+        return None
+    else:
+        return match.group("id")
+
+
+def render_network_json(subnet):
+    cidr = subnet.get_ipnetwork()
+    return {
+        "name": convert_to_network_name(subnet),
+        "ip": cidr.ip,
+        "netmask": cidr.netmask,
+        "vlan_tag": subnet.vlan.vid,
+        "description": subnet.name,
+        "default_gateway": subnet.gateway_ip,
+        "dns_servers": subnet.dns_servers,
+    }
+
+
+def render_networks_json(subnets):
+    return [
+        render_network_json(subnet)
+        for subnet in subnets
+    ]
+
+
 class NetworkHandler(OperationsHandler):
-    """Manage a network."""
+    """Manage a network.
+
+    This endpoint is deprecated. Use the new 'subnet' endpoint instead.
+    """
     api_doc_section_name = "Network"
-
-    model = Network
-    fields = (
-        'name', 'ip', 'netmask', 'vlan_tag', 'description', 'default_gateway',
-        'dns_servers')
-
-    # Creation happens on the NetworksHandler.
     create = None
 
     def read(self, request, name):
         """Read network definition."""
-        return get_object_or_404(Network, name=name)
+        subnet_id = convert_from_network_name(name)
+        return render_network_json(get_object_or_404(Subnet, id=subnet_id))
 
     @admin_method
     def update(self, request, name):
         """Update network definition.
+
+        This endpoint is no longer available. Use the 'subnet' endpoint
+        instead.
 
         :param name: A simple name for the network, to make it easier to
             refer to.  Must consist only of letters, digits, dashes, and
@@ -72,59 +102,36 @@ class NetworkHandler(OperationsHandler):
         :param description: Detailed description of the network for the benefit
             of users and administrators.
         """
-        network = get_object_or_404(Network, name=name)
-        form = NetworkForm(
-            instance=network, data=request.data,
-            delete_macs_if_not_present=False)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        return form.save()
+        return rc.NOT_HERE
 
     @admin_method
     def delete(self, request, name):
         """Delete network definition.
 
-        A network cannot be deleted while it still has nodes attached to it.
+        This endpoint is no longer available. Use the 'subnet' endpoint
+        instead.
         """
-        network = get_one(Network.objects.filter(name=name))
-        if network is not None:
-            network.delete()
-        return rc.DELETED
+        return rc.NOT_HERE
 
     @admin_method
     @operation(idempotent=False)
     def connect_macs(self, request, name):
         """Connect the given MAC addresses to this network.
 
-        These MAC addresses must belong to nodes in the MAAS, and have been
-        registered as such in MAAS.
-
-        Connecting a network interface to a network which it is already
-        connected to does nothing.
-
-        :param macs: A list of node MAC addresses, in text form.
+        This endpoint is no longer available. Use the 'subnet' endpoint
+        instead.
         """
-        network = get_object_or_404(Network, name=name)
-        form = NetworkConnectMACsForm(network=network, data=request.data)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        form.save()
+        return rc.NOT_HERE
 
     @admin_method
     @operation(idempotent=False)
     def disconnect_macs(self, request, name):
         """Disconnect the given MAC addresses from this network.
 
-        Removing a MAC address from a network which it is not connected to
-        does nothing.
-
-        :param macs: A list of node MAC addresses, in text form.
+        This endpoint is no longer available. Use the 'subnet' endpoint
+        instead.
         """
-        network = get_object_or_404(Network, name=name)
-        form = NetworkDisconnectMACsForm(network=network, data=request.data)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        form.save()
+        return rc.NOT_HERE
 
     @operation(idempotent=True)
     def list_connected_macs(self, request, name):
@@ -133,12 +140,27 @@ class NetworkHandler(OperationsHandler):
         Only MAC addresses for nodes visible to the requesting user are
         returned.
         """
-        network = get_object_or_404(Network, name=name)
+        subnet_id = convert_from_network_name(name)
+        subnet = get_object_or_404(Subnet, id=subnet_id)
         visible_nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW,
             from_nodes=Node.objects.all())
-        return network.macaddress_set.filter(node__in=visible_nodes).order_by(
-            'node__hostname', 'mac_address')
+        interfaces = Interface.objects.filter(
+            node__in=visible_nodes, ip_addresses__subnet=subnet)
+        existing_macs = set()
+        unique_interfaces_by_mac = [
+            interface
+            for interface in interfaces
+            if (interface.mac_address not in existing_macs and
+                not existing_macs.add(interface.mac_address))
+        ]
+        unique_interfaces_by_mac = sorted(
+            unique_interfaces_by_mac,
+            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
+        return [
+            {"mac_address": unicode(interface.mac_address)}
+            for interface in unique_interfaces_by_mac
+        ]
 
     @classmethod
     def resource_uri(cls, network=None):
@@ -146,14 +168,16 @@ class NetworkHandler(OperationsHandler):
         if network is None:
             name = 'name'
         else:
-            name = network.name
+            name = convert_to_network_name(network)
         return ('network_handler', (name, ))
 
 
 class NetworksHandler(OperationsHandler):
-    """Manage the networks."""
-    api_doc_section_name = "Networks"
+    """Manage the networks.
 
+    This endpoint is deprecated. Use the new 'subnets' endpoint instead.
+    """
+    api_doc_section_name = "Networks"
     update = delete = None
 
     def read(self, request):
@@ -166,28 +190,16 @@ class NetworksHandler(OperationsHandler):
         form = NetworksListingForm(data=request.GET)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
-        return form.filter_networks(Network.objects.all())
+        return render_networks_json(form.filter_subnets(Subnet.objects.all()))
 
     @admin_method
     def create(self, request):
         """Define a network.
 
-        :param name: A simple name for the network, to make it easier to
-            refer to.  Must consist only of letters, digits, dashes, and
-            underscores.
-        :param ip: Base IP address for the network, e.g. `10.1.0.0`.  The host
-            bits will be zeroed.
-        :param netmask: Subnet mask to indicate which parts of an IP address
-            are part of the network address.  For example, `255.255.255.0`.
-        :param vlan_tag: Optional VLAN tag: a number between 1 and 0xffe (4094)
-            inclusive, or zero for an untagged network.
-        :param description: Detailed description of the network for the benefit
-            of users and administrators.
+        This endpoint is no longer available. Use the 'subnets' endpoint
+        instead.
         """
-        form = NetworkForm(request.data)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        return form.save()
+        return rc.NOT_HERE
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

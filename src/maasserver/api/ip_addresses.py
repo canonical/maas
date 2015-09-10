@@ -26,8 +26,11 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
-from maasserver.clusterrpc import dhcp
-from maasserver.enum import IPADDRESS_TYPE
+from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -38,15 +41,11 @@ from maasserver.forms import (
     ReleaseIPForm,
 )
 from maasserver.models import (
-    PhysicalInterface,
+    Interface,
     StaticIPAddress,
 )
-from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroupinterface import NodeGroupInterface
-from maasserver.utils.orm import (
-    commit_within_atomic_block,
-    transactional,
-)
+from maasserver.utils.orm import transactional
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -93,52 +92,43 @@ class IPAddressesHandler(OperationsHandler):
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
             # The user has requested a static IP linked to a MAC
-            # address, so we set that up via the MACAddress model.
-            mac_address, created = MACAddress.objects.get_or_create(
-                mac_address=mac, cluster_interface=interface)
-            if created:
-                iface = PhysicalInterface(mac=mac_address, name='eth0')
-                iface.save()
-            ips_on_interface = (
-                addr.ip for addr in mac_address.ip_addresses.all()
-                if IPAddress(addr.ip) in interface.network)
+            # address, so we set that up via the Interface model.
+            nic, created = (
+                Interface.objects.get_or_create(
+                    mac_address=mac,
+                    defaults={
+                        'type': INTERFACE_TYPE.UNKNOWN,
+                        'name': 'eth0',
+                    }))
+            ips_on_interface = [
+                addr.ip
+                for addr in nic.ip_addresses.filter(
+                    alloc_type__in=[
+                        IPADDRESS_TYPE.AUTO,
+                        IPADDRESS_TYPE.STICKY,
+                        IPADDRESS_TYPE.USER_RESERVED,
+                    ])
+                if addr.ip and IPAddress(addr.ip) in interface.network
+            ]
             if any(ips_on_interface):
-                # If this MAC already has static IPs on the interface in
+                # If this inteface already has static IPs on the interface in
                 # question we raise an error, since we can't sanely
                 # allocate more addresses for the MAC here.
                 raise StaticIPAlreadyExistsForMACAddress(
                     "MAC address %s already has the IP address(es) %s." %
-                    (mac, ips_on_interface))
+                    (mac, ', '.join(ips_on_interface)))
 
-            [sip] = mac_address.claim_static_ips(
-                alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user,
-                requested_address=requested_address)
-            # Update the DHCP host maps for the cluster so that this MAC
-            # gets an entry with this static IP.
-            host_map_updates = {
-                interface.nodegroup: {
-                    sip.ip: mac_address.mac_address,
-                }
-            }
-
-            # Commit the DB changes before we do RPC calls.
-            commit_within_atomic_block()
-            update_host_maps_failures = list(
-                dhcp.update_host_maps(host_map_updates))
-            if len(update_host_maps_failures) > 0:
-                # Deallocate the static IPs and delete the MAC address
-                # if it doesn't have a Node attached.
-                if mac_address.node is None:
-                    mac_address.delete()
-                sip.deallocate()
-                commit_within_atomic_block()
-
-                # There will only ever be one error, so raise that.
-                raise update_host_maps_failures[0].value
-
+            # Link the new interface on the same subnet as the passed
+            # nodegroup interface.
+            sip = nic.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC,
+                interface.subnet,
+                ip_address=requested_address,
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                user=user)
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
-                user.username, sip.ip, mac_address.mac_address)
+                user.username, sip.ip, nic.mac_address)
         return sip
 
     @operation(idempotent=False)
@@ -203,11 +193,9 @@ class IPAddressesHandler(OperationsHandler):
                 "No network found matching %s; you may be requesting an IP "
                 "on a network with no static IP range defined." % network)
 
-        sip = self.claim_ip(
+        return self.claim_ip(
             request.user, ngi, requested_address, mac_address,
             hostname=hostname)
-
-        return sip
 
     @operation(idempotent=False)
     def release(self, request):
@@ -224,31 +212,21 @@ class IPAddressesHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        staticaddress = get_object_or_404(
-            StaticIPAddress, ip=ip, user=request.user)
+        ip_address = get_object_or_404(
+            StaticIPAddress, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            ip=ip, user=request.user)
+        interfaces = list(ip_address.interface_set.all())
+        if len(interfaces) > 0:
+            for interface in interfaces:
+                interface.unlink_ip_address(ip_address)
+        else:
+            ip_address.delete()
 
-        linked_mac_addresses = staticaddress.macaddress_set
-        linked_mac_address_interfaces = set(
-            mac_address.cluster_interface
-            for mac_address in linked_mac_addresses.all())
-
-        # Remove any hostmaps for this IP.
-        host_maps_to_remove = {
-            interface.nodegroup: [staticaddress.ip]
-            for interface in linked_mac_address_interfaces
-            }
-        remove_host_maps_failures = list(
-            dhcp.remove_host_maps(host_maps_to_remove))
-        if len(remove_host_maps_failures) > 0:
-            # There's only going to be one failure, so raise that.
-            raise remove_host_maps_failures[0].value
-
-        # Delete any MACAddress entries that are attached to this static
-        # IP but that *aren't* attached to a Node. With the DB isolation
-        # at SERIALIZABLE there will be no race here, and it's better to
-        # keep cruft out of the DB.
-        linked_mac_addresses.filter(node=None).delete()
-        staticaddress.deallocate()
+        # Delete any interfaces that no longer have any IP addresses and have
+        # no associated nodes.
+        for interface in interfaces:
+            if interface.node is None and interface.only_has_link_up():
+                interface.delete()
 
         maaslog.info("User %s released IP %s", request.user.username, ip)
 

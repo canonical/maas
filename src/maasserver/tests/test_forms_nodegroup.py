@@ -131,14 +131,14 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         form = NodeGroupDefineForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        nodegroup = form.save()
         # Replace empty strings with None as empty strings are converted into
         # None for fields with null=True.
         expected_result = {
             key: (value if value != '' else None)
             for key, value in interface.items()
         }
+        del expected_result["subnet"]
         self.assertThat(
             nodegroup.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**expected_result))

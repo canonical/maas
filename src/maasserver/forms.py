@@ -19,7 +19,6 @@ __all__ = [
     "BootSourceSelectionForm",
     "BootSourceSettingsForm",
     "BulkNodeActionForm",
-    "create_Network_from_NodeGroupInterface",
     "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
@@ -30,10 +29,6 @@ __all__ = [
     "list_all_usable_architectures",
     "StorageSettingsForm",
     "MAASAndNetworkForm",
-    "MACAddressForm",
-    "NetworkConnectMACsForm",
-    "NetworkDisconnectMACsForm",
-    "NetworkForm",
     "NetworksListingForm",
     "NodeGroupEdit",
     "NodeGroupInterfaceForm",
@@ -74,7 +69,6 @@ from django.core.validators import (
     MinValueValidator,
 )
 from django.db import connection
-from django.db.utils import IntegrityError
 from django.forms import (
     CheckboxInput,
     Form,
@@ -135,10 +129,9 @@ from maasserver.models import (
     Device,
     DownloadProgress,
     Filesystem,
+    Interface,
     LargeFile,
     LicenseKey,
-    MACAddress,
-    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -175,10 +168,7 @@ from maasserver.utils.forms import (
     compose_invalid_choice_text,
     set_form_error,
 )
-from maasserver.utils.interfaces import (
-    get_name_and_vlan_from_cluster_interface,
-    make_name_from_interface,
-)
+from maasserver.utils.interfaces import make_name_from_interface
 from maasserver.utils.orm import (
     get_one,
     transactional,
@@ -933,22 +923,6 @@ def get_node_edit_form(user):
         return NodeForm
 
 
-class MACAddressForm(MAASModelForm):
-    class Meta:
-        model = MACAddress
-
-    def __init__(self, node, *args, **kwargs):
-        super(MACAddressForm, self).__init__(*args, **kwargs)
-        self.node = node
-
-    def save(self, *args, **kwargs):
-        mac = super(MACAddressForm, self).save(commit=False)
-        mac.node = self.node
-        if kwargs.get('commit', True):
-            mac.save(*args, **kwargs)
-        return mac
-
-
 class KeyForm(MAASModelForm):
     """Base class for `SSHKeyForm` and `SSLKeyForm`."""
 
@@ -1092,11 +1066,9 @@ class WithMACAddressesMixin:
         data = self.cleaned_data['mac_addresses']
         errors = []
         if self.instance.id is not None:
-            # This node is already in the system. We should consider adding
-            # MACAddresses that are already attached to this node a valid
-            # operation.
+            # This node is already in the system.
             for mac in data:
-                mac_on_other_nodes = MACAddress.objects.filter(
+                mac_on_other_nodes = Interface.objects.filter(
                     mac_address=mac.lower()).exclude(node=self.instance)
                 if mac_on_other_nodes:
                     errors.append(
@@ -1104,12 +1076,12 @@ class WithMACAddressesMixin:
                         (mac, mac_on_other_nodes[0].node.hostname))
         else:
             # This node does not exist yet, we should only check if this
-            # MACAddress is already attached to another node.
+            # MAC address is already attached to another node.
             for mac in data:
-                if MACAddress.objects.filter(mac_address=mac.lower()).exists():
+                if Interface.objects.filter(mac_address=mac.lower()).exists():
                     errors.append(
                         'MAC address %s already in use on %s.' %
-                        (mac, MACAddress.objects.filter(
+                        (mac, Interface.objects.filter(
                             mac_address=mac.lower()).first().node.hostname))
         if errors:
             raise ValidationError({'mac_addresses': errors})
@@ -1131,7 +1103,15 @@ class WithMACAddressesMixin:
         initialize_node_group(node, self.cleaned_data.get('nodegroup'))
         node.save()
         for mac in self.cleaned_data['mac_addresses']:
-            node.add_mac_address(mac)
+            mac_addresses_errors = []
+            try:
+                node.add_physical_interface(mac)
+            except ValidationError as e:
+                mac_addresses_errors.append(e.message)
+            if mac_addresses_errors:
+                raise ValidationError({
+                    "mac_addresses": mac_addresses_errors
+                    })
         hostname = self.cleaned_data['hostname']
         stripped_hostname = strip_domain(hostname)
         # Generate a hostname for this node if the provided hostname is
@@ -1642,36 +1622,6 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     return True
 
 
-def create_Network_from_NodeGroupInterface(interface):
-    """Given a `NodeGroupInterface`, create its Network counterpart."""
-    if not interface.subnet:
-        return
-
-    name, vlan_tag = get_name_and_vlan_from_cluster_interface(
-        interface.nodegroup.name, interface.interface)
-    ipnetwork = _make_network_from_subnet(interface.ip, interface.subnet)
-    network = Network(
-        name=name,
-        ip=unicode(ipnetwork.network),
-        netmask=unicode(ipnetwork.netmask),
-        default_gateway=interface.router_ip,
-        vlan_tag=vlan_tag,
-        description=(
-            "Auto created when creating interface %s on cluster "
-            "%s" % (interface.name, interface.nodegroup.name)),
-        )
-    try:
-        network.save()
-    except (IntegrityError, ValidationError) as e:
-        # It probably already exists, keep calm and carry on.
-        maaslog.warning(
-            "Failed to create Network when adding/editing cluster "
-            "interface %s with error [%s]. This is OK if it already "
-            "exists." % (name, unicode(e)))
-        return
-    return network
-
-
 def disambiguate_name(original_name, ip_address):
     """Return a unique variant of `original_name` for a cluster interface.
 
@@ -1713,6 +1663,8 @@ class NodeGroupInterfaceForm(MAASModelForm):
             "controller to be able to enable DNS management."
             ))
 
+    router_ip = forms.CharField(required=False)
+
     # XXX mpontillo 2015-07-23: need a custom field for this, for IPv4/IPv6
     # address or prefix length.
     subnet_mask = forms.CharField(required=False)
@@ -1746,24 +1698,30 @@ class NodeGroupInterfaceForm(MAASModelForm):
         self.full_clean()
         ip = self.cleaned_data.get('ip')
         subnet_mask = self.cleaned_data.get('subnet_mask')
+        router_ip = self.cleaned_data.get('router_ip')
 
         subnet = None
-        if subnet_mask:
+        if self.instance and self.instance.subnet and ip and subnet_mask:
+            cidr = create_cidr(ip, subnet_mask)
+            subnet = self.instance.subnet
+            subnet.update_cidr(cidr)
+            if router_ip:
+                subnet.gateway_ip = router_ip
+            subnet.save()
+        elif subnet_mask:
             cidr = create_cidr(ip, subnet_mask)
             subnet, _ = Subnet.objects.get_or_create(
                 cidr=cidr, defaults={
                     'name': cidr,
                     'cidr': cidr,
+                    'gateway_ip': router_ip,
                     'space': Space.objects.get_default_space()
                 })
 
         interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
-        interface.subnet = subnet
-        interface.save()
-
-        if interface.network is None:
-            return interface
-        create_Network_from_NodeGroupInterface(interface)
+        if interface.subnet != subnet:
+            interface.subnet = subnet
+            interface.save()
         return interface
 
     def compute_name(self):
@@ -2604,74 +2562,6 @@ class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
         return "%s (%s)" % (obj.mac_address, obj.node.hostname)
 
 
-class NetworkForm(MAASModelForm):
-
-    class Meta:
-        model = Network
-        fields = (
-            'name',
-            'description',
-            'ip',
-            'netmask',
-            'vlan_tag',
-            'default_gateway',
-            'dns_servers',
-            )
-
-    mac_addresses = NodeMACAddressChoiceField(
-        label="Connected network interface cards",
-        queryset=MACAddress.objects.all().order_by(
-            'node__hostname', 'mac_address'),
-        required=False,
-        to_field_name='mac_address',
-        widget=forms.SelectMultiple(attrs={'size': 10}),
-        )
-
-    def __init__(self, data=None, instance=None,
-                 delete_macs_if_not_present=True, **kwargs):
-        """
-        :param data: The web request.data
-        :param instance: the Network instance
-        :param delete_macs_if_not_present: If there's no mac_addresses present
-            in the data, then assume that the caller wants to delete them.
-            Override with True if you don't want that to happen. Yes, this
-            is a horrible kludge so the same form works in the API and the
-            web view.
-        """
-        super(NetworkForm, self).__init__(
-            data=data, instance=instance, **kwargs)
-        self.macs_in_request = data.get("mac_addresses") if data else None
-        self.set_up_initial_macaddresses(instance)
-        self.delete_macs_if_not_present = delete_macs_if_not_present
-
-    def set_up_initial_macaddresses(self, instance):
-        """Set the initial value for the field 'macaddresses'.
-        This is to work around Django bug 17657: the initial value for fields
-        of type ModelMultipleChoiceField which use 'to_field_name', when it
-        is extracted from the provided instance object, is not
-        properly computed.
-        """
-        if instance is not None:
-            name = self.fields['mac_addresses'].to_field_name
-            self.initial['mac_addresses'] = [
-                getattr(obj, name) for obj in instance.macaddress_set.all()]
-
-    def save(self, *args, **kwargs):
-        """Persist the network into the database."""
-        network = super(NetworkForm, self).save(*args, **kwargs)
-        macaddresses = self.cleaned_data.get('mac_addresses')
-        # Because the form is used in the web view AND the API we need a
-        # hack. The API uses separate ops to amend the mac_addresses
-        # list, however the web UI does not. To preserve the API
-        # behaviour, its handler passes delete_macs_if_not_present as False.
-        if self.delete_macs_if_not_present and self.macs_in_request is None:
-            network.macaddress_set.clear()
-        elif macaddresses is not None:
-            network.macaddress_set.clear()
-            network.macaddress_set.add(*macaddresses)
-        return network
-
-
 class NetworksListingForm(forms.Form):
     """Form for the networks listing API."""
 
@@ -2686,55 +2576,18 @@ class NetworksListingForm(forms.Form):
             "Invalid parameter: list of node system IDs required.",
             })
 
-    def filter_networks(self, networks):
-        """Filter (and order) the given networks by the form's criteria.
+    def filter_subnets(self, subnets):
+        """Filter (and order) the given subnets by the form's criteria.
 
-        :param networks: A query set of :class:`Network`.
-        :return: A version of `networks` restricted and ordered according to
+        :param subnets: A query set of :class:`Subnet`.
+        :return: A version of `subnets` restricted and ordered according to
             the criteria passed to the form.
         """
         nodes = self.cleaned_data.get('node')
         if nodes is not None:
             for node in nodes:
-                networks = networks.filter(macaddress__node=node)
-        return networks.order_by('name')
-
-
-class MACsForm(forms.Form):
-    """Base form with a list of MAC addresses."""
-
-    macs = InstanceListField(
-        model_class=MACAddress, field_name='mac_address',
-        label="MAC addresses to be connected/disconnected.", required=True,
-        text_for_invalid_object="Unknown MAC address(es): {unknown_names}.",
-        error_messages={
-            'invalid_list':
-            "Invalid parameter: list of node MAC addresses required.",
-            })
-
-    def __init__(self, network, *args, **kwargs):
-        super(MACsForm, self).__init__(*args, **kwargs)
-        self.network = network
-
-    def get_macs(self):
-        """Return `MACAddress` objects matching the `macs` parameter."""
-        return self.cleaned_data.get('macs')
-
-
-class NetworkConnectMACsForm(MACsForm):
-    """Form for the `Network` `connect_macs` API call."""
-
-    def save(self):
-        """Connect the MAC addresses to the form's network."""
-        self.network.macaddress_set.add(*self.get_macs())
-
-
-class NetworkDisconnectMACsForm(MACsForm):
-    """Form for the `Network` `disconnect_macs` API call."""
-
-    def save(self):
-        """Disconnect the MAC addresses from the form's network."""
-        self.network.macaddress_set.remove(*self.get_macs())
+                subnets = subnets.filter(staticipaddress__interface__node=node)
+        return subnets.order_by('id')
 
 
 class BootSourceForm(MAASModelForm):

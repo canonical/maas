@@ -31,11 +31,23 @@ from maasserver.api.utils import (
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Event
 from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
-from maasserver.views.nodes import event_to_dict
 
 
 MAX_EVENT_LOG_COUNT = 1000
 DEFAULT_EVENT_LOG_LIMIT = 100
+
+
+def event_to_dict(event):
+    """Convert `Event` to a dictionary."""
+    return dict(
+        node=event.node.system_id,
+        hostname=event.node.hostname,
+        id=event.id,
+        level=event.type.level_str,
+        created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+        type=event.type.description,
+        description=event.description
+    )
 
 
 class EventsHandler(OperationsHandler):

@@ -24,10 +24,10 @@ from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Config,
-    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Subnet,
 )
 from maasserver.models.signals.base import connect_to_field_change
 
@@ -58,6 +58,17 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     if created:
         dns_add_zones(instance.nodegroup)
     else:
+        dns_update_all_zones()
+
+
+@receiver(post_save, sender=Subnet)
+def dns_post_save_Subnet(sender, instance, created, **kwargs):
+    """Create or update DNS zones related to the saved nodegroupinterface."""
+    from maasserver.dns.config import (
+        dns_update_all_zones,
+        )
+    if instance.get_cluster_interfaces().filter(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS).count() > 0:
         dns_update_all_zones()
 
 
@@ -100,19 +111,6 @@ connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
-    from maasserver.dns import config as dns_config
-    dns_config.dns_update_all_zones()
-
-
-@receiver(post_save, sender=Network)
-def dns_post_save_Network(sender, instance, **kwargs):
-    """When a network is added/changed, put it in the DNS trusted networks."""
-    from maasserver.dns import config as dns_config
-    dns_config.dns_update_all_zones()
-
-
-@receiver(post_delete, sender=Network)
-def dns_post_delete_Network(sender, instance, **kwargs):
     from maasserver.dns import config as dns_config
     dns_config.dns_update_all_zones()
 

@@ -18,10 +18,11 @@ __all__ = [
     "send_event_mac_address",
 ]
 
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import (
     Event,
     EventType,
-    MACAddress,
+    Interface,
     Node,
 )
 from maasserver.utils.orm import transactional
@@ -85,8 +86,9 @@ def send_event_mac_address(mac_address, type_name, description=''):
         raise NoSuchEventType.from_name(type_name)
 
     try:
-        node = MACAddress.objects.get(mac_address=mac_address).node
-    except MACAddress.DoesNotExist:
+        node = Interface.objects.get(
+            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_address).node
+    except Interface.DoesNotExist:
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a
         # node that we don't know about yet.

@@ -66,8 +66,9 @@ from maasserver.forms import (
     ReleaseIPForm,
 )
 from maasserver.models import (
-    MACAddress,
+    Interface,
     Node,
+    StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
@@ -97,7 +98,7 @@ DISPLAYED_NODE_FIELDS = (
     'system_id',
     'hostname',
     'owner',
-    ('macaddress_set', ('mac_address',)),
+    'macaddress_set',
     'pxe_mac',
     'architecture',
     'min_hwe_kernel',
@@ -186,7 +187,7 @@ def filtered_nodes_list_from_request(request):
     nodes = Node.nodes.get_nodes(
         request.user, NODE_PERMISSION.VIEW, ids=match_ids)
     if match_macs is not None:
-        nodes = nodes.filter(macaddress__mac_address__in=match_macs)
+        nodes = nodes.filter(interface__mac_address__in=match_macs)
     match_hostnames = get_optional_list(request.GET, 'hostname')
     if match_hostnames is not None:
         nodes = nodes.filter(hostname__in=match_hostnames)
@@ -284,6 +285,22 @@ class NodeHandler(OperationsHandler):
         if node.owner is None:
             return None
         return node.owner.username
+
+    @classmethod
+    def macaddress_set(handler, node):
+        return [
+            {"mac_address": "%s" % interface.mac_address}
+            for interface in node.interface_set.all()
+            if interface.mac_address
+        ]
+
+    @classmethod
+    def pxe_mac(handler, node):
+        boot_interface = node.get_boot_interface()
+        if boot_interface is None:
+            return None
+        else:
+            return {"mac_address": "%s" % boot_interface.mac_address}
 
     def read(self, request, system_id):
         """Read a specific Node.
@@ -542,7 +559,7 @@ class NodeHandler(OperationsHandler):
 
         :param mac_address: Optional MAC address on the node on which to
             assign the sticky IP address.  If not passed, defaults to the
-            primary MAC for the node.
+            PXE MAC for the node.
         :param requested_address: Optional IP address to claim.  Must be in
             the range defined on a cluster interface to which the context
             MAC is related, or 403 Forbidden is returned.  If the requested
@@ -568,12 +585,12 @@ class NodeHandler(OperationsHandler):
 
         raw_mac = request.POST.get('mac_address', None)
         if raw_mac is None:
-            mac_address = node.get_primary_mac()
+            nic = node.get_boot_interface()
         else:
             try:
-                mac_address = MACAddress.objects.get(
+                nic = Interface.objects.get(
                     mac_address=raw_mac, node=node)
-            except MACAddress.DoesNotExist:
+            except Interface.DoesNotExist:
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the node" % raw_mac)
         requested_address = request.POST.get('requested_address', None)
@@ -582,11 +599,9 @@ class NodeHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        sticky_ips = mac_address.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            requested_address=requested_address, update_host_maps=True)
+        sticky_ips = nic.claim_static_ips(requested_address=requested_address)
         maaslog.info(
-            "%s: Sticky IP address(es) allocated: %s", node.hostname,
+            "%s: Sticky IP address(es) allocated: %s", node.fqdn,
             ', '.join(allocation.ip for allocation in sticky_ips))
         return node
 
@@ -609,20 +624,29 @@ class NodeHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        # Note: this call handles deleting the host maps, and updating the DNS
-        # zones (unlike the claim_static_ips() call in mac_address used above)
-        deallocated_ips = node.deallocate_static_ip_addresses(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
-
-        if len(deallocated_ips) == 0 and address is not None:
-            raise MAASAPIBadRequest(
-                "%s: could not deallocate sticky IP address: %s",
-                node.hostname, address)
+        deallocated_ips = []
+        if address:
+            sip = StaticIPAddress.objects.filter(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip=address,
+                interface__node=node).first()
+            if sip is None:
+                raise MAASAPIBadRequest(
+                    "%s is not a sticky IP address on node: %s",
+                    address, node.hostname)
+            for interface in sip.interface_set.all():
+                interface.unlink_ip_address(sip)
+            deallocated_ips.append(address)
         else:
-            maaslog.info(
-                "%s: Sticky IP address(es) deallocated: %s", node.hostname,
-                ', '.join(unicode(ip) for ip in deallocated_ips))
+            for interface in node.interface_set.all():
+                for ip_address in interface.ip_addresses.filter(
+                        alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False):
+                    if ip_address.ip:
+                        interface.unlink_ip_address(ip_address)
+                        deallocated_ips.append(ip_address.ip)
 
+        maaslog.info(
+            "%s: Sticky IP address(es) deallocated: %s", node.hostname,
+            ', '.join(unicode(ip) for ip in deallocated_ips))
         return node
 
     @operation(idempotent=False)
@@ -962,9 +986,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         Returns 400 if any mandatory parameters are missing.
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
-        mac_addresses = MACAddress.objects.filter(mac_address=mac_address)
-        mac_addresses = mac_addresses.exclude(node__status=NODE_STATUS.RETIRED)
-        return mac_addresses.exists()
+        interfaces = Interface.objects.filter(mac_address=mac_address)
+        interfaces = interfaces.exclude(node__status=NODE_STATUS.RETIRED)
+        return interfaces.exists()
 
     @operation(idempotent=False)
     def accept(self, request):
@@ -1198,11 +1222,11 @@ class NodesHandler(OperationsHandler):
         nodes = filtered_nodes_list_from_request(request)
 
         # Prefetch related objects that are needed for rendering the result.
-        nodes = nodes.prefetch_related('macaddress_set__node')
-        nodes = nodes.prefetch_related('macaddress_set__ip_addresses')
+        nodes = nodes.prefetch_related('interface_set__node')
+        nodes = nodes.prefetch_related(
+            'interface_set__ip_addresses')
         nodes = nodes.prefetch_related('tags')
         nodes = nodes.select_related('nodegroup')
-        nodes = nodes.prefetch_related('nodegroup__dhcplease_set')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         nodes = nodes.prefetch_related('zone')
         return nodes.order_by('id')

@@ -51,7 +51,7 @@ from twisted.internet.task import Clock
 def make_random_lease():
     ip = factory.make_ipv4_address()
     mac = factory.make_mac_address()
-    return {ip: mac}
+    return (ip, mac)
 
 
 def make_random_mapping():
@@ -75,9 +75,9 @@ class TestHelperFunctions(PservTestCase):
         self.assertItemsEqual(mappings, observed)
 
     def test_convert_leases_to_mappings_converts_correctly(self):
-        leases = dict()
+        leases = list()
         for _ in xrange(3):
-            leases.update(make_random_lease())
+            leases.append(make_random_lease())
 
         # Convert to mappings.
         mappings = convert_leases_to_mappings(leases)
@@ -160,7 +160,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         server.UpdateLeases.return_value = defer.succeed({})
 
         # Create a mock response to "check_lease_changes()"
-        fake_lease = make_random_lease()
+        fake_lease = [make_random_lease()]
         deferToThread = self.patch(lease_upload_service, 'deferToThread')
         deferToThread.return_value = defer.succeed(
             (datetime.now(), fake_lease),)

@@ -115,9 +115,9 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.
-        self.assertSequenceEqual(
+        self.assertItemsEqual(
             macs,
-            [mac.mac_address for mac in node.macaddress_set.all()])
+            [nic.mac_address for nic in node.interface_set.all()])
 
     def test_includes_nodegroup_field_for_new_node(self):
         self.assertIn(

@@ -89,15 +89,14 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_nodegroupinterface_nodegroupinterface_create_notify",
             "maasserver_nodegroupinterface_nodegroupinterface_update_notify",
             "maasserver_nodegroupinterface_nodegroupinterface_delete_notify",
-            "maasserver_macstaticipaddresslink_nd_sipaddress_link_notify",
-            "maasserver_macstaticipaddresslink_nd_sipaddress_unlink_notify",
-            "maasserver_dhcplease_nd_dhcplease_match_notify",
-            "maasserver_dhcplease_nd_dhcplease_unmatch_notify",
+            "maasserver_subnet_subnet_update_nodegroup_notify",
+            "maasserver_interface_ip_addresses_nd_sipaddress_link_notify",
+            "maasserver_interface_ip_addresses_nd_sipaddress_unlink_notify",
             "metadataserver_noderesult_nd_noderesult_link_notify",
             "metadataserver_noderesult_nd_noderesult_unlink_notify",
-            "maasserver_macaddress_nd_macaddress_link_notify",
-            "maasserver_macaddress_nd_macaddress_unlink_notify",
-            "maasserver_macaddress_nd_macaddress_update_notify",
+            "maasserver_interface_nd_interface_link_notify",
+            "maasserver_interface_nd_interface_unlink_notify",
+            "maasserver_interface_nd_interface_update_notify",
             "maasserver_blockdevice_nd_blockdevice_link_notify",
             "maasserver_blockdevice_nd_blockdevice_unlink_notify",
             "maasserver_physicalblockdevice_nd_physblockdevice_update_notify",
@@ -110,11 +109,20 @@ class TestTriggers(MAASServerTestCase):
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
             cursor.execute(
-                "SELECT * FROM pg_trigger WHERE "
-                "tgname::text = ANY(%s)" % sql, args)
+                "SELECT tgname::text FROM pg_trigger WHERE "
+                "tgname::text = ANY(%s) "
+                "OR tgname::text SIMILAR TO 'maasserver.*'" % sql, args)
             db_triggers = cursor.fetchall()
 
+        # Note: if this test fails, a trigger may have been added, but not
+        # added to the list of expected triggers.
+        triggers_found = [trigger[0] for trigger in db_triggers]
         self.assertEquals(
             len(triggers), len(db_triggers),
-            "Missing %s triggers in the database." % (
-                len(triggers) - len(db_triggers)))
+            "Missing %s triggers in the database. Triggers found: %s" % (
+                len(triggers) - len(db_triggers), triggers_found))
+
+        self.assertItemsEqual(
+            triggers, triggers_found,
+            "Missing triggers in the database. Triggers found: %s" % (
+                triggers_found))

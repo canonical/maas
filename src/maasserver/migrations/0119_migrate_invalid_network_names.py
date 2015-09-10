@@ -1,9 +1,37 @@
 from django.db import models
-from maasserver.models.network import ensure_unique_network_name
 from south.db import db
 # -*- coding: utf-8 -*-
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
+
+
+def ensure_unique_network_name(name, unavailable_names):
+    """Ensure that a given network has a name that's unique and valid.
+
+    :param name: The name from which to derive the valid network name.
+    :param unavailable_names: The set of names which are not available
+        for use.
+    :return: A valid name derived from `name`, and which is not a member
+        of `unavailable_names`. If `name` is already valid, return it
+        unaltered.
+    """
+    invalid_chars_re = re.compile("[^\w-]+")
+    if invalid_chars_re.search(name) is None:
+        # The name is already valid, so don't worry about it; just
+        # return it.
+        return name
+
+    new_name_base = invalid_chars_re.sub("-", name)
+    new_name = new_name_base
+    # If there are networks that already exist with the new name
+    # (i.e. if removing bad characters means that we're ending
+    # up violating the UNIQUE constraint) loop until we find one
+    # that's free.
+    suffix = 1
+    while new_name in unavailable_names:
+        new_name = "%s-%i" % (new_name_base, suffix)
+        suffix += 1
+    return new_name
 
 
 class Migration(DataMigration):

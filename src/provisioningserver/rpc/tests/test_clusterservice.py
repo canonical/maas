@@ -1450,57 +1450,6 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
                 Cluster(), cluster.GetPreseedData, arguments)
 
 
-class TestClusterProtocol_ComposeCurtinNetworkPreseed(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def make_args(self, osystem=None):
-        if osystem is None:
-            osystem = factory.make_name('os')
-        mac = factory.make_mac_address()
-        return {
-            'osystem': osystem,
-            'config': {
-                'interfaces': [(factory.make_name('eth'), mac)],
-                'auto_interfaces': [mac],
-                'ips_mapping': {mac: [factory.make_ipv4_address()]},
-                'gateways_mapping': {mac: [factory.make_ipv4_address()]},
-                'nameservers': [],
-                },
-            'disable_ipv4': factory.pick_bool(),
-            }
-
-    def test__is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ComposeCurtinNetworkPreseed.commandName)
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test__calls_compose_curtin_network_preseed(self):
-        preseed = [factory.make_name('preseed')]
-        fake = self.patch_autospec(
-            clusterservice, 'compose_curtin_network_preseed')
-        fake.return_value = preseed
-        args = self.make_args()
-
-        response = yield call_responder(
-            Cluster(), cluster.ComposeCurtinNetworkPreseed, args)
-
-        self.expectThat(response, Equals({'data': preseed}))
-        self.expectThat(
-            fake,
-            MockCalledOnceWith(
-                args['osystem'], args['config'], args['disable_ipv4']))
-
-    @inlineCallbacks
-    def test__fails_for_unknown_OS(self):
-        args = self.make_args(osystem=factory.make_name('nonexistent-os'))
-        with ExpectedException(exceptions.NoSuchOperatingSystem):
-            yield call_responder(
-                Cluster(), cluster.ComposeCurtinNetworkPreseed, args)
-
-
 class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)

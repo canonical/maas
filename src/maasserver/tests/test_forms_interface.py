@@ -55,69 +55,72 @@ class GetInterfaceFormErrorTests(MAASServerTestCase):
 class PhysicalInterfaceFormTest(MAASServerTestCase):
 
     def test__creates_physical_interface(self):
-        mac = factory.make_MACAddress_with_Node()
+        node = factory.make_Node()
+        mac_address = factory.make_mac_address()
         interface_name = 'eth0'
         vlan = factory.make_VLAN()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         form = PhysicalInterfaceForm(
-            {
+            node=node,
+            data={
                 'name': interface_name,
-                'mac': mac.id,
+                'mac_address': mac_address,
                 'vlan': vlan.id,
+                'tags': ",".join(tags),
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=mac, name=interface_name, type=INTERFACE_TYPE.PHYSICAL))
+                node=node, mac_address=mac_address, name=interface_name,
+                type=INTERFACE_TYPE.PHYSICAL, tags=tags))
         self.assertItemsEqual([], interface.parents.all())
 
-    def test__requires_mac(self):
+    def test__requires_mac_address(self):
         interface_name = 'eth0'
         vlan = factory.make_VLAN()
         form = PhysicalInterfaceForm(
-            {
+            node=factory.make_Node(),
+            data={
                 'name': interface_name,
                 'vlan': vlan.id,
             })
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(
-            ['mac'], form.errors.keys(), form.errors)
+            ['mac_address'], form.errors.keys(), form.errors)
         self.assertIn(
             "This field is required.",
-            form.errors['mac'][0])
+            form.errors['mac_address'][0])
 
     def test_rejects_interface_with_duplicate_name(self):
-        name = factory.make_name('name')
-        mac = factory.make_MACAddress_with_Node()
-        factory.make_Interface(
-            name=name, mac=mac, type=INTERFACE_TYPE.PHYSICAL)
-        vlan = factory.make_VLAN()
-        new_mac = factory.make_MACAddress_with_Node(node=mac.node)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        mac_address = factory.make_mac_address()
         form = PhysicalInterfaceForm(
-            {
-                'name': name,
-                'mac': new_mac.id,
-                'vlan': vlan.id,
+            node=interface.node,
+            data={
+                'name': interface.name,
+                'mac_address': mac_address,
+                'vlan': interface.vlan.id,
             })
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(
             ['name'], form.errors.keys(), form.errors)
         self.assertIn(
-            "already has an interface named '%s'." % name,
+            "already has an interface named '%s'." % interface.name,
             form.errors['name'][0])
 
     def test__rejects_parents(self):
-        mac = factory.make_MACAddress_with_Node()
-        interface_name = 'eth0'
-        parent = factory.make_Interface(
-            name=factory.make_name('name'), mac=mac,
-            type=INTERFACE_TYPE.PHYSICAL)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_VLAN()
         form = PhysicalInterfaceForm(
-            {
-                'name': interface_name,
-                'mac': mac.id,
+            node=parent.node,
+            data={
+                'name': factory.make_name("eth"),
+                'mac_address': factory.make_mac_address(),
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
@@ -129,59 +132,58 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             form.errors['parents'][0])
 
     def test__edits_interface(self):
-        mac = factory.make_MACAddress_with_Node()
-        vlan = factory.make_VLAN(vid=33)
         interface = factory.make_Interface(
-            name='eth0', mac=mac, type=INTERFACE_TYPE.PHYSICAL,
-            vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, name='eth0')
         new_name = 'eth1'
         new_vlan = factory.make_VLAN(vid=33)
         form = PhysicalInterfaceForm(
             instance=interface,
             data={
                 'name': new_name,
-                'vlan': new_vlan.id
+                'vlan': new_vlan.id,
+                'enabled': False,
+                'tags': "",
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=mac, name=new_name, type=INTERFACE_TYPE.PHYSICAL))
+                name=new_name, vlan=new_vlan, enabled=False, tags=[]))
         self.assertItemsEqual([], interface.parents.all())
 
 
 class VLANInterfaceFormTest(MAASServerTestCase):
 
     def test__creates_vlan_interface(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent = factory.make_Interface(
-            name=factory.make_name('name'), mac=mac,
-            type=INTERFACE_TYPE.PHYSICAL)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_VLAN(vid=10)
         form = VLANInterfaceForm(
-            {
+            node=parent.node,
+            data={
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        interface_name = build_vlan_interface_name(vlan)
+        interface_name = build_vlan_interface_name(parent, vlan)
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=None, name=interface_name, type=INTERFACE_TYPE.VLAN))
+                name=interface_name, type=INTERFACE_TYPE.VLAN))
         self.assertItemsEqual([parent], interface.parents.all())
 
     def test_rejects_interface_with_duplicate_name(self):
-        mac = factory.make_MACAddress_with_Node()
         vlan = factory.make_VLAN(vid=10)
         parent = factory.make_Interface(
-            vlan=vlan, mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=vlan)
         interface = factory.make_Interface(
-            vlan=vlan, type=INTERFACE_TYPE.VLAN, parents=[parent])
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan, parents=[parent])
         form = VLANInterfaceForm(
-            {
+            node=parent.node,
+            data={
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
@@ -195,7 +197,8 @@ class VLANInterfaceFormTest(MAASServerTestCase):
     def test__rejects_no_parents(self):
         vlan = factory.make_VLAN(vid=10)
         form = VLANInterfaceForm(
-            {
+            node=factory.make_Node(),
+            data={
                 'vlan': vlan.id,
             })
         self.assertFalse(form.is_valid(), form.errors)
@@ -205,15 +208,15 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors['parents'][0])
 
     def test__rejects_vlan_parent(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent = factory.make_Interface(
-            name=factory.make_name('name'), mac=mac,
-            type=INTERFACE_TYPE.VLAN)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan_parent = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[parent])
         vlan = factory.make_VLAN(vid=10)
         form = VLANInterfaceForm(
-            {
+            node=parent.node,
+            data={
                 'vlan': vlan.id,
-                'parents': [parent.id],
+                'parents': [vlan_parent.id],
             })
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(['parents'], form.errors.keys())
@@ -222,16 +225,13 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors['parents'][0])
 
     def test__rejects_more_than_one_parent(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent1 = factory.make_Interface(
-            name=factory.make_name('name'), mac=mac,
-            type=INTERFACE_TYPE.PHYSICAL)
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            name=factory.make_name('name'), mac=mac,
-            type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         vlan = factory.make_VLAN(vid=10)
         form = VLANInterfaceForm(
-            {
+            node=parent1.node,
+            data={
                 'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
             })
@@ -242,11 +242,9 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             form.errors['parents'][0])
 
     def test__edits_interface(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
-            type=INTERFACE_TYPE.VLAN, parents=[parent])
+            INTERFACE_TYPE.VLAN, parents=[parent])
         new_vlan = factory.make_VLAN(vid=33)
         form = VLANInterfaceForm(
             instance=interface,
@@ -258,7 +256,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=None, name="vlan%d" % new_vlan.vid,
+                name="%s.%d" % (parent.get_name(), new_vlan.vid),
                 vlan=new_vlan, type=INTERFACE_TYPE.VLAN))
         self.assertItemsEqual([parent], interface.parents.all())
 
@@ -266,15 +264,14 @@ class VLANInterfaceFormTest(MAASServerTestCase):
 class BondInterfaceFormTest(MAASServerTestCase):
 
     def test__creates_bond_interface(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent1 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         interface_name = factory.make_name()
         vlan = factory.make_VLAN(vid=10)
         form = BondInterfaceForm(
-            {
+            node=parent1.node,
+            data={
                 'name': interface_name,
                 'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
@@ -284,36 +281,60 @@ class BondInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=None, name=interface_name, type=INTERFACE_TYPE.BOND))
+                name=interface_name, type=INTERFACE_TYPE.BOND))
+        self.assertIn(
+            interface.mac_address, [parent1.mac_address, parent2.mac_address])
+        self.assertItemsEqual([parent1, parent2], interface.parents.all())
+
+    def test__creates_bond_interface_with_parent_mac_address(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        interface_name = factory.make_name()
+        vlan = factory.make_VLAN(vid=10)
+        form = BondInterfaceForm(
+            node=parent1.node,
+            data={
+                'name': interface_name,
+                'vlan': vlan.id,
+                'parents': [parent1.id, parent2.id],
+                'mac_address': parent1.mac_address,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface_name, mac_address=parent1.mac_address,
+                type=INTERFACE_TYPE.BOND))
         self.assertItemsEqual([parent1, parent2], interface.parents.all())
 
     def test__rejects_no_parents(self):
         vlan = factory.make_VLAN(vid=10)
         interface_name = factory.make_name()
         form = BondInterfaceForm(
-            {
+            node=factory.make_Node(),
+            data={
                 'name': interface_name,
                 'vlan': vlan.id,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(['parents'], form.errors.keys())
+        self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
         self.assertIn(
-            "A Bond interface must have two parents or more.",
+            "A Bond interface must have one or more parents.",
             form.errors['parents'][0])
 
     def test__edits_interface(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent1 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         interface = factory.make_Interface(
-            name=factory.make_name('name'), type=INTERFACE_TYPE.BOND,
+            INTERFACE_TYPE.BOND,
             parents=[parent1, parent2])
         new_vlan = factory.make_VLAN(vid=33)
         new_name = factory.make_name()
         new_parent = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         form = BondInterfaceForm(
             instance=interface,
             data={
@@ -326,21 +347,19 @@ class BondInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=None, name=new_name,
+                mac_address=interface.mac_address, name=new_name,
                 vlan=new_vlan, type=INTERFACE_TYPE.BOND))
         self.assertItemsEqual(
             [parent1, parent2, new_parent], interface.parents.all())
 
     def test__edits_interface_removes_parents(self):
-        mac = factory.make_MACAddress_with_Node()
-        parent1 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         parent3 = factory.make_Interface(
-            mac=mac, type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         interface = factory.make_Interface(
-            name=factory.make_name('name'), type=INTERFACE_TYPE.BOND,
+            INTERFACE_TYPE.BOND,
             parents=[parent1, parent2, parent3])
         new_name = factory.make_name()
         form = BondInterfaceForm(
@@ -354,6 +373,34 @@ class BondInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                mac=None, name=new_name, type=INTERFACE_TYPE.BOND))
+                mac_address=interface.mac_address, name=new_name,
+                type=INTERFACE_TYPE.BOND))
         self.assertItemsEqual(
             [parent1, parent2], interface.parents.all())
+
+    def test__edits_interface_updates_mac_address_when_parent_removed(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        parent3 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, mac_address=parent3.mac_address,
+            parents=[parent1, parent2, parent3])
+        new_name = factory.make_name()
+        form = BondInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'parents': [parent1.id, parent2.id],
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=new_name, type=INTERFACE_TYPE.BOND))
+        self.assertItemsEqual(
+            [parent1, parent2], interface.parents.all())
+        self.assertIn(
+            interface.mac_address, [parent1.mac_address, parent2.mac_address])

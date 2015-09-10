@@ -68,7 +68,6 @@ from provisioningserver.rpc.monitors import (
     start_monitors,
 )
 from provisioningserver.rpc.osystems import (
-    compose_curtin_network_preseed,
     gen_operating_systems,
     get_os_release_title,
     get_preseed_data,
@@ -241,27 +240,6 @@ class Cluster(RPCProtocol):
                 osystem, preseed_type, node_system_id, node_hostname,
                 consumer_key, token_key, token_secret, metadata_url),
         }
-
-    @cluster.ComposeCurtinNetworkPreseed.responder
-    def compose_curtin_network_preseed(self, osystem, config, disable_ipv4):
-        """compose_curtin_network_preseed()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ComposeCurtinNetworkPreseed`
-        """
-        interfaces = config.get('interfaces', [])
-        interfaces = [tuple(interface) for interface in interfaces]
-        auto_interfaces = config.get('auto_interfaces', [])
-        ips_mapping = config.get('ips_mapping', {})
-        gateways_mapping = config.get('gateways_mapping', {})
-        nameservers = config.get('nameservers', [])
-        netmasks = config.get('netmasks', {})
-        return {
-            'data': compose_curtin_network_preseed(
-                osystem, interfaces, auto_interfaces, ips_mapping=ips_mapping,
-                gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4,
-                nameservers=nameservers, netmasks=netmasks),
-            }
 
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):

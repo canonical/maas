@@ -29,10 +29,7 @@ from maasserver.utils.orm import (
     post_commit,
     transactional,
 )
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
+from netaddr import IPAddress
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
@@ -53,7 +50,7 @@ def split_ipv4_ipv6_interfaces(interfaces):
     """
     split = defaultdict(list)
     for interface in interfaces:
-        split[interface.network.version].append(interface)
+        split[interface.subnet.get_ipnetwork().version].append(interface)
     assert len(split.keys()) <= 2, (
         "Unexpected IP version(s): %s" % ', '.join(split.keys()))
     return split[4], split[6]
@@ -61,17 +58,19 @@ def split_ipv4_ipv6_interfaces(interfaces):
 
 def make_subnet_config(interface, dns_servers, ntp_server):
     """Return DHCP subnet configuration dict for a cluster interface."""
+    ip_network = interface.subnet.get_ipnetwork()
     return {
         'subnet': unicode(
             IPAddress(interface.ip_range_low) &
-            IPAddress(IPNetwork(interface.subnet.cidr).netmask)),
-        'subnet_mask': unicode(IPNetwork(interface.subnet.cidr).netmask),
+            IPAddress(ip_network.netmask)),
+        'subnet_mask': unicode(ip_network.netmask),
         'subnet_cidr': unicode(interface.subnet.cidr),
         'broadcast_ip': interface.broadcast_ip,
         'interface': interface.interface,
         'router_ip': (
-            '' if not interface.router_ip
-            else unicode(interface.router_ip)),
+            '' if not interface.subnet else
+            '' if not interface.subnet.gateway_ip
+            else unicode(interface.subnet.gateway_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,
         'domain_name': interface.nodegroup.name,

@@ -21,9 +21,14 @@ import re
 
 from django.contrib.auth.models import User
 from lxml import etree
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.models import interface as interface_module
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
@@ -81,11 +86,6 @@ from twisted.internet.defer import CancelledError
 from twisted.internet.threads import deferToThread
 
 
-l = logging.getLogger('django.db.backends')
-l.setLevel(logging.DEBUG)
-l.addHandler(logging.StreamHandler())
-
-
 class TestNodeHandler(MAASServerTestCase):
 
     def dehydrate_physicalblockdevice(self, blockdevice):
@@ -124,42 +124,37 @@ class TestNodeHandler(MAASServerTestCase):
             "created": dehydrate_datetime(result.created),
         }
 
-    def dehydrate_interface(self, mac_address, node):
-        ip_addresses = [
-            {
-                "type": "static",
-                "alloc_type": ip_address.alloc_type,
-                "ip_address": "%s" % ip_address.ip,
-            }
-            for ip_address in mac_address.ip_addresses.all()
-        ]
-        static_addresses = [
-            ip_address["ip_address"]
-            for ip_address in ip_addresses
-        ]
-        ip_addresses += [
-            {
-                "type": "dynamic",
-                "ip_address": lease.ip,
-            }
-            for lease in node.nodegroup.dhcplease_set.all()
-            if (lease.mac == mac_address.mac_address and
-                lease.ip not in static_addresses)
-        ]
+    def dehydrate_interface(self, interface, node):
+        ip_addresses = []
+        subnets = set()
+        for ip_address in interface.ip_addresses.all():
+            if ip_address.subnet is not None:
+                subnets.add(ip_address.subnet)
+            if ip_address.ip:
+                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                    ip_addresses.append({
+                        "type": "static",
+                        "alloc_type": ip_address.alloc_type,
+                        "ip_address": "%s" % ip_address.ip,
+                    })
+                else:
+                    ip_addresses.append({
+                        "type": "dynamic",
+                        "ip_address": "%s" % ip_address.ip,
+                    })
         networks = [
             {
-                "id": network.id,
-                "name": network.name,
-                "ip": network.ip,
-                "cidr": "%s" % network.get_network().cidr,
-                "vlan": network.vlan_tag,
+                "id": subnet.id,
+                "name": subnet.name,
+                "cidr": "%s" % subnet.get_ipnetwork(),
+                "vlan": subnet.vlan.vid,
             }
-            for network in mac_address.networks.all()
+            for subnet in subnets
         ]
         return {
-            "id": mac_address.id,
-            "is_pxe": mac_address == node.pxe_mac,
-            "mac_address": "%s" % mac_address.mac_address,
+            "id": interface.id,
+            "is_pxe": interface == node.boot_interface,
+            "mac_address": "%s" % interface.mac_address,
             "ip_addresses": ip_addresses,
             "networks": networks,
         }
@@ -167,7 +162,7 @@ class TestNodeHandler(MAASServerTestCase):
     def dehydrate_interfaces(self, node):
         return sorted([
             self.dehydrate_interface(mac_address, node)
-            for mac_address in node.macaddress_set.all().order_by('id')
+            for mac_address in node.interface_set.all().order_by('id')
         ], key=itemgetter('is_pxe'), reverse=True)
 
     def get_all_storage_tags(self, physicalblockdevices):
@@ -178,7 +173,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def dehydrate_node(
             self, node, user, for_list=False, include_summary=False):
-        pxe_mac = node.get_pxe_mac()
+        boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         physicalblockdevices = list(
             node.physicalblockdevice_set.all().order_by('name'))
@@ -213,7 +208,7 @@ class TestNodeHandler(MAASServerTestCase):
                 for event in events
             ],
             "extra_macs": [
-                "%s" % mac_address.mac_address
+                "%s" % mac_address
                 for mac_address in node.get_extra_macs()
             ],
             "fqdn": node.fqdn,
@@ -229,11 +224,6 @@ class TestNodeHandler(MAASServerTestCase):
             "license_key": node.license_key,
             "memory": node.display_memory(),
             "min_hwe_kernel": node.min_hwe_kernel,
-            "networks": list({
-                network.name
-                for mac_address in node.macaddress_set.all()
-                for network in mac_address.get_networks()
-            }),
             "nodegroup": {
                 "id": node.nodegroup.id,
                 "uuid": node.nodegroup.uuid,
@@ -249,7 +239,9 @@ class TestNodeHandler(MAASServerTestCase):
             "power_parameters": power_parameters,
             "power_state": node.power_state,
             "power_type": node.power_type,
-            "pxe_mac": "" if pxe_mac is None else "%s" % pxe_mac.mac_address,
+            "pxe_mac": (
+                "" if boot_interface is None else
+                "%s" % boot_interface.mac_address),
             "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
             "routers": [
                 "%s" % router
@@ -309,13 +301,13 @@ class TestNodeHandler(MAASServerTestCase):
         """Create `number` of new nodes."""
         for counter in range(number):
             node = factory.make_Node(
-                nodegroup=nodegroup, mac=True, status=NODE_STATUS.READY)
+                nodegroup=nodegroup, interface=True, status=NODE_STATUS.READY)
             factory.make_PhysicalBlockDevice(node)
 
     def test_get(self):
         user = factory.make_User()
         handler = NodeHandler(user, {})
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
+        node = factory.make_Node_with_Interface_on_Subnet()
         node.owner = user
         node.save()
         for _ in range(100):
@@ -332,18 +324,19 @@ class TestNodeHandler(MAASServerTestCase):
             node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
             data=data.encode("utf-8"))
 
-        mac_address = node.macaddress_set.all()[0]
-        factory.make_StaticIPAddress(mac=mac_address)
-        factory.make_DHCPLease(
-            nodegroup=node.nodegroup, mac=mac_address.mac_address)
+        # LINK_UP interface with no subnet.
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=None, interface=nic1)
+        nic1_ip.subnet = None
+        nic1_ip.save()
 
-        pxe_mac_address = factory.make_MACAddress(node=node)
-        node.pxe_mac = pxe_mac_address
+        self.patch_autospec(interface_module, "update_host_maps")
+        boot_interface = node.get_boot_interface()
+        boot_interface.claim_static_ips()
+        node.boot_interface = boot_interface
         node.save()
-
-        network = factory.make_Network()
-        pxe_mac_address.networks.add(network)
-        pxe_mac_address.save()
 
         self.assertEquals(
             self.dehydrate_node(node, user, include_summary=True),
@@ -578,7 +571,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_update_raises_validation_error_for_invalid_architecture(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
-        node = factory.make_Node(mac=True)
+        node = factory.make_Node(interface=True)
         node_data = self.dehydrate_node(node, user)
         arch = factory.make_name("arch")
         node_data["architecture"] = arch
@@ -592,7 +585,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_update_updates_node(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
-        node = factory.make_Node(mac=True)
+        node = factory.make_Node(interface=True)
         node_data = self.dehydrate_node(node, user)
         new_nodegroup = factory.make_NodeGroup()
         new_zone = factory.make_Zone()
@@ -626,7 +619,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(mac=True, architecture=architecture)
+        node = factory.make_Node(interface=True, architecture=architecture)
         tags = [
             factory.make_Tag(definition='').name
             for _ in range(3)
@@ -640,7 +633,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(mac=True, architecture=architecture)
+        node = factory.make_Node(interface=True, architecture=architecture)
         tags = []
         for _ in range(3):
             tag = factory.make_Tag(definition='')
@@ -657,7 +650,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(mac=True, architecture=architecture)
+        node = factory.make_Node(interface=True, architecture=architecture)
         tag_name = factory.make_name("tag")
         node_data = self.dehydrate_node(node, user)
         node_data["tags"].append(tag_name)
@@ -668,7 +661,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(mac=True, architecture=architecture)
+        node = factory.make_Node(interface=True, architecture=architecture)
         tag = factory.make_Tag()
         node_data = self.dehydrate_node(node, user)
         node_data["tags"].append(tag.name)
@@ -678,7 +671,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(mac=True, architecture=architecture)
+        node = factory.make_Node(interface=True, architecture=architecture)
         factory.make_PhysicalBlockDevice(node=node)
         blockdevice_tags = [
             factory.make_name("tag")

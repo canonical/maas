@@ -45,23 +45,23 @@ def convert_mappings_to_leases(mappings):
     Take mappings, as used by UpdateLeases, and turn into leases
     as used by record_lease_state().
     """
-    return {
-        mapping["ip"]: mapping["mac"]
+    return [
+        (mapping["ip"], mapping["mac"])
         for mapping in mappings
-    }
+    ]
 
 
 def convert_leases_to_mappings(leases):
     """Convert record_lease_state() leases into UpdateLeases mappings.
 
-    Take the leases dict, as returned by record_lease_state(), and
+    Take the leases list, as returned by record_lease_state(), and
     turn it into a mappings list suitable for transportation in
     the UpdateLeases AMP command.
     """
     return [
-        {"ip": ip, "mac": leases[ip]}
-        for ip in leases
-        ]
+        {"ip": ip, "mac": mac}
+        for ip, mac in leases
+    ]
 
 
 class LeaseUploadService(TimerService, object):

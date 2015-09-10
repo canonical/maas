@@ -42,7 +42,6 @@ from maasserver.models import (
 from maasserver.preseed import (
     compose_curtin_kernel_preseed,
     compose_curtin_maas_reporter,
-    compose_curtin_network_preseed,
     compose_curtin_swap_preseed,
     compose_curtin_verbose_preseed,
     compose_enlistment_preseed_url,
@@ -63,9 +62,7 @@ from maasserver.preseed import (
     get_preseed_template,
     get_preseed_type_for,
     get_supported_purposes_for_node,
-    list_gateways_and_macs,
     load_preseed_template,
-    pick_cluster_controller_address,
     PreseedTemplate,
     render_enlistment_preseed,
     render_preseed,
@@ -81,18 +78,13 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
-from mock import ANY
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import locate_config
 from provisioningserver.utils.enum import map_enum
-from provisioningserver.utils.fs import read_text_file
-from provisioningserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
     Contains,
     ContainsAll,
-    Equals,
     HasLength,
     IsInstance,
     MatchesAll,
@@ -434,114 +426,6 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
             TemplateNotFoundError, template.substitute)
 
 
-class TestPickClusterControllerAddress(MAASServerTestCase):
-    """Tests for `pick_cluster_controller_address`."""
-
-    def make_bare_nodegroup(self):
-        """Create `NodeGroup` without interfaces."""
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.nodegroupinterface_set.all().delete()
-        return nodegroup
-
-    def make_nodegroupinterface(self, nodegroup, ip,
-                                mgt=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-                                subnet_mask='255.255.255.0'):
-        """Create a `NodeGroupInterface` with a given IP address.
-
-        Other network settings are derived from the IP address.
-        """
-        network = make_network(ip, subnet_mask)
-        return factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, management=mgt, network=network, ip=ip,
-            subnet_mask=subnet_mask)
-
-    def make_lease_for_node(self, node, ip=None):
-        """Create a `MACAddress` and corresponding `DHCPLease` for `node`."""
-        mac = factory.make_MACAddress(node=node).mac_address
-        factory.make_DHCPLease(nodegroup=node.nodegroup, mac=mac, ip=ip)
-
-    def test_returns_only_interface(self):
-        node = factory.make_Node()
-        interface = factory.make_NodeGroupInterface(node.nodegroup)
-
-        address = pick_cluster_controller_address(node)
-
-        self.assertIsNotNone(address)
-        self.assertEqual(interface.ip, address)
-
-    def test_picks_interface_on_matching_network(self):
-        nearest_address = '10.99.1.1'
-        nodegroup = self.make_bare_nodegroup()
-        self.make_nodegroupinterface(nodegroup, '192.168.11.1')
-        self.make_nodegroupinterface(nodegroup, nearest_address)
-        self.make_nodegroupinterface(nodegroup, '192.168.22.1')
-        node = factory.make_Node(nodegroup=nodegroup)
-        self.make_lease_for_node(node, '192.168.33.101')
-        self.make_lease_for_node(node, '10.99.1.105')
-        self.make_lease_for_node(node, '192.168.44.101')
-        self.assertEqual('10.99.1.1', pick_cluster_controller_address(node))
-
-    def test_prefers_matching_network_over_managed_interface(self):
-        nodegroup = self.make_bare_nodegroup()
-        self.make_nodegroupinterface(
-            nodegroup, '10.100.100.1',
-            mgt=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        self.make_nodegroupinterface(nodegroup, '10.100.101.1')
-        node = factory.make_Node(nodegroup=nodegroup)
-        self.make_lease_for_node(node, '10.100.101.99')
-        self.assertEqual('10.100.101.1', pick_cluster_controller_address(node))
-
-    def test_prefers_managed_interface_over_unmanaged_interface(self):
-        nodegroup = self.make_bare_nodegroup()
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        best_interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-
-        address = pick_cluster_controller_address(
-            factory.make_Node(nodegroup=nodegroup))
-
-        self.assertIsNotNone(address)
-        self.assertEqual(best_interface.ip, address)
-
-    def test_prefers_dns_managed_interface_over_unmanaged_interface(self):
-        nodegroup = self.make_bare_nodegroup()
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        best_interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-
-        address = pick_cluster_controller_address(
-            factory.make_Node(nodegroup=nodegroup))
-
-        self.assertIsNotNone(address)
-        self.assertEqual(best_interface.ip, address)
-
-    def test_returns_None_if_no_interfaces(self):
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.nodegroupinterface_set.all().delete()
-        self.assertIsNone(
-            pick_cluster_controller_address(
-                factory.make_Node(nodegroup=nodegroup)))
-
-    def test_makes_consistent_choice(self):
-        # Not a very thorough test, but we want at least a little bit of
-        # predictability.
-        nodegroup = factory.make_NodeGroup(
-            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        for _ in range(5):
-            factory.make_NodeGroupInterface(
-                nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        node = factory.make_Node(nodegroup=nodegroup)
-        self.assertEqual(
-            pick_cluster_controller_address(node),
-            pick_cluster_controller_address(node))
-
-
 class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
@@ -731,62 +615,6 @@ class TestRenderPreseedWindows(
         self.assertIsInstance(preseed, bytes)
 
 
-class TestListGatewaysAndMACs(MAASServerTestCase):
-
-    def test__lists_known_gateways(self):
-        network = factory.make_ipv4_network()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=network)
-        gateway = factory.pick_ip_in_network(network)
-        mac = node.get_primary_mac()
-        mac.cluster_interface.router_ip = gateway
-        mac.cluster_interface.save()
-        self.assertEqual(
-            {(gateway, mac.mac_address)},
-            list_gateways_and_macs(node))
-
-    def test__lists_gateways_from_all_associated_cluster_interfaces(self):
-        # XXX jtv 2014-09-16 bug=1358130: There's a quick-and-dirty solution
-        # where all cluster interfaces on the same cluster network interface
-        # are all considered connected to the same node MACs.  And so,
-        # list_gateways_and_macs must respect that association, rather than
-        # just query MACAddress.cluster_interface.
-        ipv4_network = factory.make_ipv4_network()
-        ipv6_network = factory.make_ipv6_network()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=ipv4_network)
-        ipv4_gateway = factory.pick_ip_in_network(ipv4_network)
-        mac = node.get_primary_mac()
-        mac.cluster_interface.router_ip = ipv4_gateway
-        mac.cluster_interface.save()
-        ipv6_gateway = factory.pick_ip_in_network(ipv6_network)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, interface=mac.cluster_interface.interface,
-            network=ipv6_network, router_ip=ipv6_gateway)
-        self.assertEqual(
-            {
-                (ipv4_gateway, mac.mac_address),
-                (ipv6_gateway, mac.mac_address),
-            },
-            list_gateways_and_macs(node))
-
-    def test__skips_unknown_cluster_interfaces(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        mac = node.get_primary_mac()
-        mac.cluster_interface = None
-        mac.save()
-        self.assertEqual(set(), list_gateways_and_macs(node))
-
-    def test__skips_unknown_routers(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
-        mac = node.get_primary_mac()
-        mac.cluster_interface.router_ip = None
-        mac.cluster_interface.management = (
-            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac.cluster_interface.save()
-        self.assertEqual(set(), list_gateways_and_macs(node))
-
-
 class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
     def load_reporter(self, preseeds):
@@ -879,136 +707,14 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
             }, yaml.load(preseed[0]))
 
 
-class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
-
-    def test__returns_list_of_yaml_strings(self):
-        preseeds = compose_curtin_network_preseed(
-            factory.make_Node(osystem='ubuntu'))
-        self.assertIsInstance(preseeds, list)
-        self.assertThat(preseeds, HasLength(2))
-        [write_files_yaml, late_commands_yaml] = preseeds
-        write_files = yaml.safe_load(write_files_yaml)
-        self.assertIsInstance(write_files, dict)
-        self.assertEqual(['write_files'], list(write_files.keys()))
-        late_commands = yaml.safe_load(late_commands_yaml)
-        self.assertIsInstance(late_commands, dict)
-        self.assertEqual(['late_commands'], list(late_commands.keys()))
-
-    def test__returns_empty_if_unsupported_OS(self):
-        self.assertEqual(
-            [],
-            compose_curtin_network_preseed(
-                factory.make_Node(osystem='windows')))
-
-    def test__uploads_script_if_supported_OS(self):
-        [write_files_yaml, _] = compose_curtin_network_preseed(
-            factory.make_Node(osystem='ubuntu'))
-        write_files = yaml.safe_load(write_files_yaml)
-        file_spec = write_files['write_files']['maas_configure_interfaces']
-        self.expectThat(
-            file_spec['path'],
-            Equals('/usr/local/bin/maas_configure_interfaces.py'))
-        self.expectThat(file_spec['permissions'], Equals('0755'))
-        script = locate_config(
-            'templates', 'deployment-user-data',
-            'maas_configure_interfaces.py')
-        self.expectThat(file_spec['content'], Equals(read_text_file(script)))
-
-    def test__runs_script_if_supported_OS(self):
-        node = factory.make_Node()
-        # Let the node default to Ubuntu, which is supported for IPv6.
-        node.osystem = ''
-        node.save()
-        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
-        late_commands = yaml.safe_load(late_commands_yaml)
-        command = (
-            late_commands['late_commands']['90_maas_configure_interfaces'])
-        self.assertIsInstance(command, list)
-        self.assertEqual(
-            ['curtin', 'in-target', '--'],
-            command[:3])
-        self.assertIn('/usr/local/bin/maas_configure_interfaces.py', command)
-        self.assertIn('--update-interfaces', command)
-        self.assertIn('--name-interfaces', command)
-
-    def test__includes_static_IPv6_addresses(self):
-        network = factory.make_ipv6_network()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=network, osystem='ubuntu')
-        mac = node.get_primary_mac()
-        ip = factory.pick_ip_in_network(network)
-        factory.make_StaticIPAddress(mac=mac, ip=ip)
-        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
-        late_commands = yaml.safe_load(late_commands_yaml)
-        [command] = list(late_commands['late_commands'].values())
-        self.assertIn('--static-ip=%s=%s' % (ip, mac), command)
-
-    def test__ignores_static_IPv4_addresses(self):
-        network = factory.make_ipv4_network()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=network, osystem='ubuntu')
-        mac = node.get_primary_mac()
-        ip = factory.pick_ip_in_network(network)
-        factory.make_StaticIPAddress(mac=mac, ip=ip)
-        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
-        late_commands = yaml.safe_load(late_commands_yaml)
-        [command] = list(late_commands['late_commands'].values())
-        self.assertNotIn(ip, ' '.join(command))
-
-    def test__includes_IPv6_gateway_addresses(self):
-        network = factory.make_ipv6_network()
-        gateway = factory.pick_ip_in_network(network)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=network, osystem='ubuntu')
-        mac = node.get_primary_mac()
-        mac.cluster_interface.router_ip = gateway
-        mac.cluster_interface.save()
-        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
-        late_commands = yaml.safe_load(late_commands_yaml)
-        [command] = list(late_commands['late_commands'].values())
-        self.assertIn('--gateway=%s=%s' % (gateway, mac), command)
-
-    def test__ignores_IPv4_gateway_addresses(self):
-        network = factory.make_ipv4_network()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            network=network, osystem='ubuntu')
-        mac = node.get_primary_mac()
-        gateway = factory.pick_ip_in_network(network)
-        mac.cluster_interface.router_ip = gateway
-        mac.cluster_interface.save()
-        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
-        late_commands = yaml.safe_load(late_commands_yaml)
-        [command] = list(late_commands['late_commands'].values())
-        self.assertNotIn('--gateway', ' '.join(command))
-        self.assertNotIn(gateway, ' '.join(command))
-
-
 class TestGetCurtinUserData(
         PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
-    def test_get_curtin_userdata(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            mac=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        arch, subarch = node.architecture.split('/')
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-
-        user_data = get_curtin_userdata(node)
-
-        self.expectThat(
-            self.rpc_cluster.ComposeCurtinNetworkPreseed,
-            MockCalledOnceWith(
-                ANY, osystem=node.get_osystem(), config=ANY,
-                disable_ipv4=node.disable_ipv4))
-        self.assertIn("PREFIX='curtin'", user_data)
-
     def test_get_curtin_userdata_calls_compose_curtin_storage_config(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            mac=True)
+            interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -1023,7 +729,7 @@ class TestGetCurtinUserData(
     def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            mac=True)
+            interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -1050,7 +756,7 @@ class TestGetCurtinUserDataOS(
     def test_get_curtin_userdata(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=self.os_name,
-            boot_type=NODE_BOOT.FASTPATH, mac=True)
+            boot_type=NODE_BOOT.FASTPATH, interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -1191,11 +897,11 @@ class TestCurtinUtilities(
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = factory.make_name('xi_type')
+        cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
-            architecture=architecture, distro_series=series)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+            architecture=architecture, distro_series=series,
+            boot_cluster_ip=cluster_ip)
         arch, subarch = architecture.split('/')
         boot_image = make_rpc_boot_image(
             osystem=osystem['name'], release=series,
@@ -1207,11 +913,9 @@ class TestCurtinUtilities(
             'get_boot_images_for').return_value = [boot_image]
 
         installer_url = get_curtin_installer_url(node)
-
-        [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             '%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s' % (
-                xinstall_type, interface.ip, osystem['name'], arch, subarch,
+                xinstall_type, cluster_ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
 
@@ -1250,9 +954,11 @@ class TestCurtinUtilities(
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = 'tgz'
+        cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
-            architecture=architecture, distro_series=series)
+            architecture=architecture, distro_series=series,
+            boot_cluster_ip=cluster_ip)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
@@ -1266,11 +972,9 @@ class TestCurtinUtilities(
             'get_boot_images_for').return_value = [boot_image]
 
         installer_url = get_curtin_installer_url(node)
-
-        [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             'http://%s:5248/images/%s/%s/%s/%s/%s/%s' % (
-                interface.ip, osystem['name'], arch, subarch,
+                cluster_ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
 

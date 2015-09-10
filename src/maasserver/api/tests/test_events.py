@@ -28,6 +28,7 @@ from urlparse import (
 from django.core.urlresolvers import reverse
 from maasserver.api import events as events_module
 from maasserver.api.tests.test_nodes import RequestFixture
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.eventtype import LOGGING_LEVELS
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -75,7 +76,7 @@ class TestEventsAPI(APITestCase):
     def create_nodes_in_group_with_events(
             self, nodegroup, number_nodes=2, number_events=2):
         for _ in range(number_nodes):
-            node = factory.make_Node(nodegroup=nodegroup, mac=True)
+            node = factory.make_Node(nodegroup=nodegroup, interface=True)
             for _ in range(number_events):
                 factory.make_Event(node=node)
 
@@ -202,9 +203,12 @@ class TestEventsAPI(APITestCase):
     def test_GET_query_with_macs_returns_matching_nodes(self):
         # The "list" operation takes optional "mac_address" parameters. Only
         # events for nodes with matching MAC addresses will be returned.
-        macs = [factory.make_MACAddress_with_Node() for _ in range(3)]
-        events = [factory.make_Event(node=mac.node) for mac in macs]
-        matching_mac = macs[0].mac_address
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet()
+            for _ in range(3)
+        ]
+        events = [factory.make_Event(node=node) for node in nodes]
+        matching_mac = nodes[0].get_boot_interface().mac_address
         matching_event_id = events[0].id
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
@@ -222,8 +226,9 @@ class TestEventsAPI(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = factory.make_MACAddress_with_Node()
-        [factory.make_Event(node=ok_mac.node) for _ in range(3)]
+        node = factory.make_Node_with_Interface_on_Subnet()
+        ok_mac = node.get_boot_interface().mac_address
+        [factory.make_Event(node=node) for _ in range(3)]
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
@@ -532,15 +537,17 @@ class TestEventsAPI(APITestCase):
         for r in range(len(test_params) + 1):
             for params in combinations(test_params, r):
                 # Generate test values for all params
-                test_values = \
-                    {'after': unicode(randint(1, test_events)),
-                     'agent_name': factory.make_string(),
-                     'id': factory.make_string(),
-                     'level': random.choice(LOGGING_LEVELS.values()),
-                     'limit': unicode(randint(1, test_events)),
-                     'mac_address':
-                     unicode(factory.make_MACAddress_with_Node()),
-                     'zone': factory.make_string()}
+                test_values = {
+                    'after': unicode(randint(1, test_events)),
+                    'agent_name': factory.make_string(),
+                    'id': factory.make_string(),
+                    'level': random.choice(LOGGING_LEVELS.values()),
+                    'limit': unicode(randint(1, test_events)),
+                    'mac_address': unicode(
+                        factory.make_Interface(
+                            INTERFACE_TYPE.PHYSICAL).mac_address),
+                    'zone': factory.make_string(),
+                    }
 
                 # Build a query dictionary for the given combination of params
                 expected_params = {}

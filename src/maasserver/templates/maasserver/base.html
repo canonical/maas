@@ -57,9 +57,6 @@
                     <li>
                         <a class="{% block nav-active-zone-list %}{% endblock %}" href="{% url 'zone-list' %}">Zones</a>
                     </li>
-                    <li>
-                        <a class="{% block nav-active-network-list %}{% endblock %}" href="{% url 'network-list' %}">Networks</a>
-                    </li>
                     {% if user.is_superuser %}
                     <li>
                         <a class="{% block nav-active-settings %}{% endblock %}" href="{% url 'settings' %}">Settings</a>

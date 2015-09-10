@@ -35,18 +35,20 @@ from maasserver import (
 )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_STATUS,
     POWER_STATE,
 )
 from maasserver.models import (
     Config,
-    DHCPLease,
     Event,
     EventType,
-    MACAddress,
     Node,
     signals,
+    StaticIPAddress,
 )
+from maasserver.models.interface import PhysicalInterface
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     events as events_module,
@@ -72,6 +74,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils import ignore_unused
 from maasserver.utils.orm import transactional
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
@@ -394,35 +397,35 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
         self.assertIsNotNone(responder)
 
     @transactional
-    def make_node_group(self, uuid):
-        return factory.make_NodeGroup(uuid=uuid)
-
-    @transactional
-    def make_node_group_interface(self, nodegroup):
-        return factory.make_NodeGroupInterface(nodegroup=nodegroup)
-
-    @transactional
-    def make_mac_address(self):
-        return factory.make_MACAddress_with_Node()
+    def make_interface_on_managed_cluster_interface(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        boot_interface = node.get_boot_interface()
+        subnet = boot_interface.ip_addresses.first().subnet
+        ngi = subnet.nodegroupinterface_set.first()
+        nodegroup = ngi.nodegroup
+        return boot_interface, ngi, nodegroup
 
     @transactional
     def get_leases_for(self, nodegroup):
         return [
-            (ng.ip, ng.mac)
-            for ng in DHCPLease.objects.filter(nodegroup=nodegroup)]
+            (ip.ip, interface.mac_address.get_raw())
+            for ip in StaticIPAddress.objects.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                subnet__nodegroupinterface__nodegroup=nodegroup)
+            for interface in ip.interface_set.all()]
 
     @wait_for_reactor
     @inlineCallbacks
     def test__stores_leases(self):
-        uuid = factory.make_name("uuid")
-        nodegroup = yield deferToThread(self.make_node_group, uuid)
+        interface, ngi, nodegroup = yield deferToThread(
+            self.make_interface_on_managed_cluster_interface)
         mapping = {
-            "ip": factory.make_ipv4_address(),
-            "mac": factory.make_mac_address()
+            "ip": ngi.ip_range_low,
+            "mac": interface.mac_address.get_raw(),
         }
 
         response = yield call_responder(Region(), UpdateLeases, {
-            b"uuid": uuid, b"mappings": [mapping]})
+            b"uuid": nodegroup.uuid, b"mappings": [mapping]})
 
         self.assertThat(response, Equals({}))
 
@@ -914,7 +917,7 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         # objects (unless they have been prefetched).
         all_events_qs = Event.objects.all().select_related(
             'node', 'type')
-        node = MACAddress.objects.get(mac_address=mac_address).node
+        node = PhysicalInterface.objects.get(mac_address=mac_address).node
         event = all_events_qs.get(node=node, type__name=type_name)
         return event
 
@@ -924,8 +927,12 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
             name=name, description=description, level=level)
 
     @transactional
-    def make_mac_address(self):
-        return factory.make_MACAddress_with_Node()
+    def make_interface(self):
+        # Precache the node. So a database query is not made in the event-loop.
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        node = interface.node
+        ignore_unused(node)
+        return interface
 
     @wait_for_reactor
     @inlineCallbacks
@@ -934,8 +941,8 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         description = factory.make_name('description')
         level = random.randint(0, 100)
         yield deferToThread(self.create_event_type, name, description, level)
-        MAC_address = yield deferToThread(self.make_mac_address)
-        mac_address = MAC_address.mac_address.get_raw()
+        interface = yield deferToThread(self.make_interface)
+        mac_address = interface.mac_address.get_raw()
 
         event_description = factory.make_name('description')
         response = yield call_responder(
@@ -950,7 +957,7 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         self.assertEqual({}, response)
         event = yield deferToThread(self.get_event, mac_address, name)
         self.assertEquals(
-            (MAC_address.node.system_id, event_description, name),
+            (interface.node.system_id, event_description, name),
             (event.node.system_id, event.description, event.type.name)
         )
 
@@ -2288,8 +2295,8 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         self.assertIsNotNone(responder)
 
     @transactional
-    def make_mac_address(self, node):
-        return factory.make_MACAddress(node=node)
+    def make_interface(self, node):
+        return factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
 
     @transactional
     def create_node(self):
@@ -2303,11 +2310,11 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         node_info_function = self.patch(
             regionservice, 'request_node_info_by_mac_address')
         node_info_function.return_value = (node, purpose)
-        mac_address = yield deferToThread(
-            self.make_mac_address, node)
+        interface = yield deferToThread(
+            self.make_interface, node)
 
         params = {
-            'mac_address': mac_address.mac_address.get_raw(),
+            'mac_address': interface.mac_address.get_raw(),
         }
 
         response = yield call_responder(

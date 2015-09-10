@@ -279,7 +279,7 @@ class TestCommissionAction(MAASServerTestCase):
 
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
-            mac=True, status=self.status,
+            interface=True, status=self.status,
             power_type='ether_wake', power_state=POWER_STATE.OFF)
         self.patch_autospec(node, 'start_transition_monitor')
         node_start = self.patch(node, 'start')
@@ -321,7 +321,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
         """
         with transaction.atomic():
             node = factory.make_Node(
-                mac=True, status=NODE_STATUS.COMMISSIONING,
+                interface=True, status=NODE_STATUS.COMMISSIONING,
                 power_type='virsh')
             admin = factory.make_admin()
 
@@ -346,7 +346,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
         """
         with transaction.atomic():
             node = factory.make_Node(
-                mac=True, status=NODE_STATUS.DEPLOYING,
+                interface=True, status=NODE_STATUS.DEPLOYING,
                 power_type='virsh')
             admin = factory.make_admin()
 
@@ -370,7 +370,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
 
     def test_Acquire_acquires_node(self):
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.READY,
+            interface=True, status=NODE_STATUS.READY,
             power_type='ether_wake', with_boot_disk=True)
         user = factory.make_User()
         Acquire(node, user).execute()
@@ -379,7 +379,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
 
     def test_Acquire_uses_node_acquire_lock(self):
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.READY,
+            interface=True, status=NODE_STATUS.READY,
             power_type='ether_wake', with_boot_disk=True)
         user = factory.make_User()
         node_acquire = self.patch(locks, 'node_acquire')
@@ -406,7 +406,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_is_actionable_if_user_doesnt_have_ssh_keys(self):
         owner = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=owner)
         self.assertTrue(Deploy(node, owner).is_actionable())
 
@@ -414,14 +414,14 @@ class TestDeployAction(MAASServerTestCase):
         owner = factory.make_User()
         factory.make_SSHKey(owner)
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=owner)
         self.assertTrue(Deploy(node, owner).is_actionable())
 
     def test_Deploy_starts_node(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         node_start = self.patch(node, 'start')
         Deploy(node, user).execute()
@@ -431,7 +431,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_raises_NodeActionError_for_invalid_os(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
         os_name = factory.make_name("os")
@@ -449,7 +449,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_sets_osystem_and_series(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
         osystem = make_usable_osystem(self)
@@ -467,7 +467,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_sets_osystem_and_series_strips_license_key_token(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
         osystem = make_usable_osystem(self)
@@ -485,7 +485,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_doesnt_set_osystem_and_series_if_os_missing(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
@@ -499,7 +499,7 @@ class TestDeployAction(MAASServerTestCase):
     def test_Deploy_doesnt_set_osystem_and_series_if_series_missing(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
@@ -529,10 +529,13 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+        node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user,
             power_state=POWER_STATE.OFF)
-        ngi = node.get_primary_mac().cluster_interface
+        boot_interface = node.get_boot_interface()
+        ip_address = boot_interface.ip_addresses.first()
+        subnet = ip_address.subnet
+        ngi = subnet.nodegroupinterface_set.first()
 
         # Narrow the available IP range and pre-claim the only address.
         ngi.static_ip_range_high = ngi.static_ip_range_low
@@ -567,7 +570,7 @@ class TestPowerOnAction(MAASServerTestCase):
     def test_PowerOn_starts_node(self):
         user = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            interface=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         node_start = self.patch(node, 'start')
         PowerOn(node, user).execute()
@@ -584,14 +587,14 @@ class TestPowerOnAction(MAASServerTestCase):
     def test_PowerOn_is_actionable_if_node_doesnt_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DEPLOYED,
+            interface=True, status=NODE_STATUS.DEPLOYED,
             power_type='ether_wake')
         self.assertTrue(PowerOn(node, owner).is_actionable())
 
     def test_PowerOn_is_actionable_if_node_does_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DEPLOYED,
+            interface=True, status=NODE_STATUS.DEPLOYED,
             power_type='ether_wake', owner=owner)
         self.assertTrue(PowerOn(node, owner).is_actionable())
 
@@ -605,7 +608,7 @@ class TestPowerOffAction(MAASServerTestCase):
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DEPLOYED,
+            interface=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
         self.patch(node, 'start_transition_monitor')
@@ -622,7 +625,7 @@ class TestPowerOffAction(MAASServerTestCase):
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.READY,
+            interface=True, status=NODE_STATUS.READY,
             power_type='ipmi', power_parameters=params)
         node_stop = self.patch_autospec(node, 'stop')
 
@@ -694,7 +697,7 @@ class TestReleaseAction(MAASServerTestCase):
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
-            mac=True, status=self.actionable_status,
+            interface=True, status=self.actionable_status,
             power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
         self.patch(node, 'start_transition_monitor')
@@ -835,7 +838,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
 
     def make_action(self, action_class, node_status, power_state=None):
         node = factory.make_Node(
-            mac=True, status=node_status, power_type='ether_wake',
+            interface=True, status=node_status, power_type='ether_wake',
             power_state=power_state)
         admin = factory.make_admin()
         return action_class(node, admin)

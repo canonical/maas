@@ -26,6 +26,7 @@ from maasserver import forms
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
+    INTERFACE_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -130,7 +131,8 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.make_mac_address()
-        factory.make_MACAddress_with_Node(mac_address)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
         response = self.client.get(
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
@@ -138,23 +140,12 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
             (httplib.OK, "true"),
             (response.status_code, response.content))
 
-    def test_is_registered_returns_False_if_mac_registered_node_retired(self):
-        mac_address = factory.make_mac_address()
-        mac = factory.make_MACAddress_with_Node(mac_address)
-        mac.node.status = NODE_STATUS.RETIRED
-        mac.node.save()
-        response = self.client.get(
-            reverse('nodes_handler'),
-            {'op': 'is_registered', 'mac_address': mac_address})
-        self.assertEqual(
-            (httplib.OK, "false"),
-            (response.status_code, response.content))
-
     def test_is_registered_normalizes_mac_address(self):
         # These two non-normalized MAC addresses are the same.
         non_normalized_mac_address = 'AA-bb-cc-dd-ee-ff'
         non_normalized_mac_address2 = 'aabbccddeeff'
-        factory.make_MACAddress_with_Node(non_normalized_mac_address)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=non_normalized_mac_address)
         response = self.client.get(
             reverse('nodes_handler'),
             {
@@ -264,9 +255,12 @@ class TestFilteredNodesListFromRequest(APITestCase):
     def test_node_list_with_macs_returns_matching_nodes(self):
         # The "list" operation takes optional "mac_address" parameters. Only
         # nodes with matching MAC addresses will be returned.
-        macs = [factory.make_MACAddress_with_Node() for _ in range(3)]
-        matching_mac = unicode(macs[0].mac_address)
-        matching_system_id = macs[0].node.system_id
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3)
+        ]
+        matching_mac = unicode(interfaces[0].mac_address)
+        matching_system_id = interfaces[0].node.system_id
 
         query = RequestFixture({'mac_address': [matching_mac]}, 'mac_address')
         node_list = nodes_module.filtered_nodes_list_from_request(query)
@@ -281,7 +275,8 @@ class TestFilteredNodesListFromRequest(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = unicode(factory.make_MACAddress_with_Node())
+        ok_mac = unicode(
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL).mac_address)
         mac_list = [bad_mac1, bad_mac2, ok_mac]
 
         query = RequestFixture({'mac_address': mac_list}, 'mac_address')
@@ -404,7 +399,7 @@ class TestNodesAPI(APITestCase):
         self.expectThat(node.hostname, Equals(hostname))
         self.expectThat(node.architecture, Equals(architecture))
         self.expectThat(
-            {mac.mac_address for mac in node.macaddress_set.all()},
+            {nic.mac_address for nic in node.interface_set.all()},
             Equals(macs))
 
     def test_POST_new_when_logged_in_creates_node_in_declared_state(self):
@@ -501,7 +496,7 @@ class TestNodesAPI(APITestCase):
 
     def create_nodes(self, nodegroup, nb):
         for _ in range(nb):
-            factory.make_Node(nodegroup=nodegroup, mac=True)
+            factory.make_Node(nodegroup=nodegroup, interface=True)
 
     def test_GET_list_nodes_issues_constant_number_of_queries(self):
         # XXX: GavinPanella 2014-10-03 bug=1377335
@@ -592,7 +587,7 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_with_hostname_returns_matching_nodes(self):
         # The list operation takes optional "hostname" parameters. Only nodes
         # with matching hostnames will be returned.
-        nodes = [factory.make_Node() for counter in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         matching_hostname = nodes[0].hostname
         matching_system_id = nodes[0].system_id
         response = self.client.get(reverse('nodes_handler'), {
@@ -606,9 +601,12 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_with_macs_returns_matching_nodes(self):
         # The "list" operation takes optional "mac_address" parameters. Only
         # nodes with matching MAC addresses will be returned.
-        macs = [factory.make_MACAddress_with_Node() for counter in range(3)]
-        matching_mac = macs[0].mac_address
-        matching_system_id = macs[0].node.system_id
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3)
+        ]
+        matching_mac = interfaces[0].mac_address
+        matching_system_id = interfaces[0].node.system_id
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [matching_mac],
@@ -623,7 +621,8 @@ class TestNodesAPI(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = factory.make_MACAddress_with_Node()
+        ok_mac = unicode(
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL).mac_address)
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
@@ -1214,40 +1213,43 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_network(self):
-        networks = factory.make_Networks(5)
-        macs = [
-            factory.make_MACAddress_with_Node(
-                node=factory.make_Node(
-                    status=NODE_STATUS.READY, with_boot_disk=True),
-                networks=[network])
-            for network in networks
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(5)
         ]
-        # We'll make it so that only the node and network at this index will
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(
+                status=NODE_STATUS.READY, with_boot_disk=True, subnet=subnet)
+            for subnet in subnets
+        ]
+        # We'll make it so that only the node and subnet at this index will
         # match the request.
         pick = 2
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            'networks': [networks[pick].name],
+            'networks': [subnets[pick].name],
         })
 
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
-        self.assertEqual(macs[pick].node.system_id, response_json['system_id'])
+        self.assertEqual(
+            nodes[pick].system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_not_network(self):
-        networks = factory.make_Networks(5)
-        for network in networks:
-            node = factory.make_Node(
-                status=NODE_STATUS.READY, with_boot_disk=True)
-            factory.make_MACAddress(node=node, networks=[network])
-        right_node = factory.make_Node(
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(5)
+        ]
+        for subnet in subnets:
+            factory.make_Node_with_Interface_on_Subnet(
+                status=NODE_STATUS.READY, with_boot_disk=True, subnet=subnet)
+        right_node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, with_boot_disk=True)
-        factory.make_MACAddress(node=node, networks=[factory.make_Network()])
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            'not_networks': [network.name for network in networks],
+            'not_networks': [subnet.name for subnet in subnets],
         })
 
         self.assertResponseCode(httplib.OK, response)

@@ -27,8 +27,9 @@ from maasserver.forms import (
     DeviceWithMACsForm,
 )
 from maasserver.models.node import Device
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.orm import commit_within_atomic_block
 from maasserver.websockets.base import (
@@ -68,11 +69,11 @@ def update_host_maps(static_mappings, nodegroups):
     return list(dhcp.update_host_maps(static_mappings))
 
 
-def get_MACAddress_from_list(mac_addresses, mac):
-    """Return the `MACAddress` object based on the mac value."""
-    for mac_obj in mac_addresses:
-        if mac_obj.mac_address == mac:
-            return mac_obj
+def get_Interface_from_list(interfaces, mac):
+    """Return the `Interface` object based on the mac value."""
+    for obj in interfaces:
+        if obj.mac_address == mac:
+            return obj
     return None
 
 
@@ -113,11 +114,8 @@ class DeviceHandler(TimestampedModelHandler):
         queryset = (
             Device.devices.filter(installable=False)
             .select_related('nodegroup', 'owner')
-            .prefetch_related('macaddress_set')
-            .prefetch_related('macaddress_set__ip_addresses')
-            .prefetch_related('macaddress_set__cluster_interface')
+            .prefetch_related('interface_set__ip_addresses__subnet')
             .prefetch_related('nodegroup__nodegroupinterface_set')
-            .prefetch_related('nodegroup__dhcplease_set')
             .prefetch_related('zone')
             .prefetch_related('tags'))
         pk = 'system_id'
@@ -126,7 +124,8 @@ class DeviceHandler(TimestampedModelHandler):
         exclude = [
             "id",
             "installable",
-            "pxe_mac",
+            "boot_interface",
+            "boot_cluster_ip",
             "boot_disk",
             "token",
             "netboot",
@@ -200,21 +199,20 @@ class DeviceHandler(TimestampedModelHandler):
         data["fqdn"] = obj.fqdn
         data["actions"] = compile_node_actions(obj, self.user).keys()
 
-        # Use the `get_pxe_mac` because for devices this will be the first
-        # mac address assigned to this node, ordered by id, and using the
-        # results cache. Not causing an extra query per device.
-        primary_mac = obj.get_pxe_mac()
+        boot_interface = obj.get_boot_interface()
         data["primary_mac"] = (
-            "%s" % primary_mac.mac_address
-            if primary_mac is not None else "")
+            "%s" % boot_interface.mac_address
+            if boot_interface is not None else "")
         data["extra_macs"] = [
-            "%s" % mac_address.mac_address
-            for mac_address in obj.macaddress_set.all()
-            if mac_address != primary_mac
+            "%s" % interface.mac_address
+            for interface in obj.interface_set.all()
+            if interface != boot_interface
             ]
 
-        data["ip_assignment"] = self.dehydrate_ip_assignment(obj, primary_mac)
-        data["ip_address"] = self.dehydrate_ip_address(obj, primary_mac)
+        data["ip_assignment"] = self.dehydrate_ip_assignment(
+            obj, boot_interface)
+        data["ip_address"] = self.dehydrate_ip_address(
+            obj, boot_interface)
 
         data["tags"] = [
             tag.name
@@ -222,37 +220,49 @@ class DeviceHandler(TimestampedModelHandler):
             ]
         return data
 
-    def dehydrate_ip_assignment(self, obj, primary_mac):
-        """Return the calculated `DEVICE_IP_ASSIGNMENT` based on the model."""
-        if primary_mac is None:
-            return ""
-        # Calculate the length of the QuerySet instead of using `count` so
-        # it doesn't perform another query to the database.
-        num_ip_address = len(primary_mac.ip_addresses.all())
-        if primary_mac.cluster_interface is None and num_ip_address > 0:
-            return DEVICE_IP_ASSIGNMENT.EXTERNAL
-        elif primary_mac.cluster_interface is not None and num_ip_address > 0:
-            return DEVICE_IP_ASSIGNMENT.STATIC
-        else:
-            return DEVICE_IP_ASSIGNMENT.DYNAMIC
+    def _get_first_none_discovered_ip(self, ip_addresses):
+        for ip in ip_addresses:
+            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                return ip
 
-    def dehydrate_ip_address(self, obj, primary_mac):
+    def _get_first_discovered_ip_with_ip(self, ip_addresses):
+        for ip in ip_addresses:
+            if ip.alloc_type == IPADDRESS_TYPE.DISCOVERED and ip.ip:
+                return ip
+
+    def dehydrate_ip_assignment(self, obj, interface):
+        """Return the calculated `DEVICE_IP_ASSIGNMENT` based on the model."""
+        if interface is None:
+            return ""
+        # We get the IP address from the all() so the cache is used.
+        ip_addresses = list(interface.ip_addresses.all())
+        first_ip = self._get_first_none_discovered_ip(ip_addresses)
+        if first_ip is not None:
+            if first_ip.alloc_type == IPADDRESS_TYPE.DHCP:
+                return DEVICE_IP_ASSIGNMENT.DYNAMIC
+            elif first_ip.subnet is None:
+                return DEVICE_IP_ASSIGNMENT.EXTERNAL
+            else:
+                return DEVICE_IP_ASSIGNMENT.STATIC
+        return DEVICE_IP_ASSIGNMENT.DYNAMIC
+
+    def dehydrate_ip_address(self, obj, interface):
         """Return the IP address for the device."""
-        if primary_mac is None:
+        if interface is None:
             return None
 
         # Get ip address from StaticIPAddress if available.
-        static_ips = list(primary_mac.ip_addresses.all())
-        if len(static_ips) > 0:
-            return "%s" % static_ips[0].ip
-
-        # Not in StaticIPAddress check in the leases for this devices
-        # cluster.
-        for lease in obj.nodegroup.dhcplease_set.all():
-            if lease.mac == primary_mac.mac_address:
-                return "%s" % lease.ip
-
-        # Currently has no ip address.
+        ip_addresses = list(interface.ip_addresses.all())
+        first_ip = self._get_first_none_discovered_ip(ip_addresses)
+        if first_ip is not None:
+            if first_ip.alloc_type == IPADDRESS_TYPE.DHCP:
+                discovered_ip = self._get_first_discovered_ip_with_ip(
+                    ip_addresses)
+                if discovered_ip:
+                    return "%s" % discovered_ip.ip
+            elif first_ip.ip:
+                return "%s" % first_ip.ip
+        # Currently has no assigned IP address.
         return None
 
     def get_object(self, params):
@@ -306,30 +316,35 @@ class DeviceHandler(TimestampedModelHandler):
         # based on the users choices.
         data = super(DeviceHandler, self).create(params)
         device_obj = Device.objects.get(system_id=data['system_id'])
-        mac_addresses = list(device_obj.macaddress_set.all())
+        interfaces = list(device_obj.interface_set.all())
         external_static_ips = []
         assigned_sticky_ips = []
 
         # Acquire all of the needed ip address based on the user selection.
         for nic in params["interfaces"]:
-            mac_address = get_MACAddress_from_list(mac_addresses, nic["mac"])
+            interface = get_Interface_from_list(interfaces, nic["mac"])
             ip_assignment = nic["ip_assignment"]
             if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
-                sticky_ip = mac_address.set_static_ip(
-                    nic["ip_address"], self.user, update_host_maps=False)
+                subnet = Subnet.objects.get_best_subnet_for_ip(
+                    nic["ip_address"])
+                sticky_ip = StaticIPAddress.objects.create(
+                    alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                    ip=nic["ip_address"], subnet=subnet, user=self.user)
+                interface.ip_addresses.add(sticky_ip)
                 external_static_ips.append(
-                    (sticky_ip, mac_address))
+                    (sticky_ip, interface))
             elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
-                # Nothing needs to be done. It will get an ip address in the
-                # dynamic range the first time it DHCP from a cluster
-                # interface.
-                pass
+                dhcp_ip = StaticIPAddress.objects.create(
+                    alloc_type=IPADDRESS_TYPE.DHCP, ip=None)
+                interface.ip_addresses.add(dhcp_ip)
             elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
                 # Link the MAC address to the cluster interface.
                 cluster_interface = NodeGroupInterface.objects.get(
                     id=nic["interface"])
-                mac_address.cluster_interface = cluster_interface
-                mac_address.save()
+                ip = StaticIPAddress.objects.create(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                    ip=None, subnet=cluster_interface.subnet)
+                interface.ip_addresses.add(ip)
 
                 # Convert an empty string to None.
                 ip_address = nic.get("ip_address")
@@ -337,69 +352,15 @@ class DeviceHandler(TimestampedModelHandler):
                     ip_address = None
 
                 # Claim the static ip.
-                sticky_ips = mac_address.claim_static_ips(
-                    alloc_type=IPADDRESS_TYPE.STICKY,
-                    requested_address=ip_address, update_host_maps=False)
+                sticky_ips = interface.claim_static_ips(
+                    requested_address=ip_address)
                 assigned_sticky_ips.extend([
-                    (static_ip, mac_address)
+                    (static_ip, interface)
                     for static_ip in sticky_ips
-                    ])
+                ])
 
-        # Commit all of the changes before telling the clusters to
-        # update.
-        commit_within_atomic_block()
-
-        # Update the managed clusters with all the external static ip
-        # addresses.
-        if len(external_static_ips) > 0:
-            dhcp_managed_clusters = [
-                cluster
-                for cluster in NodeGroup.objects.all()
-                if cluster.manages_dhcp()
-                ]
-            claims = [
-                (static_ip.ip, mac.mac_address.get_raw())
-                for static_ip, mac in external_static_ips
-                ]
-            failures = update_host_maps(
-                claims, dhcp_managed_clusters)
-            if len(failures) > 0:
-                # Delete the created device and ip addresses.
-                delete_device_and_static_ip_addresses(
-                    device_obj, external_static_ips, assigned_sticky_ips)
-
-                # Now raise the first error to show a reason to the user.
-                # It is possible to have multiple errors, but at the moment
-                # we only raise the first error.
-                raise HandlerError(failures[0].value)
-
-        # Update the devices cluster with all the assigned sticky ip
-        # addresses.
-        if len(assigned_sticky_ips) > 0:
-            claims = [
-                (static_ip.ip, mac.mac_address.get_raw())
-                for static_ip, mac in assigned_sticky_ips
-                ]
-            failures = update_host_maps(
-                claims, [device_obj.nodegroup])
-            if len(failures) > 0:
-                # Delete the created device and ip addresses.
-                delete_device_and_static_ip_addresses(
-                    device_obj, external_static_ips, assigned_sticky_ips)
-
-                # Now raise the first error to show a reason to the user.
-                # It is possible to have multiple errors, but at the moment
-                # we only raise the first error.
-                raise HandlerError(failures[0].value)
-
-        # Update the DNS zone for the master cluster as all device entries
-        # go into that cluster.
         log_static_allocations(
             device_obj, external_static_ips, assigned_sticky_ips)
-        if len(external_static_ips) > 0 or len(assigned_sticky_ips) > 0:
-            from maasserver.dns import config as dns_config
-            dns_config.dns_update_zones([NodeGroup.objects.ensure_master()])
-
         return self.full_dehydrate(device_obj)
 
     def action(self, params):

@@ -122,8 +122,8 @@ class TestDHCPSignals(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.router_ip = factory.pick_ip_in_network(
-            interface.network, but_not=[interface.router_ip])
+        interface.subnet.gateway_ip = factory.pick_ip_in_network(
+            interface.network, but_not=[interface.subnet.gateway_ip])
         interface.save()
 
         self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))

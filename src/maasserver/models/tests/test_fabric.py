@@ -135,7 +135,8 @@ class TestFabric(MAASServerTestCase):
     def test_cant_delete_fabric_if_connected_to_interfaces(self):
         fabric = factory.make_Fabric()
         factory.make_Interface(
-            vlan=fabric.get_default_vlan(), type=INTERFACE_TYPE.PHYSICAL)
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=fabric.get_default_vlan())
         error = self.assertRaises(ValidationError, fabric.delete)
         self.assertEqual(
             "Can't delete fabric: interfaces are connected to VLANs from this "

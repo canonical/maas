@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from functools import partial
 import httplib
 
 from django.core.urlresolvers import reverse
@@ -83,10 +84,10 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
 
     def test_invalid_check_object(self):
         backend = MAASAuthorizationBackend()
-        mac = make_unallocated_node().add_mac_address('AA:BB:CC:DD:EE:FF')
+        exc = factory.make_exception()
         self.assertRaises(
             NotImplementedError, backend.has_perm,
-            factory.make_admin(), NODE_PERMISSION.VIEW, mac)
+            factory.make_admin(), NODE_PERMISSION.VIEW, exc)
 
     def test_invalid_check_permission(self):
         backend = MAASAuthorizationBackend()
@@ -230,95 +231,59 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_FilesystemGroup()))
 
-    def test_user_can_view_a_fabric(self):
+
+class TestMAASAuthorizationBackendForNetworking(MAASServerTestCase):
+
+    scenarios = (
+        ("fabric", {"factory": factory.make_Fabric}),
+        ("interface", {
+            "factory": partial(
+                factory.make_Interface, INTERFACE_TYPE.PHYSICAL)}),
+        ("subnet", {"factory": factory.make_Subnet}),
+        ("space", {"factory": factory.make_Space}),
+        )
+
+    def test_user_can_view(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         self.assertTrue(
             backend.has_perm(
-                user, NODE_PERMISSION.VIEW, factory.make_Fabric()))
+                user, NODE_PERMISSION.VIEW, self.factory()))
 
-    def test_user_cannot_edit_a_fabric(self):
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        self.assertFalse(
-            backend.has_perm(
-                user, NODE_PERMISSION.EDIT, factory.make_Fabric()))
-
-    def test_user_not_admin_of_a_fabric(self):
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        self.assertFalse(
-            backend.has_perm(
-                user, NODE_PERMISSION.ADMIN, factory.make_Fabric()))
-
-    def test_admin_can_view_a_fabric(self):
-        backend = MAASAuthorizationBackend()
-        admin = factory.make_admin()
-        self.assertTrue(
-            backend.has_perm(
-                admin, NODE_PERMISSION.VIEW, factory.make_Fabric()))
-
-    def test_admin_can_edit_a_fabric(self):
-        backend = MAASAuthorizationBackend()
-        admin = factory.make_admin()
-        self.assertTrue(
-            backend.has_perm(
-                admin, NODE_PERMISSION.EDIT, factory.make_Fabric()))
-
-    def test_admin_is_admin_of_a_fabric(self):
-        backend = MAASAuthorizationBackend()
-        admin = factory.make_admin()
-        self.assertTrue(
-            backend.has_perm(
-                admin, NODE_PERMISSION.ADMIN, factory.make_Fabric()))
-
-    def test_user_can_view_a_interface(self):
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        self.assertTrue(
-            backend.has_perm(
-                user, NODE_PERMISSION.VIEW,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
-
-    def test_user_cannot_edit_a_interface(self):
+    def test_user_cannot_edit(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         self.assertFalse(
             backend.has_perm(
-                user, NODE_PERMISSION.EDIT,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+                user, NODE_PERMISSION.EDIT, self.factory()))
 
-    def test_user_not_admin_of_a_interface(self):
+    def test_user_not_admin(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         self.assertFalse(
             backend.has_perm(
-                user, NODE_PERMISSION.ADMIN,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+                user, NODE_PERMISSION.ADMIN, self.factory()))
 
-    def test_admin_can_view_a_interface(self):
+    def test_admin_can_view(self):
         backend = MAASAuthorizationBackend()
         admin = factory.make_admin()
         self.assertTrue(
             backend.has_perm(
-                admin, NODE_PERMISSION.VIEW,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+                admin, NODE_PERMISSION.VIEW, self.factory()))
 
-    def test_admin_can_edit_a_interface(self):
+    def test_admin_can_edit(self):
         backend = MAASAuthorizationBackend()
         admin = factory.make_admin()
         self.assertTrue(
             backend.has_perm(
-                admin, NODE_PERMISSION.EDIT,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+                admin, NODE_PERMISSION.EDIT, self.factory()))
 
-    def test_admin_is_admin_of_a_interface(self):
+    def test_admin_is_admin(self):
         backend = MAASAuthorizationBackend()
         admin = factory.make_admin()
         self.assertTrue(
             backend.has_perm(
-                admin, NODE_PERMISSION.ADMIN,
-                factory.make_Interface(INTERFACE_TYPE.PHYSICAL)))
+                admin, NODE_PERMISSION.ADMIN, self.factory()))
 
 
 class TestNodeVisibility(MAASServerTestCase):

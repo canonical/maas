@@ -16,15 +16,10 @@ __all__ = []
 
 import random
 
-from maasserver.models import (
-    Network,
-    NodeGroup,
-)
+from maasserver.models import NodeGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.factory import TooManyRandomRetries
-from maastesting.utils import FakeRandInt
 
 
 class TestFactory(MAASServerTestCase):
@@ -105,45 +100,3 @@ class TestFactory(MAASServerTestCase):
         factory.make_Zone()
         node = reload_object(node)
         self.assertEqual(previous_zone, node.zone)
-
-    def test_make_Networks_lowers_names_if_sortable_name(self):
-        networks = factory.make_Networks(10, sortable_name=True)
-        self.assertEqual(
-            [network.name.lower() for network in networks],
-            [network.name for network in networks])
-
-    def test_make_Networks_generates_desired_number_of_networks(self):
-        number = random.randint(1, 20)
-        networks = factory.make_Networks(number)
-        self.assertEqual(number, len(networks))
-        self.assertIsInstance(networks[0], Network)
-        self.assertIsInstance(networks[-1], Network)
-
-    def test_make_Networks_passes_on_keyword_arguments(self):
-        description = factory.make_string()
-        [network] = factory.make_Networks(1, description=description)
-        self.assertEqual(description, network.description)
-
-    def test_make_Networks_includes_VLANs_by_default(self):
-        class FakeNetwork:
-            def __init__(self, vlan_tag, *args, **kwargs):
-                self.vlan_tag = vlan_tag
-        self.patch(factory, 'make_Network', FakeNetwork)
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
-        networks = factory.make_Networks(100)
-        self.assertEqual({None, 1}, {network.vlan_tag for network in networks})
-
-    def test_make_Networks_excludes_VLANs_if_not_with_vlans(self):
-        class FakeNetwork:
-            def __init__(self, vlan_tag, *args, **kwargs):
-                self.vlan_tag = vlan_tag
-        self.patch(factory, 'make_Network', FakeNetwork)
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
-        networks = factory.make_Networks(100, with_vlans=False)
-        self.assertEqual({None}, {network.vlan_tag for network in networks})
-
-    def test_make_Networks_gives_up_if_random_tags_keep_clashing(self):
-        self.patch(factory, 'make_Network')
-        self.patch(random, 'randint', lambda *args: 1)
-        self.patch(factory, 'pick_bool', lambda *args: False)
-        self.assertRaises(TooManyRandomRetries, factory.make_Networks, 2)

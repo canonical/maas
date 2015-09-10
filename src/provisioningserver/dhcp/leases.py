@@ -87,8 +87,9 @@ def parse_leases_file():
     """Parse the DHCP leases file.
 
     :return: A tuple: (timestamp, leases).  The `timestamp` is the last
-        modification time of the leases file, and `leases` is a dict
-        mapping leased IP addresses to their associated MAC addresses.
+        modification time of the leases file, and `leases` is a list
+        containing tuples of leased IP addresses and their associated MAC
+        addresses.
         None will be returned if the DHCP lease file cannot be found.
     """
     try:

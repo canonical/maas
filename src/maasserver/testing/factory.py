@@ -60,7 +60,6 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Device,
-    DHCPLease,
     DownloadProgress,
     Event,
     EventType,
@@ -70,9 +69,6 @@ from maasserver.models import (
     FilesystemGroup,
     LargeFile,
     LicenseKey,
-    MACAddress,
-    MACStaticIPAddressLink,
-    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -258,7 +254,7 @@ class Factory(maastesting.factory.Factory):
         return device
 
     def make_Node(
-            self, mac=False, hostname=None, status=None,
+            self, interface=False, hostname=None, status=None,
             architecture="i386/generic", min_hwe_kernel=None, hwe_kernel=None,
             installable=True, updated=None, created=None, nodegroup=None,
             routers=None, zone=None, networks=None, boot_type=None,
@@ -313,8 +309,8 @@ class Factory(maastesting.factory.Factory):
         # encounter collisions.
         if networks is not None:
             node.networks.add(*networks)
-        if mac:
-            self.make_MACAddress(node=node, vlan=vlan)
+        if interface:
+            self.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
         if with_boot_disk:
             self.make_PhysicalBlockDevice(node=node)
 
@@ -327,7 +323,7 @@ class Factory(maastesting.factory.Factory):
         return reload_object(node)
 
     def get_interface_fields(self, name=None, ip=None, router_ip=None,
-                             network=None, subnet_mask=None,
+                             network=None, subnet=None, subnet_mask=None,
                              ip_range_low=None, ip_range_high=None,
                              interface=None, management=None,
                              static_ip_range_low=None,
@@ -345,6 +341,8 @@ class Factory(maastesting.factory.Factory):
         """
         if name is None:
             name = factory.make_name('ngi')
+        if subnet is not None:
+            network = subnet.get_ipnetwork()
         if network is None:
             network = factory.make_ipv4_network()
         # Split the network into dynamic and static ranges.
@@ -355,7 +353,7 @@ class Factory(maastesting.factory.Factory):
         else:
             dynamic_range = network
             static_range = None
-        if subnet_mask is None:
+        if subnet is None and subnet_mask is None:
             assert type(network) == IPNetwork
             subnet_mask = unicode(network.netmask)
         if static_ip_range_low is None or static_ip_range_high is None:
@@ -383,6 +381,7 @@ class Factory(maastesting.factory.Factory):
             interface = self.make_name('netinterface')
         return dict(
             name=name,
+            subnet=subnet,
             subnet_mask=subnet_mask,
             ip_range_low=ip_range_low,
             ip_range_high=ip_range_high,
@@ -460,20 +459,19 @@ class Factory(maastesting.factory.Factory):
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
                                 router_ip=None, network=None,
-                                subnet_mask=None, ip_range_low=None,
-                                ip_range_high=None, interface=None,
-                                management=None, static_ip_range_low=None,
+                                subnet=None, subnet_mask=None,
+                                ip_range_low=None, ip_range_high=None,
+                                interface=None, management=None,
+                                static_ip_range_low=None,
                                 static_ip_range_high=None, **kwargs):
         interface_settings = self.get_interface_fields(
             name=name, ip=ip, router_ip=router_ip,
-            network=network, subnet_mask=subnet_mask,
+            network=network, subnet=subnet, subnet_mask=subnet_mask,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management,
             static_ip_range_low=static_ip_range_low,
             static_ip_range_high=static_ip_range_high)
         interface_settings.update(**kwargs)
-
-        subnet = None
 
         # Only populate the subnet field if the subnet_mask exists.
         # (the caller could want an unconfigured NodeGroupInterface)
@@ -487,14 +485,15 @@ class Factory(maastesting.factory.Factory):
                     'cidr': cidr,
                     'space': Space.objects.get_default_space(),
                 })
-
-            del interface_settings['subnet_mask']
+        elif interface_settings['subnet']:
+            subnet = interface_settings.pop('subnet')
+            interface_settings['subnet_mask'] = subnet.get_ipnetwork().netmask
 
         if 'broadcast_ip' in interface_settings:
             del interface_settings['broadcast_ip']
 
         interface = NodeGroupInterface(
-            nodegroup=nodegroup, subnet=subnet, **interface_settings)
+            nodegroup=nodegroup, **interface_settings)
         interface.save()
         return interface
 
@@ -536,90 +535,108 @@ class Factory(maastesting.factory.Factory):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.make_mac_address())
 
-    def make_MACAddress(
-            self, address=None, node=None, networks=None,
-            iftype=INTERFACE_TYPE.PHYSICAL, ifname=None, vlan=None,
-            **kwargs):
-        """Create a `MACAddress` model object."""
-        if address is None:
-            address = self.make_mac_address()
-        mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
-        mac.save()
-        if iftype is not None:
-            self.make_Interface(iftype, mac=mac, name=ifname, vlan=vlan)
-        if networks is not None:
-            mac.networks.add(*networks)
-        return mac
-
-    def make_MACAddress_with_Node(self, address=None, node=None, networks=None,
-                                  **kwargs):
-        """Create a `MACAddress` model that is guaranteed to be linked
-        to a node.
-        """
-        if node is None:
-            node = self.make_Node()
-        return self.make_MACAddress(
-            node=node, address=address, networks=networks, **kwargs)
-
-    def make_Node_with_MACAddress_and_NodeGroupInterface(
+    def make_Node_with_Interface_on_Subnet(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            mac_count=1, network=None, disable_ipv4=False, vlan=None,
-            **kwargs):
-        """Create a Node that has a MACAddress which has a
+            interface_count=1, nodegroup=None, vlan=None, subnet=None,
+            cidr=None, **kwargs):
+        """Create a Node that has a Interface which is on a Subnet that has a
         NodeGroupInterface.
 
-        :param mac_count: count of MAC addresses to add
-        :param **kwargs: Additional parameters to pass to make_node.
+        :param interface_count: count of interfaces to add
+        :param **kwargs: Additional parameters to pass to make_Node.
         """
-        nodegroup = kwargs.pop("nodegroup", None)
+        mac_address = None
+        iftype = INTERFACE_TYPE.PHYSICAL
         if nodegroup is None:
             nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        if 'address' in kwargs:
+            mac_address = kwargs['address']
+            del kwargs['address']
+        if 'iftype' in kwargs:
+            iftype = kwargs['iftype']
+            del kwargs['iftype']
         node = self.make_Node(
-            mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4,
-            vlan=vlan, **kwargs)
-        ngi = self.make_NodeGroupInterface(
-            nodegroup, network=network, management=management)
-        mac = node.get_primary_mac()
-        mac.cluster_interface = ngi
-        mac.save()
-        for _ in range(1, mac_count):
-            mac = self.make_MACAddress(node=node, vlan=vlan)
-            mac.cluster_interface = ngi
-            mac.save()
+            nodegroup=nodegroup, **kwargs)
+        if vlan is None:
+            vlan = self.make_VLAN()
+        if subnet is None:
+            subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
+        # Check if the subnet already has a managed interface.
+        ngis = subnet.nodegroupinterface_set.filter(nodegroup=nodegroup)
+        ngis = ngis.exclude(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        ngi = ngis.first()
+        if ngi is None:
+            self.make_NodeGroupInterface(
+                nodegroup, vlan=vlan, management=management, subnet=subnet)
+        boot_interface = self.make_Interface(
+            iftype, node=node, vlan=vlan,
+            mac_address=mac_address)
+        node.boot_interface = boot_interface
+        node.save()
+
+        self.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet, interface=boot_interface)
+        should_have_default_link_configuration = (
+            node.status not in [
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+            ])
+        if should_have_default_link_configuration:
+            self.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=boot_interface)
+        for _ in range(1, interface_count):
+            interface = self.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+            self.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+                subnet=subnet, interface=interface)
+            if should_have_default_link_configuration:
+                self.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+                    subnet=subnet, interface=interface)
         return node
 
-    def make_StaticIPAddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
-                             mac=None, user=None, subnet=None, **kwargs):
+    UNDEFINED = float('NaN')
+
+    def _get_exclude_list(self, subnet):
+        return ([IPAddress(subnet.gateway_ip)] +
+                [IPAddress(ip) for ip in StaticIPAddress.objects.filter(
+                    subnet=subnet).values_list('ip', flat=True)
+                 if ip is not None])
+
+    def make_StaticIPAddress(self, ip=UNDEFINED,
+                             alloc_type=IPADDRESS_TYPE.AUTO, interface=None,
+                             user=None, subnet=None, **kwargs):
         """Create and return a StaticIPAddress model object.
 
-        If a non-None `mac` is passed, connect this IP address to the
-        given MAC Address.
+        If a non-None `interface` is passed, connect this IP address to the
+        given interface.
         """
-        if ip is None:
-            ip = self.make_ipv4_address()
+        if subnet is None:
+            subnet = Subnet.objects.first()
+        if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+            subnet = self.make_Subnet()
+
+        if ip is self.UNDEFINED:
+            if not subnet and alloc_type == IPADDRESS_TYPE.USER_RESERVED:
+                ip = self.make_ip_address()
+            else:
+                ip = self.pick_ip_in_network(
+                    IPNetwork(subnet.cidr),
+                    but_not=self._get_exclude_list(subnet))
+        elif ip is None or ip == '':
+            ip = ''
+
         ipaddress = StaticIPAddress(
             ip=ip, alloc_type=alloc_type, user=user, subnet=subnet, **kwargs)
         ipaddress.save()
-        if mac is not None:
-            ifaces = mac.interface_set.filter(mac=mac)
-            if len(ifaces) > 0:
-                ipaddress.interface_set.add(ifaces[0])
-            # XXX 2015-08-14 LJ remove MACStaticIPAddressLink
-            MACStaticIPAddressLink(
-                mac_address=mac, ip_address=ipaddress).save()
-        return ipaddress
-
-    def make_DHCPLease(self, nodegroup=None, ip=None, mac=None):
-        """Create a :class:`DHCPLease`."""
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
-        if ip is None:
-            ip = self.make_ipv4_address()
-        if mac is None:
-            mac = self.make_mac_address()
-        lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=MAC(mac))
-        lease.save()
-        return lease
+        if interface is not None:
+            interface.ip_addresses.add(ipaddress)
+            interface.save()
+        return reload_object(ipaddress)
 
     def make_email(self):
         return '%s@example.com' % self.make_string(10)
@@ -697,7 +714,7 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = self.make_name('vlan')
         if fabric is None:
-            fabric = self.make_Fabric()
+            fabric = Fabric.objects.get_default_fabric()
         if vid is None:
             # Don't create the vid=0 VLAN, it's auto-created.
             vid = self._get_available_vid(fabric)
@@ -705,17 +722,38 @@ class Factory(maastesting.factory.Factory):
         vlan.save()
         return vlan
 
-    def make_Interface(self, type, mac=None, vlan=None, parents=None,
-                       name=None):
-        if name is None and type != INTERFACE_TYPE.VLAN:
+    def make_Interface(
+            self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
+            vlan=None, parents=None, name=None, cluster_interface=None,
+            ip=None, enabled=True):
+        if name is None and iftype != INTERFACE_TYPE.VLAN:
             name = self.make_name('name')
+        if iftype is None:
+            iftype = INTERFACE_TYPE.PHYSICAL
         if vlan is None:
             vlan = self.make_VLAN()
-        interface = Interface(mac=mac, type=type, name=name, vlan=vlan)
+        if (mac_address is None and
+                iftype in [
+                    INTERFACE_TYPE.PHYSICAL,
+                    INTERFACE_TYPE.BOND,
+                    INTERFACE_TYPE.UNKNOWN]):
+            mac_address = self.make_MAC()
+        if node is None and iftype == INTERFACE_TYPE.PHYSICAL:
+            node = self.make_Node()
+        interface = Interface(
+            node=node, mac_address=mac_address, type=iftype,
+            name=name, vlan=vlan, enabled=enabled)
         interface.save()
+        if cluster_interface is not None:
+            sip = StaticIPAddress.objects.create(
+                ip=ip,
+                alloc_type=IPADDRESS_TYPE.DHCP,
+                subnet=cluster_interface.subnet)
+            interface.ip_addresses.add(sip)
         if parents:
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
+        interface.save()
         return reload_object(interface)
 
     def make_Tag(self, name=None, definition=None, comment='',
@@ -933,89 +971,6 @@ class Factory(maastesting.factory.Factory):
         return zone
 
     make_zone = make_Zone
-
-    def make_Network(self, name=None, network=None, vlan_tag=NO_VALUE,
-                     description=None, sortable_name=False,
-                     disjoint_from=None, default_gateway=None,
-                     dns_servers=None):
-        """Create a `Network`.
-
-        :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
-            fields will be taken from this.
-        :param vlan_tag: A number between 1 and 0xffe inclusive to create a
-            VLAN, or 0 to create a non-VLAN network, or None to make a random
-            choice.
-        :param sortable_name: If `True`, use a that will sort consistently
-            between different collation orders.  Use this when testing sorting
-            by name, where the database and the python code may have different
-            ideas about collation orders, especially when it comes to case
-            differences.
-        :param disjoint_from: List of other `Network` or `IPNetwork` objects
-            whose IP ranges the new network must not overlap with.
-        """
-        if name is None:
-            name = factory.make_name()
-        if sortable_name:
-            # The only currently known problem with sorting order is between
-            # case-sensitive and case-insensitive ordering, so use lower-case
-            # only.
-            name = name.lower()
-        if disjoint_from is None:
-            disjoint_from = []
-        # disjoint_from may contain both Network and IPNetwork.  Normalise to
-        # all IPNetwork objects.
-        disjoint_from = [
-            entry.get_network() if isinstance(entry, Network) else entry
-            for entry in disjoint_from
-            ]
-        if network is None:
-            network = self.make_ipv4_network(disjoint_from=disjoint_from)
-        if default_gateway is None and self.pick_bool():
-            default_gateway = self.pick_ip_in_network(network)
-        if dns_servers is None and self.pick_bool():
-            dns_servers = " ".join(
-                self.make_ipv4_address()
-                for _ in range(random.choice((1, 2))))
-        ip = unicode(network.ip)
-        netmask = unicode(network.netmask)
-        if description is None:
-            description = self.make_string()
-        if vlan_tag is NO_VALUE:
-            vlan_tag = self.make_vlan_tag()
-        network = Network(
-            name=name, ip=ip, netmask=netmask, vlan_tag=vlan_tag,
-            description=description, default_gateway=default_gateway,
-            dns_servers=dns_servers)
-        network.save()
-        return network
-
-    def make_Networks(self, number, with_vlans=True, **kwargs):
-        """Create multiple networks.
-
-        This avoids accidentally clashing VLAN tags.
-
-        :param with_vlans: Whether the networks should be allowed to include
-            VLANs.  If `True`, then the VLAN tags will be unique.
-        """
-        if with_vlans:
-            vlan_tags = []
-            for _ in range(1000):
-                if len(vlan_tags) == number:
-                    break
-                vlan_tag = self.make_vlan_tag(allow_none=True)
-                if vlan_tag is None or vlan_tag not in vlan_tags:
-                    vlan_tags.append(vlan_tag)
-            else:
-                raise maastesting.factory.TooManyRandomRetries(
-                    "Could not generate %d non-clashing VLAN tags" % number)
-        else:
-            vlan_tags = [None] * number
-        networks = []
-        for tag in vlan_tags:
-            networks.append(
-                self.make_Network(
-                    vlan_tag=tag, disjoint_from=networks, **kwargs))
-        return networks
 
     def make_BootSource(self, url=None, keyring_filename=None,
                         keyring_data=None):

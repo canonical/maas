@@ -16,7 +16,6 @@ __all__ = [
     "update_leases",
 ]
 
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.orm import transactional
@@ -38,7 +37,7 @@ def update_leases(uuid, mappings):
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
 
     Converts the mappings format into a dict that
-    DHCPLease.objects.update_leases needs and then calls it.
+    StaticIPAddress.objects.update_leases needs and then calls it.
 
     :raises NoSuchCluster: If the cluster identified by `uuid` does not
         exist.
@@ -49,6 +48,5 @@ def update_leases(uuid, mappings):
         raise NoSuchCluster.from_uuid(uuid)
     else:
         leases = convert_mappings_to_leases(mappings)
-        DHCPLease.objects.update_leases(nodegroup, leases)
         StaticIPAddress.objects.update_leases(nodegroup, leases)
         return {}

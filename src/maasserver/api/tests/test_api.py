@@ -519,6 +519,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         interface_settings = factory.get_interface_fields()
+        del interface_settings['subnet']
         query_data = dict(interface_settings, op="new")
         response = self.client.post(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),

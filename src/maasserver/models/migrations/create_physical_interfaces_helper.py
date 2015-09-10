@@ -123,10 +123,7 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
                 # The Subnet isn't on a known cluster interface. Expand the
                 # search. At this moment subnets are unique so no need to worry
                 # about the fabric.
-                for subnet in Subnet.objects.get_subnets_with_ip(ip.ip):
-                    break
-                else:
-                    subnet = None
+                subnet = Subnet.objects.get_best_subnet_for_ip(ip.ip)
                 if subnet is not None:
                     ip.subnet = subnet
                     ip.save()

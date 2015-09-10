@@ -17,7 +17,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     "Authenticate",
-    "ComposeCurtinNetworkPreseed",
     "ConfigureDHCPv4",
     "ConfigureDHCPv6",
     "CreateHostMaps",
@@ -212,25 +211,6 @@ class GetPreseedData(amp.Command):
             b"NoSuchOperatingSystem"),
         NotImplementedError: (
             b"NotImplementedError"),
-    }
-
-
-class ComposeCurtinNetworkPreseed(amp.Command):
-    """Generate Curtin network preseed for a node.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"osystem", amp.Unicode()),
-        (b"config", StructureAsJSON()),
-        (b"disable_ipv4", amp.Boolean()),
-        ]
-    response = [
-        (b"data", StructureAsJSON()),
-        ]
-    errors = {
-        exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem",
     }
 
 

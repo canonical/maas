@@ -75,23 +75,10 @@ def sequence(thing):
 def get_hostname_ip_mapping(nodegroup):
     """Return a mapping {hostnames -> ips} for the allocated nodes in
     `nodegroup`.
-
-    This is backward-compatibility layer which combines the mappings from
-    StaticIPAddressManager.get_hostname_ip_mapping and
-    DHCPLeaseManager.get_hostname_ip_mapping.  The latter is used to retrieve
-    the hostname -> ip mappings for the allocated nodes with an IP in the
-    dynamic range (i.e. the nodes that have been allocated before the static
-    mapping was introduced).
     """
     # Circular imports.
     from maasserver.models.staticipaddress import StaticIPAddress
-    from maasserver.models.dhcplease import DHCPLease
-    mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
-    static_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
-    # The static mapping entries take precedence over the dynamic mapping
-    # entries.
-    mapping.update(static_mapping)
-    return mapping
+    return StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
 
 
 class DNSException(MAASException):

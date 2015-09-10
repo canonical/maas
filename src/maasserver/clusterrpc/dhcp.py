@@ -73,7 +73,7 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
     :return: A generator of ``(nodegroup, ip-address/mac-address)`` tuples.
     """
     # Avoid circular imports.
-    from maasserver.models.dhcplease import DHCPLease
+    from maasserver.models.staticipaddress import StaticIPAddress
 
     for nodegroup, mappings in static_mappings.viewitems():
         managed_ranges = tuple(
@@ -81,16 +81,24 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
             for ngi in nodegroup.get_managed_interfaces()
             if ngi.static_ip_range_low is not None and
             ngi.static_ip_range_high is not None)
-        dhcp_leases = DHCPLease.objects.filter(
-            nodegroup=nodegroup, mac__in=mappings.viewvalues())
+
+        # Note: Pre-1.9, this code worked with the DHCPLease table, which
+        # had a direct link to the nodegroup. Now, the association with
+        # a nodegroup is implicit (via the attached Subnet).
+        dhcp_leases = StaticIPAddress.objects.filter(
+            subnet__nodegroupinterface__nodegroup=nodegroup,
+            interface__mac_address__in=mappings.viewvalues(),
+            ip__isnull=False)
         for dhcp_lease in dhcp_leases:
-            dhcp_lease_ip = IPAddress(dhcp_lease.ip)
-            within_managed_range = any(
-                dhcp_lease_ip in static_range
-                for static_range in managed_ranges)
-            if not within_managed_range:
-                yield nodegroup, dhcp_lease.ip
-                yield nodegroup, dhcp_lease.mac.get_raw()
+            if dhcp_lease.ip:
+                dhcp_lease_ip = IPAddress(dhcp_lease.ip)
+                within_managed_range = any(
+                    dhcp_lease_ip in static_range
+                    for static_range in managed_ranges)
+                if not within_managed_range:
+                    yield nodegroup, dhcp_lease.ip
+                    for interface in dhcp_lease.interface_set.all():
+                        yield nodegroup, interface.mac_address.get_raw()
 
 
 def gen_calls_to_remove_dynamic_host_maps(clients, static_mappings):

@@ -27,7 +27,6 @@ import unittest
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Fabric,
-    Network,
     NodeGroupInterface,
     Space,
     Subnet,

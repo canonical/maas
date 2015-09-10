@@ -53,19 +53,23 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
-import string
-
-from netaddr import IPNetwork
-
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'parse_ip_addr',
+    'get_first_and_last_usable_host_in_network',
 ]
 
 import re
+import string
+
+from maasserver.enum import IPADDRESS_FAMILY
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 
 
 def _get_settings_dict(settings_line):
@@ -169,3 +173,19 @@ def parse_ip_addr(output):
             if interface is not None:
                 _add_additional_interface_properties(interface, line)
     return interfaces
+
+
+def get_first_and_last_usable_host_in_network(network):
+    """Return the first and last usable host in network."""
+    if network.version == IPADDRESS_FAMILY.IPv4:
+        return (
+            IPAddress(network.first + 1, network.version),
+            IPAddress(network.last - 1, network.version),
+        )
+    elif network.version == IPADDRESS_FAMILY.IPv6:
+        return (
+            IPAddress(network.first + 1, network.version),
+            IPAddress(network.last, network.version),
+        )
+    else:
+        raise ValueError("Unknown IP address family: %s" % network.version)

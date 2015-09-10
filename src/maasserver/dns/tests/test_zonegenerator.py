@@ -29,11 +29,15 @@ from maasserver.dns.zonegenerator import (
     ZoneGenerator,
 )
 from maasserver.enum import (
-    NODE_STATUS,
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    interface as interface_module,
+)
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -49,7 +53,10 @@ from mock import (
     call,
     Mock,
 )
-from netaddr import IPNetwork
+from netaddr import (
+    IPNetwork,
+    IPRange,
+)
 from provisioningserver.dns.config import SRVRecord
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -190,91 +197,26 @@ class TestLazyDict(TestCase):
 class TestGetHostnameIPMapping(MAASServerTestCase):
     """Test for `get_hostname_ip_mapping`."""
 
-    def test_get_hostname_ip_mapping_combines_mappings(self):
-        nodegroup = factory.make_NodeGroup()
-        # Create dynamic mapping for a deployed node.
-        node1 = factory.make_Node(
-            nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED)
-        mac = factory.make_MACAddress(node=node1)
-        lease = factory.make_DHCPLease(
-            nodegroup=nodegroup, mac=mac.mac_address)
-        # Create static mapping for an allocated node.
-        node2 = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            nodegroup=nodegroup)
-        staticip = factory.make_StaticIPAddress(mac=node2.get_primary_mac())
+    def test_get_hostname_ip_mapping_containts_both_static_and_dynamic(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        node1 = factory.make_Node_with_Interface_on_Subnet(disable_ipv4=False)
+        boot_interface = node1.get_boot_interface()
+        [static_ip] = boot_interface.claim_static_ips()
+        ngi = static_ip.subnet.nodegroupinterface_set.first()
+        node2 = factory.make_Node(nodegroup=ngi.nodegroup, disable_ipv4=False)
+        node2_nic = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node2)
+        dynamic_ips = IPRange(ngi.ip_range_low, ngi.ip_range_high)
+        dynamic_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=unicode(dynamic_ips[0]),
+            subnet=static_ip.subnet, interface=node2_nic)
 
         expected_mapping = {
-            node1.hostname: [lease.ip],
-            node2.hostname: [staticip.ip],
+            node1.hostname: [static_ip.ip],
+            node2.hostname: [dynamic_ip.ip],
         }
         self.assertEqual(
-            expected_mapping, get_hostname_ip_mapping(nodegroup))
-
-    def test_get_hostname_ip_mapping_gives_precedence_to_static_mappings(self):
-        nodegroup = factory.make_NodeGroup()
-        # Create dynamic mapping for an allocated node.
-        node = factory.make_Node(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
-            disable_ipv4=False)
-        mac = factory.make_MACAddress(node=node)
-        factory.make_DHCPLease(
-            nodegroup=nodegroup, mac=mac.mac_address)
-        # Create static mapping for the *same* node.
-        staticip = factory.make_StaticIPAddress(mac=node.get_primary_mac())
-
-        self.assertEqual(
-            {node.hostname: [staticip.ip]},
-            get_hostname_ip_mapping(nodegroup))
-
-    def test_get_hostname_ip_mapping_includes_IPv4_and_IPv6_by_default(self):
-        # A node can have static IP addresses for IPv4 and IPv6 both.
-        # (It can't have DHCP leases for IPv6, since we don't parse or use
-        # those.)
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            status=NODE_STATUS.ALLOCATED, disable_ipv4=False)
-        mac = node.get_primary_mac()
-        ipv4 = factory.make_ipv4_address()
-        ipv6 = factory.make_ipv6_address()
-        factory.make_StaticIPAddress(mac=mac, ip=ipv4)
-        factory.make_StaticIPAddress(mac=mac, ip=ipv6)
-
-        self.assertItemsEqual(
-            [ipv4, ipv6],
-            get_hostname_ip_mapping(node.nodegroup)[node.hostname])
-
-    def test_get_hostname_ip_mapping_excludes_IPv4_if_disabled_on_node(self):
-        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-            status=NODE_STATUS.ALLOCATED, disable_ipv4=True)
-        mac = node.get_primary_mac()
-        ipv4 = factory.make_ipv4_address()
-        ipv6 = factory.make_ipv6_address()
-        factory.make_StaticIPAddress(mac=mac, ip=ipv4)
-        factory.make_StaticIPAddress(mac=mac, ip=ipv6)
-
-        self.assertItemsEqual(
-            [ipv6],
-            get_hostname_ip_mapping(node.nodegroup)[node.hostname])
-
-    def test_get_hostname_ip_mapping_disables_IPv4_per_individual_node(self):
-        nodegroup = factory.make_NodeGroup()
-        node_with_ipv4 = (
-            factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-                nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
-                disable_ipv4=False))
-        node_without_ipv4 = (
-            factory.make_Node_with_MACAddress_and_NodeGroupInterface(
-                nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
-                disable_ipv4=True))
-        ipv4 = factory.make_ipv4_address()
-        factory.make_StaticIPAddress(
-            mac=node_with_ipv4.get_primary_mac(), ip=ipv4)
-        factory.make_StaticIPAddress(
-            mac=node_without_ipv4.get_primary_mac())
-
-        mappings = get_hostname_ip_mapping(nodegroup)
-        # The node with IPv4 enabled gets its IPv4 address mapped.
-        # The node with IPv4 disabled gets no mapping.
-        self.assertEqual({node_with_ipv4.hostname: [ipv4]}, mappings)
+            expected_mapping, get_hostname_ip_mapping(ngi.nodegroup))
 
 
 def forward_zone(domain):

@@ -27,14 +27,17 @@ from maasserver.api.utils import (
     get_optional_param,
 )
 from maasserver.clusterrpc.boot_images import get_boot_images_for
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import (
     BootResource,
     Config,
     Event,
-    MACAddress,
     NodeGroup,
 )
-from maasserver.models.macaddress import update_mac_cluster_interfaces
+from maasserver.models.interface import (
+    Interface,
+    PhysicalInterface,
+)
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -76,8 +79,10 @@ def get_node_from_mac_string(mac_string):
     """
     if mac_string is None:
         return None
-    macaddress = get_one(MACAddress.objects.filter(mac_address=mac_string))
-    return macaddress.node if macaddress else None
+    interface = get_one(
+        Interface.objects.filter(
+            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_string))
+    return interface.node if interface else None
 
 
 def get_boot_image(
@@ -167,26 +172,34 @@ def pxeconfig(request):
         is preferred.
     """
     request_mac = request.GET.get('mac', None)
-    request_ip = request.GET.get('remote', None)
+    cluster_ip = get_mandatory_param(request.GET, "local")
     bios_boot_method = request.GET.get('bios_boot_method', None)
     node = get_node_from_mac_string(request_mac)
 
     if node is not None:
-        # Only update the PXE booting interface for the node if it has
+        node_needs_saving = False
+
+        # Only update the booting interface for the node if it has
         # changed.
-        if (node.pxe_mac is None or
-                node.pxe_mac.mac_address != request_mac):
-            node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
-            node.save()
+        if (node.boot_interface is None or
+                node.boot_interface.mac_address != request_mac):
+            node.boot_interface = PhysicalInterface.objects.get(
+                mac_address=request_mac)
+            node_needs_saving = True
+
+        # Update the last IP address the cluster booted from.
+        if (node.boot_cluster_ip is None or
+                node.boot_cluster_ip != cluster_ip):
+            node.boot_cluster_ip = cluster_ip
+            node_needs_saving = True
 
         # Only update the bios boot method if its changed.
         if node.bios_boot_method != bios_boot_method:
             node.bios_boot_method = bios_boot_method
-            node.save()
+            node_needs_saving = True
 
-        # Update the record of the cluster interface this node uses
-        # to PXE boot.
-        update_mac_cluster_interfaces(request_ip, request_mac, node.nodegroup)
+        if node_needs_saving:
+            node.save()
 
     if node is None or node.get_boot_purpose() == "commissioning":
         osystem = Config.objects.get_config('commissioning_osystem')
@@ -314,7 +327,6 @@ def pxeconfig(request):
         extra_kernel_opts = Config.objects.get_config("kernel_opts")
 
     server_address = get_maas_facing_server_address(nodegroup=nodegroup)
-    cluster_address = get_mandatory_param(request.GET, "local")
 
     # If the node is enlisting and the arch is the default arch (i386),
     # use the dedicated enlistment template which performs architecture
@@ -326,7 +338,7 @@ def pxeconfig(request):
         osystem=osystem, arch=arch, subarch=subarch, release=series,
         label=label, purpose=boot_purpose, hostname=hostname, domain=domain,
         preseed_url=preseed_url, log_host=server_address,
-        fs_host=cluster_address, extra_opts=extra_kernel_opts)
+        fs_host=cluster_ip, extra_opts=extra_kernel_opts)
 
     return HttpResponse(
         json.dumps(params._asdict()),

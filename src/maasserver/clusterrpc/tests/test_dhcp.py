@@ -23,10 +23,13 @@ from itertools import (
 
 from maasserver.clusterrpc import dhcp
 from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.fields import MAC
+from maasserver.models import Subnet
 from maasserver.rpc import getClientFor
 from maasserver.rpc.testing.doubles import DummyClients
 from maasserver.rpc.testing.fixtures import (
@@ -77,6 +80,23 @@ UpdateSucceeded = MatchesAll(
 FailedWith = MatchesPredicateWithParams(
     lambda failure, expected: failure.check(expected),
     "{0} does not represent a {1}", name="FailsWith")
+
+
+def make_DHCPLease(nodegroup=None, ip=None, mac=None):
+    if nodegroup is None:
+        nodegroup = factory.make_NodeGroup()
+    if ip is None:
+        subnet = nodegroup.get_managed_interfaces()[0].subnet
+    else:
+        subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+    if mac is None:
+        mac = factory.make_mac_address()
+    if ip is None:
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+    iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac_address=mac)
+    return factory.make_StaticIPAddress(
+        alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
+        subnet=subnet, interface=iface)
 
 
 class TestUpdateHostMaps(MAASServerTestCase):
@@ -253,7 +273,7 @@ class TestUpdateHostMaps(MAASServerTestCase):
         # These are preexisting leases with addresses in the dynamic range.
         # The host maps for these will be removed.
         leases_in_the_dynamic_range = {
-            factory.make_DHCPLease(
+            make_DHCPLease(
                 nodegroup, get_random_dynamic_ip(), MAC(mac_address))
             for nodegroup, mappings in static_mappings.viewitems()
             for _, mac_address in mappings.viewitems()
@@ -268,8 +288,11 @@ class TestUpdateHostMaps(MAASServerTestCase):
         self.assertThat(
             protocol.RemoveHostMaps, MockCalledOnceWith(
                 ANY, ip_addresses=ANY, shared_key=nodegroup.dhcp_key))
+        # XXX mpontillo 2015-08-28
+        # We may need a test for a single IP assigned to multiple MACs
+        # (such as both interfaces in a bond having the same IP)
         expected_ip_addresses = sum([
-            [lease.ip, lease.mac.get_raw()]
+            [lease.ip, lease.interface_set.first().mac_address.get_raw()]
             for lease in leases_in_the_dynamic_range], [])
         _, _, kwargs = protocol.RemoveHostMaps.mock_calls[0]
         observed_ip_addresses = kwargs["ip_addresses"]
@@ -516,7 +539,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         leased_ips = set()
         for _ in xrange(count):
             ip_address = pick_address(network, but_not=leased_ips)
-            yield factory.make_DHCPLease(nodegroup=nodegroup, ip=ip_address)
+            yield make_DHCPLease(nodegroup=nodegroup, ip=ip_address)
             leased_ips.add(ip_address)
 
     def test__returns_nothing_when_there_are_no_static_mappings(self):
@@ -539,7 +562,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         # Construct a `static_mappings` argument.
         return {
             nodegroup: {
-                lease.ip: lease.mac.get_raw()
+                lease.ip: lease.interface_set.first().mac_address.get_raw()
                 for lease in chain.from_iterable(leases)
             }
         }
@@ -565,7 +588,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         addrs_expected = sum([
             [
                 (nodegroup, lease.ip),
-                (nodegroup, lease.mac.get_raw())
+                (nodegroup, lease.interface_set.first().mac_address.get_raw())
             ]
             for lease in leases_without_static_range], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
@@ -593,7 +616,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         addrs_expected = sum([
             [
                 (nodegroup, lease.ip),
-                (nodegroup, lease.mac.get_raw())
+                (nodegroup, lease.interface_set.first().mac_address.get_raw())
             ]
             for lease in leases_without_static_range], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)
@@ -611,9 +634,14 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         other_network = factory.make_ipv4_network(but_not={
             nodegroupiface.get_dynamic_ip_range(),
             nodegroupiface.get_static_ip_range()})
+        new_subnet = factory.make_Subnet(cidr=other_network)
+        factory.make_NodeGroupInterface(
+            nodegroup, subnet=new_subnet,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         for lease in leases_without_static_range:
             lease.ip = factory.pick_ip_in_network(other_network, but_not={
                 lease.ip for lease in leases_without_static_range})
+            lease.subnet = new_subnet
             lease.save()  # Django doesn't flush for some reason.
 
         # This is our input into the gen_dynamic_ip_addresses_with_host_maps
@@ -629,7 +657,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         addrs_expected = sum([
             [
                 (nodegroup, lease.ip),
-                (nodegroup, lease.mac.get_raw())
+                (nodegroup, lease.interface_set.first().mac_address.get_raw())
             ]
             for lease in leases_without_static_range], [])
 
@@ -677,7 +705,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         # Mangle the leases for the second nodegroup to have the same MAC
         # addresses as those for the first nodegroup.
         for lease1, lease2 in izip(leases1, leases2):
-            lease2.mac = lease1.mac
+            lease2.mac = lease1.interface_set.first().mac_address
             lease2.save()
 
         # Pass the static mappings for only the first nodegroup.
@@ -687,7 +715,8 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         addrs_expected = sum([
             [
                 (nodegroup1, lease1.ip),
-                (nodegroup1, lease1.mac.get_raw())
+                (nodegroup1,
+                 lease1.interface_set.first().mac_address.get_raw())
             ]
             for lease1 in leases1], [])
         addrs = dhcp.gen_dynamic_ip_addresses_with_host_maps(static_mappings)

@@ -568,7 +568,7 @@ class TestGetKpackageForNode(MAASServerTestCase):
             resource_set, filename="boot-kernel", filetype="boot-kernel",
             extra={"kpackage": "linux-image-generic-lts-trusty"})
         node = factory.make_Node(
-            mac=True, power_type='ether_wake', osystem='ubuntu',
+            interface=True, power_type='ether_wake', osystem='ubuntu',
             distro_series='trusty', architecture='amd64/generic',
             hwe_kernel='hwe-t')
         self.assertEqual(

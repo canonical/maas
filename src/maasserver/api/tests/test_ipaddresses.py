@@ -18,14 +18,18 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.clusterrpc import dhcp as dhcp_module
-from maasserver.dns import config as dns_config_module
 from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
+    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
 )
-from maasserver.models import StaticIPAddress
-from maasserver.models.macaddress import MACAddress
+from maasserver.models import (
+    Interface,
+    interface as interface_module,
+    StaticIPAddress,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -41,11 +45,12 @@ from testtools.matchers import (
 from twisted.python.failure import Failure
 
 
-class TestNetworksAPI(APITestCase):
+class TestIPAddressesAPI(APITestCase):
 
     def make_interface(self, status=NODEGROUP_STATUS.ENABLED, **kwargs):
         cluster = factory.make_NodeGroup(status=status, **kwargs)
-        return factory.make_NodeGroupInterface(cluster)
+        return factory.make_NodeGroupInterface(
+            cluster, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
 
     def post_reservation_request(
             self, net=None, requested_address=None, mac=None, hostname=None):
@@ -104,7 +109,7 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(self.logged_in_user, staticipaddress.user)
 
     def test_POST_reserve_with_MAC_links_MAC_to_ip_address(self):
-        update_host_maps = self.patch(dhcp_module, 'update_host_maps')
+        update_host_maps = self.patch(interface_module, 'update_host_maps')
         interface = self.make_interface()
         net = interface.network
         mac = factory.make_mac_address()
@@ -114,7 +119,7 @@ class TestNetworksAPI(APITestCase):
         returned_address = json.loads(response.content)
         [staticipaddress] = StaticIPAddress.objects.all()
         self.expectThat(
-            staticipaddress.macaddress_set.first().mac_address,
+            staticipaddress.interface_set.first().mac_address,
             Equals(mac))
 
         # DHCP Host maps have been updated.
@@ -124,7 +129,7 @@ class TestNetworksAPI(APITestCase):
                 {interface.nodegroup: {returned_address['ip']: mac}}))
 
     def test_POST_reserve_with_MAC_returns_503_if_hostmap_update_fails(self):
-        update_host_maps = self.patch(dhcp_module, 'update_host_maps')
+        update_host_maps = self.patch(interface_module, 'update_host_maps')
         # We a specific exception here because update_host_maps() will
         # fail with RPC-specific errors.
         update_host_maps.return_value = [
@@ -142,37 +147,38 @@ class TestNetworksAPI(APITestCase):
         # No static IP has been created.
         self.expectThat(
             StaticIPAddress.objects.all(), HasLength(0))
-        # No MAC address has been created, either.
+        # No Interface has been created, either.
         self.expectThat(
-            MACAddress.objects.all(), HasLength(0))
+            Interface.objects.all(), HasLength(0))
 
-    def test_POST_returns_CONFLICT_when_static_ip_for_MAC_already_exists(self):
+    def test_POST_returns_error_when_static_ip_for_MAC_already_exists(self):
+        self.patch(interface_module, 'update_host_maps')
         interface = self.make_interface()
-        mac = factory.make_MACAddress(cluster_interface=interface)
-        mac.claim_static_ips(update_host_maps=False)
+        nic = factory.make_Interface(cluster_interface=interface)
+        nic.link_subnet(INTERFACE_LINK_TYPE.STATIC, interface.subnet)
         net = interface.network
 
-        response = self.post_reservation_request(net=net, mac=mac.mac_address)
-        self.expectThat(
-            response.status_code, Equals(httplib.CONFLICT))
-        # No new static IP has been created.
+        response = self.post_reservation_request(net=net, mac=nic.mac_address)
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
         self.expectThat(
             StaticIPAddress.objects.all().count(),
             Equals(1))
 
     def test_POST_allows_claiming_of_new_static_ips_for_existing_MAC(self):
-        self.patch(dhcp_module, 'update_host_maps')
+        self.patch(interface_module, 'update_host_maps')
 
         interface = self.make_interface()
         net = interface.network
-        mac = factory.make_MACAddress(cluster_interface=interface)
+        nic = factory.make_Interface(
+            INTERFACE_TYPE.UNKNOWN, cluster_interface=interface)
 
-        response = self.post_reservation_request(net=net, mac=mac.mac_address)
+        response = self.post_reservation_request(net=net, mac=nic.mac_address)
         self.expectThat(response.status_code, Equals(httplib.OK))
-        [staticipaddress] = StaticIPAddress.objects.all()
+        [staticipaddress] = nic.ip_addresses.all()
         self.assertEqual(
-            staticipaddress.macaddress_set.first().mac_address,
-            mac.mac_address)
+            staticipaddress.interface_set.first().mac_address,
+            nic.mac_address)
 
     def test_POST_reserve_errors_for_no_matching_interface(self):
         interface = self.make_interface()
@@ -255,6 +261,7 @@ class TestNetworksAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_POST_reserve_with_hostname_creates_ip_with_hostname(self):
+        from maasserver.dns import config as dns_config_module
         dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
         interface = self.make_interface()
         net = interface.network
@@ -266,6 +273,7 @@ class TestNetworksAPI(APITestCase):
         self.expectThat(dns_update_zones.call_count, Equals(1))
 
     def test_POST_reserve_with_hostname_and_ip_creates_ip_with_hostname(self):
+        from maasserver.dns import config as dns_config_module
         dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
         interface = self.make_interface()
         net = interface.network
@@ -357,55 +365,44 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(expected, observed)
 
     def test_POST_release_deallocates_address(self):
-        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
+        ipaddress = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertIsNone(reload_object(ipaddress))
 
-    def test_POST_release_deletes_floating_MAC_address(self):
-        self.patch(dhcp_module, dhcp_module.remove_host_maps.__name__)
+    def test_POST_release_deletes_unknown_interface(self):
+        self.patch(interface_module, "update_host_maps")
+        self.patch(interface_module, "remove_host_maps")
 
         interface = self.make_interface()
-        floating_mac = factory.make_MACAddress(cluster_interface=interface)
-        [ipaddress] = floating_mac.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user,
-            update_host_maps=False)
+        unknown_nic = factory.make_Interface(
+            INTERFACE_TYPE.UNKNOWN, cluster_interface=interface)
+        ipaddress = unknown_nic.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, interface.subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
 
         self.post_release_request(ipaddress.ip)
-        self.assertIsNone(reload_object(floating_mac))
+        self.assertIsNone(reload_object(unknown_nic))
 
-    def test_POST_release_does_not_delete_MACs_linked_to_nodes(self):
-        self.patch(dhcp_module, dhcp_module.remove_host_maps.__name__)
+    def test_POST_release_does_not_delete_interfaces_linked_to_nodes(self):
+        self.patch(interface_module, "update_host_maps")
+        self.patch(interface_module, "remove_host_maps")
 
         interface = self.make_interface()
         node = factory.make_Node(nodegroup=interface.nodegroup)
-        attached_mac = factory.make_MACAddress(
+        attached_nic = factory.make_Interface(
             node=node, cluster_interface=interface)
-        [ipaddress] = attached_mac.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user,
-            update_host_maps=False)
+        ipaddress = attached_nic.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, interface.subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
 
         self.post_release_request(ipaddress.ip)
-        self.assertEqual(attached_mac, reload_object(attached_mac))
-
-    def test_POST_release_updates_DNS_and_DHCP(self):
-        remove_host_maps = self.patch(
-            dhcp_module, dhcp_module.remove_host_maps.__name__)
-
-        interface = self.make_interface()
-        floating_mac = factory.make_MACAddress(cluster_interface=interface)
-        [ipaddress] = floating_mac.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user,
-            update_host_maps=False)
-
-        self.post_release_request(ipaddress.ip)
-        self.expectThat(
-            remove_host_maps, MockCalledOnceWith(
-                {interface.nodegroup: [ipaddress.ip]}))
+        self.assertEqual(attached_nic, reload_object(attached_nic))
 
     def test_POST_release_raises_503_if_removing_host_maps_errors(self):
-        remove_host_maps = self.patch(
-            dhcp_module, dhcp_module.remove_host_maps.__name__)
+        self.patch(interface_module, "update_host_maps")
+        remove_host_maps = self.patch(interface_module, "remove_host_maps")
         # Failures in remove_host_maps() will be RPC-related exceptions,
         # so we use one of those explicitly.
         remove_host_maps.return_value = [
@@ -415,10 +412,10 @@ class TestNetworksAPI(APITestCase):
             ]
 
         interface = self.make_interface()
-        floating_mac = factory.make_MACAddress(cluster_interface=interface)
-        [ipaddress] = floating_mac.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user,
-            update_host_maps=False)
+        floating_nic = factory.make_Interface(cluster_interface=interface)
+        ipaddress = floating_nic.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, interface.subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
 
         response = self.post_release_request(ipaddress.ip)
         self.expectThat(
@@ -430,7 +427,7 @@ class TestNetworksAPI(APITestCase):
 
         # Neither has the DHCPHost.
         self.expectThat(
-            reload_object(floating_mac), Not(Is(None)))
+            reload_object(floating_nic), Not(Is(None)))
 
     def test_POST_release_does_not_delete_IP_that_I_dont_own(self):
         ipaddress = factory.make_StaticIPAddress(user=factory.make_User())
@@ -439,8 +436,10 @@ class TestNetworksAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_release_does_not_delete_other_IPs_I_own(self):
-        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
-        other_address = factory.make_StaticIPAddress(user=self.logged_in_user)
+        ipaddress = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+        other_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertIsNotNone(reload_object(other_address))

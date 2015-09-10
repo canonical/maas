@@ -1,0 +1,65 @@
+#!/bin/bash
+
+TMPFILE=$(mktemp)
+
+function cleanup {
+    rm -f $TMPFILE
+}
+trap cleanup EXIT
+
+cat <<EOF > $TMPFILE
+\pset pager off
+
+SELECT
+    hostname, 
+    system_id,
+    cpu_count "cpu",
+    memory 
+FROM maasserver_node
+WHERE
+    installable = 't'
+ORDER BY hostname;
+
+SELECT
+    node.hostname, 
+    node.system_id,
+    parent.hostname "parent"
+FROM maasserver_node node
+LEFT OUTER JOIN maasserver_node parent
+    on node.parent_id = parent.id
+WHERE
+    node.installable = 'f'
+ORDER BY hostname;
+
+SELECT
+    node.hostname,
+    iface.name,
+    mac.mac_address,
+    sip.ip,
+    sip.alloc_type,
+    subnet.cidr,
+    vlan.vid,
+    fabric.name fabric
+FROM maasserver_interface iface
+    LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
+        on ifip.interface_id = iface.id
+    LEFT OUTER JOIN maasserver_staticipaddress sip
+        on ifip.staticipaddress_id = sip.id
+    LEFT OUTER JOIN maasserver_subnet subnet
+        on sip.subnet_id = subnet.id
+    LEFT OUTER JOIN maasserver_macaddress mac
+        on mac.id = iface.id
+    LEFT OUTER JOIN maasserver_node node
+        on node.id = mac.node_id
+    LEFT OUTER JOIN maasserver_vlan vlan
+        on vlan.id = subnet.vlan_id
+    LEFT OUTER JOIN maasserver_fabric fabric
+        on fabric.id = vlan.fabric_id
+    ORDER BY
+        node.hostname, iface.name, sip.alloc_type;
+EOF
+
+chmod o+r $TMPFILE
+
+sudo -u postgres psql maasdb -e -f $TMPFILE 2>&1
+

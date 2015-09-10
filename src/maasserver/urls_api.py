@@ -89,10 +89,6 @@ from maasserver.api.node_group_interfaces import (
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
 )
-from maasserver.api.node_macs import (
-    NodeMacHandler,
-    NodeMacsHandler,
-)
 from maasserver.api.nodegroups import (
     NodeGroupHandler,
     NodeGroupsHandler,
@@ -112,6 +108,10 @@ from maasserver.api.raid import (
     RaidsHandler,
 )
 from maasserver.api.results import NodeResultsHandler
+from maasserver.api.spaces import (
+    SpaceHandler,
+    SpacesHandler,
+)
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,
     SSHKeysHandler,
@@ -119,6 +119,10 @@ from maasserver.api.ssh_keys import (
 from maasserver.api.ssl_keys import (
     SSLKeyHandler,
     SSLKeysHandler,
+)
+from maasserver.api.subnets import (
+    SubnetHandler,
+    SubnetsHandler,
 )
 from maasserver.api.support import (
     AdminRestrictedResource,
@@ -165,9 +169,6 @@ node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
-node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
-node_macs_handler = RestrictedResource(
-    NodeMacsHandler, authentication=api_auth)
 blockdevices_handler = RestrictedResource(
     BlockDevicesHandler, authentication=api_auth)
 blockdevice_handler = RestrictedResource(
@@ -223,6 +224,10 @@ fabric_handler = RestrictedResource(FabricHandler, authentication=api_auth)
 fabrics_handler = RestrictedResource(FabricsHandler, authentication=api_auth)
 vlan_handler = RestrictedResource(VlanHandler, authentication=api_auth)
 vlans_handler = RestrictedResource(VlansHandler, authentication=api_auth)
+space_handler = RestrictedResource(SpaceHandler, authentication=api_auth)
+spaces_handler = RestrictedResource(SpacesHandler, authentication=api_auth)
+subnet_handler = RestrictedResource(SubnetHandler, authentication=api_auth)
+subnets_handler = RestrictedResource(SubnetsHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -266,12 +271,6 @@ urlpatterns = patterns(
 # API URLs for logged-in users.
 urlpatterns += patterns(
     '',
-    url(
-        r'^nodes/(?P<system_id>[^/]+)/macs/(?P<mac_address>.+)/$',
-        node_mac_handler, name='node_mac_handler'),
-    url(
-        r'^nodes/(?P<system_id>[^/]+)/macs/$', node_macs_handler,
-        name='node_macs_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
         blockdevices_handler, name='blockdevices_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
@@ -365,6 +364,18 @@ urlpatterns += patterns(
     url(
         r'^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vlan_id>[^/]+)/$',
         vlan_handler, name='vlan_handler'),
+    url(
+        r'^spaces/$',
+        spaces_handler, name='spaces_handler'),
+    url(
+        r'^spaces/(?P<space_id>[^/]+)/$',
+        space_handler, name='space_handler'),
+    url(
+        r'^subnets/$',
+        subnets_handler, name='subnets_handler'),
+    url(
+        r'^subnets/(?P<subnet_id>[^/]+)/$',
+        subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
     url(
         r'^boot-resources/$',

@@ -32,9 +32,9 @@ from maasserver.dns.zonegenerator import (
 )
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
-from maasserver.models.network import Network
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.subnet import Subnet
 from maasserver.sequence import (
     INT_MAX,
     Sequence,
@@ -364,11 +364,11 @@ def get_dnssec_validation():
 
 
 def get_trusted_networks():
-    """Return the CIDR representation of all the Networks we know about.
+    """Return the CIDR representation of all the Subnets we know about.
 
-    :return: A list of CIDR-format network specifications.
+    :return: A list of CIDR-format subnet specifications.
     """
     return [
-        unicode(net.get_network().cidr)
-        for net in Network.objects.all()
+        unicode(subnet.cidr)
+        for subnet in Subnet.objects.all()
     ]

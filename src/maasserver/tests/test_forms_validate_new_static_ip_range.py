@@ -33,7 +33,7 @@ from netaddr import IPNetwork
 class TestValidateNewStaticIPRanges(MAASServerTestCase):
     """Tests for `validate_new_static_ip_ranges`()."""
 
-    def make_interface(self):
+    def make_cluster_interface(self):
         network = IPNetwork("10.1.0.0/24")
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED,
@@ -48,7 +48,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         return interface
 
     def test_raises_error_when_allocated_ips_fall_outside_new_range(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         error = self.assertRaises(
@@ -62,7 +62,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             error.message)
 
     def test_removing_static_range_raises_error_if_ips_allocated(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         error = self.assertRaises(
@@ -76,7 +76,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             error.message)
 
     def test_allows_range_expansion(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
@@ -85,7 +85,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         self.assertTrue(is_valid)
 
     def test_allows_allocated_ip_as_upper_bound(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
@@ -95,7 +95,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         self.assertTrue(is_valid)
 
     def test_allows_allocated_ip_as_lower_bound(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
@@ -104,20 +104,20 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         self.assertTrue(is_valid)
 
     def test_ignores_unmanaged_interfaces(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()
         StaticIPAddress.objects.allocate_new(
             interface.network, interface.static_ip_range_low,
             interface.static_ip_range_high, interface.ip_range_low,
-            interface.ip_range_high)
+            interface.ip_range_high, subnet=interface.subnet)
         is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
         self.assertTrue(is_valid)
 
     def test_ignores_interfaces_with_no_static_range(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         interface.static_ip_range_low = None
         interface.static_ip_range_high = None
         interface.save()
@@ -129,7 +129,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         self.assertTrue(is_valid)
 
     def test_ignores_unchanged_static_range(self):
-        interface = self.make_interface()
+        interface = self.make_cluster_interface()
         StaticIPAddress.objects.allocate_new(
             interface.network, interface.static_ip_range_low,
             interface.static_ip_range_high, interface.ip_range_low,

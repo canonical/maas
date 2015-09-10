@@ -46,7 +46,7 @@ class InterfaceForm(MAASModelForm):
     type = None
 
     parents = forms.ModelMultipleChoiceField(
-        queryset=Interface.objects.all(), required=False)
+        queryset=None, required=False)
 
     @staticmethod
     def get_interface_form(type):
@@ -64,13 +64,20 @@ class InterfaceForm(MAASModelForm):
             'ipv4_params',
             'ipv6_params',
             'params',
+            'tags',
             )
 
     def __init__(self, *args, **kwargs):
+        self.node = kwargs.pop("node", None)
         super(InterfaceForm, self).__init__(*args, **kwargs)
         instance = kwargs.get('instance')
         if instance is not None:
+            self.node = instance.get_node()
             self.parents = instance.parents
+        if self.node is None:
+            raise ValueError(
+                "instance or node is required for the InterfaceForm")
+        self.fields['parents'].queryset = self.node.interface_set.all()
 
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
@@ -88,7 +95,8 @@ class InterfaceForm(MAASModelForm):
                     rel = interface.parent_relationships.filter(
                         parent=parent_to_del)
                     rel.delete()
-        return interface
+        interface.save()
+        return Interface.objects.get(id=interface.id)
 
     def fields_ok(self, field_list):
         """Return True if none of the fields is in error thus far."""
@@ -102,14 +110,14 @@ class InterfaceForm(MAASModelForm):
             parents = self.instance.parents.all()
         return parents
 
-    def clean_interface_name_uniqueness(self, name, node):
-        node_interfaces = node.get_interfaces().filter(name=name)
+    def clean_interface_name_uniqueness(self, name):
+        node_interfaces = self.node.interface_set.filter(name=name)
         if self.instance is not None and self.instance.id is not None:
             node_interfaces = node_interfaces.exclude(
                 id=self.instance.id)
         if node_interfaces.exists():
             msg = "Node %s already has an interface named '%s'." % (
-                node, name)
+                self.node, name)
             set_form_error(self, 'name', msg)
 
     def clean_parents_all_same_node(self, parents):
@@ -128,12 +136,27 @@ class InterfaceForm(MAASModelForm):
 class PhysicalInterfaceForm(InterfaceForm):
     """Form used to create/edit a physical interface."""
 
+    enabled = forms.NullBooleanField(required=False)
+
     class Meta:
         model = PhysicalInterface
         fields = InterfaceForm.Meta.fields + (
-            'mac',
+            'mac_address',
             'name',
+            'enabled',
         )
+
+    def __init__(self, *args, **kwargs):
+        super(PhysicalInterfaceForm, self).__init__(*args, **kwargs)
+        # Force MAC to be non-null.
+        self.fields['mac_address'].required = True
+
+    def _get_validation_exclusions(self):
+        # The instance is created just before this in django. The only way to
+        # get the validation to pass on a newly created interface is to set the
+        # node in the interface here.
+        self.instance.node = self.node
+        return super(PhysicalInterfaceForm, self)._get_validation_exclusions()
 
     def clean_parents(self):
         parents = self.get_clean_parents()
@@ -146,15 +169,9 @@ class PhysicalInterfaceForm(InterfaceForm):
     def clean(self):
         cleaned_data = super(PhysicalInterfaceForm, self).clean()
         new_name = cleaned_data.get('name')
-        if self.fields_ok(['name', 'mac']) and new_name:
-            mac = cleaned_data.get('mac', self.instance.mac)
-            self.clean_interface_name_uniqueness(new_name, mac.node)
+        if self.fields_ok(['name']) and new_name:
+            self.clean_interface_name_uniqueness(new_name)
         return cleaned_data
-
-    def __init__(self, *args, **kwargs):
-        super(PhysicalInterfaceForm, self).__init__(*args, **kwargs)
-        # Force MAC to be non-null.
-        self.fields['mac'].required = True
 
 
 class VLANInterfaceForm(InterfaceForm):
@@ -183,10 +200,9 @@ class VLANInterfaceForm(InterfaceForm):
         if self.fields_ok(['vlan', 'parents']):
             new_vlan = self.cleaned_data.get('vlan')
             if new_vlan:
-                parents = self.cleaned_data.get('parents')
-                name = build_vlan_interface_name(new_vlan)
-                self.clean_interface_name_uniqueness(
-                    name, parents[0].get_node())
+                name = build_vlan_interface_name(
+                    self.cleaned_data.get('parents').first(), new_vlan)
+                self.clean_interface_name_uniqueness(name)
         return cleaned_data
 
 
@@ -196,7 +212,7 @@ class BondInterfaceForm(InterfaceForm):
     class Meta:
         model = BondInterface
         fields = InterfaceForm.Meta.fields + (
-            'mac',
+            'mac_address',
             'name',
         )
 
@@ -204,10 +220,42 @@ class BondInterfaceForm(InterfaceForm):
         parents = self.get_clean_parents()
         if parents is None:
             return
-        if len(parents) < 2:
-            msg = "A Bond interface must have two parents or more."
+        if len(parents) < 1:
+            msg = "A Bond interface must have one or more parents."
             raise ValidationError({'parents': [msg]})
         return parents
+
+    def clean(self):
+        cleaned_data = super(BondInterfaceForm, self).clean()
+        if self.fields_ok(['parents']):
+            parents = self.cleaned_data.get('parents')
+            # Set the mac_address if its missing and the interface is being
+            # created.
+            if parents:
+                if self.instance.id is not None:
+                    parent_macs = {
+                        parent.mac_address.get_raw(): parent
+                        for parent in self.instance.parents.all()
+                    }
+                mac_not_changed = (
+                    self.instance.id is not None and
+                    self.cleaned_data["mac_address"] == (
+                        self.instance.mac_address))
+                if self.instance.id is None and 'mac_address' not in self.data:
+                    # New bond without mac_address set, set it to the first
+                    # parent mac_address.
+                    self.cleaned_data['mac_address'] = unicode(
+                        parents[0].mac_address)
+                elif (mac_not_changed and
+                        self.instance.mac_address in parent_macs and
+                        parent_macs[self.instance.mac_address] not in parents):
+                    # Updating bond where its mac_address comes from its parent
+                    # and that parent is no longer part of this bond. Update
+                    # the mac_address to be one of the new parent MAC
+                    # addresses.
+                    self.cleaned_data['mac_address'] = unicode(
+                        parents[0].mac_address)
+        return cleaned_data
 
 
 INTERFACE_FORM_MAPPING = {

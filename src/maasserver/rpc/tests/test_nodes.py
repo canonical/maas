@@ -22,7 +22,10 @@ import random
 from random import randint
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    NODE_STATUS,
+)
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc.nodes import (
     commission_node,
@@ -58,7 +61,6 @@ from simplejson import dumps
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
-    Equals,
     GreaterThan,
     Is,
     LessThan,
@@ -111,11 +113,9 @@ class TestCreateNode(MAASServerTestCase):
         # Node should have an auto-generated name containing '-'
         self.expectThat(node.hostname, Contains("-"))
         self.expectThat(node.id, Not(Is(None)))
-
-        self.expectThat(
+        self.assertItemsEqual(
             mac_addresses,
-            Equals(
-                [mac.mac_address for mac in node.macaddress_set.all()]))
+            [nic.mac_address for nic in node.interface_set.all()])
 
     def test__creates_node_with_explicit_hostname(self):
         cluster = factory.make_NodeGroup()
@@ -149,10 +149,9 @@ class TestCreateNode(MAASServerTestCase):
                 node.hostname
             ))
         self.expectThat(node.id, Not(Is(None)))
-        self.expectThat(
+        self.assertItemsEqual(
             mac_addresses,
-            Equals(
-                [mac.mac_address for mac in node.macaddress_set.all()]))
+            [nic.mac_address for nic in node.interface_set.all()])
 
     def test__create_node_fails_with_invalid_hostname(self):
         cluster = factory.make_NodeGroup()
@@ -315,10 +314,10 @@ class TestRequestNodeInfoByMACAddress(MAASServerTestCase):
             factory.make_mac_address())
 
     def test_request_node_info_by_mac_address_returns_node_for_mac(self):
-        mac_address = factory.make_MACAddress_with_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         node, boot_purpose = request_node_info_by_mac_address(
-            mac_address.mac_address.get_raw())
-        self.assertEqual(node, mac_address.node)
+            interface.mac_address.get_raw())
+        self.assertEqual(node, interface.node)
 
 
 class TestListClusterNodesPowerParameters(MAASServerTestCase):

@@ -18,45 +18,52 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.enum import NODE_STATUS
+from maasserver.api.networks import convert_to_network_name
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 
 
 class TestNetwork(APITestCase):
-    def get_url(self, name):
-        """Return the URL for the network of the given name."""
-        return reverse('network_handler', args=[name])
+
+    def get_url(self, subnet):
+        """Return the URL for the network of the given subnet."""
+        return reverse('network_handler', args=["subnet-%d" % subnet.id])
 
     def test_handler_path(self):
-        name = factory.make_name('net')
-        self.assertEqual('/api/1.0/networks/%s/' % name, self.get_url(name))
+        subnet = factory.make_Subnet()
+        self.assertEqual(
+            '/api/1.0/networks/subnet-%d/' % subnet.id, self.get_url(subnet))
 
     def test_POST_is_prohibited(self):
         self.become_admin()
-        network = factory.make_Network()
+        subnet = factory.make_Subnet()
         response = self.client.post(
-            self.get_url(network.name),
+            self.get_url(subnet),
             {'description': "New description"})
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_GET_returns_network(self):
-        network = factory.make_Network()
+        subnet = factory.make_Subnet()
 
-        response = self.client.get(self.get_url(network.name))
+        response = self.client.get(self.get_url(subnet))
         self.assertEqual(httplib.OK, response.status_code)
 
         parsed_result = json.loads(response.content)
+        cidr = subnet.get_ipnetwork()
         self.assertEqual(
             (
-                network.name,
-                network.ip,
-                network.netmask,
-                network.vlan_tag,
-                network.description,
-                network.default_gateway,
-                network.dns_servers,
+                "subnet-%d" % subnet.id,
+                unicode(cidr.ip),
+                unicode(cidr.netmask),
+                subnet.vlan.vid,
+                subnet.name,
+                subnet.gateway_ip,
+                subnet.dns_servers,
             ),
             (
                 parsed_result['name'],
@@ -71,279 +78,76 @@ class TestNetwork(APITestCase):
     def test_GET_returns_404_for_unknown_network(self):
         self.assertEqual(
             httplib.NOT_FOUND,
-            self.client.get(self.get_url('nonesuch')).status_code)
+            self.client.get(
+                reverse(
+                    'network_handler', args=["subnet-unknown"])).status_code)
 
-    def test_PUT_updates_network(self):
+    def test_PUT_returns_410(self):
         self.become_admin()
-        network = factory.make_Network()
-        new_net = factory.make_ipv4_network()
-        new_values = {
-            'name': factory.make_name('new'),
-            'ip': '%s' % new_net.cidr.ip,
-            'netmask': '%s' % new_net.netmask,
-            'vlan_tag': factory.make_vlan_tag(),
-            'description': "Changed description",
-            'default_gateway': factory.make_ipv4_address(),
-            'dns_servers': factory.make_ipv4_address(),
-            }
+        subnet = factory.make_Subnet()
+        response = self.client.put(self.get_url(subnet))
+        self.assertEqual(httplib.GONE, response.status_code)
 
-        response = self.client.put(self.get_url(network.name), new_values)
-        self.assertEqual(httplib.OK, response.status_code)
-
-        network = reload_object(network)
-        self.assertAttributes(network, new_values)
-
-    def test_PUT_requires_admin(self):
-        description = "Original description"
-        network = factory.make_Network(description=description)
-        response = self.client.put(
-            self.get_url(network.name), {'description': "Changed description"})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertEqual(description, reload_object(network).description)
-
-    def test_PUT_returns_404_for_unknown_network(self):
+    def test_DELETE_returns_410(self):
         self.become_admin()
-        self.assertEqual(
-            httplib.NOT_FOUND,
-            self.client.put(self.get_url('nonesuch')).status_code)
+        subnet = factory.make_Subnet()
+        response = self.client.delete(self.get_url(subnet))
+        self.assertEqual(httplib.GONE, response.status_code)
 
-    def test_DELETE_deletes_network(self):
+    def test_POST_connect_macs_returns_410(self):
         self.become_admin()
-        network = factory.make_Network()
-        response = self.client.delete(self.get_url(network.name))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
-        self.assertIsNone(reload_object(network))
-
-    def test_DELETE_requires_admin(self):
-        network = factory.make_Network()
-        response = self.client.delete(self.get_url(network.name))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertIsNotNone(reload_object(network))
-
-    def test_DELETE_is_idempotent(self):
-        name = factory.make_Network().name
-        self.become_admin()
-        response1 = self.client.delete(self.get_url(name))
-        response2 = self.client.delete(self.get_url(name))
-        self.assertEqual(response1.status_code, response2.status_code)
-
-    def test_DELETE_works_with_MACs_attached(self):
-        self.become_admin()
-        network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(networks=[network])
-        response = self.client.delete(self.get_url(network.name))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
-        self.assertIsNone(reload_object(network))
-        mac = reload_object(mac)
-        self.assertEqual([], list(mac.networks.all()))
-
-    def test_POST_connect_macs_connects_macs_to_network(self):
-        self.become_admin()
-        network = factory.make_Network()
-        macs = [
-            factory.make_MACAddress_with_Node(networks=[network])
-            for _ in range(2)]
+        subnet = factory.make_Subnet()
         response = self.client.post(
-            self.get_url(network.name),
+            self.get_url(subnet),
             {
                 'op': 'connect_macs',
-                'macs': [mac.mac_address for mac in macs],
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(set(macs), set(network.macaddress_set.all()))
+        self.assertEqual(httplib.GONE, response.status_code)
 
-    def test_POST_connect_macs_accepts_empty_macs_list(self):
+    def test_POST_disconnect_macs_returns_410(self):
         self.become_admin()
-        network = factory.make_Network()
+        subnet = factory.make_Subnet()
         response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [],
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual([], list(network.macaddress_set.all()))
-
-    def test_POST_connect_macs_leaves_other_networks_unchanged(self):
-        self.become_admin()
-        network = factory.make_Network()
-        other_network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(networks=[other_network])
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [mac.mac_address],
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({network, other_network}, set(mac.networks.all()))
-
-    def test_POST_connect_macs_leaves_other_MACs_unchanged(self):
-        self.become_admin()
-        network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(networks=[])
-        other_mac = factory.make_MACAddress_with_Node(networks=[network])
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [mac.mac_address],
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({mac, other_mac}, set(network.macaddress_set.all()))
-
-    def test_POST_connect_macs_ignores_MACs_already_on_network(self):
-        self.become_admin()
-        network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(networks=[network])
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [mac.mac_address],
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({mac}, set(network.macaddress_set.all()))
-
-    def test_POST_connect_macs_requires_admin(self):
-        network = factory.make_Network()
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [],
-            })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_POST_connect_macs_fails_on_unknown_MAC(self):
-        self.become_admin()
-        network = factory.make_Network()
-        nonexistent_mac = factory.make_MAC()
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'connect_macs',
-                'macs': [nonexistent_mac],
-            })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            {'macs': ["Unknown MAC address(es): %s." % nonexistent_mac]},
-            json.loads(response.content))
-
-    def test_POST_disconnect_macs_removes_MACs_from_network(self):
-        self.become_admin()
-        network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(networks=[network])
-        response = self.client.post(
-            self.get_url(network.name),
+            self.get_url(subnet),
             {
                 'op': 'disconnect_macs',
-                'macs': [mac.mac_address],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([], list(mac.networks.all()))
-
-    def test_POST_disconnect_macs_requires_admin(self):
-        response = self.client.post(
-            self.get_url(factory.make_Network().name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [factory.make_MACAddress_with_Node().mac_address],
-            })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_POST_disconnect_macs_accepts_empty_MACs_list(self):
-        self.become_admin()
-        response = self.client.post(
-            self.get_url(factory.make_Network().name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [],
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-
-    def test_POST_disconnect_macs_is_idempotent(self):
-        self.become_admin()
-        response = self.client.post(
-            self.get_url(factory.make_Network().name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [factory.make_MACAddress_with_Node().mac_address],
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-
-    def test_POST_disconnect_macs_leaves_other_MACs_unchanged(self):
-        self.become_admin()
-        network = factory.make_Network()
-        other_mac = factory.make_MACAddress_with_Node(networks=[network])
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [
-                    factory.make_MACAddress_with_Node(
-                        networks=[network]).mac_address
-                    ],
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([network], list(other_mac.networks.all()))
-
-    def test_POST_disconnect_macs_leaves_other_networks_unchanged(self):
-        self.become_admin()
-        network = factory.make_Network()
-        other_network = factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(
-            networks=[network, other_network])
-        response = self.client.post(
-            self.get_url(network.name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [mac.mac_address],
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([other_network], list(mac.networks.all()))
-
-    def test_POST_disconnect_macs_fails_on_unknown_mac(self):
-        self.become_admin()
-        nonexistent_mac = factory.make_MAC()
-        response = self.client.post(
-            self.get_url(factory.make_Network().name),
-            {
-                'op': 'disconnect_macs',
-                'macs': [nonexistent_mac],
-            })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            {'macs': ["Unknown MAC address(es): %s." % nonexistent_mac]},
-            json.loads(response.content))
+        self.assertEqual(httplib.GONE, response.status_code)
 
 
 class TestListConnectedMACs(APITestCase):
     """Tests for /api/1.0/network/s<network>/?op=list_connected_macs."""
 
-    def make_mac(self, networks=None, owner=None, node=None):
-        """Create a MAC address.
+    def make_interface(self, subnets=None, owner=None, node=None):
+        """Create a Interface.
 
-        :param networks: Optional list of `Network` objects to connect the
-            MAC to.  If omitted, the MAC will not be connected to any networks.
-        :param node: Optional node that will have this MAC
-            address.  If omitted, one will be created.
+        :param subnets: Optional list of `Subnet` objects to connect the
+            interface to.  If omitted, the interface will not be connected to
+            any subnets.
+        :param node: Optional node that will have this interface.
+            If omitted, one will be created.
         :param owner: Optional owner for the node that will have this MAC
             address.  If omitted, one will be created.  The node will be in
             the "allocated" state.  This parameter is ignored if a node is
             provided.
         """
-        if networks is None:
-            networks = []
+        if subnets is None:
+            subnets = []
         if owner is None:
             owner = factory.make_User()
         if node is None:
             node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
-        return factory.make_MACAddress(networks=networks, node=node)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        for subnet in subnets:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+                subnet=subnet, interface=interface)
+        return interface
 
-    def request_connected_macs(self, network):
-        """Request and return the MAC addresses attached to `network`."""
-        url = reverse('network_handler', args=[network.name])
+    def request_connected_macs(self, subnet):
+        """Request and return the MAC addresses attached to `subnet`."""
+        url = reverse(
+            'network_handler', args=[convert_to_network_name(subnet)])
         response = self.client.get(url, {'op': 'list_connected_macs'})
         self.assertEqual(httplib.OK, response.status_code)
         return json.loads(response.content)
@@ -353,53 +157,54 @@ class TestListConnectedMACs(APITestCase):
         return [item['mac_address'] for item in returned_macs]
 
     def test_returns_connected_macs(self):
-        network = factory.make_Network()
-        macs = [
-            self.make_mac(networks=[network], owner=self.logged_in_user)
+        subnet = factory.make_Subnet()
+        interfaces = [
+            self.make_interface(subnets=[subnet], owner=self.logged_in_user)
             for _ in range(3)
             ]
         self.assertEqual(
-            {mac.mac_address for mac in macs},
-            set(self.extract_macs(self.request_connected_macs(network))))
+            {interface.mac_address for interface in interfaces},
+            set(self.extract_macs(self.request_connected_macs(subnet))))
 
     def test_ignores_unconnected_macs(self):
-        self.make_mac(
-            networks=[factory.make_Network()], owner=self.logged_in_user)
-        self.make_mac(networks=[], owner=self.logged_in_user)
+        self.make_interface(
+            subnets=[factory.make_Subnet()], owner=self.logged_in_user)
+        self.make_interface(subnets=[], owner=self.logged_in_user)
         self.assertEqual(
             [],
-            self.request_connected_macs(factory.make_Network()))
+            self.request_connected_macs(factory.make_Subnet()))
 
     def test_includes_MACs_for_nodes_visible_to_user(self):
-        network = factory.make_Network()
-        mac = self.make_mac(networks=[network], owner=self.logged_in_user)
+        subnet = factory.make_Subnet()
+        interface = self.make_interface(
+            subnets=[subnet], owner=self.logged_in_user)
         self.assertEqual(
-            [mac.mac_address],
-            self.extract_macs(self.request_connected_macs(network)))
+            [interface.mac_address],
+            self.extract_macs(self.request_connected_macs(subnet)))
 
     def test_excludes_MACs_for_nodes_not_visible_to_user(self):
-        network = factory.make_Network()
-        self.make_mac(networks=[network])
-        self.assertEqual([], self.request_connected_macs(network))
+        subnet = factory.make_Subnet()
+        self.make_interface(subnets=[subnet])
+        self.assertEqual([], self.request_connected_macs(subnet))
 
     def test_returns_sorted_MACs(self):
-        network = factory.make_Network()
-        macs = [
-            self.make_mac(
-                networks=[network], node=factory.make_Node(sortable_name=True),
+        subnet = factory.make_Subnet()
+        interfaces = [
+            self.make_interface(
+                subnets=[subnet], node=factory.make_Node(sortable_name=True),
                 owner=self.logged_in_user)
             for _ in range(4)
             ]
         # Create MACs connected to the same node.
-        macs = macs + [
-            self.make_mac(
-                networks=[network], owner=self.logged_in_user,
-                node=macs[0].node)
+        interfaces = interfaces + [
+            self.make_interface(
+                subnets=[subnet], owner=self.logged_in_user,
+                node=interfaces[0].node)
             for _ in range(3)
             ]
-        sorted_macs = sorted(
-            macs,
+        sorted_interfaces = sorted(
+            interfaces,
             key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
         self.assertEqual(
-            [mac.mac_address.get_raw() for mac in sorted_macs],
-            self.extract_macs(self.request_connected_macs(network)))
+            [nic.mac_address.get_raw() for nic in sorted_interfaces],
+            self.extract_macs(self.request_connected_macs(subnet)))

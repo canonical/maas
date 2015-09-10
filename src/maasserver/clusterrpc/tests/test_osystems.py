@@ -20,7 +20,6 @@ from collections import (
 )
 
 from maasserver.clusterrpc.osystems import (
-    compose_curtin_network_preseed,
     gen_all_known_operating_systems,
     get_os_release_title,
     get_preseed_data,
@@ -241,26 +240,6 @@ class TestGetPreseedData(MAASServerTestCase):
             NoSuchOperatingSystem, get_preseed_data, PRESEED_TYPE.CURTIN,
             node, token=NodeKey.objects.get_token_for_node(node),
             metadata_url=factory.make_url())
-
-
-class TestComposeCurtinPreseedData(MAASServerTestCase):
-
-    def make_config(self):
-        mac = factory.make_mac_address()
-        return {
-            'interfaces': [(factory.make_name('eth'), mac)],
-            'auto_interfaces': [mac],
-            'ips_mapping': {},
-            'gateways_mapping': {mac: [factory.make_ipv6_address()]},
-            }
-
-    def test__returns_preseed_data(self):
-        node = factory.make_Node()
-        node.nodegroup.accept()
-        self.useFixture(RunningClusterRPCFixture())
-        config = self.make_config()
-        preseed = compose_curtin_network_preseed(node, config)
-        self.assertIsInstance(preseed, list)
 
 
 class TestValidateLicenseKeyFor(MAASServerTestCase):

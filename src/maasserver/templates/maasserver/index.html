@@ -46,9 +46,6 @@
                     <li>
                         <a data-ng-class="{ active: page === 'zones' }" href="{% url 'zone-list' %}">Zones</a>
                     </li>
-                    <li>
-                        <a data-ng-class="{ active: page === 'networks' }" href="{% url 'network-list' %}">Networks</a>
-                    </li>
                     {% if user.is_superuser %}
                     <li>
                         <a data-ng-class="{ active: page == 'settings' }" href="{% url 'settings' %}">Settings</a>

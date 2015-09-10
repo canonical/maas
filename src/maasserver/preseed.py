@@ -40,7 +40,6 @@ from maasserver.compose_preseed import (
 )
 from maasserver.enum import (
     NODE_BOOT,
-    NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     USERDATA_TYPE,
 )
@@ -52,22 +51,18 @@ from maasserver.exceptions import (
 from maasserver.models import (
     BootResource,
     Config,
-    DHCPLease,
 )
-from maasserver.networking_preseed import compose_curtin_network_preseed_for
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
+from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
-from netaddr import IPAddress
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import locate_config
-from provisioningserver.utils.fs import read_text_file
 from provisioningserver.utils.url import compose_URL
 import tempita
 import yaml
@@ -111,20 +106,6 @@ def get_enlist_userdata(nodegroup=None):
         USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
 
 
-def list_gateways_and_macs(node):
-    """Return a node's router addresses, as a set of IP/MAC pairs.
-
-    In each returned pair, the MAC address is that of a network interface
-    on the node.  The IP address is a router address for that interface.
-    """
-    result = set()
-    for mac in node.macaddress_set.filter(cluster_interface__isnull=False):
-        for cluster_interface in mac.get_cluster_interfaces():
-            if cluster_interface.router_ip not in (None, ''):
-                result.add((cluster_interface.router_ip, mac.mac_address))
-    return result
-
-
 def compose_curtin_maas_reporter(node):
     """Return a list of curtin preseeds for using the MAASReporter in curtin.
 
@@ -146,67 +127,6 @@ def compose_curtin_maas_reporter(node):
             },
         }
     return [yaml.safe_dump(reporter)]
-
-
-# This function is being replaced with compose_curtin_network_preseed_for.
-def compose_curtin_network_preseed(node):
-    """Return a list of curtin preseeds for configuring a node's networking.
-
-    These can then be appended to the main Curtin configuration.  The preseeds
-    are returned as a list of strings, each holding a YAML section.
-
-    The configuration currently only sets static IPv6 addresses, by uploading
-    the `maas_configure_interfaces` script to the node during installation, and
-    running it.
-    """
-    if node.get_osystem() not in OS_WITH_IPv6_SUPPORT:
-        # Don't configure networking on this node.  It breaks.
-        return []
-
-    # Read the script that we will run on the node.  It really isn't a
-    # template; it's a simple Python module and it has tests.
-    script = locate_config(
-        'templates/deployment-user-data/maas_configure_interfaces.py')
-
-    configure_script = read_text_file(script)
-
-    # Preseed: upload the script to the node's installed filesystem.
-    write_files = {
-        'write_files': {
-            'maas_configure_interfaces': {
-                'path': '/usr/local/bin/maas_configure_interfaces.py',
-                'owner': 'root:root',
-                'permissions': '0755',
-                'content': configure_script,
-                },
-            },
-        }
-    # Compile static IPv6 addresses to be passed to the script.
-    static_ip_args = [
-        '--static-ip=%s=%s' % (ip, mac)
-        for ip, mac in node.get_static_ip_mappings()
-        if IPAddress(ip).version == 6
-        ]
-    # Compile IPv6 gateway addresses to be passed to the script.
-    gateway_args = [
-        '--gateway=%s=%s' % (gateway, mac)
-        for gateway, mac in list_gateways_and_macs(node)
-        if IPAddress(gateway).version == 6
-        ]
-    # Preseed: run the script, from within the installed filesystem.
-    configure = {
-        'late_commands': {
-            '90_maas_configure_interfaces': [
-                'curtin',
-                'in-target',
-                '--',
-                '/usr/local/bin/maas_configure_interfaces.py',
-                '--update-interfaces',
-                '--name-interfaces',
-                ] + static_ip_args + gateway_args,
-            },
-        }
-    return [yaml.safe_dump(write_files), yaml.safe_dump(configure)]
 
 
 def compose_curtin_swap_preseed(node):
@@ -267,7 +187,6 @@ def get_curtin_userdata(node):
     installer_url = get_curtin_installer_url(node)
     main_config = get_curtin_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
-    network_config = compose_curtin_network_preseed_for(node)
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
     verbose_config = compose_curtin_verbose_preseed()
@@ -280,12 +199,14 @@ def get_curtin_userdata(node):
             "from curtin." % node.hostname)
         storage_config = []
 
+    network_config = compose_curtin_network_config(node)
+
     # Pack the curtin and the configuration into a script to execute on the
     # deploying node.
     return pack_install(
         configs=(
-            [main_config] + reporter_config + storage_config +
-            network_config + swap_config + kernel_config + verbose_config),
+            [main_config] + reporter_config + storage_config + network_config +
+            swap_config + kernel_config + verbose_config),
         args=[installer_url])
 
 
@@ -323,7 +244,6 @@ def get_curtin_installer_url(node):
     osystem = node.get_osystem()
     series = node.get_distro_series()
     arch, subarch = node.architecture.split('/')
-    cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
@@ -341,7 +261,7 @@ def get_curtin_installer_url(node):
         image['xinstall_path'],
         ])
     url = compose_URL(
-        'http://:5248/images/%s' % dyn_uri, cluster_host)
+        'http://:5248/images/%s' % dyn_uri, unicode(node.boot_cluster_ip))
     return url_prepend + url
 
 
@@ -642,43 +562,6 @@ def get_netloc_and_path(url):
     """
     parsed_url = urlparse(url)
     return parsed_url.netloc, parsed_url.path
-
-
-def pick_cluster_controller_address(node):
-    """Return an IP address for the cluster controller, to be used by `node`.
-
-    Curtin, running on the nodes, will download its installer image from here.
-    It will look for an address on a network to which `node` is connected, or
-    failing that, it will prefer a managed interface over an unmanaged one.
-    """
-    # Sort interfaces by desirability, so we can pick the first one.
-    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-    sort_key = lambda interface: (
-        # Put unmanaged interfaces at the end as a last resort.
-        1 if interface.management == unmanaged else 0,
-        # Sort by ID as a tie-breaker, for consistency.
-        interface.id,
-        )
-    interfaces = sorted(
-        node.nodegroup.nodegroupinterface_set.all(), key=sort_key)
-    macs = [mac.mac_address for mac in node.macaddress_set.all()]
-    node_ips = [
-        IPAddress(ip)
-        for ip in DHCPLease.objects.filter(mac__in=macs).values_list(
-            'ip', flat=True)
-        ]
-    # Search cluster controller's interfaces for a network that encompasses
-    # any of the node's IP addresses.
-    for interface in interfaces:
-        network = interface.network
-        for node_ip in node_ips:
-            if node_ip in network:
-                return interface.ip
-    # None found: pick the best guess, if available.
-    if interfaces == []:
-        return None
-    else:
-        return interfaces[0].ip
 
 
 def get_preseed_context(osystem='', release='', nodegroup=None):

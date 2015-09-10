@@ -18,101 +18,115 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.models import Network
+from maasserver.api.networks import convert_to_network_name
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import get_one
 
 
 class TestNetworksAPI(APITestCase):
 
+    def make_interface(self, subnets=None, owner=None, node=None):
+        """Create a Interface.
+
+        :param subnets: Optional list of `Subnet` objects to connect the
+            interface to.  If omitted, the interface will not be connected to
+            any subnets.
+        :param node: Optional node that will have this interface.
+            If omitted, one will be created.
+        :param owner: Optional owner for the node that will have this MAC
+            address.  If omitted, one will be created.  The node will be in
+            the "allocated" state.  This parameter is ignored if a node is
+            provided.
+        """
+        if subnets is None:
+            subnets = []
+        if owner is None:
+            owner = factory.make_User()
+        if node is None:
+            node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        for subnet in subnets:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+                subnet=subnet, interface=interface)
+        return interface
+
     def test_handler_path(self):
         self.assertEqual('/api/1.0/networks/', reverse('networks_handler'))
 
-    def test_POST_creates_network(self):
+    def test_POST_returns_410(self):
         self.become_admin()
-        net = factory.make_ipv4_network()
-        params = {
-            'name': factory.make_name('net'),
-            'ip': '%s' % net.cidr.ip,
-            'netmask': '%s' % net.netmask,
-            'vlan_tag': factory.make_vlan_tag(),
-            'description': factory.make_string(),
-            'default_gateway': factory.make_ipv4_address(),
-            'dns_servers': factory.make_ipv4_address(),
-        }
-        response = self.client.post(reverse('networks_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code)
-        network = Network.objects.get(name=params['name'])
-        self.assertAttributes(network, params)
-
-    def test_POST_requires_admin(self):
-        name = factory.make_name('no-net')
-        response = self.client.post(
-            reverse('networks_handler'),
-            {'name': name})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertIsNone(get_one(Network.objects.filter(name=name)))
+        response = self.client.post(reverse('networks_handler'))
+        self.assertEqual(httplib.GONE, response.status_code)
 
     def test_GET_returns_networks(self):
-        original_network = factory.make_Network()
-
+        subnet = factory.make_Subnet()
+        subnet_cidr = subnet.get_ipnetwork()
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         parsed_result = json.loads(response.content)
         self.assertEqual(1, len(parsed_result))
-        [returned_network] = parsed_result
-        fields = {
-            'name', 'ip', 'netmask', 'vlan_tag', 'description',
-            'default_gateway', 'dns_servers'}
-        self.assertEqual(
-            fields.union({'resource_uri'}),
-            set(returned_network.keys()))
-        expected_values = {
-            field: getattr(original_network, field)
-            for field in fields
-            if field != 'resource_uri'
-        }
-        expected_values['resource_uri'] = reverse(
-            'network_handler', args=[original_network.name])
-        self.assertEqual(expected_values, returned_network)
+        [returned_subnet] = parsed_result
+        self.assertEqual({
+            "name": "subnet-%d" % subnet.id,
+            "ip": unicode(subnet_cidr.ip),
+            "netmask": unicode(subnet_cidr.netmask),
+            "vlan_tag": subnet.vlan.vid,
+            "description": subnet.name,
+            "default_gateway": subnet.gateway_ip,
+            "dns_servers": subnet.dns_servers,
+            }, returned_subnet)
 
-    def test_GET_returns_empty_if_no_networks(self):
+    def test_GET_returns_empty_if_no_subnets(self):
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual([], json.loads(response.content))
 
     def test_GET_sorts_by_name(self):
-        networks = factory.make_Networks(3, sortable_name=True)
+        subnets = [
+            factory.make_Subnet(name=factory.make_name("subnet").lower())
+            for _ in range(3)
+        ]
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         self.assertEqual(
-            sorted(network.name for network in networks),
+            sorted(convert_to_network_name(subnet) for subnet in subnets),
             [network['name'] for network in json.loads(response.content)])
 
     def test_GET_filters_by_node(self):
-        networks = factory.make_Networks(5)
-        mac = factory.make_MACAddress_with_Node(networks=networks[1:3])
-        node = mac.node
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(5)
+        ]
+        interface = self.make_interface(subnets=subnets[1:3])
+        node = interface.node
         response = self.client.get(
             reverse('networks_handler'),
             {'node': [node.system_id]})
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         self.assertEqual(
-            {network.name for network in mac.networks.all()},
+            {convert_to_network_name(subnet) for subnet in subnets[1:3]},
             {network['name'] for network in json.loads(response.content)})
 
     def test_GET_combines_node_filters_as_intersection_of_networks(self):
-        networks = factory.make_Networks(5)
-        mac1 = factory.make_MACAddress_with_Node(networks=networks[1:3])
-        mac2 = factory.make_MACAddress_with_Node(networks=networks[2:4])
-        node1 = mac1.node
-        # Attach another MAC address to node1.
-        factory.make_MACAddress(networks=networks[1:2], node=node1)
-        node2 = mac2.node
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(5)
+        ]
+        interface1 = self.make_interface(subnets=subnets[1:3])
+        interface2 = self.make_interface(subnets=subnets[2:4])
+        node1 = interface1.node
+        node2 = interface2.node
+        # Attach another interface to node1.
+        self.make_interface(subnets=subnets[1:2], node=node1)
 
         response = self.client.get(
             reverse('networks_handler'),
@@ -120,7 +134,7 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         self.assertEqual(
-            {networks[2].name},
+            {convert_to_network_name(subnets[2])},
             {network['name'] for network in json.loads(response.content)})
 
     def test_GET_fails_if_filtering_by_nonexistent_node(self):
@@ -134,14 +148,14 @@ class TestNetworksAPI(APITestCase):
             json.loads(response.content))
 
     def test_GET_ignores_duplicates(self):
-        factory.make_Network()
-        mac = factory.make_MACAddress_with_Node(
-            networks=[factory.make_Network()])
-        node = mac.node
+        subnet = factory.make_Subnet()
+        interface = self.make_interface(
+            subnets=[subnet])
+        node = interface.node
         response = self.client.get(
             reverse('networks_handler'),
             {'node': [node.system_id, node.system_id]})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(
-            {network.name for network in mac.networks.all()},
+            {convert_to_network_name(subnet)},
             {network['name'] for network in json.loads(response.content)})

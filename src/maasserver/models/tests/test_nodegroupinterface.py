@@ -298,18 +298,14 @@ class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_clean_network_config_if_managed_accepts_empty_router_ip(self):
         network = IPNetwork('192.168.0.3/24')
-        checked_fields = [
-            'router_ip',
-            ]
-        for field in checked_fields:
-            nodegroup = factory.make_NodeGroup(
-                network=network,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-            [interface] = nodegroup.get_managed_interfaces()
-            setattr(interface, field, '')
-            # This doesn't raise a validation error.
-            interface.full_clean()
-            self.assertEqual('', getattr(interface, field))
+        nodegroup = factory.make_NodeGroup(
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        [interface] = nodegroup.get_managed_interfaces()
+        setattr(interface.subnet, 'gateway_ip', '')
+        # This doesn't raise a validation error.
+        interface.full_clean()
+        self.assertEqual('', getattr(interface.subnet, 'gateway_ip'))
 
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
         network = factory.make_ipv4_network()
@@ -689,3 +685,19 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.ip = factory.pick_ip_in_network(network)
         interface.save()
         self.assertEqual(interface, reload_object(interface))
+
+
+class TestNodeGroupInterfacePostSaveHandler(MAASServerTestCase):
+
+    def test__saves_related_subnet_when_nodegroupinterface_updated(self):
+        ng = factory.make_NodeGroup()
+        ngi = factory.make_NodeGroupInterface(
+            ng, ip='10.0.0.1', subnet_mask='255.255.255.0')
+        subnet = reload_object(ngi.subnet)
+        self.assertThat(
+            unicode(subnet.get_ipnetwork().netmask), Equals('255.255.255.0'))
+        ngi.subnet_mask = '255.255.0.0'
+        ngi.save()
+        subnet = reload_object(ngi.subnet)
+        self.assertThat(
+            unicode(subnet.get_ipnetwork().netmask), Equals('255.255.0.0'))

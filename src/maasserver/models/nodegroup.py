@@ -132,6 +132,19 @@ class NodeGroupManager(Manager):
         """Return the set of all accepted node-groups."""
         return self.filter(status=NODEGROUP_STATUS.ENABLED)
 
+    def get_dhcp_managed_nodegroups(self, fabric=None):
+        """Returns the DHCP-managed clusters relevant to the specified fabric.
+
+        :param fabric: The fabric whose DHCP-managed clusters to update.
+        """
+        if fabric is not None:
+            raise NotImplementedError("Fabrics are not yet supported.")
+        return [
+            nodegroup
+            for nodegroup in NodeGroup.objects.all()
+            if nodegroup.manages_dhcp()
+            ]
+
 
 class DomainNameField(CharField):
     """Custom Django field that strips whitespace and trailing '.' characters

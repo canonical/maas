@@ -29,9 +29,9 @@ from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
-    MACAddress,
     Node,
     NodeGroup,
+    PhysicalInterface,
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
@@ -188,7 +188,7 @@ def create_node(cluster_uuid, architecture, power_type,
     """
     # Check that there isn't already a node with one of our MAC
     # addresses, and bail out early if there is.
-    nodes = Node.objects.filter(macaddress__mac_address__in=mac_addresses)
+    nodes = Node.objects.filter(interface__mac_address__in=mac_addresses)
     if nodes.count() > 0:
         raise NodeAlreadyExists(
             "One of the MACs %s is already in use by a node." %
@@ -254,7 +254,7 @@ def request_node_info_by_mac_address(mac_address):
         from.
     """
     try:
-        node = MACAddress.objects.get(mac_address=mac_address).node
-    except MACAddress.DoesNotExist:
+        node = PhysicalInterface.objects.get(mac_address=mac_address).node
+    except PhysicalInterface.DoesNotExist:
         raise NoSuchNode.from_mac_address(mac_address)
     return (node, node.get_boot_purpose())

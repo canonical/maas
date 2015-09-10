@@ -25,7 +25,6 @@ __all__ = [
     'ComponentError',
     'Config',
     'Device',
-    'DHCPLease',
     'DownloadProgress',
     'Event',
     'FileStorage',
@@ -35,8 +34,6 @@ __all__ = [
     'LargeFile',
     'LicenseKey',
     'logger',
-    'MACAddress',
-    'Network',
     'Node',
     'NodeGroup',
     'NodeGroupInterface',
@@ -77,7 +74,6 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.candidatename import CandidateName
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
@@ -94,13 +90,11 @@ from maasserver.models.interface import (
     BondInterface,
     Interface,
     PhysicalInterface,
+    UnknownInterface,
     VLANInterface,
 )
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
-from maasserver.models.macaddress import MACAddress
-from maasserver.models.macipaddresslink import MACStaticIPAddressLink
-from maasserver.models.network import Network
 from maasserver.models.node import (
     Device,
     Node,
@@ -136,7 +130,6 @@ ignore_unused(
     CandidateName,
     ComponentError,
     Config,
-    DHCPLease,
     DownloadProgress,
     Event,
     EventType,
@@ -148,9 +141,6 @@ ignore_unused(
     LargeFile,
     LicenseKey,
     logger,
-    MACAddress,
-    MACStaticIPAddressLink,
-    Network,
     NodeGroup,
     NodeGroupInterface,
     Partition,
@@ -163,6 +153,7 @@ ignore_unused(
     VirtualBlockDevice,
     VLAN,
     VLANInterface,
+    UnknownInterface,
     VolumeGroup,
     Zone,
 )
@@ -268,7 +259,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, Fabric) or isinstance(obj, Interface):
+        elif isinstance(obj, (Fabric, Interface, Subnet, Space)):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a fabric or interface regardless
                 # of its state.

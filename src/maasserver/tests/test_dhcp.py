@@ -77,12 +77,16 @@ class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
     """Tests for `split_ipv4_ipv6_interfaces`."""
 
     def make_ipv4_interface(self, nodegroup):
+        subnet = factory.make_Subnet(
+            cidr=unicode(factory.make_ipv4_network().cidr))
         return factory.make_NodeGroupInterface(
-            nodegroup, network=factory.make_ipv4_network())
+            nodegroup, subnet=subnet)
 
     def make_ipv6_interface(self, nodegroup):
+        subnet = factory.make_Subnet(
+            cidr=unicode(factory.make_ipv6_network().cidr))
         return factory.make_NodeGroupInterface(
-            nodegroup, network=factory.make_ipv6_network())
+            nodegroup, subnet=subnet)
 
     def test__separates_IPv4_from_IPv6_interfaces(self):
         nodegroup = factory.make_NodeGroup()
@@ -209,7 +213,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
 
     def test__doesnt_convert_None_router_ip(self):
         interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
-        interface.router_ip = None
+        interface.subnet.router_ip = None
         interface.save()
         post_commit_hooks.fire()
         config = make_subnet_config(
@@ -554,8 +558,9 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_netmask_changes(self):
         network = factory.make_ipv4_network(slash='255.255.255.0')
+        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED, network=network,
+            status=NODEGROUP_STATUS.ENABLED, subnet=subnet,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
@@ -572,8 +577,8 @@ class TestDHCPConnect(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.router_ip = factory.pick_ip_in_network(
-            interface.network, but_not=[interface.router_ip])
+        interface.subnet.gateway_ip = factory.pick_ip_in_network(
+            interface.network, but_not=[interface.subnet.gateway_ip])
         interface.save()
 
         self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))

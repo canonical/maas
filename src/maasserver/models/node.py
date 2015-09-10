@@ -24,7 +24,6 @@ from collections import (
     namedtuple,
 )
 from datetime import timedelta
-from itertools import chain
 from operator import attrgetter
 import re
 from uuid import uuid1
@@ -34,7 +33,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db import connection
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -53,15 +51,14 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
-from maasserver.clusterrpc.dhcp import (
-    remove_host_maps,
-    update_host_maps,
-)
+from maasserver.clusterrpc.dhcp import remove_host_maps
 from maasserver.clusterrpc.power import (
     power_off_node,
     power_on_node,
 )
 from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
+    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
@@ -69,31 +66,23 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
-    NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     POWER_STATE_CHOICES,
     PRESEED_TYPE,
 )
-from maasserver.exceptions import (
-    NodeStateViolation,
-    StaticIPAddressTypeClash,
-)
+from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import (
     JSONObjectField,
+    MAASIPAddressField,
     MAC,
 )
 from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
 from maasserver.models.licensekey import LicenseKey
-from maasserver.models.macaddress import (
-    MACAddress,
-    update_mac_cluster_interfaces,
-)
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -122,7 +111,6 @@ from maasserver.utils import (
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
-    get_one,
     post_commit,
     post_commit_do,
     transactional,
@@ -536,12 +524,20 @@ class Node(CleanSave, TimestampedModel):
             "to use a MAAS URL with a hostname that resolves on both IPv4 and "
             "IPv6."))
 
-    # Record the MAC address for the interface the node last PXE booted from.
-    # This will be used for determining which MAC address to create a static
+    # Record the Interface the node last booted from.
+    # This will be used for determining which Interface to create a static
     # IP reservation for when starting a node.
-    pxe_mac = ForeignKey(
-        MACAddress, default=None, blank=True, null=True, editable=False,
+    boot_interface = ForeignKey(
+        Interface, default=None, blank=True, null=True, editable=False,
         related_name='+', on_delete=SET_NULL)
+
+    # Record the last IP address of the cluster this node used to request
+    # TFTP data. This is used to send the correct IP address for the node to
+    # download the image to install. Since the node just contacted the cluster
+    # using this IP address then it will be able to access the images at this
+    # IP address.
+    boot_cluster_ip = MAASIPAddressField(
+        unique=False, null=True, editable=False, blank=True, default=None)
 
     # Record the PhysicalBlockDevice that this node uses as its boot disk.
     # This will be used to make sure GRUB is installed to this device.
@@ -658,15 +654,10 @@ class Node(CleanSave, TimestampedModel):
 
         If `disable_ipv4` is set, any IPv4 addresses will be omitted.
         """
-        # The static IP addresses are assigned/removed when a node is
-        # allocated/deallocated.
-        # The dynamic IP addresses are used by enlisting or commissioning
-        # nodes.  This information is re-built periodically based on the
-        # content of the DHCP lease file, the DB mappings can thus contain
-        # outdated information for a short time.  They are returned here
-        # for backward-compatiblity reasons (the static IP addresses were
-        # introduced after the dynamic IP addresses) as only the static
-        # mappings are guaranteed to be, well, static.
+        # If the node has static IP addresses assigned they will be returned
+        # before the dynamic IP addresses are returned. The dynamic IP
+        # addresses will only be returned if the node has no static IP
+        # addresses.
         ips = self.static_ip_addresses()
         if len(ips) == 0:
             ips = self.dynamic_ip_addresses()
@@ -681,51 +672,35 @@ class Node(CleanSave, TimestampedModel):
 
     def static_ip_addresses(self):
         """Static IP addresses allocated to this node."""
-        # If the macaddresses and the ips have been prefetched (a la
-        # nodes = nodes.prefetch_related('macaddress_set__ip_addresses')),
-        # use the cache.
-        mac_cache = self.macaddress_set.all()._result_cache
-        can_use_cache = (
-            mac_cache is not None and
-            (
-                len(mac_cache) == 0
-                or
-                (
-                    len(mac_cache) > 0 and
-                    # If the first MAC has its IP addresses cached, assume
-                    # we can use the cache for all the MACs.
-                    mac_cache[0].ip_addresses.all()._result_cache is not None
-                )
-            )
-        )
-        if can_use_cache:
-            # The cache is populated: return the static IP addresses of all the
-            # node's MAC addresses.
-            macs = self.macaddress_set.all()
-            node_ip_addresses = [
-                [ipaddr.ip for ipaddr in mac.ip_addresses.all()]
-                for mac in macs
-            ]
-            return list(chain(*node_ip_addresses))
-        else:
-            return StaticIPAddress.objects.filter(
-                macaddress__node=self).values_list('ip', flat=True)
+        # DHCP is included here because it is a configured type. Its not
+        # just set randomly by the lease parser.
+        ip_addresses = StaticIPAddress.objects.filter(
+            interface__node=self, ip__isnull=False,
+            alloc_type__in=[
+                IPADDRESS_TYPE.DHCP,
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+            ])
+        ips = []
+        for ip in ip_addresses:
+            ip = ip.get_ip()
+            if ip:
+                ips.append(ip)
+        return ips
 
     def dynamic_ip_addresses(self):
         """Dynamic IP addresses allocated to this node."""
-        macs = [mac.mac_address for mac in self.macaddress_set.all()]
-        dhcpleases_qs = self.nodegroup.dhcplease_set.all()
-        if dhcpleases_qs._result_cache is not None:
-            # If the dhcp lease set has been pre-fetched: use it to
-            # extract the IP addresses associated with the nodes' MAC
-            # addresses.
-            return [lease.ip for lease in dhcpleases_qs if lease.mac in macs]
-        else:
-            query = dhcpleases_qs.filter(mac__in=macs)
-            return query.values_list('ip', flat=True)
+        ip_addresses = StaticIPAddress.objects.filter(
+            interface__node=self, alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        return [
+            ip
+            for ip in ip_addresses.values_list('ip', flat=True)
+            if ip
+        ]
 
     def get_interface_names(self):
-        return list(self.get_interfaces().values_list('name', flat=True))
+        return list(self.interface_set.all().values_list('name', flat=True))
 
     def get_next_ifname(self, ifnames=None):
         """
@@ -743,79 +718,25 @@ class Node(CleanSave, TimestampedModel):
         else:
             return "eth" + unicode(used_ethX[-1] + 1)
 
-    def get_static_ip_mappings(self):
-        """Return node's static addresses, and their MAC addresses.
-
-        :return: A list of (IP, MAC) tuples, both in string form.
-        """
-        macs = self.macaddress_set.all().prefetch_related('ip_addresses')
-        return [
-            (sip.ip, mac.mac_address)
-            for mac in macs
-            for sip in mac.ip_addresses.all()
-            ]
-
-    def mac_addresses_on_managed_interfaces(self):
-        """Return MACAddresses for this node that have a managed cluster
-        interface."""
-        # Avoid circular imports
-        from maasserver.models import MACAddress
-        unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        macs = MACAddress.objects.none()
-        if not self.installable and self.parent is not None:
-            pxe_MAC_parent = self.parent.get_pxe_mac()
-            is_pxe_MAC_on_managed_interface = (
-                pxe_MAC_parent.cluster_interface is not None and
-                pxe_MAC_parent.cluster_interface.management != unmanaged
-            )
-            if is_pxe_MAC_on_managed_interface:
-                macs |= MACAddress.objects.filter(id=self.get_primary_mac().id)
-        macs |= MACAddress.objects.filter(
-            node=self, cluster_interface__isnull=False).exclude(
-            cluster_interface__management=unmanaged)
-        return macs
-
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
         # take advantage of the cache.
         return [tag.name for tag in self.tags.all()]
 
-    def get_interfaces(self):
-        """Return `QuerySet` for all the interfaces of this node."""
-        RECURSIVE_INTERFACE_QUERY = """
-            WITH RECURSIVE search_interfaces(id) AS (
-                    SELECT i.id
-                    FROM maasserver_interface i, maasserver_macaddress m
-                    WHERE m.id = i.mac_id AND m.node_id = %s
-                UNION ALL
-                    SELECT link.child_id
-                    FROM search_interfaces si,
-                    maasserver_interfacerelationship link
-                WHERE si.id = link.parent_id
-            )
-            SELECT * FROM maasserver_interface
-            WHERE id in (SELECT id FROM search_interfaces);
-        """
-        cursor = connection.cursor()
-        cursor.execute(RECURSIVE_INTERFACE_QUERY, [self.id])
-        results = cursor.fetchall()
-        ids = [res[0] for res in results]
-        # Materialize the list of ID (that list will have a reasonable size)
-        # and return a QuerySet instead of using Manager.raw() that returns a
-        # (very limited) RawQuerySet.
-        return Interface.objects.filter(id__in=ids)
+    def clean_boot_interface(self):
+        """Check that this Node's boot interface (if present) belongs to this
+        Node.
 
-    def clean_pxe_mac(self):
-        """Check that this Node's PXE MAC (if present) belongs to this Node.
-
-        It's possible, though very unlikely, that the PXE MAC we are seeing
-        is already assigned to another Node. If this happens, we need to
+        It's possible, though very unlikely, that the boot interface we are
+        seeing is already assigned to another Node. If this happens, we need to
         catch the failure as early as possible.
         """
-        if (self.pxe_mac is not None and self.id is not None and
-                self.id != self.pxe_mac.node_id):
-                raise ValidationError(
-                    {'pxe_mac': ["Must be one of the node's mac addresses."]})
+        if (self.boot_interface is not None and self.id is not None and
+                self.id != self.boot_interface.node_id):
+                raise ValidationError({
+                    'boot_interface': [
+                        "Must be one of the node's interfaces."],
+                    })
 
     def clean_status(self):
         """Check a node's status transition against the node-status FSM."""
@@ -849,7 +770,7 @@ class Node(CleanSave, TimestampedModel):
         super(Node, self).clean(*args, **kwargs)
         self.clean_status()
         self.clean_architecture()
-        self.clean_pxe_mac()
+        self.clean_boot_interface()
 
     def display_status(self):
         """Return status text as displayed to the user."""
@@ -922,74 +843,23 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.bios_boot_method
 
-    def add_mac_address(self, mac_address):
-        """Add a new MAC address to this `Node`.
-
-        Returns the corresponding MACAddress object if mac_address represents a
-        MACAddress already assigned to this node.
-
-        Returns a new MACAddress object assigned to this node if this address
-        is not assigned to any node in the system.
-
-        Raises a ValidationError if mac_address corresponds to a MACAddress
-        already assigned to a different node.
-
-        :param mac_address: The MAC address to be added.
-        :type mac_address: unicode
-        :raises: django.core.exceptions.ValidationError_
-
-        .. _django.core.exceptions.ValidationError: https://
-           docs.djangoproject.com/en/dev/ref/exceptions/
-           #django.core.exceptions.ValidationError
-
-        """
-
+    def add_physical_interface(self, mac_address, name=None):
+        """Add a new `PhysicalInterface` to `node` with `mac_address`."""
         # Avoid circular imports
-        from maasserver.models import (
-            MACAddress,
-            PhysicalInterface,
-        )
-
-        # Create the MACAddress, but only if it does not exist.
+        from maasserver.models import PhysicalInterface
+        if name is None:
+            name = self.get_next_ifname()
         try:
-            mac = MACAddress(mac_address=mac_address, node=self)
-            mac.save()
-            iface = PhysicalInterface(mac=mac, name=self.get_next_ifname())
-            iface.save()
-        except ValidationError as e:
-            if any(("is not a valid MAC address." in m
-                    for m in e.message_dict['mac_address'])):
-                raise e  # will cause the stack to return an HTTP error status
-            elif any((u'This MAC address is already registered.' == m
-                      for m in e.message_dict['mac_address'])):
-                mac = MACAddress.objects.get(mac_address=mac_address)
-                if mac.node_id != self.id:
-                    # This MACAddress is assigned to another node
-                    raise e
-
-        # See if there's a lease for this MAC and set its
-        # cluster_interface if so.
-        leases = DHCPLease.objects.filter(
-            nodegroup=self.nodegroup, mac=mac.mac_address)
-        lease = get_one(leases)
-        if lease is not None:
-            update_mac_cluster_interfaces(lease.ip, lease.mac, self.nodegroup)
-
-        return mac
-
-    def remove_mac_address(self, mac_address):
-        """Remove a MAC address from this `Node`.
-
-        :param mac_address: The MAC address to be removed.
-        :type mac_address: string
-
-        """
-        # Avoid circular imports
-        from maasserver.models import MACAddress
-
-        mac = MACAddress.objects.get(mac_address=mac_address, node=self)
-        if mac:
-            mac.delete()
+            iface = PhysicalInterface.objects.get(mac_address=MAC(mac_address))
+        except PhysicalInterface.DoesNotExist:
+            return PhysicalInterface.objects.create(
+                node=self, mac_address=MAC(mac_address), name=name)
+        if iface.node != self:
+            # This MAC address is already registered to a different node.
+            raise ValidationError(
+                "MAC address %s already in use on %s." % (
+                    mac_address, iface.node.hostname))
+        return iface
 
     def accept_enlistment(self, user):
         """Accept this node's (anonymous) enlistment.
@@ -1028,8 +898,12 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.models import NodeResult
 
         commissioning_user_data = generate_user_data(node=self)
-        # Clear any existing commissioning results.
+
+        # Clear any existing commissioning results and the current network
+        # configuration.
         NodeResult.objects.clear_results(self)
+        self._clear_networking_configuration()
+
         # We need to mark the node as COMMISSIONING now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
         # case the power action fails.
@@ -1300,45 +1174,11 @@ class Node(CleanSave, TimestampedModel):
         """Delete this node."""
         maaslog.info("%s: Deleting node", self.hostname)
 
-        # Ensure that all static IPs are deleted, and keep track of the IP
-        # addresses so we can delete the associated host maps.
-        static_ips = StaticIPAddress.objects.delete_by_node(self)
-        # Collect other IP addresses (likely in the dynamic range) that we
-        # should delete host maps for. We need to do this because MAAS used to
-        # declare host maps in the dynamic range. At some point we can stop
-        # removing host maps from the dynamic range, once we decide that
-        # enough time has passed.
-        macs = self.mac_addresses_on_managed_interfaces().values_list(
-            'mac_address', flat=True)
-        leases = DHCPLease.objects.filter(
-            nodegroup=self.nodegroup, mac__in=macs)
-        leased_ips = leases.values_list("ip", flat=True)
-        # Delete host maps for all addresses linked to this node.
-        self.delete_host_maps(set().union(static_ips, leased_ips))
-        # Delete the related mac addresses. The DHCPLease objects
-        # corresponding to these MACs will be deleted as well. See
-        # maasserver/models/dhcplease:delete_lease().
-        self.macaddress_set.all().delete()
+        # Delete the related interfaces. This wil remove all of IP addresses
+        # that are linked to those interfaces.
+        self.interface_set.all().delete()
 
         super(Node, self).delete()
-
-    def delete_host_maps(self, for_ips):
-        """Delete any host maps for IPs allocated to this node.
-
-        This should probably live on `NodeGroup`.
-
-        :param for_ips: The set of IP addresses to remove host maps for.
-        :type for_ips: `set`
-        """
-        assert isinstance(for_ips, set), "%r is not a set" % (for_ips,)
-        if len(for_ips) > 0:
-            maaslog.info("%s: Deleting DHCP host maps", self.hostname)
-            removal_mapping = {self.nodegroup: for_ips}
-            remove_host_maps_failures = list(
-                remove_host_maps(removal_mapping))
-            if len(remove_host_maps_failures) != 0:
-                # There's only ever one failure here.
-                raise remove_host_maps_failures[0].raiseException()
 
     def set_random_hostname(self):
         """Set `hostname` from a shuffled list of candidate names.
@@ -1365,14 +1205,6 @@ class Node(CleanSave, TimestampedModel):
         if self.power_type == '':
             raise UnknownPowerType("Node power type is unconfigured")
         return self.power_type
-
-    def get_primary_mac(self):
-        """Return the primary :class:`MACAddress` for this node."""
-        macs = self.macaddress_set.order_by('created')[:1]
-        if len(macs) > 0:
-            return macs[0]
-        else:
-            return None
 
     def get_effective_kernel_options(self):
         """Determine any special kernel parameters for this node.
@@ -1476,12 +1308,12 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('power_pass', '')
         power_params.setdefault('power_off_mode', '')
 
-        # The "mac" parameter defaults to the node's primary MAC
+        # The "mac" parameter defaults to the node's boot interace MAC
         # address, but only if not already set.
         if 'mac_address' not in power_params:
-            primary_mac = self.get_primary_mac()
-            if primary_mac is not None:
-                mac = primary_mac.mac_address.get_raw()
+            boot_interface = self.get_boot_interface()
+            if boot_interface is not None:
+                mac = boot_interface.mac_address.get_raw()
                 power_params['mac_address'] = mac
 
         # boot_mode is something that tells the template whether this is
@@ -1771,7 +1603,7 @@ class Node(CleanSave, TimestampedModel):
                     unicode(ex))
                 raise
 
-        deallocate_ip_address = True
+        release_auto_ips = True
         if self.power_state == POWER_STATE.OFF:
             # Node is already off.
             self.status = NODE_STATUS.READY
@@ -1779,9 +1611,9 @@ class Node(CleanSave, TimestampedModel):
         elif self.get_effective_power_info().can_be_queried:
             # Controlled power type (one for which we can query the power
             # state): update_power_state() will take care of making the node
-            # READY, remove the owned, and deallocate the assigned static ip
-            # address when the power is finally off.
-            deallocate_ip_address = False
+            # READY, remove the owned, and release the assigned auto IP
+            # addresses when the power is finally off.
+            release_auto_ips = False
             self.status = NODE_STATUS.RELEASING
             self.start_transition_monitor(self.get_releasing_time())
         else:
@@ -1806,8 +1638,8 @@ class Node(CleanSave, TimestampedModel):
 
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
-        if deallocate_ip_address:
-            self.deallocate_static_ip_addresses_later()
+        if release_auto_ips:
+            self.release_auto_ips_later()
 
         # Clear the nodes storage configuration.
         self._clear_storage_configuration()
@@ -1918,110 +1750,39 @@ class Node(CleanSave, TimestampedModel):
             self.status = NODE_STATUS.READY
             self.owner = None
             self.stop_transition_monitor()
-            self.deallocate_static_ip_addresses_later()
+            self.release_auto_ips_later()
         self.save()
 
-    def claim_static_ip_addresses(
-            self, mac=None, alloc_type=IPADDRESS_TYPE.AUTO,
-            requested_address=None, update_host_maps=True):
-        """Assign static IPs to a node's MAC.
-        If no MAC is specified, defaults to its PXE MAC.
+    def release_leases(self):
+        """Release all leases assigned to the node."""
+        ip_leases = StaticIPAddress.objects.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip__isnull=False,
+            subnet__isnull=False, interface__node=self)
+        removal_mapping = defaultdict(set)
+        for ip in ip_leases:
+            if ip.ip:
+                ngi = ip.subnet.get_managed_cluster_interface()
+                if ngi is not None:
+                    removal_mapping[ngi.nodegroup].add(ip.ip)
+        remove_host_maps_failures = list(
+            remove_host_maps(removal_mapping))
+        if len(remove_host_maps_failures) != 0:
+            # There's only ever one failure here.
+            remove_host_maps_failures[0].raiseException()
 
-        By default, assigns IP addresses of type AUTO. If a different type
-        is desired (such as STICKY), the optional alloc_type parameter can
-        be used to override it.
-
-        By default, any address inside the cluster's static range can be
-        used. If the optional requested_address parameter is specified,
-        will attempt to obtain it.
-
-        :return: A list of ``(ip-address, mac-address)`` tuples.
-        :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
-        :raises: `StaticIPAddressUnavailable` if the supplied
-        requested_address is already in use.
-        """
-        if mac is None:
-            mac = self.get_pxe_mac()
-            if mac is None:
-                return []
-
-        try:
-            static_ips = mac.claim_static_ips(
-                alloc_type=alloc_type, requested_address=requested_address,
-                update_host_maps=update_host_maps)
-        except StaticIPAddressTypeClash:
-            # There's already a non-AUTO IP.
-            return []
-
-        # Return a list instead of yielding mappings as they're ready
-        # because it's all-or-nothing (hence the atomic context).
-        return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
-
-    @staticmethod
-    def update_nodegroup_host_maps(nodegroups, claims):
-        """Update host maps for the given MAC->IP mappings.
-
-        If a nodegroup list is given, update all of them.  If not, only
-        update the nodegroup of the node.
-        """
-        static_mappings = defaultdict(dict)
-        for nodegroup in nodegroups:
-            static_mappings[nodegroup].update(claims)
-        update_host_maps_failures = list(
-            update_host_maps(static_mappings))
-        num_failures = len(update_host_maps_failures)
-        if num_failures != 0:
-            # We've hit an error, so release any IPs we've claimed
-            # and then raise the error for the call site to
-            # handle.
-            # StaticIPAddress.objects.deallocate_by_node(self)
-            # StaticIPAddress.objects.deallocate_by_node()
-            for claim in claims:
-                StaticIPAddress.objects.get(ip=claim[0]).deallocate()
-
-            # We know there's only one error because we only
-            # sent one mapping to update_host_maps(), so we
-            # extract the exception from the Failure and raise
-            # it.
-            raise update_host_maps_failures[0].raiseException()
-
-    def update_host_maps(self, claims, nodegroups=None):
-        """Update host maps for the given MAC->IP mappings.
-
-        If a nodegroup list is given, update all of them.  If not, only
-        update the nodegroup of the node.
-        """
-
-        # For some reason, we can call this method on a Node, but the intent
-        # is to update nodegroups not on this node. That's why it's not
-        # an "append" here.
-        if nodegroups is None:
-            nodegroups = [self.nodegroup]
-
-        self.update_nodegroup_host_maps(nodegroups, claims)
+    def claim_auto_ips(self):
+        """Assign IP addresses to all interface links set to AUTO."""
+        for interface in self.interface_set.all():
+            interface.claim_auto_ips()
 
     @transactional
-    def deallocate_static_ip_addresses(
-            self, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
-        """Release the `StaticIPAddress` that is assigned to this node and
-        remove the host mapping on the cluster.
+    def release_auto_ips(self):
+        """Release IP addresses on all interface links set to AUTO."""
+        for interface in self.interface_set.all():
+            interface.release_auto_ips()
 
-        This should only be done when the node is in an unused state. If `ip`
-        is supplied, only deallocate the specified address.
-        """
-        deallocated_ip_mac = StaticIPAddress.objects.deallocate_by_node(
-            self, alloc_type=alloc_type, ip=ip)
-
-        if len(deallocated_ip_mac) > 0:
-            # Prevent circular imports
-            from maasserver.dns import config as dns_config
-            self.delete_host_maps(deallocated_ip_mac)
-            dns_config.dns_update_zones([self.nodegroup])
-
-        return deallocated_ip_mac
-
-    def deallocate_static_ip_addresses_later(self):
-        """Schedule for `deallocate_static_ip_addresses` to be called later.
+    def release_auto_ips_later(self):
+        """Schedule for `release_auto_ips` to be called later.
 
         This prevents the running task from blocking waiting for this task to
         finish. This can cause blocking and thread starvation inside the
@@ -2029,7 +1790,57 @@ class Node(CleanSave, TimestampedModel):
         """
         post_commit_do(
             reactor.callLater, 0, deferToThread,
-            self.deallocate_static_ip_addresses)
+            self.release_auto_ips)
+
+    def _clear_networking_configuration(self):
+        """Clear the networking configuration for this node.
+
+        The networking configuration is cleared when a node is going to be
+        commissioned. This allows the new commissioning data to create a new
+        networking configuration.
+        """
+        interfaces = self.interface_set.all().prefetch_related('ip_addresses')
+        for interface in interfaces:
+            for ip_address in interface.ip_addresses.all():
+                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                    interface.unlink_ip_address(ip_address)
+
+    def set_initial_networking_configuration(self):
+        """Set the networking configuration to the default for this node.
+
+        The networking configuration is set to an initial configuration where
+        the boot interface is set to AUTO and all other interfaces are set
+        to LINK_UP.
+
+        This is done after commissioning has finished.
+        """
+        boot_interface = self.get_boot_interface()
+        if boot_interface is None:
+            # No interfaces on the node. Nothing to do.
+            return
+
+        # Set AUTO mode on the boot interface.
+        auto_set = False
+        discovered_addresses = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet__isnull=False)
+        for ip_address in discovered_addresses:
+            boot_interface.link_subnet(
+                INTERFACE_LINK_TYPE.AUTO, ip_address.subnet)
+            auto_set = True
+        if not auto_set:
+            # Failed to set AUTO mode on the boot interface. Lets force an
+            # AUTO on a managed subnet that is on the same VLAN as the
+            # interface. If that fails we just set the interface to DHCP with
+            # no subnet defined.
+            boot_interface.force_auto_or_dhcp_link()
+
+        # Set LINK_UP mode on all the other enabled interfaces.
+        for interface in self.interface_set.all():
+            if interface == boot_interface:
+                # Skip the boot interface as it has already been configured.
+                continue
+            if interface.enabled:
+                interface.ensure_link_up()
 
     def get_boot_purpose(self):
         """
@@ -2065,58 +1876,56 @@ class Node(CleanSave, TimestampedModel):
         else:
             return "poweroff"
 
-    def get_pxe_mac(self):
-        """Get the MAC address this node is expected to PXE boot from.
+    def get_boot_interface(self):
+        """Get the boot interface this node is expected to boot from.
 
-        Normally, this will be the MAC address last used in a
+        Normally, this will be the boot interface last used in a
         pxeconfig() API request for the node, as recorded in the
-        'pxe_mac' property. However, if the node hasn't PXE booted since
-        the 'pxe_mac' property was added to the Node model, this will
-        return the node's first MAC address instead.
+        'boot_interface' property. However, if the node hasn't booted since
+        the 'boot_interface' property was added to the Node model, this will
+        return the node's first interface instead.
         """
-        if self.pxe_mac is not None:
-            return self.pxe_mac
+        if self.boot_interface is not None:
+            return self.boot_interface
 
         # Only use "all" and perform the sorting manually to stop extra queries
-        # when the `macaddress_set` is prefetched.
-        macs = sorted(self.macaddress_set.all(), key=attrgetter('id'))
-        if len(macs) == 0:
+        # when the `interface_set` is prefetched.
+        interfaces = sorted(self.interface_set.all(), key=attrgetter('id'))
+        if len(interfaces) == 0:
             return None
-        return macs[0]
+        return interfaces[0]
 
     def get_pxe_mac_vendor(self):
-        """Return the vendor of the MAC address the node pxebooted from."""
-        pxe_mac = self.get_pxe_mac()
-        if pxe_mac is None:
+        """Return the vendor of the MAC address the node booted from."""
+        boot_interface = self.get_boot_interface()
+        if boot_interface is None:
             return None
         else:
-            return get_vendor_for_mac(pxe_mac.mac_address.get_raw())
+            return get_vendor_for_mac(boot_interface.mac_address.get_raw())
 
     def get_extra_macs(self):
-        """Get the MACs other that the one the node PXE booted from."""
-        pxe_mac = self.get_pxe_mac()
-        extra_macs = self.macaddress_set.all()
-        if pxe_mac is not None:
-            # Remove the pxe_mac without "exclude" as exclude will cause
-            # another query to be performed if the `macaddress_set` is
-            # prefetched.
-            extra_macs = [
-                mac
-                for mac in extra_macs
-                if mac != pxe_mac
-                ]
-        return extra_macs
+        """Get the MACs other that the one the node booted from."""
+        boot_interface = self.get_boot_interface()
+        # Use all here and not filter on type so the precache is used.
+        return [
+            interface.mac_address
+            for interface in self.interface_set.all()
+            if (interface != boot_interface and
+                interface.type == INTERFACE_TYPE.PHYSICAL)
+        ]
 
-    def is_pxe_mac_on_managed_interface(self):
-        pxe_mac = self.get_pxe_mac()
-        if pxe_mac is not None:
-            cluster_interface = pxe_mac.get_cluster_interface()
+    def is_boot_interface_on_managed_interface(self):
+        """Return True if the boot interface is attached to a managed cluster
+        interface."""
+        boot_interface = self.get_boot_interface()
+        if boot_interface is not None:
+            cluster_interface = boot_interface.get_cluster_interface()
             if cluster_interface is not None:
                 return cluster_interface.is_managed
         return False
 
     @transactional
-    def start(self, by_user, user_data=None, update_host_maps=True):
+    def start(self, by_user, user_data=None):
         """Request on given user's behalf that the node be started up.
 
         :param by_user: Requesting user.
@@ -2151,15 +1960,9 @@ class Node(CleanSave, TimestampedModel):
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, user_data)
 
-        # Claim static IP addresses for the node if it's ALLOCATED.
+        # Claim AUTO IP addresses for the node if it's ALLOCATED.
         if self.status == NODE_STATUS.ALLOCATED:
-
-            # Don't update host maps if we're not on a managed interface.
-            if not self.is_pxe_mac_on_managed_interface() and update_host_maps:
-                update_host_maps = False
-
-            self.claim_static_ip_addresses(
-                update_host_maps=update_host_maps)
+            self.claim_auto_ips()
 
         if self.status == NODE_STATUS.ALLOCATED:
             transition_monitor = (
@@ -2177,18 +1980,13 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return None
 
-        @transactional
-        def pc_deallocate_by_node():
-            # Deallocate the static IPs we claimed earlier.
-            StaticIPAddress.objects.deallocate_by_node(self)
-
         def pc_power_on_node(system_id, hostname, nodegroup_uuid, power_info):
             d = power_on_node(system_id, hostname, nodegroup_uuid, power_info)
             if transition_monitor is not None:
                 d.addCallback(
                     callOut, self._start_transition_monitor_async,
                     transition_monitor, hostname)
-            d.addErrback(callOutToThread, pc_deallocate_by_node)
+            d.addErrback(callOutToThread, self.release_auto_ips)
             return d
 
         return post_commit_do(

@@ -25,6 +25,7 @@ from maasserver.models import (
     Config,
     NodeGroup,
     NodeGroupInterface,
+    Subnet,
 )
 from maasserver.models.signals.base import connect_to_field_change
 
@@ -43,9 +44,24 @@ connect_to_field_change(
         'management',
         'interface',
         'subnet_id',
-        'router_ip',
         'ip_range_low',
         'ip_range_high',
+    ])
+
+
+def dhcp_post_change_Subnet(instance, old_values, **kwargs):
+    """Create or update DNS zones related to the saved nodegroupinterface."""
+    for ngi in instance.get_managed_cluster_interfaces():
+        # Circular imports
+        from maasserver.dhcp import configure_dhcp
+        configure_dhcp(ngi.nodegroup)
+
+connect_to_field_change(
+    dhcp_post_change_Subnet, Subnet,
+    [
+        'cidr',
+        'gateway_ip',
+        'dns_servers',
     ])
 
 

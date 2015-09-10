@@ -50,7 +50,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
 )
 from maasserver.models import (
-    MACAddress,
+    Interface,
     Node,
     SSHKey,
     SSLKey,
@@ -121,7 +121,7 @@ def get_node_for_mac(mac):
     if not settings.ALLOW_UNSAFE_METADATA_ACCESS:
         raise PermissionDenied(
             "Unauthenticated metadata access is not allowed on this MAAS.")
-    match = get_one(MACAddress.objects.filter(mac_address=mac))
+    match = get_one(Interface.objects.filter(mac_address=mac))
     if match is None:
         raise MAASAPINotFound()
     return match.node
@@ -338,16 +338,17 @@ class StatusHandler(MetadataViewHandler):
         if _is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
 
-                # Ensure that any IP addresses are forcefully released in case
-                # the host didn't bother doing that. No static IPs are assigned
-                # at this stage, so we just deal with the dynamic ones.
-                node.delete_host_maps(set(node.dynamic_ip_addresses()))
+                # Ensure that any IP lease are forcefully released in case
+                # the host didn't bother doing that.
+                node.release_leases()
 
                 node.stop_transition_monitor()
-
                 if result == 'SUCCESS':
                     # Recalculate tags.
                     populate_tags_for_single_node(Tag.objects.all(), node)
+
+                    # Setup the initial networking configuration for the node.
+                    node.set_initial_networking_configuration()
                 elif result == 'FAILURE':
                     node.status = NODE_STATUS.FAILED_COMMISSIONING
 
@@ -483,12 +484,19 @@ class VersionIndexHandler(MetadataViewHandler):
             return rc.ALL_OK
 
         if node.status == NODE_STATUS.COMMISSIONING:
-            # Ensure that any IP addresses are forcefully released in case
-            # the host didn't bother doing that. No static IPs are assigned
-            # at this stage, so we just deal with the dynamic ones.
+            # Ensure that any IP lease are forcefully released in case
+            # the host didn't bother doing that.
             if status != SIGNAL_STATUS.WORKING:
-                node.delete_host_maps(set(node.dynamic_ip_addresses()))
+                node.release_leases()
+
+            # Store the commissioning results.
             self._store_commissioning_results(node, request)
+
+            # Commissioning was successful setup the initial networking
+            # configuration for the node.
+            if status == SIGNAL_STATUS.OK:
+                node.set_initial_networking_configuration()
+
             # XXX 2014-10-21 newell, bug=1382075
             # Auto detection for IPMI tries to save power parameters
             # for Moonshot.  This causes issues if the node's power type

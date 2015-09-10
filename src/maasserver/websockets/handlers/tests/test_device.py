@@ -16,17 +16,19 @@ __all__ = []
 
 import re
 
-from maasserver.clusterrpc import dhcp as dhcp_module
-from maasserver.dns import config as dns_config
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+)
 from maasserver.exceptions import NodeActionError
 from maasserver.fields import MAC
 from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
 )
-from maasserver.models.macaddress import MACAddress
-from maasserver.models.node import Node
-from maasserver.models.nodegroup import NodeGroup
+from maasserver.models import interface as interface_module
+from maasserver.models.interface import Interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.testing.factory import factory
@@ -37,51 +39,51 @@ from maasserver.websockets.base import (
     HandlerError,
     HandlerValidationError,
 )
-from maasserver.websockets.handlers import device as device_module
 from maasserver.websockets.handlers.device import (
     DEVICE_IP_ASSIGNMENT,
     DeviceHandler,
 )
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
 )
-from twisted.python.failure import Failure
 
 
 class TestDeviceHandler(MAASServerTestCase):
 
     def dehydrate_ip_assignment(self, device):
-        mac = device.get_primary_mac()
-        if mac is None:
+        boot_interface = device.get_boot_interface()
+        if boot_interface is None:
             return ""
-        num_ip_address = mac.ip_addresses.count()
-        if mac.cluster_interface is None and num_ip_address > 0:
-            return DEVICE_IP_ASSIGNMENT.EXTERNAL
-        elif mac.cluster_interface is not None and num_ip_address > 0:
-            return DEVICE_IP_ASSIGNMENT.STATIC
-        else:
-            return DEVICE_IP_ASSIGNMENT.DYNAMIC
+        ip_address = boot_interface.ip_addresses.exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
+        if ip_address is not None:
+            if ip_address.alloc_type == IPADDRESS_TYPE.DHCP:
+                return DEVICE_IP_ASSIGNMENT.DYNAMIC
+            elif ip_address.subnet is None:
+                return DEVICE_IP_ASSIGNMENT.EXTERNAL
+            else:
+                return DEVICE_IP_ASSIGNMENT.STATIC
+        return DEVICE_IP_ASSIGNMENT.DYNAMIC
 
     def dehydrate_ip_address(self, device):
         """Return the IP address for the device."""
-        primary_mac = device.get_primary_mac()
-        if primary_mac is None:
+        boot_interface = device.get_boot_interface()
+        if boot_interface is None:
             return None
-        static_ips = list(primary_mac.ip_addresses.all())
-        if len(static_ips) > 0:
-            return "%s" % static_ips[0].ip
-        for lease in device.nodegroup.dhcplease_set.all():
-            if lease.mac == primary_mac.mac_address:
-                return "%s" % lease.ip
+        static_ip = boot_interface.ip_addresses.exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
+        if static_ip is not None:
+            ip = static_ip.get_ip()
+            if ip:
+                return "%s" % ip
         return None
 
     def dehydrate_device(self, node, user, for_list=False):
-        primary_mac = node.get_primary_mac()
+        boot_interface = node.get_boot_interface()
         data = {
             "actions": compile_node_actions(node, user).keys(),
             "created": dehydrate_datetime(node.created),
@@ -92,7 +94,8 @@ class TestDeviceHandler(MAASServerTestCase):
             "fqdn": node.fqdn,
             "hostname": node.hostname,
             "primary_mac": (
-                "" if primary_mac is None else "%s" % primary_mac.mac_address),
+                "" if boot_interface is None else
+                "%s" % boot_interface.mac_address),
             "parent": (
                 node.parent.system_id if node.parent is not None else None),
             "ip_address": self.dehydrate_ip_address(node),
@@ -137,26 +140,34 @@ class TestDeviceHandler(MAASServerTestCase):
         for a device. This will setup the model to make sure the device will
         match `ip_assignment`."""
         if nodegroup is None:
-            nodegroup = factory.make_NodeGroup()
+            nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         if ip_assignment is None:
             ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT)
         if owner is None:
             owner = factory.make_User()
         device = factory.make_Node(
-            nodegroup=nodegroup, installable=False, mac=True, owner=owner)
-        primary_mac = device.get_primary_mac()
+            nodegroup=nodegroup, installable=False,
+            interface=True, owner=owner)
+        interface = device.get_boot_interface()
         if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
-            primary_mac.set_static_ip(
-                factory.make_ipv4_address(), owner)
+            subnet = factory.make_Subnet()
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                ip=factory.pick_ip_in_network(subnet.get_ipnetwork()),
+                subnet=subnet, user=owner)
         elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
-            factory.make_DHCPLease(
-                nodegroup, ip=factory.make_ipv4_address(),
-                mac=primary_mac.mac_address)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="", interface=interface)
         else:
-            interface = factory.make_NodeGroupInterface(nodegroup)
-            primary_mac.cluster_interface = interface
-            primary_mac.save()
-            primary_mac.claim_static_ips(update_host_maps=False)
+            self.patch_autospec(interface_module, "update_host_maps")
+            subnet = factory.make_Subnet(vlan=interface.vlan)
+            factory.make_NodeGroupInterface(
+                nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+                subnet=subnet)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+                interface=interface, subnet=subnet)
+            interface.claim_static_ips()
         return device
 
     def make_devices(self, nodegroup, number, owner=None):
@@ -191,10 +202,10 @@ class TestDeviceHandler(MAASServerTestCase):
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_devices(self):
-        self.patch(Node, "update_host_maps")
+        self.patch(interface_module, "update_host_maps")
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
-        nodegroup = factory.make_NodeGroup()
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         self.make_devices(nodegroup, 10, owner=owner)
         query_10_count, _ = count_queries(handler.list, {})
         self.make_devices(nodegroup, 10, owner=owner)
@@ -206,14 +217,14 @@ class TestDeviceHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEquals(
-            query_10_count, 8,
+            query_10_count, 7,
             "Number of queries has changed; make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of nodes.")
 
     def test_list_returns_devices_only_viewable_by_user(self):
-        self.patch(Node, "update_host_maps")
+        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         # Create another user.
         factory.make_User()
@@ -305,7 +316,6 @@ class TestDeviceHandler(MAASServerTestCase):
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
         ip_address = factory.make_ipv4_address()
-        self.patch(dhcp_module, "update_host_maps").return_value = []
         created_device = handler.create({
             "hostname": hostname,
             "primary_mac": mac,
@@ -323,65 +333,15 @@ class TestDeviceHandler(MAASServerTestCase):
             StaticIPAddress.objects.filter(ip=ip_address).count(),
             Equals(1), "StaticIPAddress was not created.")
 
-    def test_create_with_external_ip_calls_dns_update_zones(self):
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        mac = factory.make_mac_address()
-        hostname = factory.make_name("hostname")
-        ip_address = factory.make_ipv4_address()
-        self.patch(dhcp_module, "update_host_maps").return_value = []
-        mock_dns_update_zones = self.patch(dns_config.dns_update_zones)
-        handler.create({
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT.EXTERNAL,
-                "ip_address": ip_address,
-            }],
-        })
-        self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith([NodeGroup.objects.ensure_master()]))
-
-    def test_create_raises_failure_external_ip_update_hostmaps_fails(self):
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        mac = factory.make_mac_address()
-        hostname = factory.make_name("hostname")
-        ip_address = factory.make_ipv4_address()
-        mock_update_host_maps = self.patch(dhcp_module, "update_host_maps")
-        mock_update_host_maps.return_value = [
-            Failure(factory.make_exception()),
-            ]
-        self.assertRaises(HandlerError, handler.create, {
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT.EXTERNAL,
-                "ip_address": ip_address,
-            }],
-        })
-        self.expectThat(
-            Node.objects.filter(hostname=hostname).count(),
-            Equals(0), "Created Node was not deleted.")
-        self.expectThat(
-            MACAddress.objects.filter(mac_address=MAC(mac)).count(),
-            Equals(0), "Created MACAddress was not deleted.")
-        self.expectThat(
-            StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(0), "Created StaticIPAddress was not deleted.")
-
     def test_create_creates_device_with_static_ip_assignment_implicit(self):
-        self.patch(Node, "update_host_maps")
+        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
-        self.patch(dhcp_module, "update_host_maps").return_value = []
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        nodegroup_interface = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         created_device = handler.create({
             "hostname": hostname,
             "primary_mac": mac,
@@ -394,25 +354,27 @@ class TestDeviceHandler(MAASServerTestCase):
         self.expectThat(
             created_device["ip_assignment"],
             Equals(DEVICE_IP_ASSIGNMENT.STATIC))
+        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        subnet = static_interface.ip_addresses.first().subnet
+        linked_ngi = subnet.nodegroupinterface_set.first()
         self.expectThat(
-            MACAddress.objects.get(mac_address=MAC(mac)).cluster_interface,
-            Equals(nodegroup_interface),
-            "Link between MACAddress and NodeGroupInterface was not created.")
+            linked_ngi, Equals(nodegroup_interface),
+            "Link between Interface and NodeGroupInterface was not created.")
         ip_address = created_device["ip_address"]
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_creates_device_with_static_ip_assignment_explicit(self):
-        self.patch(Node, "update_host_maps")
+        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
         hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        nodegroup_interface = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         ip_address = nodegroup_interface.static_ip_range_low
-        self.patch(dhcp_module, "update_host_maps").return_value = []
         created_device = handler.create({
             "hostname": hostname,
             "primary_mac": mac,
@@ -427,82 +389,28 @@ class TestDeviceHandler(MAASServerTestCase):
             created_device["ip_assignment"],
             Equals(DEVICE_IP_ASSIGNMENT.STATIC))
         self.expectThat(created_device["ip_address"], Equals(ip_address))
+        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        subnet = static_interface.ip_addresses.first().subnet
+        linked_ngi = subnet.nodegroupinterface_set.first()
         self.expectThat(
-            MACAddress.objects.get(mac_address=MAC(mac)).cluster_interface,
-            Equals(nodegroup_interface),
-            "Link between MACAddress and NodeGroupInterface was not created.")
+            linked_ngi, Equals(nodegroup_interface),
+            "Link between Interface and NodeGroupInterface was not created.")
         self.expectThat(
             StaticIPAddress.objects.filter(ip=ip_address).count(),
             Equals(1), "StaticIPAddress was not created.")
 
-    def test_create_with_static_ip_calls_dns_update_zones(self):
-        self.patch(device_module.update_host_maps).return_value = []
-        # self.patch(Node.update_host_maps).return_value = []
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        mac = factory.make_mac_address()
-        hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
-        mock_dns_update_zones = self.patch(dns_config.dns_update_zones)
-        handler.create({
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT.STATIC,
-                "interface": nodegroup_interface.id,
-            }],
-        })
-        self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith([NodeGroup.objects.ensure_master()]))
-
-    def test_create_raises_failure_static_ip_update_hostmaps_fails(self):
-        self.patch(Node, "update_host_maps")
-        mock_update_host_maps = self.patch(dhcp_module, "update_host_maps")
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        mac = factory.make_mac_address()
-        hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
-        ip_address = nodegroup_interface.static_ip_range_low
-        mock_update_host_maps.return_value = [
-            Failure(factory.make_exception()),
-            ]
-        self.assertRaises(HandlerError, handler.create, {
-            "hostname": hostname,
-            "primary_mac": mac,
-            "interfaces": [{
-                "mac": mac,
-                "ip_assignment": DEVICE_IP_ASSIGNMENT.STATIC,
-                "interface": nodegroup_interface.id,
-                "ip_address": ip_address,
-            }],
-        })
-        self.expectThat(
-            Node.objects.filter(hostname=hostname).count(),
-            Equals(0), "Created Node was not deleted.")
-        self.expectThat(
-            MACAddress.objects.filter(mac_address=MAC(mac)).count(),
-            Equals(0), "Created MACAddress was not deleted.")
-        self.expectThat(
-            StaticIPAddress.objects.filter(ip=ip_address).count(),
-            Equals(0), "Created StaticIPAddress was not deleted.")
-
     def test_create_creates_device_with_static_and_external_ip(self):
-        self.patch(Node, "update_host_maps")
+        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        nodegroup_interface = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         mac_static = factory.make_mac_address()
         static_ip_address = nodegroup_interface.static_ip_range_low
         mac_external = factory.make_mac_address()
         external_ip_address = factory.make_ipv4_address()
-        self.patch(dhcp_module, "update_host_maps").return_value = []
         created_device = handler.create({
             "hostname": hostname,
             "primary_mac": mac_static,
@@ -534,71 +442,18 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(DEVICE_IP_ASSIGNMENT.STATIC))
         self.expectThat(
             created_device["ip_address"], Equals(static_ip_address))
+        static_interface = Interface.objects.get(mac_address=MAC(mac_static))
+        subnet = static_interface.ip_addresses.first().subnet
+        linked_ngi = subnet.nodegroupinterface_set.first()
         self.expectThat(
-            MACAddress.objects.get(
-                mac_address=MAC(mac_static)).cluster_interface,
-            Equals(nodegroup_interface),
-            "Link between MACAddress and NodeGroupInterface was not created.")
+            linked_ngi, Equals(nodegroup_interface),
+            "Link between Interface and NodeGroupInterface was not created.")
         self.expectThat(
             StaticIPAddress.objects.filter(ip=static_ip_address).count(),
             Equals(1), "Static StaticIPAddress was not created.")
         self.expectThat(
             StaticIPAddress.objects.filter(ip=external_ip_address).count(),
             Equals(1), "External StaticIPAddress was not created.")
-
-    def test_create_deletes_device_and_ips_when_only_one_errors(self):
-        self.patch(Node, "update_host_maps")
-        self.patch(dhcp_module, "update_host_maps").side_effect = [
-            [], [Failure(factory.make_exception())],
-        ]
-        user = factory.make_User()
-        handler = DeviceHandler(user, {})
-        hostname = factory.make_name("hostname")
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_interface = factory.make_NodeGroupInterface(nodegroup)
-        mac_static = factory.make_mac_address()
-        static_ip_address = nodegroup_interface.static_ip_range_low
-        mac_external = factory.make_mac_address()
-        external_ip_address = factory.make_ipv4_address()
-        self.assertRaises(HandlerError, handler.create, {
-            "hostname": hostname,
-            "primary_mac": mac_static,
-            "extra_macs": [
-                mac_external
-            ],
-            "interfaces": [
-                {
-                    "mac": mac_static,
-                    "ip_assignment": DEVICE_IP_ASSIGNMENT.STATIC,
-                    "interface": nodegroup_interface.id,
-                    "ip_address": static_ip_address,
-                },
-                {
-                    "mac": mac_external,
-                    "ip_assignment": DEVICE_IP_ASSIGNMENT.EXTERNAL,
-                    "ip_address": external_ip_address,
-                },
-            ],
-        })
-        self.expectThat(
-            Node.objects.filter(hostname=hostname).count(),
-            Equals(0), "Created Node was not deleted.")
-        self.expectThat(
-            MACAddress.objects.filter(mac_address=MAC(mac_static)).count(),
-            Equals(0),
-            "Created MACAddress for static ip address was not deleted.")
-        self.expectThat(
-            MACAddress.objects.filter(mac_address=MAC(mac_external)).count(),
-            Equals(0),
-            "Created MACAddress for external ip address was not deleted.")
-        self.expectThat(
-            StaticIPAddress.objects.filter(ip=static_ip_address).count(),
-            Equals(0),
-            "Created StaticIPAddress for static ip address was not deleted.")
-        self.expectThat(
-            StaticIPAddress.objects.filter(ip=external_ip_address).count(),
-            Equals(0),
-            "Created StaticIPAddress for external ip address was not deleted.")
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()

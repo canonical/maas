@@ -37,9 +37,9 @@ from maasserver.utils.orm import transactional
 
 # Note that the corresponding test module (test_triggers) only tests that the
 # triggers and procedures are registered.  The behavior of these procedures
-# is tested (end-to-end testing) in test_listeners.  We test it there because
+# is tested (end-to-end testing) in test_listener.  We test it there because
 # the asynchronous nature of the PG events makes it easier to test in
-# test_listeners where all the Twisted infrastructure is already in place.
+# test_listener where all the Twisted infrastructure is already in place.
 
 
 # Procedure that is called when a tag is added or removed from a node/device.
@@ -129,18 +129,42 @@ NODEGROUP_INTERFACE_NODEGROUP_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a Subnet related to a NodeGroupInterface is
+# updated. Sends a notify message for nodegroup_update.
+SUBNET_NODEGROUP_INTERFACE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION subnet_update_nodegroup_notify()
+    RETURNS trigger AS $$
+    DECLARE
+      nodegroup RECORD;
+    BEGIN
+      FOR nodegroup IN (
+        SELECT ng.id
+        FROM
+          maasserver_nodegroup ng,
+          maasserver_nodegroupinterface ngi,
+          maasserver_subnet subnet
+        WHERE subnet.id = ngi.subnet_id AND ngi.nodegroup_id = ng.id)
+      LOOP
+        PERFORM pg_notify('nodegroup_update',CAST(nodegroup.id AS text));
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 # Procedure that is called when a static ip address is linked or unlinked to
-# a MAC address. Sends a notify message for node_update or device_update
+# an Interface. Sends a notify message for node_update or device_update
 # depending on if the node is installable.
-MACSTATICIPADDRESSLINK_NODE_NOTIFY = dedent("""\
+INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, installable INTO node
-      FROM maasserver_node, maasserver_macaddress
-      WHERE maasserver_node.id = maasserver_macaddress.node_id
-      AND maasserver_macaddress.id = %s;
+      FROM maasserver_node, maasserver_interface
+      WHERE maasserver_node.id = maasserver_interface.node_id
+      AND maasserver_interface.id = %s;
 
       IF node.installable THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
@@ -153,36 +177,13 @@ MACSTATICIPADDRESSLINK_NODE_NOTIFY = dedent("""\
     """)
 
 
-# Procedure that is called when a dhcplease is added or removed and it matches
-# a MAC address. Sends a notify message for node_update or device_update
-# depending on if the node is installable.
-DHCPLEASE_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
-    DECLARE
-      node RECORD;
-    BEGIN
-      SELECT system_id, installable INTO node
-      FROM maasserver_node, maasserver_macaddress
-      WHERE maasserver_node.id = maasserver_macaddress.node_id
-      AND maasserver_macaddress.mac_address = %s;
-
-      IF node.installable THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
-      ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
-# Procedure that is called when a MAC address updated. Will send node_update
-# or device_update when the MAC address is moved from another node to a new
-# node. Sends a notify message for node_update or device_update depending on
-# if the node is installable, both for the old node and the new node.
-MACADDRESS_UPDATE_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION nd_macaddress_update_notify()
+# Procedure that is called when a Interface address updated. Will send
+# node_update or device_update when the Interface is moved from another node
+# to a new node. Sends a notify message for node_update or device_update
+# depending on if the node is installable, both for the old node and the
+# new node.
+INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION nd_interface_update_notify()
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
@@ -520,6 +521,10 @@ def register_all_triggers():
         "maasserver_nodegroupinterface",
         "nodegroupinterface_delete_notify", "delete")
 
+    register_procedure(SUBNET_NODEGROUP_INTERFACE_NOTIFY)
+    register_trigger(
+        "maasserver_subnet", "subnet_update_nodegroup_notify", "update")
+
     # Zone table
     register_procedure(
         render_notification_procedure(
@@ -616,39 +621,21 @@ def register_all_triggers():
 
     # MAC static ip address table, update to linked node.
     register_procedure(
-        MACSTATICIPADDRESSLINK_NODE_NOTIFY % (
+        INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
             'nd_sipaddress_link_notify',
-            'NEW.mac_address_id',
+            'NEW.interface_id',
             ))
     register_procedure(
-        MACSTATICIPADDRESSLINK_NODE_NOTIFY % (
+        INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
             'nd_sipaddress_unlink_notify',
-            'OLD.mac_address_id',
+            'OLD.interface_id',
             ))
     register_trigger(
-        "maasserver_macstaticipaddresslink",
+        "maasserver_interface_ip_addresses",
         "nd_sipaddress_link_notify", "insert")
     register_trigger(
-        "maasserver_macstaticipaddresslink",
+        "maasserver_interface_ip_addresses",
         "nd_sipaddress_unlink_notify", "delete")
-
-    # DHCP lease table, update to linked node.
-    register_procedure(
-        DHCPLEASE_NODE_NOTIFY % (
-            'nd_dhcplease_match_notify',
-            'NEW.mac',
-            ))
-    register_procedure(
-        DHCPLEASE_NODE_NOTIFY % (
-            'nd_dhcplease_unmatch_notify',
-            'OLD.mac',
-            ))
-    register_trigger(
-        "maasserver_dhcplease",
-        "nd_dhcplease_match_notify", "insert")
-    register_trigger(
-        "maasserver_dhcplease",
-        "nd_dhcplease_unmatch_notify", "delete")
 
     # Node result table, update to linked node.
     register_procedure(
@@ -664,23 +651,23 @@ def register_all_triggers():
         "metadataserver_noderesult",
         "nd_noderesult_unlink_notify", "delete")
 
-    # MAC address table, update to linked node.
+    # Interface address table, update to linked node.
     register_procedure(
         render_node_related_notification_procedure(
-            'nd_macaddress_link_notify', 'NEW.node_id'))
+            'nd_interface_link_notify', 'NEW.node_id'))
     register_procedure(
         render_node_related_notification_procedure(
-            'nd_macaddress_unlink_notify', 'OLD.node_id'))
-    register_procedure(MACADDRESS_UPDATE_NODE_NOTIFY)
+            'nd_interface_unlink_notify', 'OLD.node_id'))
+    register_procedure(INTERFACE_UPDATE_NODE_NOTIFY)
     register_trigger(
-        "maasserver_macaddress",
-        "nd_macaddress_link_notify", "insert")
+        "maasserver_interface",
+        "nd_interface_link_notify", "insert")
     register_trigger(
-        "maasserver_macaddress",
-        "nd_macaddress_unlink_notify", "delete")
+        "maasserver_interface",
+        "nd_interface_unlink_notify", "delete")
     register_trigger(
-        "maasserver_macaddress",
-        "nd_macaddress_update_notify", "update")
+        "maasserver_interface",
+        "nd_interface_update_notify", "update")
 
     # Block device table, update to linked node.
     register_procedure(

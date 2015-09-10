@@ -275,6 +275,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
             'cluster-interface-edit',
             args=[nodegroup.uuid, interface.name])
         data = factory.get_interface_fields()
+        del data['subnet']
         response = self.client.post(edit_link, data)
         self.assertEqual(
             (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
@@ -312,6 +313,7 @@ class ClusterInterfaceCreateTest(MAASServerTestCase):
         create_link = reverse(
             'cluster-interface-create', args=[nodegroup.uuid])
         data = factory.get_interface_fields()
+        del data['subnet']
         response = self.client.post(create_link, data)
         self.assertEqual(
             (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
