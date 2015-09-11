@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from django.http import QueryDict
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import NodeWithMACAddressesForm
 from maasserver.models import NodeGroup
 from maasserver.testing.architecture import (
@@ -25,6 +26,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
+from testtools.matchers import Contains
 
 
 class NodeWithMACAddressesFormTest(MAASServerTestCase):
@@ -57,7 +59,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         patch_usable_architectures(self, [architecture])
         return self.get_QueryDict(params)
 
-    def test_NodeWithMACAddressesForm_valid(self):
+    def test__valid(self):
         architecture = make_usable_architecture(self)
         form = NodeWithMACAddressesForm(
             data=self.make_params(
@@ -70,7 +72,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
             form.cleaned_data['mac_addresses'])
         self.assertEqual(architecture, form.cleaned_data['architecture'])
 
-    def test_NodeWithMACAddressesForm_simple_invalid(self):
+    def test__simple_invalid(self):
         # If the form only has one (invalid) MAC address field to validate,
         # the error message in form.errors['mac_addresses'] is the
         # message from the field's validation error.
@@ -83,7 +85,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
             ["'invalid' is not a valid MAC address."],
             form.errors['mac_addresses'])
 
-    def test_NodeWithMACAddressesForm_multiple_invalid(self):
+    def test__multiple_invalid(self):
         # If the form has multiple MAC address fields to validate,
         # if one or more fields are invalid, a single error message is
         # present in form.errors['mac_addresses'] after validation.
@@ -100,7 +102,49 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
             ],
             form.errors['mac_addresses'])
 
-    def test_NodeWithMACAddressesForm_empty(self):
+    def test__mac_in_use_on_current_node_passes(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            address='aa:bb:cc:dd:ee:ff')
+        architecture = make_usable_architecture(self)
+        form = NodeWithMACAddressesForm(
+            data=self.make_params(
+                mac_addresses=['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
+                architecture=architecture), instance=node)
+
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
+            form.cleaned_data['mac_addresses'])
+        self.assertEqual(architecture, form.cleaned_data['architecture'])
+
+    def test__with_mac_in_use_on_another_node_fails(self):
+        factory.make_Node_with_Interface_on_Subnet(address='aa:bb:cc:dd:ee:ff')
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node_with_Interface_on_Subnet()
+        form = NodeWithMACAddressesForm(
+            data=self.make_params(
+                mac_addresses=['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
+                architecture=architecture), instance=node)
+
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertThat(dict(form.errors), Contains('mac_addresses'))
+
+    def test__with_mac_in_use_on_uknown_interface_passes(self):
+        factory.make_Interface(
+            INTERFACE_TYPE.UNKNOWN, mac_address='aa:bb:cc:dd:ee:ff')
+        architecture = make_usable_architecture(self)
+        form = NodeWithMACAddressesForm(
+            data=self.make_params(
+                mac_addresses=['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
+                architecture=architecture))
+
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        self.assertEqual(
+            ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
+            form.cleaned_data['mac_addresses'])
+        self.assertEqual(architecture, form.cleaned_data['architecture'])
+
+    def test__empty(self):
         # Empty values in the list of MAC addresses are simply ignored.
         form = NodeWithMACAddressesForm(
             data=self.make_params(
@@ -108,7 +152,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
 
         self.assertTrue(form.is_valid())
 
-    def test_NodeWithMACAddressesForm_save(self):
+    def test__save(self):
         macs = ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']
         form = NodeWithMACAddressesForm(
             data=self.make_params(mac_addresses=macs))

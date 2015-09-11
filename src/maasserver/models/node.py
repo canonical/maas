@@ -846,14 +846,16 @@ class Node(CleanSave, TimestampedModel):
     def add_physical_interface(self, mac_address, name=None):
         """Add a new `PhysicalInterface` to `node` with `mac_address`."""
         # Avoid circular imports
-        from maasserver.models import PhysicalInterface
+        from maasserver.models import PhysicalInterface, UnknownInterface
         if name is None:
             name = self.get_next_ifname()
+        mac = MAC(mac_address)
+        UnknownInterface.objects.filter(mac_address=mac).delete()
         try:
-            iface = PhysicalInterface.objects.get(mac_address=MAC(mac_address))
+            iface = PhysicalInterface.objects.get(mac_address=mac)
         except PhysicalInterface.DoesNotExist:
             return PhysicalInterface.objects.create(
-                node=self, mac_address=MAC(mac_address), name=name)
+                node=self, mac_address=mac, name=name)
         if iface.node != self:
             # This MAC address is already registered to a different node.
             raise ValidationError(

@@ -94,6 +94,7 @@ from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
+    INTERFACE_TYPE,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_STATUS,
@@ -1062,27 +1063,29 @@ class WithMACAddressesMixin:
                 self.errors['mac_addresses'])]
         return valid
 
+    def _mac_in_use_on_node_error(self, mac, node):
+        """Returns an error string to be used wihen the specified MAC
+        is already in use on the specified Node model object."""
+        return "MAC address %s already in use%s." % (
+            mac, " on %s" % node.hostname if node else '')
+
     def clean_mac_addresses(self):
         data = self.cleaned_data['mac_addresses']
         errors = []
-        if self.instance.id is not None:
-            # This node is already in the system.
-            for mac in data:
-                mac_on_other_nodes = Interface.objects.filter(
-                    mac_address=mac.lower()).exclude(node=self.instance)
-                if mac_on_other_nodes:
-                    errors.append(
-                        'MAC address %s already in use on %s.' %
-                        (mac, mac_on_other_nodes[0].node.hostname))
-        else:
-            # This node does not exist yet, we should only check if this
-            # MAC address is already attached to another node.
-            for mac in data:
-                if Interface.objects.filter(mac_address=mac.lower()).exists():
-                    errors.append(
-                        'MAC address %s already in use on %s.' %
-                        (mac, Interface.objects.filter(
-                            mac_address=mac.lower()).first().node.hostname))
+        for mac in data:
+            if self.instance.id is not None:
+                query = Interface.objects.filter(
+                    mac_address=mac.lower()).exclude(
+                    node=self.instance).exclude(type=INTERFACE_TYPE.UNKNOWN)
+            else:
+                # This node does not exist yet, we should only check if this
+                # MAC address is already attached to another node.
+                query = Interface.objects.filter(
+                    mac_address=mac.lower()).exclude(
+                    type=INTERFACE_TYPE.UNKNOWN)
+            for iface in query:
+                node = iface.node
+                errors.append(self._mac_in_use_on_node_error(mac, node))
         if errors:
             raise ValidationError({'mac_addresses': errors})
         return data

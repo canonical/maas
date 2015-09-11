@@ -55,6 +55,7 @@ from maasserver.models import (
     Node,
     node as node_module,
     PhysicalInterface,
+    UnknownInterface,
 )
 from maasserver.models.node import PowerInfo
 from maasserver.models.signals import power as node_query
@@ -296,6 +297,18 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(
             ['eth4000', 'eth4001'], list(ifaces.order_by('id').values_list(
                 'name', flat=True)))
+
+    def test_add_physical_interface_removes_matching_unknown_interface(self):
+        mac = factory.make_mac_address()
+        factory.make_Interface(INTERFACE_TYPE.UNKNOWN, mac_address=mac)
+        node = factory.make_Node()
+        node.add_physical_interface(mac)
+        interfaces = PhysicalInterface.objects.filter(
+            mac_address=mac).count()
+        self.assertEqual(1, interfaces)
+        interfaces = UnknownInterface.objects.filter(
+            mac_address=mac).count()
+        self.assertEqual(0, interfaces)
 
     def test_get_osystem_returns_default_osystem(self):
         node = factory.make_Node(osystem='')
