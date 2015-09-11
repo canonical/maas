@@ -33,6 +33,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db import connection
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -1843,6 +1844,84 @@ class Node(CleanSave, TimestampedModel):
                 continue
             if interface.enabled:
                 interface.ensure_link_up()
+
+    def get_best_guess_for_default_gateway_ips(self):
+        """Return the best guess for the default gateway IP addresses. This is
+        either one IPv4 address, one IPv6 address, or both.
+
+        This is determined by looking at all interfaces on the node and
+        selecting the best possible default gateway IP. The criteria below
+        is used to select the best possible gateway:
+            1. Managed subnets over unmanaged subnets.
+            2. Bond interfaces over physical interfaces.
+            3. Node's boot interface over all other interfaces except bonds.
+            4. Physical interfaces over VLAN interfaces.
+            5. Sticky IP links over user reserved IP links.
+            6. User reserved IP links over auto IP links.
+
+        :return: List of tuples with (interface ID, subnet ID, and gateway IP)
+        :rtype: list
+        """
+        cursor = connection.cursor()
+
+        # DISTINCT ON returns the first matching row for any given
+        # IP family. Using the query's ordering.
+        #
+        # For nodes that have disable_ipv4 set, leave out any IPv4 address.
+        cursor.execute("""
+            SELECT DISTINCT ON (family(subnet.gateway_ip))
+                interface.id, subnet.id, subnet.gateway_ip
+            FROM maasserver_node AS node
+            JOIN maasserver_interface AS interface ON
+                interface.node_id = node.id
+            JOIN maasserver_interface_ip_addresses AS link ON
+                link.interface_id = interface.id
+            JOIN maasserver_staticipaddress AS staticip ON
+                staticip.id = link.staticipaddress_id
+            JOIN maasserver_subnet AS subnet ON
+                subnet.id = staticip.subnet_id
+            LEFT JOIN maasserver_nodegroupinterface AS ngi ON
+                ngi.subnet_id = subnet.id
+            LEFT JOIN maasserver_nodegroup AS nodegroup ON
+                nodegroup.id = ngi.nodegroup_id
+            WHERE
+                node.id = %s AND
+                subnet.gateway_ip IS NOT NULL AND
+                host(subnet.gateway_ip) != '' AND
+                staticip.alloc_type != 5 AND /* Ignore DHCP */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                (
+                    node.disable_ipv4 IS FALSE OR
+                    family(subnet.gateway_ip) <> 4
+                )
+            ORDER BY
+                family(subnet.gateway_ip),
+                nodegroup.status,
+                ngi.management DESC,
+                CASE
+                    WHEN interface.type = 'bond' THEN 1
+                    WHEN interface.type = 'physical' AND
+                        interface.id = node.boot_interface_id THEN 2
+                    WHEN interface.type = 'physical' THEN 3
+                    WHEN interface.type = 'vlan' THEN 4
+                    WHEN interface.type = 'alias' THEN 5
+                    ELSE 6
+                END,
+                CASE
+                    WHEN staticip.alloc_type = 1 /* STICKY */
+                        THEN 1
+                    WHEN staticip.alloc_type = 4 /* USER_RESERVED */
+                        THEN 2
+                    WHEN staticip.alloc_type = 0 /* AUTO */
+                        THEN 3
+                    ELSE staticip.alloc_type
+                END,
+                interface.id
+            """, (self.id,))
+        return [
+            (found[0], found[1], found[2])
+            for found in cursor.fetchall()
+        ]
 
     def get_boot_purpose(self):
         """

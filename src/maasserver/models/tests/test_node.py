@@ -2614,6 +2614,228 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertItemsEqual(enabled_interfaces, observed_interfaces)
 
 
+class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
+
+    def test__simple(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, disable_ipv4=False)
+        boot_interface = node.get_boot_interface()
+        managed_subnet = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
+        gateway_ip = managed_subnet.gateway_ip
+        self.assertEquals(
+            [(boot_interface.id, managed_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__ipv4_and_ipv6(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v4)
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v6)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(network_v4),
+            subnet=subnet_v4, interface=interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(network_v6),
+            subnet=subnet_v6, interface=interface)
+        self.assertItemsEqual([
+            (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
+            (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
+            ], node.get_best_guess_for_default_gateway_ips())
+
+    def test__only_one(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, disable_ipv4=False)
+        boot_interface = node.get_boot_interface()
+        managed_subnet = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
+        # Give it two IP addresses on the same subnet.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(managed_subnet.get_ipnetwork()),
+            subnet=managed_subnet, interface=boot_interface)
+        gateway_ip = managed_subnet.gateway_ip
+        self.assertEquals(
+            [(boot_interface.id, managed_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__managed_subnet_over_unmanaged(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        unmanaged_network = factory.make_ipv4_network()
+        unmanaged_subnet = factory.make_Subnet(
+            cidr=unicode(unmanaged_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(unmanaged_network),
+            subnet=unmanaged_subnet, interface=interface)
+        managed_network = factory.make_ipv4_network()
+        managed_subnet = factory.make_Subnet(
+            cidr=unicode(managed_network.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=managed_subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(managed_network),
+            subnet=managed_subnet, interface=interface)
+        gateway_ip = managed_subnet.gateway_ip
+        self.assertEquals(
+            [(interface.id, managed_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__bond_over_physical_interface(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        physical_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        physical_network = factory.make_ipv4_network()
+        physical_subnet = factory.make_Subnet(
+            cidr=unicode(physical_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(physical_network),
+            subnet=physical_subnet, interface=physical_interface)
+        parent_interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(2)
+        ]
+        bond_interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=parent_interfaces)
+        bond_network = factory.make_ipv4_network()
+        bond_subnet = factory.make_Subnet(
+            cidr=unicode(bond_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(bond_network),
+            subnet=bond_subnet, interface=bond_interface)
+        gateway_ip = bond_subnet.gateway_ip
+        self.assertEquals(
+            [(bond_interface.id, bond_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__physical_over_vlan_interface(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        physical_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        physical_network = factory.make_ipv4_network()
+        physical_subnet = factory.make_Subnet(
+            cidr=unicode(physical_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(physical_network),
+            subnet=physical_subnet, interface=physical_interface)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[physical_interface])
+        vlan_network = factory.make_ipv4_network()
+        vlan_subnet = factory.make_Subnet(
+            cidr=unicode(vlan_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(vlan_network),
+            subnet=vlan_subnet, interface=vlan_interface)
+        gateway_ip = physical_subnet.gateway_ip
+        self.assertEquals(
+            [(physical_interface.id, physical_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__boot_interface_over_other_interfaces(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        physical_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        physical_network = factory.make_ipv4_network()
+        physical_subnet = factory.make_Subnet(
+            cidr=unicode(physical_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(physical_network),
+            subnet=physical_subnet, interface=physical_interface)
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        boot_network = factory.make_ipv4_network()
+        boot_subnet = factory.make_Subnet(
+            cidr=unicode(boot_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(boot_network),
+            subnet=boot_subnet, interface=boot_interface)
+        node.boot_interface = boot_interface
+        node.save()
+        gateway_ip = boot_subnet.gateway_ip
+        self.assertEquals(
+            [(boot_interface.id, boot_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__sticky_ip_over_user_reserved(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        sticky_network = factory.make_ipv4_network()
+        sticky_subnet = factory.make_Subnet(
+            cidr=unicode(sticky_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(sticky_network),
+            subnet=sticky_subnet, interface=interface)
+        user_reserved_network = factory.make_ipv4_network()
+        user_reserved_subnet = factory.make_Subnet(
+            cidr=unicode(user_reserved_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=factory.make_User(),
+            ip=factory.pick_ip_in_network(user_reserved_network),
+            subnet=user_reserved_subnet, interface=interface)
+        gateway_ip = sticky_subnet.gateway_ip
+        self.assertEquals(
+            [(interface.id, sticky_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+    def test__user_reserved_ip_over_auto(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        user_reserved_network = factory.make_ipv4_network()
+        user_reserved_subnet = factory.make_Subnet(
+            cidr=unicode(user_reserved_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=factory.make_User(),
+            ip=factory.pick_ip_in_network(user_reserved_network),
+            subnet=user_reserved_subnet, interface=interface)
+        auto_network = factory.make_ipv4_network()
+        auto_subnet = factory.make_Subnet(
+            cidr=unicode(auto_network.cidr))
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_network(auto_network),
+            subnet=auto_subnet, interface=interface)
+        gateway_ip = user_reserved_subnet.gateway_ip
+        self.assertEquals(
+            [(interface.id, user_reserved_subnet.id, gateway_ip)],
+            node.get_best_guess_for_default_gateway_ips())
+
+
 class TestDeploymentStatus(MAASServerTestCase):
     """Tests for node.get_deployment_status."""
 
