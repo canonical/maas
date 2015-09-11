@@ -46,6 +46,7 @@ from maasserver.preseed import (
     compose_curtin_verbose_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
+    curtin_maas_reporter,
     GENERIC_FILENAME,
     get_available_purpose_for_node,
     get_curtin_config,
@@ -76,6 +77,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
+from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -621,29 +623,39 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         [reporter_yaml] = preseeds
         return yaml.safe_load(reporter_yaml)
 
-    def test__returns_list_of_yaml_strings(self):
-        preseeds = compose_curtin_maas_reporter(factory.make_Node())
-        self.assertIsInstance(preseeds, list)
-        self.assertThat(preseeds, HasLength(1))
-        reporter = self.load_reporter(preseeds)
-        self.assertIsInstance(reporter, dict)
-        self.assertEqual(['reporter'], list(reporter.keys()))
-
-    def test__returns_reporter_url(self):
+    def test__curtin_maas_reporter_with_events_support(self):
         node = factory.make_Node()
-        preseeds = compose_curtin_maas_reporter(node)
-        reporter = self.load_reporter(preseeds)
+        token = NodeKey.objects.get_token_for_node(node)
+        reporter = curtin_maas_reporter(node, True)
+        self.assertEqual(['reporting', 'install'], list(reporter.keys()))
+        self.assertEqual(
+            absolute_reverse(
+                'metadata-status', args=[node.system_id],
+                base_url=node.nodegroup.maas_url),
+            reporter['reporting']['maas']['endpoint'])
+        self.assertEqual(
+            'webhook',
+            reporter['reporting']['maas']['type'])
+        self.assertEqual(
+            token.consumer.key,
+            reporter['reporting']['maas']['consumer_key'])
+        self.assertEqual(
+            token.key,
+            reporter['reporting']['maas']['token_key'])
+        self.assertEqual(
+            token.secret,
+            reporter['reporting']['maas']['token_secret'])
+
+    def test__curtin_maas_reporter_without_events_support(self):
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        reporter = curtin_maas_reporter(node, False)
+        self.assertEqual(['reporter'], list(reporter.keys()))
         self.assertEqual(
             absolute_reverse(
                 'curtin-metadata-version', args=['latest'],
                 query={'op': 'signal'}, base_url=node.nodegroup.maas_url),
             reporter['reporter']['maas']['url'])
-
-    def test__returns_reporter_oauth_creds(self):
-        node = factory.make_Node()
-        token = NodeKey.objects.get_token_for_node(node)
-        preseeds = compose_curtin_maas_reporter(node)
-        reporter = self.load_reporter(preseeds)
         self.assertEqual(
             token.consumer.key,
             reporter['reporter']['maas']['consumer_key'])
@@ -653,6 +665,17 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         self.assertEqual(
             token.secret,
             reporter['reporter']['maas']['token_secret'])
+
+    def test__returns_list_of_yaml_strings_matching_curtin(self):
+        preseeds = compose_curtin_maas_reporter(factory.make_Node())
+        self.assertIsInstance(preseeds, list)
+        self.assertThat(preseeds, HasLength(1))
+        reporter = self.load_reporter(preseeds)
+        self.assertIsInstance(reporter, dict)
+        if curtin_supports_webhook_events():
+            self.assertEqual(['reporting'], list(reporter.keys()))
+        else:
+            self.assertEqual(['reporter'], list(reporter.keys()))
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):

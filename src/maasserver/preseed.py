@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'compose_enlistment_preseed_url',
     'compose_preseed_url',
+    'curtin_supports_webhook_events',
     'get_curtin_userdata',
     'get_enlist_preseed',
     'get_preseed',
@@ -58,6 +59,7 @@ from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
+from maasserver.utils.curtin import curtin_supports_webhook_events
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -69,7 +71,6 @@ import yaml
 
 
 maaslog = get_maas_logger("preseed")
-
 
 GENERIC_FILENAME = 'generic'
 
@@ -106,26 +107,64 @@ def get_enlist_userdata(nodegroup=None):
         USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
 
 
+def list_gateways_and_macs(node):
+    """Return a node's router addresses, as a set of IP/MAC pairs.
+
+    In each returned pair, the MAC address is that of a network interface
+    on the node.  The IP address is a router address for that interface.
+    """
+    result = set()
+    for mac in node.macaddress_set.filter(cluster_interface__isnull=False):
+        for cluster_interface in mac.get_cluster_interfaces():
+            if cluster_interface.router_ip not in (None, ''):
+                result.add((cluster_interface.router_ip, mac.mac_address))
+    return result
+
+
+def curtin_maas_reporter(node, events_support=True):
+    token = NodeKey.objects.get_token_for_node(node)
+    base_url = node.nodegroup.maas_url
+    if events_support:
+        return {
+            'reporting': {
+                'maas': {
+                    'type': 'webhook',
+                    'endpoint': absolute_reverse(
+                        'metadata-status', args=[node.system_id],
+                        base_url=base_url),
+                    'consumer_key': token.consumer.key,
+                    'token_key': token.key,
+                    'token_secret': token.secret,
+                },
+            },
+            'install': {
+                'log_file': '/tmp/install.log',
+                'post_files': ['/tmp/install.log']
+            }
+        }
+    else:
+        version = 'latest'
+        return {
+            'reporter': {
+                'maas': {
+                    'url': absolute_reverse(
+                        'curtin-metadata-version', args=[version],
+                        query={'op': 'signal'}, base_url=base_url),
+                    'consumer_key': token.consumer.key,
+                    'token_key': token.key,
+                    'token_secret': token.secret,
+                }
+            }
+        }
+
+
 def compose_curtin_maas_reporter(node):
     """Return a list of curtin preseeds for using the MAASReporter in curtin.
 
-    This enables the ability for curtin to talk back to MAAS.
+    This enables the ability for curtin to talk back to MAAS through a backend
+    that matches what the locally installed Curtin uses.
     """
-    token = NodeKey.objects.get_token_for_node(node)
-    base_url = node.nodegroup.maas_url
-    version = 'latest'
-    reporter = {
-        'reporter': {
-            'maas': {
-                'url': absolute_reverse(
-                    'curtin-metadata-version', args=[version],
-                    query={'op': 'signal'}, base_url=base_url),
-                'consumer_key': token.consumer.key,
-                'token_key': token.key,
-                'token_secret': token.secret,
-                },
-            },
-        }
+    reporter = curtin_maas_reporter(node, curtin_supports_webhook_events())
     return [yaml.safe_dump(reporter)]
 
 
