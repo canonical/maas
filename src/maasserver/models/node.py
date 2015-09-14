@@ -60,6 +60,7 @@ from maasserver.clusterrpc.power import (
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
+    IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
@@ -544,6 +545,18 @@ class Node(CleanSave, TimestampedModel):
     # This will be used to make sure GRUB is installed to this device.
     boot_disk = ForeignKey(
         PhysicalBlockDevice, default=None, blank=True, null=True,
+        editable=False, related_name='+', on_delete=SET_NULL)
+
+    # Default IPv4 subnet link on an interface for this node. This is used to
+    # define the default IPv4 route the node should use.
+    gateway_link_ipv4 = ForeignKey(
+        StaticIPAddress, default=None, blank=True, null=True,
+        editable=False, related_name='+', on_delete=SET_NULL)
+
+    # Default IPv6 subnet link on an interface for this node. This is used to
+    # define the default IPv6 route the node should use.
+    gateway_link_ipv6 = ForeignKey(
+        StaticIPAddress, default=None, blank=True, null=True,
         editable=False, related_name='+', on_delete=SET_NULL)
 
     # Note that the ordering of the managers is meaningul.  More precisely, the
@@ -1922,6 +1935,66 @@ class Node(CleanSave, TimestampedModel):
             (found[0], found[1], found[2])
             for found in cursor.fetchall()
         ]
+
+    def _get_best_interface_from_gateway_link(self, gateway_link):
+        """Return the best interface for the `gateway_link` and this node."""
+        return gateway_link.interface_set.filter(
+            node=self).order_by('type', 'id').first().id
+
+    def _get_gateway_tuple(self, gateway_link):
+        """Return a tuple for the interface id, subnet id, and gateway IP for
+        the `gateway_link`."""
+        return (
+            self._get_best_interface_from_gateway_link(
+                gateway_link),
+            gateway_link.subnet.id,
+            gateway_link.subnet.gateway_ip,
+            )
+
+    def _get_gateway_tuple_by_family(self, gateways, ip_family):
+        """Return the gateway tuple from `gateways` that is in the IP address
+        family."""
+        for gateway in gateways:
+            if IPAddress(gateway[2]).version == ip_family:
+                return gateway
+        return None
+
+    def get_default_gateway_ips(self):
+        """Return the default gateway IP addresses.
+
+        :return: Return a tuple or tuples with IPv4 and IPv6 gateway
+            information.
+        :rtype: tuple
+        """
+        # Get the set gateways on the node.
+        gateway_ipv4 = None
+        gateway_ipv6 = None
+        if self.gateway_link_ipv4 is not None:
+            subnet = self.gateway_link_ipv4.subnet
+            if subnet is not None:
+                if subnet.gateway_ip:
+                    gateway_ipv4 = self._get_gateway_tuple(
+                        self.gateway_link_ipv4)
+        if self.gateway_link_ipv6 is not None:
+            subnet = self.gateway_link_ipv6.subnet
+            if subnet is not None:
+                if subnet.gateway_ip:
+                    gateway_ipv6 = self._get_gateway_tuple(
+                        self.gateway_link_ipv6)
+
+        # Early out if we already have both gateways.
+        if gateway_ipv4 and gateway_ipv6:
+            return (gateway_ipv4, gateway_ipv6)
+
+        # Get the best guesses for the missing IP families.
+        found_gateways = self.get_best_guess_for_default_gateway_ips()
+        if not gateway_ipv4:
+            gateway_ipv4 = self._get_gateway_tuple_by_family(
+                found_gateways, IPADDRESS_FAMILY.IPv4)
+        if not gateway_ipv6:
+            gateway_ipv6 = self._get_gateway_tuple_by_family(
+                found_gateways, IPADDRESS_FAMILY.IPv6)
+        return (gateway_ipv4, gateway_ipv6)
 
     def get_boot_purpose(self):
         """

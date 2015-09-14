@@ -1077,6 +1077,29 @@ def resave_children_interface_handler(sender, instance, **kwargs):
 models.signals.post_save.connect(resave_children_interface_handler)
 
 
+def remove_gateway_link_when_ip_address_removed_from_interface(
+        sender, instance, action, model, pk_set, **kwargs):
+    """When an IP address is removed from an interface it is possible that
+    the IP address was not deleted just moved. In that case we need to removed
+    the gateway links on the node model."""
+    if (type(instance) in ALL_INTERFACE_TYPES and
+            model == StaticIPAddress and
+            instance.node is not None and
+            action == "post_remove"):
+        node = instance.node
+        for pk in pk_set:
+            if node.gateway_link_ipv4_id == pk:
+                node.gateway_link_ipv4_id = None
+                node.save(update_fields=["gateway_link_ipv4_id"])
+            if node.gateway_link_ipv6_id == pk:
+                node.gateway_link_ipv6_id = None
+                node.save(update_fields=["gateway_link_ipv6_id"])
+
+
+models.signals.m2m_changed.connect(
+    remove_gateway_link_when_ip_address_removed_from_interface)
+
+
 class PhysicalInterface(Interface):
 
     class Meta(Interface.Meta):

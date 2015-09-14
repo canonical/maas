@@ -260,6 +260,36 @@ class InterfaceTest(MAASServerTestCase):
                 nodegroup: {ip}
                 }))
 
+    def test_remove_gateway_link_on_node_ipv4(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(network),
+            subnet=subnet, interface=interface)
+        node.gateway_link_ipv4 = ip
+        node.save()
+        reload_object(interface).ip_addresses.remove(ip)
+        node = reload_object(node)
+        self.assertIsNone(node.gateway_link_ipv4)
+
+    def test_remove_gateway_link_on_node_ipv6(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(network),
+            subnet=subnet, interface=interface)
+        node.gateway_link_ipv6 = ip
+        node.save()
+        reload_object(interface).ip_addresses.remove(ip)
+        node = reload_object(node)
+        self.assertIsNone(node.gateway_link_ipv6)
+
 
 class PhysicalInterfaceTest(MAASServerTestCase):
 

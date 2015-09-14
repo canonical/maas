@@ -149,6 +149,8 @@ class DeviceHandler(TimestampedModelHandler):
             "distro_series",
             "min_hwe_kernel",
             "hwe_kernel",
+            "gateway_link_ipv4",
+            "gateway_link_ipv6",
             ]
         list_fields = [
             "system_id",

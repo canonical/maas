@@ -106,9 +106,9 @@ class NodeHandler(TimestampedModelHandler):
             "token",
             "netboot",
             "agent_name",
-            # power_state_updated isn't needed in the client yet, plus it's
-            # not native to JSON. Omit for now.
             "power_state_updated",
+            "gateway_link_ipv4",
+            "gateway_link_ipv6",
         ]
         list_fields = [
             "system_id",
