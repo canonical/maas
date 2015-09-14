@@ -19,6 +19,7 @@ from textwrap import dedent
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
     INTERFACE_TYPE,
+    IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
 from maasserver.preseed_network import compose_curtin_network_config
@@ -84,10 +85,33 @@ class AssertNetworkConfigMixin:
         expected_equals = map(Equals, expected_network)
         self.assertThat(output_network, MatchesListwise(expected_equals))
 
-    def collectInterfaceConfig(self, node, filter="physical"):
+    def collect_interface_config(self, node, filter="physical"):
         interfaces = node.interface_set.filter(enabled=True).order_by('id')
         if filter:
             interfaces = interfaces.filter(type=filter)
+
+        gateways = node.get_default_gateways()
+        ipv4_gateway_set, ipv6_gateway_set = False, False
+
+        def set_gateway_ip(iface, subnet, ret, ipv4_set, ipv6_set):
+            ip_family = subnet.get_ipnetwork().version
+            if ip_family == IPADDRESS_FAMILY.IPv4 and ipv4_set:
+                return (ret, ipv4_set, ipv6_set)
+            elif ip_family == IPADDRESS_FAMILY.IPv6 and ipv6_set:
+                return (ret, ipv4_set, ipv6_set)
+            for gateway in gateways:
+                if gateway is not None:
+                    iface_id, subnet_id, gateway_ip = gateway
+                    if (iface_id == iface.id and
+                            subnet_id == subnet.id and
+                            gateway_ip == subnet.gateway_ip):
+                        ret += "    gateway: %s\n" % gateway_ip
+                        if ip_family == IPADDRESS_FAMILY.IPv4:
+                            ipv4_set = True
+                        elif ip_family == IPADDRESS_FAMILY.IPv6:
+                            ipv6_set = True
+            return (ret, ipv4_set, ipv6_set)
+
         ret = ""
         for iface in interfaces:
             self.assertIn(iface.type, ["physical", "bond", "vlan"])
@@ -120,8 +144,10 @@ class AssertNetworkConfigMixin:
                         ret += "  - address: %s/%s\n" % (
                             unicode(address.ip), subnet_len)
                         ret += "    type: static\n"
-                        if subnet.gateway_ip is not None:
-                            ret += "    gateway: %s\n" % subnet.gateway_ip
+                        ret, ipv4_gateway_set, ipv6_gateway_set = (
+                            set_gateway_ip(
+                                iface, subnet, ret,
+                                ipv4_gateway_set, ipv6_gateway_set))
                         if subnet.dns_servers is not None:
                             ret += "    dns_nameservers:\n"
                             for dns_server in subnet.dns_servers:
@@ -164,7 +190,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         sip.subnet = None
         sip.save()
         factory.make_Interface(node=node)
-        net_config = self.collectInterfaceConfig(node)
+        net_config = self.collect_interface_config(node)
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
@@ -181,10 +207,10 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             iftype=INTERFACE_TYPE.BOND, node=node, vlan=vlan,
             parents=interfaces)
         factory.make_StaticIPAddress(
-            interface=bond_iface,
+            interface=bond_iface, alloc_type=IPADDRESS_TYPE.STICKY,
             subnet=bond_iface.vlan.subnet_set.first())
-        net_config = self.collectInterfaceConfig(node, filter="physical")
-        net_config += self.collectInterfaceConfig(node, filter="bond")
+        net_config = self.collect_interface_config(node, filter="physical")
+        net_config += self.collect_interface_config(node, filter="bond")
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
@@ -200,8 +226,8 @@ class TestVLANNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             iftype=INTERFACE_TYPE.VLAN, node=node, parents=interfaces)
         subnet = factory.make_Subnet(vlan=vlan_iface.vlan)
         factory.make_StaticIPAddress(interface=vlan_iface, subnet=subnet)
-        net_config = self.collectInterfaceConfig(node, filter="physical")
-        net_config += self.collectInterfaceConfig(node, filter="vlan")
+        net_config = self.collect_interface_config(node, filter="physical")
+        net_config += self.collect_interface_config(node, filter="vlan")
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
@@ -222,9 +248,9 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
             iftype=INTERFACE_TYPE.VLAN, node=node, parents=[bond_iface])
         subnet = factory.make_Subnet(vlan=vlan_iface.vlan)
         factory.make_StaticIPAddress(interface=vlan_iface, subnet=subnet)
-        net_config = self.collectInterfaceConfig(node, filter="physical")
-        net_config += self.collectInterfaceConfig(node, filter="bond")
-        net_config += self.collectInterfaceConfig(node, filter="vlan")
+        net_config = self.collect_interface_config(node, filter="physical")
+        net_config += self.collect_interface_config(node, filter="bond")
+        net_config += self.collect_interface_config(node, filter="vlan")
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)

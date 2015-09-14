@@ -1858,9 +1858,9 @@ class Node(CleanSave, TimestampedModel):
             if interface.enabled:
                 interface.ensure_link_up()
 
-    def get_best_guess_for_default_gateway_ips(self):
-        """Return the best guess for the default gateway IP addresses. This is
-        either one IPv4 address, one IPv6 address, or both.
+    def get_best_guess_for_default_gateways(self):
+        """Return the best guess for the default gateways. This is
+        either one IPv4 gateway, one IPv6 gateway, or both.
 
         This is determined by looking at all interfaces on the node and
         selecting the best possible default gateway IP. The criteria below
@@ -1959,8 +1959,8 @@ class Node(CleanSave, TimestampedModel):
                 return gateway
         return None
 
-    def get_default_gateway_ips(self):
-        """Return the default gateway IP addresses.
+    def get_default_gateways(self):
+        """Return the default gateways.
 
         :return: Return a tuple or tuples with IPv4 and IPv6 gateway
             information.
@@ -1987,7 +1987,7 @@ class Node(CleanSave, TimestampedModel):
             return (gateway_ipv4, gateway_ipv6)
 
         # Get the best guesses for the missing IP families.
-        found_gateways = self.get_best_guess_for_default_gateway_ips()
+        found_gateways = self.get_best_guess_for_default_gateways()
         if not gateway_ipv4:
             gateway_ipv4 = self._get_gateway_tuple_by_family(
                 found_gateways, IPADDRESS_FAMILY.IPv4)

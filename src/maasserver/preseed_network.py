@@ -18,6 +18,7 @@ __all__ = [
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
     INTERFACE_TYPE,
+    IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
 import yaml
@@ -28,7 +29,9 @@ class CurtinNetworkGenerator:
 
     def __init__(self, node):
         self.node = node
-        self.boot_interface = node.get_boot_interface()
+        self.gateways = node.get_default_gateways()
+        self.gateway_ipv4_set = False
+        self.gateway_ipv6_set = False
         self.operations = {
             "physical": [],
             "vlan": [],
@@ -134,6 +137,35 @@ class CurtinNetworkGenerator:
         else:
             return None
 
+    def _get_default_gateway(self, iface, subnet):
+        """Return True if this is the gateway that should be added to the
+        interface configuration."""
+        if subnet.gateway_ip:
+            for gateway in self.gateways:
+                if gateway is not None:
+                    iface_id, subnet_id, gateway_ip = gateway
+                    if (iface_id == iface.id and
+                            subnet_id and subnet.id and
+                            gateway_ip and subnet.gateway_ip):
+                        return subnet.gateway_ip
+        return None
+
+    def _set_default_gateway(self, iface, subnet, subnet_operation):
+        """Set the default gateway on the `subnet_operation` if it should
+        be set."""
+        ip_family = subnet.get_ipnetwork().version
+        if ip_family == IPADDRESS_FAMILY.IPv4 and self.gateway_ipv4_set:
+            return
+        elif ip_family == IPADDRESS_FAMILY.IPv6 and self.gateway_ipv6_set:
+            return
+        gateway = self._get_default_gateway(iface, subnet)
+        if gateway is not None:
+            if ip_family == IPADDRESS_FAMILY.IPv4:
+                self.gateway_ipv4_set = True
+            elif ip_family == IPADDRESS_FAMILY.IPv6:
+                self.gateway_ipv6_set = True
+            subnet_operation["gateway"] = unicode(gateway)
+
     def _generate_addresses(self, iface):
         """Generate the various addresses needed for this interface."""
         addrs = []
@@ -150,8 +182,7 @@ class CurtinNetworkGenerator:
                     "type": "static",
                     "address": "%s/%s" % (unicode(address.ip), subnet_len)
                 }
-                if subnet.gateway_ip is not None:
-                    subnet_operation["gateway"] = unicode(subnet.gateway_ip)
+                self._set_default_gateway(iface, subnet, subnet_operation)
                 if subnet.dns_servers is not None:
                     subnet_operation["dns_nameservers"] = subnet.dns_servers
                 addrs.append(subnet_operation)

@@ -2614,7 +2614,8 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertItemsEqual(enabled_interfaces, observed_interfaces)
 
 
-class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
+class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
+    """Tests for `Node.get_best_guess_for_default_gateways`."""
 
     def test__simple(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -2625,7 +2626,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = managed_subnet.gateway_ip
         self.assertEquals(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__ipv4_and_ipv6(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2653,7 +2654,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         self.assertItemsEqual([
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ], node.get_best_guess_for_default_gateway_ips())
+            ], node.get_best_guess_for_default_gateways())
 
     def test__only_one(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -2669,7 +2670,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = managed_subnet.gateway_ip
         self.assertEquals(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__managed_subnet_over_unmanaged(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2696,7 +2697,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = managed_subnet.gateway_ip
         self.assertEquals(
             [(interface.id, managed_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__bond_over_physical_interface(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2727,7 +2728,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = bond_subnet.gateway_ip
         self.assertEquals(
             [(bond_interface.id, bond_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__physical_over_vlan_interface(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2754,7 +2755,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = physical_subnet.gateway_ip
         self.assertEquals(
             [(physical_interface.id, physical_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__boot_interface_over_other_interfaces(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2783,7 +2784,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = boot_subnet.gateway_ip
         self.assertEquals(
             [(boot_interface.id, boot_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__sticky_ip_over_user_reserved(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2808,7 +2809,7 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = sticky_subnet.gateway_ip
         self.assertEquals(
             [(interface.id, sticky_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
     def test__user_reserved_ip_over_auto(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2833,11 +2834,11 @@ class TestGetBestGuessForDefaultGatewayIPs(MAASServerTestCase):
         gateway_ip = user_reserved_subnet.gateway_ip
         self.assertEquals(
             [(interface.id, user_reserved_subnet.id, gateway_ip)],
-            node.get_best_guess_for_default_gateway_ips())
+            node.get_best_guess_for_default_gateways())
 
 
-class TestGetDefaultGatewayIP(MAASServerTestCase):
-    """Tests for `Node.get_default_gateway_ips`."""
+class TestGetDefaultGateways(MAASServerTestCase):
+    """Tests for `Node.get_default_gateways`."""
 
     def test__return_set_ipv4_and_ipv6(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2880,7 +2881,7 @@ class TestGetDefaultGatewayIP(MAASServerTestCase):
         self.assertEquals((
             (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
             (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
-            ), node.get_default_gateway_ips())
+            ), node.get_default_gateways())
 
     def test__return_set_ipv4_and_guess_ipv6(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2913,7 +2914,7 @@ class TestGetDefaultGatewayIP(MAASServerTestCase):
         self.assertEquals((
             (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ), node.get_default_gateway_ips())
+            ), node.get_default_gateways())
 
     def test__return_set_ipv6_and_guess_ipv4(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2946,7 +2947,7 @@ class TestGetDefaultGatewayIP(MAASServerTestCase):
         self.assertEquals((
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
-            ), node.get_default_gateway_ips())
+            ), node.get_default_gateways())
 
     def test__return_guess_ipv4_and_ipv6(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2968,7 +2969,7 @@ class TestGetDefaultGatewayIP(MAASServerTestCase):
         self.assertEquals((
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ), node.get_default_gateway_ips())
+            ), node.get_default_gateways())
 
 
 class TestDeploymentStatus(MAASServerTestCase):
