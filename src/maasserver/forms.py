@@ -582,9 +582,30 @@ class NodeForm(MAASModelForm):
             # Take the default value from the node's cluster.
             nodegroup = cleaned_data['nodegroup']
             cleaned_data['disable_ipv4'] = nodegroup.default_disable_ipv4
-        if not self.instance.hwe_kernel or self.instance.hwe_kernel == '':
-            osystem = cleaned_data.get('osystem')
-            distro_series = cleaned_data.get('distro_series')
+
+        osystem = cleaned_data.get('osystem')
+        distro_series = cleaned_data.get('distro_series')
+        usable_osystems = list_all_usable_osystems()
+        if not osystem:
+            osystem = Config.objects.get_config('default_osystem')
+            if any(i['name'] == osystem for i in usable_osystems):
+                cleaned_data['osystem'] = osystem
+            else:
+                osystem = None
+        if osystem and not distro_series:
+            distro_series = Config.objects.get_config('default_distro_series')
+            usable_releases = list_all_usable_releases(usable_osystems)
+            usable_release_names = (
+                release['name']
+                for releases in usable_releases.viewvalues()
+                for release in releases
+                )
+            if distro_series in usable_release_names:
+                cleaned_data['distro_series'] = distro_series
+            else:
+                distro_series = None
+
+        if not self.instance.hwe_kernel:
             architecture = cleaned_data.get('architecture')
             min_hwe_kernel = cleaned_data.get('min_hwe_kernel')
             hwe_kernel = cleaned_data.get('hwe_kernel')

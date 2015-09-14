@@ -36,6 +36,7 @@ from maasserver.forms import (
     pick_default_architecture,
 )
 import maasserver.forms as forms_module
+from maasserver.models import Config
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -176,6 +177,29 @@ class TestNodeForm(MAASServerTestCase):
         self.assertEqual(
             '',
             form.fields['osystem'].initial)
+
+    def test_starts_with_default_osystem_distro_series_when_avalible(self):
+        # If no osystem or distro_series are given and the default osystem
+        # and distro_series are availible MAAS should set the osystem and
+        # distro_series to the default
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        default_osystem = Config.objects.get_config('default_osystem')
+        default_distro_series = Config.objects.get_config(
+            'default_distro_series')
+        osystems = [make_osystem_with_releases(
+            self, default_osystem, [default_distro_series])]
+        patch_usable_osystems(self, osystems)
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': '',
+            'distro_series': '',
+            },
+            instance=node)
+        self.assertEqual(form.is_valid(), True)
+        self.assertEqual(node.osystem, default_osystem)
+        self.assertEqual(node.distro_series, default_distro_series)
 
     def test_accepts_osystem_distro_series(self):
         self.client_log_in()
