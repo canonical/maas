@@ -784,13 +784,17 @@ class Interface(CleanSave, TimestampedModel):
         else:
             self._update_dns_zones()
 
-    def unlink_ip_address(self, ip_address, update_cluster=True):
+    def unlink_ip_address(
+            self, ip_address, update_cluster=True, clearing_config=False):
         """Remove the `IPAddress` link on interface.
 
         :param update_cluster: Setting to False should only be done when the
             cluster should not get an update_host_maps call with the next
             available IP for the interface's MAC address. This is only set to
             False when the interface is being deleted.
+        :param clearing_config: Set to True when the entire network
+            configuration for this interface is being cleared. This makes sure
+            that the auto created link_up is not created.
         """
         mode = ip_address.get_interface_link_type()
         if mode == INTERFACE_LINK_TYPE.STATIC:
@@ -799,7 +803,7 @@ class Interface(CleanSave, TimestampedModel):
             ip_address.delete()
         # Always ensure that an interface that is enabled without any links
         # gets a LINK_UP link.
-        if self.enabled:
+        if self.enabled and not clearing_config:
             self.ensure_link_up()
 
     def unlink_subnet_by_id(self, link_id):

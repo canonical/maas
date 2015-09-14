@@ -2559,9 +2559,15 @@ class TestNodeNetworking(MAASServerTestCase):
             call[0][1]
             for call in mock_unlink_ip_address.call_args_list
         ]
+        # Check that clearing_config is always sent as true.
+        clearing_config = set(
+            call[1]['clearing_config']
+            for call in mock_unlink_ip_address.call_args_list
+        )
         self.assertItemsEqual([nic0, nic1], observed_interfaces)
         self.assertItemsEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address)
+        self.assertEquals(set([True]), clearing_config)
 
     def test_set_initial_networking_configuration_auto_on_boot_nic(self):
         node = factory.make_Node_with_Interface_on_Subnet()

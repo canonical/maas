@@ -1158,6 +1158,21 @@ class TestEnsureLinkUp(MAASServerTestCase):
         self.assertIsNone(link_ip.subnet)
 
 
+class TestUnlinkIPAddress(MAASServerTestCase):
+    """Tests for `Interface.unlink_ip_address`."""
+
+    def test__doesnt_call_ensure_link_up_if_clearing_config(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        mock_ensure_link_up = self.patch_autospec(interface, "ensure_link_up")
+        interface.unlink_ip_address(auto_ip, clearing_config=True)
+        self.assertIsNone(reload_object(auto_ip))
+        self.assertThat(mock_ensure_link_up, MockNotCalled())
+
+
 class TestUnlinkSubnet(MAASServerTestCase):
     """Tests for `Interface.unlink_subnet`."""
 

@@ -1819,7 +1819,8 @@ class Node(CleanSave, TimestampedModel):
         for interface in interfaces:
             for ip_address in interface.ip_addresses.all():
                 if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    interface.unlink_ip_address(ip_address)
+                    interface.unlink_ip_address(
+                        ip_address, clearing_config=True)
 
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.
