@@ -37,6 +37,7 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     Mock,
     sentinel,
@@ -57,10 +58,13 @@ from provisioningserver.utils.twisted import (
     reactor_sync,
     retries,
     synchronous,
+    ThreadPool,
+    ThreadUnpool,
 )
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AfterPreprocessing,
+    Contains,
     Equals,
     HasLength,
     Is,
@@ -78,7 +82,9 @@ from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
     Deferred,
+    DeferredSemaphore,
     inlineCallbacks,
+    succeed,
 )
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
@@ -1099,6 +1105,18 @@ class TestDeferToNewThread(MAASTestCase):
         name = yield deferToNewThread(get_name_of_thread)
         self.assertThat(name, Equals("deferToNewThread(get_name_of_thread)"))
 
+    @inlineCallbacks
+    def test__gives_new_thread_generic_name_if_func_has_no_name(self):
+
+        def get_name_of_thread():
+            return threading.currentThread().name
+
+        # Mocks don't have a __name__ property by default.
+        func = Mock(side_effect=get_name_of_thread)
+
+        name = yield deferToNewThread(func)
+        self.assertThat(name, Equals("deferToNewThread(...)"))
+
     def test__propagates_context_into_thread(self):
         name = factory.make_name("name")
         value = factory.make_name("value")
@@ -1136,3 +1154,226 @@ class TestDeferToNewThread(MAASTestCase):
         d = context.call({name: value}, deferToNewThread, break_something)
         d.addCallbacks(self.fail, check_context_in_errback)
         return d
+
+
+class ThreadUnpoolMixin:
+    """Helpers for testing `ThreadUnpool`."""
+
+    def make_semaphore(self, tokens=1):
+        lock = DeferredSemaphore(1)
+        self.addCleanup(self.assertThat, lock.waiting, HasLength(0))
+        self.addCleanup(self.assertThat, lock.tokens, Equals(lock.limit))
+        return lock
+
+
+class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
+    """Tests for `ThreadUnpool`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__init(self):
+        lock = self.make_semaphore()
+        unpool = ThreadUnpool(lock)
+        self.assertThat(unpool.lock, Is(lock))
+
+    def test__callInThreadWithCallback_makes_callback(self):
+        lock = self.make_semaphore()
+        unpool = ThreadUnpool(lock)
+        callback = Mock()
+        d = unpool.callInThreadWithCallback(callback, lambda: sentinel.thing)
+        d.addCallback(
+            callOut, self.assertThat, callback,
+            MockCalledOnceWith(True, sentinel.thing))
+        return d
+
+    def test__callInThreadWithCallback_makes_callback_on_error(self):
+        lock = self.make_semaphore()
+        unpool = ThreadUnpool(lock)
+        callback = Mock()
+        failure = Failure(factory.make_exception())
+        d = unpool.callInThreadWithCallback(callback, lambda: failure)
+        d.addCallback(
+            callOut, self.assertThat, callback,
+            MockCalledOnceWith(False, failure))
+        return d
+
+    @inlineCallbacks
+    def test__callInThreadWithCallback_logs_failure_reporting_result(self):
+        unpool = ThreadUnpool(self.make_semaphore())
+        onResult = Mock(side_effect=factory.make_exception())
+        with TwistedLoggerFixture() as logger:
+            yield unpool.callInThreadWithCallback(onResult, return_args)
+        self.assertDocTestMatches(
+            """\
+            Failure reporting result from thread.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """,
+            logger.output)
+
+
+class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
+    """Tests for `ThreadUnpool`.
+
+    These test behaviour that's common between `callInThread` and
+    `callInThreadWithCallback`.
+    """
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("callInThread", dict(
+            method=lambda unpool, func, *args, **kw: (
+                unpool.callInThread(func, *args, **kw)))),
+        ("callInThreadWithCallback", dict(
+            method=lambda unpool, func, *args, **kw: (
+                unpool.callInThreadWithCallback(None, func, *args, **kw)))),
+    )
+
+    def test__passes_args_through(self):
+        lock = self.make_semaphore()
+        unpool = ThreadUnpool(lock)
+        func = Mock(__name__='fred')
+        func.return_value = None
+        d = self.method(unpool, func, sentinel.arg, kwarg=sentinel.kwarg)
+        d.addCallback(
+            callOut, self.assertThat, func, MockCalledOnceWith(
+                sentinel.arg, kwarg=sentinel.kwarg))
+        return d
+
+    def test__defers_to_new_thread(self):
+        lock = self.make_semaphore()
+        unpool = ThreadUnpool(lock)
+        deferToNewThread = self.patch(twisted_module, "deferToNewThread")
+        deferToNewThread.return_value = succeed(None)
+        d = self.method(unpool, sentinel.func)
+        self.assertThat(d, IsFiredDeferred())
+        self.assertThat(deferToNewThread, MockCalledOnceWith(sentinel.func))
+
+    @inlineCallbacks
+    def test__logs_failure_deferring_to_thread(self):
+        unpool = ThreadUnpool(self.make_semaphore())
+        deferToNewThread = self.patch(twisted_module, "deferToNewThread")
+        deferToNewThread.side_effect = factory.make_exception()
+        with TwistedLoggerFixture() as logger:
+            yield self.method(unpool, sentinel.func)
+        self.assertDocTestMatches(
+            """\
+            Failure when calling out to thread.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """,
+            logger.output)
+
+    @inlineCallbacks
+    def test__context_is_active_in_new_thread(self):
+        steps = []
+        threads = []
+
+        class Context:
+
+            def __enter__(self):
+                steps.append("__enter__")
+                ct = threading.currentThread()
+                threads.append(ct.ident)
+
+            def __exit__(self, *exc_info):
+                steps.append("__exit__")
+                ct = threading.currentThread()
+                threads.append(ct.ident)
+
+        def function():
+            steps.append("function")
+            ct = threading.currentThread()
+            threads.append(ct.ident)
+
+        unpool = ThreadUnpool(self.make_semaphore(), Context)
+        yield self.method(unpool, function)
+
+        # The context was active when the function was called.
+        self.assertThat(steps, Equals(["__enter__", "function", "__exit__"]))
+        # All steps happened in the same thread.
+        self.assertThat(threads, AfterPreprocessing(set, HasLength(1)))
+        # That thread was not this thread.
+        currentThread = threading.currentThread()
+        self.assertThat(threads, Not(Contains(currentThread.ident)))
+
+
+class TestThreadPool(MAASTestCase):
+    """Tests for `ThreadPool`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__init(self):
+        pool = ThreadPool()
+        self.assertThat(pool, MatchesStructure(
+            min=Equals(5), max=Equals(20), name=Is(None), context=Is(None)))
+
+    def test__init_with_parameters(self):
+        minthreads = randint(0, 100)
+        maxthreads = randint(100, 200)
+        pool = ThreadPool(
+            minthreads=minthreads, maxthreads=maxthreads,
+            name=sentinel.name, context=sentinel.context)
+        self.assertThat(pool, MatchesStructure(
+            min=Equals(minthreads), max=Equals(maxthreads),
+            name=Is(sentinel.name), context=Is(sentinel.context)))
+
+
+class TestThreadPoolCommonBehaviour(MAASTestCase):
+    """Tests for `ThreadPool`.
+
+    These test behaviour that's common between `callInThread` and
+    `callInThreadWithCallback`.
+    """
+
+    scenarios = (
+        ("callInThread", dict(
+            method=lambda pool, func, *args, **kw: (
+                pool.callInThread(func, *args, **kw)))),
+        ("callInThreadWithCallback", dict(
+            method=lambda pool, func, *args, **kw: (
+                pool.callInThreadWithCallback(None, func, *args, **kw)))),
+    )
+
+    def test__context_is_active_in_new_thread(self):
+        steps = []
+        threads = []
+
+        class Context:
+
+            def __enter__(self):
+                steps.append("__enter__")
+                ct = threading.currentThread()
+                threads.append(ct.ident)
+
+            def __exit__(self, *exc_info):
+                steps.append("__exit__")
+                ct = threading.currentThread()
+                threads.append(ct.ident)
+
+        def function():
+            steps.append("function")
+            ct = threading.currentThread()
+            threads.append(ct.ident)
+
+        pool = ThreadPool(minthreads=1, maxthreads=1, context=Context)
+
+        pool.start()
+        try:
+            self.method(pool, function)
+            self.method(pool, function)
+        finally:
+            pool.stop()
+
+        # The context was active when the function was called both times, and
+        # wasn't exited and re-entered in-between.
+        self.assertThat(steps, Equals(
+            ["__enter__", "function", "function", "__exit__"]))
+        # All steps happened in the same thread.
+        self.assertThat(threads, AfterPreprocessing(set, HasLength(1)))
+        # That thread was not this thread.
+        currentThread = threading.currentThread()
+        self.assertThat(threads, Not(Contains(currentThread.ident)))

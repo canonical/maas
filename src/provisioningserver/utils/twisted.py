@@ -27,6 +27,7 @@ __all__ = [
     'reactor_sync',
     'retries',
     'synchronous',
+    'ThreadUnpool',
     ]
 
 from collections import Iterable
@@ -51,7 +52,9 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 from twisted.python import (
     context,
+    log,
     threadable,
+    threadpool,
 )
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
@@ -641,7 +644,7 @@ def deferToNewThread(func, *args, **kwargs):
     ctx = context.theContextTracker.currentContext().contexts[-1]
     thread = threading.Thread(
         target=callInThread, args=(ctx, func, args, kwargs, d),
-        name="deferToNewThread(%s)" % func.__name__)
+        name="deferToNewThread(%s)" % getattr(func, "__name__", "..."))
     thread.start()
     return d
 
@@ -668,3 +671,97 @@ def callInThread(ctx, func, args, kwargs, d):
         reactor.callFromThread(context.call, ctx, d.errback, Failure())
     else:
         reactor.callFromThread(context.call, ctx, d.callback, result)
+
+
+class ThreadUnpool:
+    """A thread "pool" that doesn't pool.
+
+    Creating a new thread is a quick and low-overhead operation. In MAAS the
+    cost of creating a new thread is almost always dwarfed by the time and
+    resources taken by the function called in that thread. Creating a new
+    thread and letting it end also helps to ensure that thread-local resources
+    are reaped.
+
+    This class does allow limits on concurrency through the lock that can be
+    passed into the constructor. Typically this is a ``DeferredSemaphore``.
+
+    This is intended as an almost-drop-in-replacement for Twisted's
+    thread-pool.
+    """
+
+    def __init__(self, lock, context=None):
+        super(ThreadUnpool, self).__init__()
+        self.context = context
+        self.lock = lock
+
+    def callInThread(self, func, *args, **kwargs):
+        """See :class:`twisted.python.threadpool.ThreadPool`.
+
+        :return: a `Deferred`, which is mainly intended for testing.
+            Twisted's `ThreadPool` does not return anything.
+        """
+        return self.callInThreadWithCallback(None, func, *args, **kwargs)
+
+    def callInThreadWithCallback(self, onResult, func, *args, **kwargs):
+        """See :class:`twisted.python.threadpool.ThreadPool`.
+
+        :return: a `Deferred`, which is mainly intended for testing.
+            Twisted's `ThreadPool` does not return anything.
+        """
+        ctxfunc = self.wrapFuncInContext(func)
+
+        d = self.lock.acquire()
+
+        def callInThreadWithLock(lock):
+            dthread = deferToNewThread(ctxfunc, *args, **kwargs)
+            return dthread.addBoth(callOut, lock.release)
+        d.addCallback(callInThreadWithLock)
+
+        if onResult is None:
+            d.addErrback(log.err, "Failure when calling out to thread.")
+        else:
+            d.addCallbacks(partial(onResult, True), partial(onResult, False))
+            d.addErrback(log.err, "Failure reporting result from thread.")
+
+        return d
+
+    def wrapFuncInContext(self, func):
+        """Return a new function that will call `func` in context."""
+        # If there's no context defined, return `func` unaltered.
+        if self.context is None:
+            return func
+
+        # The context is prepared by calling it. Some context managers can be
+        # reused, but many -- like those defined using `contextmanager` -- can
+        # be used only once, so we expect `self.context` to actually be a
+        # context factory.
+
+        @wraps(func)
+        def ctxfunc(*args, **kwargs):
+            with self.context():
+                return func(*args, **kwargs)
+
+        # For convenience, when introspecting for example, expose the original
+        # function on the function we're returning.
+        ctxfunc.func = func
+
+        return ctxfunc
+
+
+class ThreadPool(threadpool.ThreadPool, object):
+    """Thread-pool that wraps a context around each worker."""
+
+    def __init__(self, minthreads=5, maxthreads=20, name=None, context=None):
+        super(ThreadPool, self).__init__(minthreads, maxthreads, name)
+        self.context = context
+
+    def _worker(self):
+        ct = self.currentThread()
+        try:
+            # Make the context active throughout the worker's lifetime.
+            with self.context():
+                return super(ThreadPool, self)._worker()
+        finally:
+            # Belt-n-braces, in case the context blows up.
+            if ct in self.threads:
+                self.threads.remove(ct)
