@@ -1,0 +1,248 @@
+#!/bin/bash
+
+TMPFILE=$(mktemp)
+
+function cleanup {
+    rm -f $TMPFILE
+}
+trap cleanup EXIT
+
+cat <<EOF > $TMPFILE
+\pset pager off
+
+SELECT
+    hostname, 
+    system_id,
+    cpu_count "cpu",
+    memory 
+FROM maasserver_node
+WHERE
+    installable = 't'
+ORDER BY 
+    hostname
+/*
+ * Node overview
+ */
+;
+
+SELECT
+    node.hostname, 
+    node.system_id,
+    parent.hostname "parent"
+FROM maasserver_node node
+LEFT OUTER JOIN maasserver_node parent
+    on node.parent_id = parent.id
+WHERE
+    node.installable = 'f'
+ORDER BY 
+    hostname
+/*
+ * Device overview
+ */
+;
+
+
+SELECT
+    node.hostname,
+    mac.mac_address,
+    sip.ip,
+    CASE
+        WHEN sip.alloc_type = 0 THEN 'AUTO'
+        WHEN sip.alloc_type = 1 THEN 'STICKY'
+        WHEN sip.alloc_type = 4 THEN 'USER_RESERVED'
+        ELSE CAST(sip.alloc_type as CHAR)
+    END "alloc_type"
+FROM maasserver_macaddress mac
+    LEFT OUTER JOIN maasserver_macstaticipaddresslink macip
+        on macip.mac_address_id = mac.id
+    LEFT OUTER JOIN maasserver_staticipaddress sip
+        on sip.id = macip.ip_address_id
+    LEFT OUTER JOIN maasserver_node node
+        on node.id = mac.node_id
+    ORDER BY
+        node.hostname, mac.mac_address, sip.alloc_type
+/*
+ * Node MAC/IP Mapping
+ */
+;
+
+SELECT
+     nodegroup.cluster_name,
+     lease.ip,
+     lease.mac
+FROM maasserver_dhcplease lease, maasserver_nodegroup nodegroup
+    where nodegroup.id = lease.nodegroup_id
+ORDER BY
+    CAST(lease.ip AS inet), mac
+/*
+ * DHCP Leases
+ */
+;
+
+SELECT
+     nodegroup.cluster_name,
+     dlp.filename,
+     dlp.bytes_downloaded,
+     dlp.size,
+     dlp.bytes_downloaded / dlp.size * 100 "pct",
+     dlp.error
+FROM maasserver_downloadprogress dlp, maasserver_nodegroup nodegroup
+    where nodegroup.id = dlp.nodegroup_id
+ORDER BY
+    nodegroup.cluster_name,
+    dlp.error,
+    pct
+/*
+ * Download progress
+ */
+;
+
+SELECT
+    bs.url,
+    bss.release,
+    bss.arches,
+    bss.subarches,
+    bss.subarches,
+    bss.labels,
+    bss.os
+FROM
+    maasserver_bootsource bs
+LEFT OUTER JOIN maasserver_bootsourceselection bss
+    ON bss.boot_source_id = bs.id
+/*
+ * Boot image sources / selections
+ */
+;
+
+SELECT
+    bs.url,
+    bsc.label,
+    bsc.os,
+    bsc.release,
+    bsc.arch,
+    bsc.subarch
+FROM
+    maasserver_bootsource bs
+LEFT OUTER JOIN maasserver_bootsourcecache bsc 
+    ON bsc.boot_source_id = bs.id
+ORDER BY
+    bs.url,
+    bsc.label,
+    bsc.os,
+    bsc.release,
+    bsc.arch,
+    bsc.subarch
+/*
+ * Boot source cache
+ */
+;
+
+SELECT
+    name,
+    value
+FROM
+    maasserver_config
+WHERE
+    name != 'rpc_shared_secret'
+/*
+ * Configuration (excluding rpc_shared_secret)
+ */
+;
+
+SELECT
+    osystem,
+    distro_series
+FROM
+    maasserver_licensekey
+/*
+ * License keys present (excluding the keys themselves)
+ */
+;
+
+SELECT
+    u.username,
+    sshkey.key 
+FROM
+    auth_user u
+LEFT OUTER JOIN maasserver_sshkey sshkey
+    ON u.id = sshkey.user_id
+ORDER BY
+    u.username,
+    sshkey.key
+/*
+ * SSH keys
+ */
+;
+
+SELECT
+    address, port, name, updated
+FROM
+    eventloops
+ORDER BY
+    address, port, name, updated
+/*
+ * Event loops
+ */
+;
+
+SELECT
+    name, description, ip, netmask, default_gateway, dns_servers, vlan_tag
+FROM maasserver_network
+ORDER BY
+    vlan_tag, CAST(ip as INET)
+/*
+ * Networks
+ */
+;
+
+SELECT
+    node.hostname, 
+    count(nr) "result_count",
+    max(nr.script_result) "max_script_result",
+    max(nr.result_type) "max_result_type"
+FROM
+    maasserver_node node
+LEFT OUTER JOIN metadataserver_noderesult nr
+    ON nr.node_id = node.id
+WHERE
+    node.installable = 't'
+GROUP BY
+    node.hostname
+ORDER BY
+    node.hostname
+/*
+ * Commissioning result summary per node
+ */
+;
+
+SELECT
+    ng.cluster_name,
+    ngi.interface, 
+    CASE
+	WHEN ngi.management = 0 THEN 'UNMANAGED'
+	WHEN ngi.management = 1 THEN 'DHCP'
+	WHEN ngi.management = 2 THEN 'DHCP_AND_DNS'
+	ELSE CAST(ngi.management as CHAR)
+    END "management",
+    ngi.ip, 
+    ngi.ip_range_low,
+    ngi.ip_range_high,
+    ngi.static_ip_range_low,
+    ngi.static_ip_range_high
+FROM
+    maasserver_nodegroup ng,
+    maasserver_nodegroupinterface ngi
+WHERE
+    ng.id = ngi.nodegroup_id 
+ORDER BY
+    ngi.management desc, ngi.interface, ng.cluster_name
+/*
+ * Cluster interfaces ranges
+ */
+;
+EOF
+
+chmod o+r $TMPFILE
+
+cd /tmp
+sudo -u postgres psql maasdb -e -f $TMPFILE 2>&1
