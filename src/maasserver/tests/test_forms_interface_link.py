@@ -48,7 +48,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
     def test__mode_is_case_insensitive(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = InterfaceLinkForm(instance=interface, data={
-            "mode": INTERFACE_LINK_TYPE.DHCP.lower(),
+            "mode": INTERFACE_LINK_TYPE.DHCP.upper(),
         })
         self.assertTrue(form.is_valid(), form.errors)
 

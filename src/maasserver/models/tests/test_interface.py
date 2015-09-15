@@ -1730,3 +1730,57 @@ class TestClaimStaticIPs(MAASServerTestCase):
                 INTERFACE_LINK_TYPE.STATIC, subnet_v4,
                 ip_address=requested_ip))
         self.assertEquals(sentinel.claimed_ip, claimed_ip)
+
+
+class TestEnableAndDisableInterface(MAASServerTestCase):
+
+    def test__enable_interface_creates_link_up(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, enabled=False)
+        interface.enabled = True
+        interface.save()
+        link_ip = interface.ip_addresses.get(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None)
+        self.assertIsNotNone(link_ip)
+
+    def test__enable_interface_creates_link_up_on_children(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, enabled=False)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[interface])
+        interface.enabled = True
+        interface.save()
+        link_ip = vlan_interface.ip_addresses.get(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None)
+        self.assertIsNotNone(link_ip)
+
+    def test__disable_interface_removes_links(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, enabled=True)
+        interface.ensure_link_up()
+        interface.enabled = False
+        interface.save()
+        self.assertItemsEqual([], interface.ip_addresses.all())
+
+    def test__disable_interface_removes_links_on_children(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, enabled=True)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[interface])
+        vlan_interface.ensure_link_up()
+        interface.enabled = False
+        interface.save()
+        self.assertItemsEqual([], vlan_interface.ip_addresses.all())
+
+    def test__disable_interface_doesnt_remove_links_on_enabled_children(self):
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, enabled=True)
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, enabled=True)
+        bond_interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[nic0, nic1])
+        bond_interface.ensure_link_up()
+        nic0.enabled = False
+        nic0.save()
+        self.assertEquals(1, bond_interface.ip_addresses.count())

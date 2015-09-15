@@ -57,6 +57,7 @@ from maasserver.fields import (
     VerboseRegexValidator,
     MACAddressField,
 )
+from maasserver.utils.signals import connect_to_field_change
 from maasserver.clusterrpc.dhcp import update_host_maps
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.cleansave import CleanSave
@@ -234,6 +235,9 @@ class Interface(CleanSave, TimestampedModel):
 
     def get_name(self):
         return self.name
+
+    def is_enabled(self):
+        return self.enabled
 
     def get_links(self):
         """Return the definition of links connected to this interface.
@@ -1115,9 +1119,6 @@ class PhysicalInterface(Interface):
     def get_type(self):
         return INTERFACE_TYPE.PHYSICAL
 
-    def is_enabled(self):
-        return self.enabled
-
     def clean(self):
         super(PhysicalInterface, self).clean()
         # Node and MAC address is always required for a physical interface.
@@ -1149,6 +1150,39 @@ class PhysicalInterface(Interface):
                 raise ValidationError({
                     "parents": ["A physical interface cannot have parents."]
                     })
+
+
+def interface_enabled_or_disabled(instance, old_values, **kwargs):
+    """When an interface is enabled be sure at minimum a LINK_UP is created.
+    When an interface is disabled make sure that all its links are removed,
+    even for all its children that are now disabled."""
+    if instance.type != INTERFACE_TYPE.PHYSICAL:
+        return
+    if instance.is_enabled():
+        # Make sure it has a LINK_UP link, and for its children.
+        instance.ensure_link_up()
+        for rel in instance.children_relationships.all():
+            rel.child.ensure_link_up()
+    else:
+        # Was disabled. Remove the links.
+        for ip_address in instance.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            instance.unlink_ip_address(ip_address, clearing_config=True)
+        # If any of the children of this interface are now disabled, all of
+        # their links need to be removed as well.
+        for rel in instance.children_relationships.all():
+            if not rel.child.is_enabled():
+                for ip_address in rel.child.ip_addresses.all():
+                    rel.child.unlink_ip_address(
+                        ip_address, clearing_config=True)
+
+
+connect_to_field_change(
+    interface_enabled_or_disabled,
+    Interface, ['enabled'], delete=False)
+connect_to_field_change(
+    interface_enabled_or_disabled,
+    PhysicalInterface, ['enabled'], delete=False)
 
 
 class BondInterface(Interface):

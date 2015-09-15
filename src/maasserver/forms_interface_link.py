@@ -22,6 +22,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE_CHOICES,
     IPADDRESS_TYPE,
 )
+from maasserver.fields import CaseInsensitiveChoiceField
 from maasserver.models.interface import Interface
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -34,7 +35,7 @@ from netaddr import IPAddress
 class InterfaceLinkForm(forms.Form):
     """Interface link form."""
 
-    mode = forms.ChoiceField(
+    mode = CaseInsensitiveChoiceField(
         choices=INTERFACE_LINK_TYPE_CHOICES, required=True,
         error_messages={
             'invalid_choice': compose_invalid_choice_text(

@@ -29,7 +29,7 @@ from maasserver.models import (
     NodeGroupInterface,
     Subnet,
 )
-from maasserver.models.signals.base import connect_to_field_change
+from maasserver.utils.signals import connect_to_field_change
 
 
 @receiver(post_save, sender=NodeGroup)

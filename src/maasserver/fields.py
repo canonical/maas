@@ -44,6 +44,7 @@ from django.db.models import (
 from django.db.models.fields.subclassing import Creator
 from django.forms import (
     CharField,
+    ChoiceField,
     ModelChoiceField,
 )
 from django.utils.encoding import force_text
@@ -600,3 +601,12 @@ class IPListFormField(CharField):
                         "Invalid IP address: %s; provide a list of "
                         "space-separated IP addresses" % ip)
             return ' '.join(ips)
+
+
+class CaseInsensitiveChoiceField(ChoiceField):
+    """ChoiceField that allows the input to be case insensitive."""
+
+    def to_python(self, value):
+        if value not in self.empty_values:
+            value = value.lower()
+        return super(CaseInsensitiveChoiceField, self).to_python(value)
