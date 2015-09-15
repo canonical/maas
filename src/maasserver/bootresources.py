@@ -104,7 +104,10 @@ from simplestreams.mirrors import (
 from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
-from twisted.internet.defer import DeferredList
+from twisted.internet.defer import (
+    DeferredList,
+    inlineCallbacks,
+)
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
@@ -1080,42 +1083,48 @@ class ImportResourcesProgressService(TimerService, object):
             interval.total_seconds(), self.try_check_boot_images)
 
     def try_check_boot_images(self):
-        d = deferToThread(self.check_boot_images)
-        d.addErrback(log.err, "Failure checking for boot images.")
-        return d
+        return self.check_boot_images().addErrback(
+            log.err, "Failure checking for boot images.")
 
-    @transactional
+    @inlineCallbacks
     def check_boot_images(self):
-        """Add a persistent error if the boot image import hasn't started."""
-        if self.are_boot_images_available_in_the_region():
-            # The region has boot resources. The clusters will soon too if
+        if (yield deferToThread(self.are_boot_images_available_in_the_region)):
+            # The region has boot resources. The clusters will too soon if
             # they haven't already. Nothing to see here, please move along.
-            discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+            yield deferToThread(self.clear_import_warning)
         else:
             # We can ask clusters if they somehow have some imported images
             # already, from another source perhaps. We can provide a better
             # message to the user in this case.
-            images_link = absolute_url_reverse('images')
-
-            # XXX: RPC within a transaction. This ought to be restructured so
-            # that network IO is outside of the transaction.
-            if self.are_boot_images_available_in_any_cluster():
-                warning = dedent("""\
-                One or more of your clusters currently has boot images, but
-                your region does not. Nodes will not be able to provision
-                until you import boot images into the region. Visit the <a
-                href="%s">boot images</a> page to start the import.
-                """) % images_link
+            if (yield self.are_boot_images_available_in_any_cluster()):
+                warning = self.warning_cluster_has_boot_images
             else:
-                warning = dedent("""\
-                Boot image import process not started. Nodes will not be able
-                to provision without boot images. Visit the <a href="%s">boot
-                images</a> page to start the import.
-                """) % images_link
+                warning = self.warning_cluster_has_no_boot_images
+            yield deferToThread(self.set_import_warning, warning)
 
-            register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+    warning_cluster_has_boot_images = dedent("""\
+    One or more of your clusters currently has boot images, but your region
+    does not. Nodes will not be able to provision until you import boot images
+    into the region. Visit the <a href="%(images_link)s">boot images</a> page
+    to start the import.
+    """)
 
-    @synchronous
+    warning_cluster_has_no_boot_images = dedent("""\
+    Boot image import process not started. Nodes will not be able to provision
+    without boot images. Visit the <a href="%(images_link)s">boot images</a>
+    page to start the import.
+    """)
+
+    @transactional
+    def clear_import_warning(self):
+        discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+
+    @transactional
+    def set_import_warning(self, warning):
+        warning %= {"images_link": absolute_url_reverse('images')}
+        register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+
+    @transactional
     def are_boot_images_available_in_the_region(self):
         """Return true if there are boot images available in the region. """
         return BootResource.objects.all().exists()

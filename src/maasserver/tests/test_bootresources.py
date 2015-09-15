@@ -1382,6 +1382,10 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         self.expectThat(args, HasLength(0))
         self.expectThat(kwargs, HasLength(0))
 
+
+class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
+    """Tests for the async parts of `ImportResourcesProgressService`."""
+
     def set_maas_url(self):
         maas_url_path = "/path/%s" % factory.make_string()
         maas_url = factory.make_simple_http_url(path=maas_url_path)
@@ -1402,7 +1406,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
 
         service = bootresources.ImportResourcesProgressService()
         self.patch_are_functions(service, False, True)
-        service.check_boot_images()
+
+        check_boot_images = asynchronous(service.check_boot_images)
+        check_boot_images().wait(5)
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
@@ -1421,7 +1427,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
 
         service = bootresources.ImportResourcesProgressService()
         self.patch_are_functions(service, False, False)
-        service.check_boot_images()
+
+        check_boot_images = asynchronous(service.check_boot_images)
+        check_boot_images().wait(5)
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
@@ -1441,7 +1449,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
 
         service = bootresources.ImportResourcesProgressService()
         self.patch_are_functions(service, True, False)
-        service.check_boot_images()
+
+        check_boot_images = asynchronous(service.check_boot_images)
+        check_boot_images().wait(5)
 
         error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         self.assertIsNone(error)
@@ -1452,7 +1462,7 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         exception = factory.make_exception()
         service = bootresources.ImportResourcesProgressService()
         check_boot_images = self.patch_autospec(service, "check_boot_images")
-        check_boot_images.side_effect = exception
+        check_boot_images.return_value = fail(exception)
         try_check_boot_images = asynchronous(service.try_check_boot_images)
         try_check_boot_images().wait()
 
