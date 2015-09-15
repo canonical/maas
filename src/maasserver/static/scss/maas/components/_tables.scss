@@ -187,149 +187,24 @@ table {
 /* TABLE GRID --------------------------------------------------------
 --------------------------------------------------------------------*/
 
-.t1 {
-    width: 1%;
-    min-width: 45px;
+@mixin table-columns($table-columns) {
+  $table-list: null;
+  $max-width: 1440px;
+  @for $i from 1 through $table-columns {
+    .t#{$i} {
+      width: percentage($i / 100);
+    }
+  }
+
+  @for $i from 1 through $table-columns {
+    .table__column--#{$i} {
+      max-width: ($max-width / 100) * $i;
+      width: 100%;
+    }
+  }
 }
 
-.t5 {
-    width: 5%;
-}
-
-.t9 {
-  width: 9%;
-}
-
-.t10 {
-    width: 10%;
-}
-
-.t11 {
-  width: 11%;
-}
-
-.t12 {
-    width: 12.5%;
-}
-
-.t13 {
-  width: 13%;
-}
- /* 1/8 */
-.t15 {
-    width: 15%;
-}
-
-.t19 {
-    width: 19%;
-}
-
-.t20 {
-    width: 20%;
-}
-
-.t24 {
-    width: 24%;
-}
-
-.t25 {
-    width: 25%;
-}
-
-.t29 {
-    width: 29%;
-}
-   /* 1/4 */
-.t30 {
-    width: 30%;
-}
-
-.t33 {
-    width: 33.333%;
-}   /* 1/3 */
-.t35 {
-    width: 35%;
-}
-
-.t37 {
-    width: 37.5%;
-}
-
-.t39 {
-    width: 39%;
-}
- /* 3/8 */
-.t40 {
-    width: 40%;
-}
-
-.t45 {
-    width: 45%;
-}
-
-.t50 {
-    width: 50%;
-}
-
-.t54 {
-  width: 54%;
-}
-   /* 1/2 */
-.t55 {
-    width: 55%;
-}
-
-.t60 {
-    width: 60%;
-}
-
-.t62 {
-    width: 62.5%;
-}
- /* 5/8 */
-.t65 {
-    width: 65%;
-}
-
-.t66 {
-    width: 66.666%;
-}   /* 2/3 */
-
-.t69 {
-  width: 69%;
-}
-
-.t70 {
-    width: 70%;
-}
-
-.t75 {
-    width: 75%;
-}
-   /* 3/4*/
-.t80 {
-    width: 80%;
-}
-
-.t85 {
-    width: 85%;
-}
-
-.t87 {
-    width: 87.5%;
-}
- /* 7/8 */
-.t90 {
-    width: 90%;
-}
-
-.t95 {
-    width: 95%;
-}
-
-.t100 {
-  width: 100%;
-}
+@include table-columns(100);
 
 #commissioning_scripts {
 
@@ -343,33 +218,79 @@ table {
 }
 
 .table {
-  width: 100%;
   display: table;
-  box-sizing: border-box;
-  table-layout: fixed;
+  border-color: #B2B2B2;
+  border-collapse: collapse;
+  border-spacing: 0;
+  overflow-x: scroll;
+  margin-bottom: 20px;
+  margin: 0 0 2.5em;
+  width: 100%;
 
-  .table-row {
+  .table__row {
     float: left;
     width: 100%;
     display: table-row;
-    box-sizing: border-box;
     border-bottom: 1px dotted #B2B2B2;
-    min-height: 50px;
 
     &:hover {
       background-color: #FFF;
+
+      .table__input {
+        background-color: #FFF;
+        border-color: #D2D2D2;
+        background-position: right 10px top 16px;
+      }
+
+      .table__controls {
+        z-index: 1;
+        opacity: 1;
+
+        &--secondary {
+          z-index: 1;
+          opacity: 1;
+        }
+      }
     }
 
     &.active {
       background-color: #FFF;
+
+      &:hover {
+
+        .details__input {
+          background-color: transparent;
+          border-color: transparent;
+          pointer-events: none;
+          background-position: -9999px -9999px;
+        }
+
+        .details__controls {
+          opacity: 0;
+          z-index: -1000;
+          pointer-events: none;
+
+          &--secondary {
+            z-index: -1000;
+            opacity: 0;
+            pointer-events: none;
+          }
+        }
+      }
     }
   }
 
-  .table-cell {
+  .table__header,
+  .table__data {
+    font-size: 16px;
     display: table-cell;
     padding: 13px 10px;
     box-sizing: border-box;
     min-height: 21px;
+    background: none;
+    border: 0;
+    text-align: left;
+    float: left;
 
     a {
       color: $ubuntu-orange;
@@ -380,12 +301,12 @@ table {
     }
   }
 
-  .table-head {
+  .table__head {
     display: table-head;
     width: 100%;
     box-sizing: border-box;
 
-    .table-row {
+    .table__row {
       border-bottom: 1px solid #B2B2B2;
 
       &:hover {
@@ -393,27 +314,152 @@ table {
       }
     }
 
-    .table-cell {
+    .table__header {
+      font-size: 13px;
+      background: none;
       color: #888;
-      font-weight: 400;
+    }
 
-      a {
-        color: #888;
+    a,
+    .table__header-link {
+      color: #888;
 
-        &:hover {
-          color: #333;
-          border-bottom: 1px solid #333;
-          text-decoration: none;
-        }
+      &:hover {
+        color: #333;
+        text-decoration: none;
+        border-bottom: 1px solid #333;
       }
 
-      .divide {
-          width: 1px;
-          display: inline-block;
-          background: #D2D2D2 none repeat scroll 0% 0%;
-          height: 10px;
-          padding: 0px;
-          margin: 0px 5px;
+      &.active {
+        color: #333;
+        text-decoration: none;
+      }
+
+      &.sort {
+        border-bottom: 1px solid inherit;
+      }
+    }
+
+    .divide {
+      width: 1px;
+      display: inline-block;
+      background: #888;
+      height: 10px;
+      margin: 0 5px;
+    }
+  }
+
+  .table__body {
+    display: table-row-group;
+  }
+
+  .table__footer {
+    display: table-footer-group;
+  }
+
+  .table__label {
+    clear: both;
+    display: block;
+    margin-top: 11px;
+    color: #BCBCBC;
+
+    a {
+      color: #BCBCBC;
+
+      &:hover {
+        color: $ubuntu-orange;
+      }
+    }
+
+    &.active {
+
+      a {
+        color: $ubuntu-orange;
+      }
+    }
+  }
+
+  .table__controls {
+    width: 100%;
+    text-align: right;
+    opacity: 0;
+    z-index: -1000;
+
+    &--secondary {
+      opacity: 0;
+      z-index: -1000;
+      width: auto;
+      text-align: left;
+    }
+  }
+
+  // Form styles
+  .table__input {
+    display: inline-block;
+    margin: -7px 0 -8px -14px;
+    background-color: transparent;
+    border-color: transparent;
+    background-position: -9999px -9999px;
+  }
+
+  label {
+    font-size: 13px;
+    color: #BCBCBC;
+  }
+
+  input,
+  select {
+    margin: 0 0 0 -14px;
+  }
+
+  input[type="radio"] {
+    margin-left: 0;
+  }
+
+  // Table dropdown
+  .table__dropdown {
+    width: 100%;
+
+    .table__dropdown-row {
+        border-bottom: 0;
+
+        &:before {
+          display: block;
+          margin: 0 auto;
+          width: calc(100% - 20px);
+          border-top: 1px dotted #B2B2B2;
+          position: relative;
+          height: 1px;
+          content: '';
+        }
+
+        &.table__dropdown-row--head {
+          border-bottom: 0;
+
+          .table__header {
+            color: #BCBCBC;
+            font-size: 13px;
+          }
+        }
+
+        &.no-border {
+          border: 0;
+
+          &:before {
+             border: 0;
+          }
+        }
+    }
+
+    // Info dropdown
+    &--info {
+
+      .table__row {
+        border-bottom: 0;
+      }
+
+      .table__data {
+        color: #BCBCBC;
       }
     }
   }

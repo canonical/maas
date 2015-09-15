@@ -388,6 +388,7 @@
 
     .details__row {
         border-bottom: 0;
+        position: relative;
 
         &:before {
           display: block;

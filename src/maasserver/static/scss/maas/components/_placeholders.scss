@@ -89,6 +89,14 @@
     text-align: left;
 }
 
+.right {
+  float: right !important;
+}
+
+.left {
+  float: left !important;
+}
+
 .border {
     border-top: 1px dotted #B2B2B2;
     padding-top: 20px;
@@ -165,7 +173,11 @@
 
 %padding-left,
 .padding-left {
-    padding-left: 20px;
+    padding-left: 20px !important;
+
+    &--thirty {
+      padding-left: 30px !important;
+    }
 }
 
 %border-top,
@@ -188,6 +200,10 @@
 
 .no-padding-left {
     padding-left: 0;
+}
+
+.no-padding-bottom {
+  padding-bottom: 0 !important;
 }
 
 .no-margin-bottom {
