@@ -270,17 +270,20 @@ class NodeInterfaceHandler(OperationsHandler):
             will be auto selected.
 
         Mode definitions:
-        AUTO - Assign this interface a static IP address from the provided \
-            subnet. The subnet must be a managed subnet. The IP address will \
-            not be assigned until the node goes to be deployed.
-        DHCP - Bring this interface up with DHCP on the given subnet. Only \
-            one subnet can be set to DHCP. If the subnet is managed this \
-            interface will pull from the dynamic IP range.
-        STATIC - Bring this interface up with a STATIC IP address on the \
-            given subnet. Any number of STATIC links can exist on an interface.
-        LINK_UP - Bring this interface up only on the given subnet. No IP \
-            address will be assigned to this interface. The interface cannot \
-            have any current AUTO, DHCP or STATIC links.
+        AUTO - Assign this interface a static IP address from the provided
+        subnet. The subnet must be a managed subnet. The IP address will
+        not be assigned until the node goes to be deployed.
+
+        DHCP - Bring this interface up with DHCP on the given subnet. Only
+        one subnet can be set to DHCP. If the subnet is managed this
+        interface will pull from the dynamic IP range.
+
+        STATIC - Bring this interface up with a STATIC IP address on the
+        given subnet. Any number of STATIC links can exist on an interface.
+
+        LINK_UP - Bring this interface up only on the given subnet. No IP
+        address will be assigned to this interface. The interface cannot
+        have any current AUTO, DHCP or STATIC links.
 
         Returns 404 if the node or interface is not found.
         """

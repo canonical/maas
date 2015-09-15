@@ -276,6 +276,11 @@ sampledata: bin/maas-region-admin bin/database syncdb
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
+docs/_build/html/index.html: doc
+
+doc-browse: docs/_build/html/index.html
+	sensible-browser $< > /dev/null 2>&1 &
+
 doc-with-versions: bin/sphinx docs/api.rst
 	$(MAKE) -C docs/_build SPHINXOPTS="-A add_version_switcher=true" html
 
@@ -370,6 +375,7 @@ define phony_targets
   dbharness
   distclean
   doc
+  doc-browse
   enums
   format
   harness

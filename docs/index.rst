@@ -65,6 +65,7 @@ Setting up a MAAS server
    installing-ubuntu
    os-support
    storage
+   networking
    devices
 
 

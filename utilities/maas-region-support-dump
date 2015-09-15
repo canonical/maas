@@ -41,7 +41,9 @@ ORDER BY hostname
 
 SELECT
     node.hostname,
+    iface.id "ifid",
     iface.name,
+    iface.type,
     iface.mac_address,
     sip.ip,
     CASE
