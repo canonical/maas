@@ -815,21 +815,30 @@ class Interface(CleanSave, TimestampedModel):
         ip_address = self.ip_addresses.get(id=link_id)
         self.unlink_ip_address(ip_address)
 
-    def claim_auto_ips(self):
-        """Claim IP addresses for this interfaces AUTO IP addresses."""
+    def claim_auto_ips(self, exclude_addresses=[]):
+        """Claim IP addresses for this interfaces AUTO IP addresses.
+
+        :param exclude_addresses: Exclude the following IP addresses in the
+            allocation. Mainly used to ensure that the sub-transaction that
+            runs to identify available IP address does not include the already
+            allocated IP addresses.
+        """
+        exclude_addresses = set(exclude_addresses)
         affected_nodegroups = set()
         assigned_addresses = []
         for auto_ip in self.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.AUTO):
             if not auto_ip.ip:
-                ngi, assigned_ip = self._claim_auto_ip(auto_ip)
+                ngi, assigned_ip = self._claim_auto_ip(
+                    auto_ip, exclude_addresses)
                 if ngi is not None:
                     affected_nodegroups.add(ngi.nodegroup)
                 assigned_addresses.append(assigned_ip)
+                exclude_addresses.add(unicode(assigned_ip.ip))
         self._update_dns_zones(affected_nodegroups)
         return assigned_addresses
 
-    def _claim_auto_ip(self, auto_ip):
+    def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
         """Claim an IP address for the `auto_ip`."""
         # Check if already has a hostmap allocated for this MAC address.
         subnet = auto_ip.subnet
@@ -852,7 +861,7 @@ class Interface(CleanSave, TimestampedModel):
         new_ip = StaticIPAddress.objects.allocate_new(
             network, static_ip_range_low, static_ip_range_high,
             None, None, alloc_type=IPADDRESS_TYPE.AUTO,
-            subnet=subnet)
+            subnet=subnet, exclude_addresses=exclude_addresses)
         self.ip_addresses.add(new_ip)
 
         # Update the hostmap for the new IP address if needed.

@@ -51,6 +51,7 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.ipaddr import get_first_and_last_usable_host_in_network
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -1464,6 +1465,33 @@ class TestClaimAutoIPs(MAASServerTestCase):
         self.assertThat(
             mock_dns_update_zones,
             MockCalledOnceWith({nodegroup, interface.node.nodegroup}))
+
+    def test__excludes_ip_addresses_in_exclude_addresses(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        exclude = get_first_and_last_usable_host_in_network(
+            subnet.get_ipnetwork())[0]
+        interface.claim_auto_ips(exclude_addresses=set([unicode(exclude)]))
+        auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertEquals(IPAddress(exclude) + 1, IPAddress(auto_ip.ip))
+
+    def test__can_acquire_multiple_address_from_the_same_subnet(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        interface.claim_auto_ips()
+        auto_ips = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).order_by('id')
+        self.assertEquals(
+            IPAddress(auto_ips[0].ip) + 1, IPAddress(auto_ips[1].ip))
 
 
 class TestReleaseAutoIPs(MAASServerTestCase):

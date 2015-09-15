@@ -2527,6 +2527,31 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertThat(
             mock_remove_host_maps, MockCalledOnceWith(removal_mappings))
 
+    def test_claim_auto_ips_works_with_multiple_auto_on_the_same_subnet(self):
+        node = factory.make_Node()
+        vlan = factory.make_VLAN()
+        interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+            for _ in range(3)
+        ]
+        subnet = factory.make_Subnet(vlan=vlan)
+        for interface in interfaces:
+            for _ in range(2):
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                    subnet=subnet, interface=interface)
+        # No serialization error should be raised.
+        node.claim_auto_ips()
+        # Each interface should have assigned AUTO IP addresses and none
+        # should overlap.
+        assigned_ips = set()
+        for interface in interfaces:
+            for auto_ip in interface.ip_addresses.filter(
+                    alloc_type=IPADDRESS_TYPE.AUTO):
+                assigned_ips.add(unicode(auto_ip.ip))
+        self.assertEquals(6, len(assigned_ips))
+
     def test_claim_auto_ips_calls_claim_auto_ips_on_all_interfaces(self):
         node = factory.make_Node()
         interfaces = [

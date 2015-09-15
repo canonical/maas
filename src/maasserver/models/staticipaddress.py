@@ -164,7 +164,8 @@ class StaticIPAddressManager(Manager):
             self, network, static_range_low, static_range_high,
             dynamic_range_low, dynamic_range_high,
             alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-            requested_address=None, hostname=None, subnet=None):
+            requested_address=None, hostname=None, subnet=None,
+            exclude_addresses=[]):
         """Return a new StaticIPAddress.
 
         :param network: The network the address should be allocated in.
@@ -223,7 +224,8 @@ class StaticIPAddressManager(Manager):
             with locks.staticip_acquire:
                 requested_address = self._async_find_free_ip(
                     static_range_low, static_range_high, static_range,
-                    alloc_type, user, hostname=hostname).wait(30)
+                    alloc_type, user,
+                    exclude_addresses=exclude_addresses).wait(30)
                 try:
                     return self._attempt_allocation(
                         requested_address, alloc_type, user,
@@ -267,8 +269,9 @@ class StaticIPAddressManager(Manager):
         return deferToThread(
             transactional(self._find_free_ip), *args, **kwargs)
 
-    def _find_free_ip(self, range_low, range_high, static_range, alloc_type,
-                      user, hostname=None):
+    def _find_free_ip(
+            self, range_low, range_high, static_range, alloc_type,
+            user, exclude_addresses):
         """Helper function that finds a free IP address using a lock."""
         # The set of _allocated_ addresses in the range is going to be
         # smaller or at least no bigger than the set of addresses in the
@@ -287,6 +290,10 @@ class StaticIPAddressManager(Manager):
         existing = existing.values_list("ip", flat=True)
         # Now materialise the set.
         existing = {IPAddress(ip) for ip in existing}
+        existing = existing.union({
+            IPAddress(exclude)
+            for exclude in exclude_addresses
+            })
         # Now find the first free address in the range.
         for requested_address in static_range:
             if requested_address not in existing:

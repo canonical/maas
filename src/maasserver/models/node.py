@@ -1816,8 +1816,12 @@ class Node(CleanSave, TimestampedModel):
 
     def claim_auto_ips(self):
         """Assign IP addresses to all interface links set to AUTO."""
+        exclude_addresses = set()
         for interface in self.interface_set.all():
-            interface.claim_auto_ips()
+            claimed_ips = interface.claim_auto_ips(
+                exclude_addresses=exclude_addresses)
+            for ip in claimed_ips:
+                exclude_addresses.add(unicode(ip.ip))
 
     @transactional
     def release_auto_ips(self):
