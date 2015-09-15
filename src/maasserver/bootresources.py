@@ -1014,16 +1014,6 @@ def _import_resources_in_thread(force=False):
     return d
 
 
-def import_resources():
-    """Starts the importing of boot resources.
-
-    Note: This function returns immediately. It only starts the process, it
-    doesn't wait for it to be finished, as it can take several minutes to
-    complete.
-    """
-    reactor.callFromThread(_import_resources_in_thread, force=True)
-
-
 def _handle_import_failures(failure):
     if failure.check(CalledProcessError):
         # Upgrade CalledProcessError to ExternalProcessError in-place so that
@@ -1035,23 +1025,19 @@ def _handle_import_failures(failure):
     log.err(failure, "Importing boot resources failed.")
 
 
+def import_resources():
+    """Starts the importing of boot resources.
+
+    Note: This function returns immediately. It only starts the process, it
+    doesn't wait for it to be finished, as it can take several minutes to
+    complete.
+    """
+    reactor.callFromThread(_import_resources_in_thread, force=True)
+
+
 def is_import_resources_running():
     """Return True if the import process is currently running."""
     return locks.import_images.is_locked()
-
-
-def import_resources_periodically():
-    """Import boot resources.
-
-    This is called by the ImportResourcesService to import the boot resources
-    periodically.  It will simply call _import_resources_in_thread unless
-    the periodic image import mechanism has been disabled.
-    """
-    if Config.objects.get_config('boot_images_auto_import'):
-        return _import_resources()
-    else:
-        maaslog.debug(
-            "Skipping periodic import of boot resources as it is disabled.")
 
 
 # How often the import service runs.
@@ -1064,14 +1050,26 @@ class ImportResourcesService(TimerService, object):
     This will run immediately when it's started, then once again every hour,
     though the interval can be overridden by passing it to the constructor.
     """
+
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super(ImportResourcesService, self).__init__(
             interval.total_seconds(), self.maybe_import_resources)
 
     def maybe_import_resources(self):
-        d = deferToThread(import_resources_periodically)
-        d.addErrback(_handle_import_failures)
+        d = deferToThread(
+            transactional(Config.objects.get_config),
+            'boot_images_auto_import')
+        d.addCallback(self.import_resources_if_configured)
+        d.addErrback(log.err, "Failure importing boot resources.")
         return d
+
+    def import_resources_if_configured(self, auto):
+        if auto:
+            return _import_resources_in_thread()
+        else:
+            maaslog.debug(
+                "Skipping periodic import of boot resources; "
+                "it has been disabled.")
 
 
 class ImportResourcesProgressService(TimerService, object):
@@ -1099,6 +1097,8 @@ class ImportResourcesProgressService(TimerService, object):
             # message to the user in this case.
             images_link = absolute_url_reverse('images')
 
+            # XXX: RPC within a transaction. This ought to be restructured so
+            # that network IO is outside of the transaction.
             if self.are_boot_images_available_in_any_cluster():
                 warning = dedent("""\
                 One or more of your clusters currently has boot images, but
