@@ -242,14 +242,15 @@ class MAASTestCase(
         """Patch `obj.attribute` with `value`.
 
         If `value` is unspecified, a new `MagicMock` will be created and
-        patched-in instead.
+        patched-in instead. Its ``__name__`` attribute will be set to
+        `attribute` or the ``__name__`` of the replaced object if `attribute`
+        is not given.
 
         This is a thin customisation of `testtools.TestCase.patch`, so refer
         to that in case of doubt.
 
         :return: The patched-in object.
         """
-
         # If 'attribute' is None, assume 'obj' is a 'fully-qualified' object,
         # and assume that its __module__ is what we want to patch. For more
         # complex use cases, the two-paramerter 'patch' will still need to
@@ -257,8 +258,10 @@ class MAASTestCase(
         if attribute is None:
             attribute = obj.__name__
             obj = import_module(obj.__module__)
+        if isinstance(attribute, unicode):
+            attribute = attribute.encode("ascii")
         if value is mock.sentinel.unset:
-            value = mock.MagicMock()
+            value = mock.MagicMock(__name__=attribute)
         super(MAASTestCase, self).patch(obj, attribute, value)
         return value
 

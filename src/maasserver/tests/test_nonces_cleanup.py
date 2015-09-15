@@ -30,7 +30,6 @@ from maasserver.nonces_cleanup import (
     timestamp_threshold,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -139,7 +138,6 @@ class TestNonceCleanupService(MAASServerTestCase):
         # a couple of decorators. This indirection makes it clearer to
         # mock `cleanup_old_nonces` here and track calls to it.
         cleanup_old_nonces = self.patch(nonces_cleanup, "cleanup_old_nonces")
-        cleanup_old_nonces.__name__ = factory.make_string().encode("ascii")
         # Making `deferToThread` use the current thread helps testing.
         self.patch(nonces_cleanup, "deferToThread", maybeDeferred)
 

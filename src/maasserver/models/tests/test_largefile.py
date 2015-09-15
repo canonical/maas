@@ -125,7 +125,6 @@ class TestLargeFile(MAASServerTestCase):
         self.addCleanup(content.unlink)
         _async_delete_large_object = self.patch(
             LargeFile, '_async_delete_large_object')
-        _async_delete_large_object.__name__ = (b"_async_delete_large_object")
         yield largefile.delete()
         self.assertThat(
             _async_delete_large_object, MockCalledOnceWith(content))

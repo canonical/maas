@@ -144,9 +144,7 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
     )
 
     def patch_now_function(self):
-        func = self.patch(dns_config_module, self.now_function.__name__)
-        func.__name__ = self.now_function.__name__
-        return func
+        return self.patch(dns_config_module, self.now_function.__name__)
 
     def test__defers_by_default(self):
         self.patch(settings, "DNS_CONNECT", True)
