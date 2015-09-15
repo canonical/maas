@@ -49,13 +49,19 @@ NODE_TAG_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
+      pnode RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, installable, parent_id INTO node
       FROM maasserver_node
       WHERE id = %s;
 
       IF node.installable THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSIF node.parent_id IS NOT NULL THEN
+        SELECT system_id INTO pnode
+        FROM maasserver_node
+        WHERE id = node.parent_id;
+        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -72,15 +78,24 @@ TAG_NODES_NOTIFY = dedent("""\
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
+      pnode RECORD;
     BEGIN
       FOR node IN (
-        SELECT maasserver_node.system_id, maasserver_node.installable
+        SELECT
+          maasserver_node.system_id,
+          maasserver_node.installable,
+          maasserver_node.parent_id
         FROM maasserver_node_tags, maasserver_node
         WHERE maasserver_node_tags.tag_id = NEW.id
         AND maasserver_node_tags.node_id = maasserver_node.id)
       LOOP
         IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -99,13 +114,19 @@ EVENT_NODE_NOTIFY = dedent("""\
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
+      pnode RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, installable, parent_id INTO node
       FROM maasserver_node
       WHERE id = NEW.node_id;
 
       IF node.installable THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSIF node.parent_id IS NOT NULL THEN
+        SELECT system_id INTO pnode
+        FROM maasserver_node
+        WHERE id = node.parent_id;
+        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -160,14 +181,20 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
+      pnode RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, installable, parent_id INTO node
       FROM maasserver_node, maasserver_interface
       WHERE maasserver_node.id = maasserver_interface.node_id
       AND maasserver_interface.id = %s;
 
       IF node.installable THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSIF node.parent_id IS NOT NULL THEN
+        SELECT system_id INTO pnode
+        FROM maasserver_node
+        WHERE id = node.parent_id;
+        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -187,25 +214,36 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
+      pnode RECORD;
     BEGIN
       IF OLD.node_id != NEW.node_id THEN
-        SELECT system_id, installable INTO node
+        SELECT system_id, installable, parent_id INTO node
         FROM maasserver_node
         WHERE id = OLD.node_id;
 
         IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
       END IF;
 
-      SELECT system_id, installable INTO node
+      SELECT system_id, installable, parent_id INTO node
       FROM maasserver_node
       WHERE id = NEW.node_id;
 
       IF node.installable THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      ELSIF node.parent_id IS NOT NULL THEN
+        SELECT system_id INTO pnode
+        FROM maasserver_node
+        WHERE id = node.parent_id;
+        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -223,16 +261,12 @@ PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id INTO node
       FROM maasserver_node, maasserver_blockdevice
       WHERE maasserver_node.id = maasserver_blockdevice.node_id
       AND maasserver_blockdevice.id = %s;
 
-      IF node.installable THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
-      ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
-      END IF;
+      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -376,18 +410,44 @@ def render_notification_procedure(proc_name, event_name, cast):
         """ % (proc_name, event_name, cast))
 
 
+def render_device_notification_procedure(proc_name, event_name, obj):
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
+        DECLARE
+          pnode RECORD;
+        BEGIN
+          IF {obj}.parent_id IS NOT NULL THEN
+            SELECT system_id INTO pnode
+            FROM maasserver_node
+            WHERE id = {obj}.parent_id;
+            PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          ELSE
+            PERFORM pg_notify('{event_name}',CAST({obj}.system_id AS text));
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """.format(proc_name=proc_name, event_name=event_name, obj=obj))
+
+
 def render_node_related_notification_procedure(proc_name, node_id_relation):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
         DECLARE
           node RECORD;
+          pnode RECORD;
         BEGIN
-          SELECT system_id, installable INTO node
+          SELECT system_id, installable, parent_id INTO node
           FROM maasserver_node
           WHERE id = %s;
 
           IF node.installable THEN
             PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          ELSIF node.parent_id IS NOT NULL THEN
+            SELECT system_id INTO pnode
+            FROM maasserver_node
+            WHERE id = node.parent_id;
+            PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
           ELSE
             PERFORM pg_notify('device_update',CAST(node.system_id AS text));
           END IF;
@@ -460,14 +520,14 @@ def register_all_triggers():
 
     # Node(device) table
     register_procedure(
-        render_notification_procedure(
-            'device_create_notify', 'device_create', 'NEW.system_id'))
+        render_device_notification_procedure(
+            'device_create_notify', 'device_create', 'NEW'))
     register_procedure(
-        render_notification_procedure(
-            'device_update_notify', 'device_update', 'NEW.system_id'))
+        render_device_notification_procedure(
+            'device_update_notify', 'device_update', 'NEW'))
     register_procedure(
-        render_notification_procedure(
-            'device_delete_notify', 'device_delete', 'OLD.system_id'))
+        render_device_notification_procedure(
+            'device_delete_notify', 'device_delete', 'OLD'))
     register_trigger(
         "maasserver_node", "device_create_notify", "insert",
         {'NEW.installable': False})

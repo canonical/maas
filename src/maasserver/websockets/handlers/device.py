@@ -112,7 +112,7 @@ class DeviceHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Device.devices.filter(installable=False)
+            Device.devices.filter(installable=False, parent=None)
             .select_related('nodegroup', 'owner')
             .prefetch_related('interface_set__ip_addresses__subnet')
             .prefetch_related('nodegroup__nodegroupinterface_set')

@@ -253,6 +253,16 @@ class TransactionalHelpersMixin:
         node.delete()
 
     @transactional
+    def create_device_with_parent(self, params=None):
+        if params is None:
+            params = {}
+        parent = factory.make_Node()
+        params["installable"] = False
+        params["parent"] = parent
+        device = factory.make_Node(**params)
+        return device, parent
+
+    @transactional
     def get_node_boot_interface(self, system_id):
         node = Node.objects.get(system_id=system_id)
         return node.get_boot_interface()
@@ -621,7 +631,6 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToThread(self.create_node, self.params)
-
         yield listener.start()
         try:
             yield deferToThread(
@@ -646,6 +655,66 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield deferToThread(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestDeviceWithParentListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        parent = yield deferToThread(self.create_node)
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_node, {
+                    "installable": False,
+                    "parent": parent,
+                    })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_node,
+                device.system_id,
+                {'hostname': factory.make_name('hostname')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_node, device.system_id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', parent.system_id), dv.value)
         finally:
             yield listener.stop()
 
@@ -979,6 +1048,68 @@ class TestNodeTagListener(
             yield listener.stop()
 
 
+class TestDeviceWithParentTagListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_node_tags table."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        tag = yield deferToThread(self.create_tag)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.add_node_to_tag, device, tag)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        tag = yield deferToThread(self.create_tag)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.remove_node_from_tag, device, tag)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_node_handler_with_update_on_tag_rename(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        tag = yield deferToThread(self.create_tag)
+        yield deferToThread(self.add_node_to_tag, device, tag)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            tag = yield deferToThread(
+                self.update_tag, tag.id, {'name': factory.make_name("tag")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
 class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the user
     triggers code."""
@@ -1125,6 +1256,29 @@ class TestNodeEventListener(
             yield listener.stop()
 
 
+class TestDeviceWithParentEventListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_event table that notifies its node."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_event, {"node": device})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
 class TestNodeStaticIPAddressListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
@@ -1183,6 +1337,55 @@ class TestNodeStaticIPAddressListener(
             yield listener.stop()
 
 
+class TestDeviceWithParentStaticIPAddressListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_interfacestaticipaddresslink table that notifies its node."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.create_staticipaddress, {"interface": interface})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        sip = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_staticipaddress, sip.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
 class TestNodeNodeResultListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
@@ -1231,6 +1434,47 @@ class TestNodeNodeResultListener(
             yield deferToThread(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestDeviceWithParentNodeResultListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    metadataserver_noderesult table that notifies its node."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_noderesult, {"node": device})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        result = yield deferToThread(self.create_noderesult, {"node": device})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_noderesult, result.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
             yield listener.stop()
 
@@ -1338,6 +1582,101 @@ class TestNodeInterfaceListener(
             yield listener.stop()
 
 
+class TestDeviceWithParentInterfaceListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_interface table that notifies its node."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.create_interface, {"node": device})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        interface = yield deferToThread(
+            self.create_interface, {"node": device})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_interface, interface.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(self.create_device_with_parent)
+        interface = yield deferToThread(
+            self.create_interface, {"node": device})
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_interface, interface.id, {
+                "mac_address": factory.make_MAC()
+                })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_old_node_on_update(self):
+        yield deferToThread(register_all_triggers)
+        device1, parent1 = yield deferToThread(self.create_device_with_parent)
+        device2, parent2 = yield deferToThread(self.create_device_with_parent)
+        interface = yield deferToThread(
+            self.create_interface, {"node": device1})
+        dvs = [DeferredValue(), DeferredValue()]
+
+        def set_defer_value(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    break
+
+        listener = PostgresListener()
+        listener.register("node", set_defer_value)
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_interface, interface.id, {
+                "node": device2
+                })
+            yield dvs[0].get(timeout=2)
+            yield dvs[1].get(timeout=2)
+            self.assertItemsEqual([
+                ('update', '%s' % parent1.system_id),
+                ('update', '%s' % parent2.system_id),
+                ], [dvs[0].value, dvs[1].value])
+        finally:
+            yield listener.stop()
+
+
 class TestNodeBlockDeviceListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
@@ -1348,10 +1687,6 @@ class TestNodeBlockDeviceListener(
         ('node', {
             'params': {'installable': True},
             'listener': 'node',
-            }),
-        ('device', {
-            'params': {'installable': False},
-            'listener': 'device',
             }),
     )
 

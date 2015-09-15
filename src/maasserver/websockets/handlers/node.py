@@ -217,6 +217,14 @@ class NodeHandler(TimestampedModelHandler):
             data["interfaces"] = sorted(
                 interfaces, key=itemgetter("is_pxe"), reverse=True)
 
+            # Devices
+            devices = [
+                self.dehydrate_device(device)
+                for device in obj.children.all()
+            ]
+            data["devices"] = sorted(
+                devices, key=itemgetter("fqdn"))
+
             # Storage
             data["physical_disks"] = [
                 self.dehydrate_physicalblockdevice(blockdevice)
@@ -243,6 +251,16 @@ class NodeHandler(TimestampedModelHandler):
                     }
 
         return data
+
+    def dehydrate_device(self, device):
+        """Return the `Device` formatted for JSON encoding."""
+        return {
+            "fqdn": device.fqdn,
+            "interfaces": [
+                self.dehydrate_interface(interface, device)
+                for interface in device.interface_set.all().order_by('id')
+            ],
+        }
 
     def dehydrate_physicalblockdevice(self, blockdevice):
         """Return `PhysicalBlockDevice` formatted for JSON encoding."""

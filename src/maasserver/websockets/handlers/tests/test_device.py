@@ -195,6 +195,19 @@ class TestDeviceHandler(MAASServerTestCase):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
         device = self.make_device_with_ip_address(owner=owner)
+        # Create a device with parent.
+        node = factory.make_Node(owner=owner)
+        device_with_parent = self.make_device_with_ip_address(owner=owner)
+        device_with_parent.parent = node
+        device_with_parent.save()
+        self.assertItemsEqual(
+            [self.dehydrate_device(device, owner, for_list=True)],
+            handler.list({}))
+
+    def test_list_ignores_devices_with_parents(self):
+        owner = factory.make_User()
+        handler = DeviceHandler(owner, {})
+        device = self.make_device_with_ip_address(owner=owner)
         # Create a node.
         factory.make_Node(owner=owner)
         self.assertItemsEqual(

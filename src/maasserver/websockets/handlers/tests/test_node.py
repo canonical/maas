@@ -198,6 +198,13 @@ class TestNodeHandler(MAASServerTestCase):
             ],
             "cpu_count": node.cpu_count,
             "created": dehydrate_datetime(node.created),
+            "devices": sorted([
+                {
+                    "fqdn": device.fqdn,
+                    "interfaces": self.dehydrate_interfaces(device),
+                }
+                for device in node.children.all().order_by('id')
+            ], key=itemgetter('fqdn')),
             "disable_ipv4": node.disable_ipv4,
             "disks": len(physicalblockdevices),
             "distro_series": node.get_distro_series(),
@@ -303,6 +310,10 @@ class TestNodeHandler(MAASServerTestCase):
             node = factory.make_Node(
                 nodegroup=nodegroup, interface=True, status=NODE_STATUS.READY)
             factory.make_PhysicalBlockDevice(node)
+            # Make some devices.
+            for _ in range(3):
+                factory.make_Node(
+                    installable=False, parent=node, interface=True)
 
     def test_get(self):
         user = factory.make_User()
@@ -331,6 +342,11 @@ class TestNodeHandler(MAASServerTestCase):
             subnet=None, interface=nic1)
         nic1_ip.subnet = None
         nic1_ip.save()
+
+        # Make some devices.
+        for _ in range(3):
+            factory.make_Node(
+                installable=False, parent=node, interface=True)
 
         self.patch_autospec(interface_module, "update_host_maps")
         boot_interface = node.get_boot_interface()
