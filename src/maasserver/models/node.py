@@ -407,6 +407,12 @@ class Node(CleanSave, TimestampedModel):
     :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`NodeManager`.
+    :ivar enable_ssh: An optional flag to indicate if this node can have
+        ssh enabled during commissioning, allowing the user to ssh into the
+        machine's commissioning environment using the user's SSH key.
+    :ivar block_poweroff: An optional flag to indicate if this node needs to
+        can be prevented from being powered off automatically after the
+        commissioning has finished.
 
     """
 
@@ -571,6 +577,12 @@ class Node(CleanSave, TimestampedModel):
 
     # 'devices' are all the non-installable nodes.
     devices = DeviceManager()
+
+    # Used to determine whether to:
+    #  1. Import the SSH Key during commissioning.
+    #  2. Block the automatic power off during commissioning.
+    enable_ssh = BooleanField(default=False)
+    block_poweroff = BooleanField(default=False)
 
     def __unicode__(self):
         if self.hostname:
@@ -900,6 +912,18 @@ class Node(CleanSave, TimestampedModel):
         self.start_commissioning(user)
         return self
 
+    def set_commissioning_parameters(self, enable_ssh=False,
+                                     block_poweroff=False):
+        """Set the commissioning parameters.
+
+        This sets the parameters to:
+           enable_ssh - Enable SSH during commissioning.
+           block_poweroff - Blocks the automatic poweroff after commisioning.
+        """
+        self.enable_ssh = enable_ssh
+        self.block_poweroff = block_poweroff
+        self.save()
+
     @transactional
     def start_commissioning(self, user):
         """Install OS and self-test a new node.
@@ -925,6 +949,7 @@ class Node(CleanSave, TimestampedModel):
         # case the power action fails.
         old_status = self.status
         self.status = NODE_STATUS.COMMISSIONING
+        self.owner = user
         self.save()
 
         # Prepare a transition monitor for later.
@@ -1038,6 +1063,9 @@ class Node(CleanSave, TimestampedModel):
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
             stopping = self.stop(user)
+            if self.owner is not None:
+                self.owner = None
+                self.save()
         except Exception as error:
             maaslog.error(
                 "%s: Error when aborting commissioning: %s",

@@ -35,6 +35,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import (
+    extract_bool,
     get_mandatory_param,
     get_oauth_token,
     get_optional_list,
@@ -508,6 +509,13 @@ class NodeHandler(OperationsHandler):
     def commission(self, request, system_id):
         """Begin commissioning process for a node.
 
+        :param enable_ssh: Whether to enable SSH for the commissioning
+            environment using the user's SSH key(s).
+        :type enable_ssh: bool ('0' for False, '1' for True)
+        :param block_poweroff: Whether to prevent the power off the node
+            after the commissioning has completed.
+        :type block_poweroff: bool ('0' for False, '1' for True)
+
         A node in the 'ready', 'declared' or 'failed test' state may
         initiate a commissioning cycle where it is checked out and tested
         in preparation for transitioning to the 'ready' state. If it is
@@ -517,7 +525,18 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
+        enable_ssh = get_optional_param(request.data, 'enable_ssh', 0)
+        block_poweroff = get_optional_param(request.data, 'block_poweroff', 0)
+
         node = get_object_or_404(Node, system_id=system_id)
+
+        if enable_ssh:
+            enable_ssh = extract_bool(enable_ssh)
+        if block_poweroff:
+            block_poweroff = extract_bool(block_poweroff)
+        node.set_commissioning_parameters(
+            enable_ssh=enable_ssh, block_poweroff=block_poweroff)
+
         form_class = get_action_form(user=request.user)
         form = form_class(
             node, data={NodeActionForm.input_name: Commission.name})

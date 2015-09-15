@@ -673,7 +673,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         reporter = self.load_reporter(preseeds)
         self.assertIsInstance(reporter, dict)
         if curtin_supports_webhook_events():
-            self.assertEqual(['reporting'], list(reporter.keys()))
+            self.assertEqual(['reporting', 'install'], list(reporter.keys()))
         else:
             self.assertEqual(['reporter'], list(reporter.keys()))
 

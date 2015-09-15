@@ -332,6 +332,28 @@ class TestMetadataCommon(DjangoTestCase):
         self.assertNotIn(
             'public-keys', response.content.decode('ascii').split('\n'))
 
+    def test_public_keys_not_listed_for_comm_node_with_ssh_disabled(self):
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
+        node = factory.make_Node(
+            owner=user, status=NODE_STATUS.COMMISSIONING, enable_ssh=False)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
+        client = make_node_client(node=node)
+        response = client.get(url)
+        self.assertNotIn(
+            'public-keys', response.content.decode('ascii').split('\n'))
+
+    def test_public_keys_listed_for_comm_node_with_ssh_enabled(self):
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
+        node = factory.make_Node(
+            owner=user, status=NODE_STATUS.COMMISSIONING, enable_ssh=True)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
+        client = make_node_client(node=node)
+        response = client.get(url)
+        self.assertIn(
+            'public-keys', response.content.decode('ascii').split('\n'))
+
     def test_public_keys_listed_for_node_with_public_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_Node(owner=user)

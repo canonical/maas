@@ -599,10 +599,13 @@ class MetaDataHandler(VersionIndexHandler):
         # attribute.
         if item is None or len(item) == 0:
             fields = list(self.fields)
+            commissioning_without_ssh = (
+                node.status == NODE_STATUS.COMMISSIONING and
+                not node.enable_ssh)
             # Add public-keys to the list of attributes, if the
             # node has registered SSH keys.
             keys = SSHKey.objects.get_keys_for_user(user=node.owner)
-            if not keys:
+            if not keys or commissioning_without_ssh:
                 fields.remove('public-keys')
             return make_list_response(sorted(fields))
 

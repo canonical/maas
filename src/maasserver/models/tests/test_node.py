@@ -1574,6 +1574,43 @@ class TestNode(MAASServerTestCase):
                 NodeStateViolation, node.abort_commissioning,
                 factory.make_admin())
 
+    def test_start_commissioning_sets_owner(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.NEW, power_type='ether_wake',
+            enable_ssh=True)
+        node_start = self.patch(node, 'start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
+        admin = factory.make_admin()
+        node.start_commissioning(admin)
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        expected_attrs = {
+            'status': NODE_STATUS.COMMISSIONING,
+            'owner': admin,
+        }
+        self.expectThat(node.owner, Equals(admin))
+        self.assertAttributes(node, expected_attrs)
+
+    def test_abort_commissioning_unsets_owner(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, power_type='virsh',
+            enable_ssh=True)
+        admin = factory.make_admin()
+
+        node_stop = self.patch(node, 'stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
+        self.patch(Node, "_set_status")
+
+        with post_commit_hooks:
+            node.abort_commissioning(admin)
+
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        self.assertThat(node._set_status, MockCalledOnceWith(
+            node.system_id, status=NODE_STATUS.NEW))
+        self.assertThat(node.owner, Is(None))
+
     def test_full_clean_logs_node_status_transition(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())

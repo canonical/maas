@@ -142,7 +142,14 @@ EOF
    fi
 }
 
+write_block_poweroff() {
+   touch /tmp/block-poweroff
+}
+
 main() {
+   {{if node.block_poweroff}}
+   write_block_poweroff
+   {{endif}}
    write_poweroff_job
    write_systemd_poweroff_job
 

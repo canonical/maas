@@ -151,6 +151,8 @@ class DeviceHandler(TimestampedModelHandler):
             "hwe_kernel",
             "gateway_link_ipv4",
             "gateway_link_ipv6",
+            "block_poweroff",
+            "enable_ssh",
             ]
         list_fields = [
             "system_id",
