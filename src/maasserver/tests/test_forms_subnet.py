@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.forms_subnet import SubnetForm
+from maasserver.models.fabric import Fabric
+from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -23,12 +25,10 @@ from testtools.matchers import MatchesStructure
 
 class TestSubnetForm(MAASServerTestCase):
 
-    def test__requires_vlan_space_cidr(self):
+    def test__requires_cidr(self):
         form = SubnetForm({})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEquals({
-            "vlan": ["This field is required."],
-            "space": ["This field is required."],
             "cidr": ["This field is required."],
             }, form.errors)
 
@@ -74,6 +74,129 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 name=cidr, vlan=vlan, space=space, cidr=cidr))
+
+    def test__creates_subnet_in_default_space(self):
+        vlan = factory.make_VLAN()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "vlan": vlan.id,
+            "cidr": cidr,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        subnet = form.save()
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=cidr, vlan=vlan, cidr=cidr,
+                space=Space.objects.get_default_space()))
+
+    def test__creates_subnet_in_default_fabric_and_vlan(self):
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        subnet = form.save()
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=cidr, cidr=cidr,
+                vlan=Fabric.objects.get_default_fabric().get_default_vlan(),
+                space=Space.objects.get_default_space()))
+
+    def test__creates_subnet_in_default_vlan_in_fabric(self):
+        fabric = factory.make_Fabric()
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "fabric": fabric.id,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        subnet = form.save()
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=cidr, cidr=cidr,
+                vlan=fabric.get_default_vlan(),
+                space=Space.objects.get_default_space()))
+
+    def test__creates_subnet_in_default_fabric_with_vid(self):
+        vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "vid": vlan.vid,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        subnet = form.save()
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=cidr, cidr=cidr,
+                vlan=vlan,
+                space=Space.objects.get_default_space()))
+
+    def test__creates_subnet_in_fabric_with_vid(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "fabric": fabric.id,
+            "vid": vlan.vid,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        subnet = form.save()
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=cidr, cidr=cidr,
+                vlan=vlan,
+                space=Space.objects.get_default_space()))
+
+    def test__error_for_unknown_vid_in_default_fabric(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "vid": vlan.vid,
+        })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            "vid": ["No VLAN with vid %s in default fabric." % vlan.vid]
+            }, form.errors)
+
+    def test__error_for_unknown_vid_in_fabric(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "fabric": fabric.id,
+            "vid": vlan.vid,
+        })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            "vid": ["No VLAN with vid %s in fabric %s." % (vlan.vid, fabric)]
+            }, form.errors)
+
+    def test__error_for_vlan_not_in_fabric(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
+        network = factory.make_ip4_or_6_network()
+        cidr = unicode(network.cidr)
+        form = SubnetForm({
+            "cidr": cidr,
+            "fabric": fabric.id,
+            "vlan": vlan.id,
+        })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            "vlan": ["VLAN %s is not in fabric %s." % (vlan, fabric)]
+            }, form.errors)
 
     def test__doest_require_vlan_space_or_cidr_on_update(self):
         subnet = factory.make_Subnet()

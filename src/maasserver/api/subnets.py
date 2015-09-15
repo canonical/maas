@@ -55,8 +55,15 @@ class SubnetsHandler(OperationsHandler):
         """Create a subnet.
 
         :param name: Name of the subnet.
-        :param vlan: VLAN this subnet belongs to.
-        :param space: Space this subnet is in.
+        :param fabric: Fabric for the subnet. Defaults to the fabric the
+            provided VLAN belongs to or defaults to the default fabric.
+        :param vlan: VLAN this subnet belongs to. Defaults to the default
+            VLAN for the provided fabric or defaults to the default VLAN in
+            the default fabric.
+        :param vid: VID of the VLAN this subnet belongs to. Only used when
+            vlan is not provided. Picks the VLAN with this VID in the provided
+            fabric or the default fabric if one is not given.
+        :param space: Space this subnet is in. Defaults to the default space.
         :param cidr: The network CIDR for this subnet.
         :param gateway_ip: The gateway IP address for this subnet.
         :param dns_servers: Comma-seperated list of DNS servers for this \

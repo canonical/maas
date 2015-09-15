@@ -111,8 +111,6 @@ class TestSubnetsAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual({
-            "vlan": ["This field is required."],
-            "space": ["This field is required."],
             "cidr": ["This field is required."],
             }, json.loads(response.content))
 
