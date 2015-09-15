@@ -611,3 +611,67 @@ class TestNodeInterfaceAPI(APITestCase):
             })
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_set_default_gateway_sets_gateway_link_ipv4_on_node(self):
+        # The form that is used is fully tested in test_forms_interface_link.
+        # This just tests that the form is saved and the node link is created.
+        self.become_admin()
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=unicode(network.cidr), vlan=interface.vlan)
+        link_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        uri = get_node_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "set_default_gateway",
+            "link_id": link_ip.id
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(link_ip, reload_object(node).gateway_link_ipv4)
+
+    def test_set_default_gateway_sets_gateway_link_ipv6_on_node(self):
+        # The form that is used is fully tested in test_forms_interface_link.
+        # This just tests that the form is saved and the node link is created.
+        self.become_admin()
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(
+            cidr=unicode(network.cidr), vlan=interface.vlan)
+        link_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        uri = get_node_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "set_default_gateway",
+            "link_id": link_ip.id
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(link_ip, reload_object(node).gateway_link_ipv6)
+
+    def test_set_default_gateway_raises_error(self):
+        self.become_admin()
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+        uri = get_node_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "set_default_gateway",
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals({
+            "__all__": ["This interface has no usable gateways."]
+            }, json.loads(response.content))
+
+    def test_set_default_gateway_requries_admin(self):
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+        uri = get_node_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "set_default_gateway",
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)

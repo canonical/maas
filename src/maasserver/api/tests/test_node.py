@@ -1810,3 +1810,46 @@ class TestSetStorageLayout(APITestCase):
         self.assertThat(
             mock_set_storage_layout,
             MockCalledOnceWith('flat', params=ANY, allow_fallback=False))
+
+
+class TestClearDefaultGateways(APITestCase):
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test__403_when_not_admin(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'clear_default_gateways'})
+        self.assertEquals(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test__clears_default_gateways(self):
+        self.become_admin()
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(
+            cidr=unicode(network_v4.cidr), vlan=interface.vlan)
+        link_v4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v4, interface=interface)
+        node.gateway_link_ipv4 = link_v4
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(
+            cidr=unicode(network_v6.cidr), vlan=interface.vlan)
+        link_v6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v6, interface=interface)
+        node.gateway_link_ipv6 = link_v6
+        node.save()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'clear_default_gateways'})
+        self.assertEquals(
+            httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertIsNone(node.gateway_link_ipv4)
+        self.assertIsNone(node.gateway_link_ipv6)

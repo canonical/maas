@@ -30,6 +30,7 @@ from maasserver.forms_interface import (
 )
 from maasserver.forms_interface_link import (
     InterfaceLinkForm,
+    InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,
 )
 from maasserver.models.interface import (
@@ -268,6 +269,9 @@ class NodeInterfaceHandler(OperationsHandler):
         :param ip_address: IP address for the interface in subnet. Only used
             when mode is STATIC. If not provided an IP address from subnet
             will be auto selected.
+        :param default_gateway: True sets the gateway IP address for the subnet
+            as the default gateway for the node this interface belongs to.
+            Option can only be used with the AUTO and STATIC modes.
 
         Mode definitions:
         AUTO - Assign this interface a static IP address from the provided
@@ -306,6 +310,29 @@ class NodeInterfaceHandler(OperationsHandler):
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
         form = InterfaceUnlinkForm(instance=interface, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def set_default_gateway(self, request, system_id, interface_id):
+        """Set the node to use this interface as the default gateway.
+
+        If this interface has more than one subnet with a gateway IP in the
+        same IP address family then specifying the ID of the link on
+        this interface is required.
+
+        :param link_id: ID of the link on this interface to select the
+            default gateway IP address from.
+
+        Returns 400 if the interface has not AUTO or STATIC links.
+        Returns 404 if the node or interface is not found.
+        """
+        interface = Interface.objects.get_interface_or_404(
+            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        form = InterfaceSetDefaultGatwayForm(
+            instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
         else:

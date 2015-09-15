@@ -855,6 +855,32 @@ class NodeHandler(OperationsHandler):
                     storage_layout, e.message))
         return node
 
+    @operation(idempotent=False)
+    def clear_default_gateways(self, request, system_id):
+        """Clear any set default gateways on the node.
+
+        This will clear both IPv4 and IPv6 gateways on the node. This will
+        transition the logic of identifing the best gateway to MAAS. This logic
+        is determined based the following criteria:
+
+        1. Managed subnets over unmanaged subnets.
+        2. Bond interfaces over physical interfaces.
+        3. Node's boot interface over all other interfaces except bonds.
+        4. Physical interfaces over VLAN interfaces.
+        5. Sticky IP links over user reserved IP links.
+        6. User reserved IP links over auto IP links.
+
+        If the default gateways need to be specific for this node you can set
+        which interface and subnet's gateway to use when this node is deployed
+        with the `node-interfaces set-default-gateway` API.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        node.gateway_link_ipv4 = None
+        node.gateway_link_ipv6 = None
+        node.save()
+        return node
+
 
 def create_node(request):
     """Service an http request to create a node.

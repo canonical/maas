@@ -317,10 +317,12 @@ class TestDescribingAPI(MAASServerTestCase):
             "restful=False",
             "POST release_sticky_ip_address op=release_sticky_ip_address "
             "restful=False",
-            'POST mark_fixed op=mark_fixed restful=False',
-            'POST mark_broken op=mark_broken restful=False',
-            'POST abort_operation op=abort_operation restful=False',
-            'POST set_storage_layout op=set_storage_layout restful=False',
+            "POST mark_fixed op=mark_fixed restful=False",
+            "POST mark_broken op=mark_broken restful=False",
+            "POST abort_operation op=abort_operation restful=False",
+            "POST set_storage_layout op=set_storage_layout restful=False",
+            "POST clear_default_gateways op=clear_default_gateways "
+            "restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action
