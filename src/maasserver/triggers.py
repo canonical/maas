@@ -397,6 +397,208 @@ CACHESET_NODE_NOTIFY = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+# Procedure that is called when the subnet is updated.
+SUBNET_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        node RECORD;
+        pnode RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT DISTINCT ON (maasserver_node.id)
+          system_id, installable, parent_id
+        FROM
+          maasserver_node,
+          maasserver_subnet,
+          maasserver_interface,
+          maasserver_interface_ip_addresses AS ip_link,
+          maasserver_staticipaddress
+        WHERE maasserver_subnet.id = %s
+        AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+        AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+        AND ip_link.interface_id = maasserver_interface.id
+        AND maasserver_node.id = maasserver_interface.node_id)
+      LOOP
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when fabric is updated.
+FABRIC_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        node RECORD;
+        pnode RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT DISTINCT ON (maasserver_node.id)
+          system_id, installable, parent_id
+        FROM
+          maasserver_node,
+          maasserver_fabric,
+          maasserver_interface,
+          maasserver_vlan
+        WHERE maasserver_fabric.id = %s
+        AND maasserver_vlan.fabric_id = maasserver_fabric.id
+        AND maasserver_node.id = maasserver_interface.node_id
+        AND maasserver_vlan.id = maasserver_interface.vlan_id)
+      LOOP
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when space is updated.
+SPACE_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        node RECORD;
+        pnode RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT DISTINCT ON (maasserver_node.id)
+          system_id, installable, parent_id
+        FROM
+          maasserver_node,
+          maasserver_space,
+          maasserver_subnet,
+          maasserver_interface,
+          maasserver_interface_ip_addresses AS ip_link,
+          maasserver_staticipaddress
+        WHERE maasserver_space.id = %s
+        AND maasserver_subnet.space_id = maasserver_space.id
+        AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+        AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+        AND ip_link.interface_id = maasserver_interface.id
+        AND maasserver_node.id = maasserver_interface.node_id)
+      LOOP
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when vlan is updated.
+VLAN_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        node RECORD;
+        pnode RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT DISTINCT ON (maasserver_node.id)
+          system_id, installable, parent_id
+        FROM maasserver_node, maasserver_interface, maasserver_vlan
+        WHERE maasserver_vlan.id = %s
+        AND maasserver_node.id = maasserver_interface.node_id
+        AND maasserver_vlan.id = maasserver_interface.vlan_id)
+      LOOP
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when an IP address is updated to update the related
+# node.
+STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        node RECORD;
+        pnode RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT DISTINCT ON (maasserver_node.id)
+          system_id, installable, parent_id
+        FROM
+          maasserver_node,
+          maasserver_interface,
+          maasserver_interface_ip_addresses AS ip_link
+        WHERE ip_link.staticipaddress_id = %s
+        AND ip_link.interface_id = maasserver_interface.id
+        AND maasserver_node.id = maasserver_interface.node_id)
+      LOOP
+        IF node.installable THEN
+          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when an IP address is updated to update its related
+# subnet.
+STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.subnet_id != NEW.subnet_id THEN
+        IF OLD.subnet_id IS NOT NULL THEN
+          PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+        END IF;
+      END IF;
+      IF NEW.subnet_id IS NOT NULL THEN
+        PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
@@ -538,6 +740,74 @@ def register_all_triggers():
         "maasserver_node", "device_delete_notify", "delete",
         {'OLD.installable': False})
 
+    # VLAN table
+    register_procedure(
+        render_notification_procedure(
+            'vlan_create_notify', 'vlan_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'vlan_update_notify', 'vlan_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'vlan_delete_notify', 'vlan_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_vlan", "vlan_create_notify", "insert")
+    register_trigger(
+        "maasserver_vlan", "vlan_update_notify", "update")
+    register_trigger(
+        "maasserver_vlan", "vlan_delete_notify", "delete")
+
+    # Fabric table
+    register_procedure(
+        render_notification_procedure(
+            'fabric_create_notify', 'fabric_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'fabric_update_notify', 'fabric_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'fabric_delete_notify', 'fabric_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_fabric", "fabric_create_notify", "insert")
+    register_trigger(
+        "maasserver_fabric", "fabric_update_notify", "update")
+    register_trigger(
+        "maasserver_fabric", "fabric_delete_notify", "delete")
+
+    # Space table
+    register_procedure(
+        render_notification_procedure(
+            'space_create_notify', 'space_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'space_update_notify', 'space_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'space_delete_notify', 'space_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_space", "space_create_notify", "insert")
+    register_trigger(
+        "maasserver_space", "space_update_notify", "update")
+    register_trigger(
+        "maasserver_space", "space_delete_notify", "delete")
+
+    # Subnet table
+    register_procedure(
+        render_notification_procedure(
+            'subnet_create_notify', 'subnet_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'subnet_update_notify', 'subnet_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'subnet_delete_notify', 'subnet_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_subnet", "subnet_create_notify", "insert")
+    register_trigger(
+        "maasserver_subnet", "subnet_update_notify", "update")
+    register_trigger(
+        "maasserver_subnet", "subnet_delete_notify", "delete")
+
     # Nodegroup table
     register_procedure(
         render_notification_procedure(
@@ -584,6 +854,49 @@ def register_all_triggers():
     register_procedure(SUBNET_NODEGROUP_INTERFACE_NOTIFY)
     register_trigger(
         "maasserver_subnet", "subnet_update_nodegroup_notify", "update")
+
+    # Subnet node notifications
+    register_procedure(
+        SUBNET_NODE_NOTIFY % ('subnet_node_update_notify', 'NEW.id',))
+    register_trigger(
+        "maasserver_subnet",
+        "subnet_node_update_notify", "update")
+
+    # Fabric node notifications
+    register_procedure(
+        FABRIC_NODE_NOTIFY % ('fabric_node_update_notify', 'NEW.id',))
+    register_trigger(
+        "maasserver_fabric",
+        "fabric_node_update_notify", "update")
+
+    # Space node notifications
+    register_procedure(
+        SPACE_NODE_NOTIFY % ('space_node_update_notify', 'NEW.id',))
+    register_trigger(
+        "maasserver_space",
+        "space_node_update_notify", "update")
+
+    # VLAN node notifications
+    register_procedure(
+        VLAN_NODE_NOTIFY % ('vlan_node_update_notify', 'NEW.id',))
+    register_trigger(
+        "maasserver_vlan",
+        "vlan_node_update_notify", "update")
+
+    # IP address node notifications
+    register_procedure(
+        STATIC_IP_ADDRESS_NODE_NOTIFY % (
+            'ipaddress_node_update_notify', 'NEW.id',))
+    register_trigger(
+        "maasserver_staticipaddress",
+        "ipaddress_node_update_notify", "update")
+
+    # IP address subnet notifications
+    register_procedure(
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY % 'ipaddress_subnet_update_notify')
+    register_trigger(
+        "maasserver_staticipaddress",
+        "ipaddress_subnet_update_notify", "update")
 
     # Zone table
     register_procedure(

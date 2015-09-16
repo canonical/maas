@@ -20,10 +20,14 @@ import random
 from crochet import wait_for_reactor
 from django.contrib.auth.models import User
 from django.db import connection
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.event import Event
+from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
@@ -33,11 +37,14 @@ from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
+from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -235,6 +242,11 @@ class TransactionalHelpersMixin:
         return listener
 
     @transactional
+    def get_node(self, system_id):
+        node = Node.objects.get(system_id=system_id)
+        return node
+
+    @transactional
     def create_node(self, params=None):
         if params is None:
             params = {}
@@ -313,6 +325,78 @@ class TransactionalHelpersMixin:
     def delete_nodegroupinterface(self, id):
         interface = NodeGroupInterface.objects.get(id=id)
         interface.delete()
+
+    @transactional
+    def create_fabric(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Fabric(**params)
+
+    @transactional
+    def update_fabric(self, id, params):
+        fabric = Fabric.objects.get(id=id)
+        for key, value in params.items():
+            setattr(fabric, key, value)
+        return fabric.save()
+
+    @transactional
+    def delete_fabric(self, id):
+        fabric = Fabric.objects.get(id=id)
+        fabric.delete()
+
+    @transactional
+    def create_space(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Space(**params)
+
+    @transactional
+    def update_space(self, id, params):
+        space = Space.objects.get(id=id)
+        for key, value in params.items():
+            setattr(space, key, value)
+        return space.save()
+
+    @transactional
+    def delete_space(self, id):
+        space = Space.objects.get(id=id)
+        space.delete()
+
+    @transactional
+    def create_subnet(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Subnet(**params)
+
+    @transactional
+    def update_subnet(self, id, params):
+        subnet = Subnet.objects.get(id=id)
+        for key, value in params.items():
+            setattr(subnet, key, value)
+        return subnet.save()
+
+    @transactional
+    def delete_subnet(self, id):
+        subnet = Subnet.objects.get(id=id)
+        subnet.delete()
+
+    @transactional
+    def create_vlan(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_VLAN(**params)
+
+    @transactional
+    def update_vlan(self, id, params):
+        vlan = VLAN.objects.get(id=id)
+        for key, value in params.items():
+            setattr(vlan, key, value)
+        return vlan.save()
+
+    @transactional
+    def delete_vlan(self, id):
+        vlan = VLAN.objects.get(id=id)
+        vlan.delete()
 
     @transactional
     def create_zone(self, params=None):
@@ -404,9 +488,36 @@ class TransactionalHelpersMixin:
         return factory.make_StaticIPAddress(**params)
 
     @transactional
+    def update_staticipaddress(self, id, params):
+        ip = StaticIPAddress.objects.get(id=id)
+        for key, value in params.items():
+            setattr(ip, key, value)
+        return ip.save()
+
+    @transactional
     def delete_staticipaddress(self, id):
         sip = StaticIPAddress.objects.get(id=id)
         sip.delete()
+
+    @transactional
+    def get_ipaddress_subnet(self, id):
+        ipaddress = StaticIPAddress.objects.get(id=id)
+        return ipaddress.subnet
+
+    @transactional
+    def get_ipaddress_vlan(self, id):
+        ipaddress = StaticIPAddress.objects.get(id=id)
+        return ipaddress.subnet.vlan
+
+    @transactional
+    def get_ipaddress_fabric(self, id):
+        ipaddress = StaticIPAddress.objects.get(id=id)
+        return ipaddress.subnet.vlan.fabric
+
+    @transactional
+    def get_ipaddress_space(self, id):
+        ipaddress = StaticIPAddress.objects.get(id=id)
+        return ipaddress.subnet.space
 
     @transactional
     def create_noderesult(self, params=None):
@@ -436,6 +547,16 @@ class TransactionalHelpersMixin:
         for key, value in params.items():
             setattr(interface, key, value)
         return interface.save()
+
+    @transactional
+    def get_interface_vlan(self, id):
+        interface = Interface.objects.get(id=id)
+        return interface.vlan
+
+    @transactional
+    def get_interface_fabric(self, id):
+        interface = Interface.objects.get(id=id)
+        return interface.vlan.fabric
 
     @transactional
     def create_blockdevice(self, params=None):
@@ -1672,6 +1793,589 @@ class TestDeviceWithParentInterfaceListener(
             self.assertItemsEqual([
                 ('update', '%s' % parent1.system_id),
                 ('update', '%s' % parent2.system_id),
+                ], [dvs[0].value, dvs[1].value])
+        finally:
+            yield listener.stop()
+
+
+class TestFabricListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("fabric", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            fabric = yield deferToThread(self.create_fabric)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % fabric.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("fabric", lambda *args: dv.set(args))
+        fabric = yield deferToThread(self.create_fabric)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_fabric,
+                fabric.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % fabric.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("fabric", lambda *args: dv.set(args))
+        fabric = yield deferToThread(self.create_fabric)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_fabric, fabric.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % fabric.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestVLANListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        fabric = yield deferToThread(self.create_fabric)
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vlan", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % vlan.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        fabric = yield deferToThread(self.create_fabric)
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vlan", lambda *args: dv.set(args))
+        vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_vlan,
+                vlan.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % vlan.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        fabric = yield deferToThread(self.create_fabric)
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vlan", lambda *args: dv.set(args))
+        vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_vlan, vlan.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % vlan.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestSubnetListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            subnet = yield deferToThread(self.create_subnet)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        subnet = yield deferToThread(self.create_subnet)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_subnet,
+                subnet.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        subnet = yield deferToThread(self.create_subnet)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_subnet, subnet.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestSpaceListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("space", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            space = yield deferToThread(self.create_space)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % space.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("space", lambda *args: dv.set(args))
+        space = yield deferToThread(self.create_space)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_space,
+                space.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % space.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("space", lambda *args: dv.set(args))
+        space = yield deferToThread(self.create_space)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_space, space.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % space.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeNetworkListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_fabric, maasserver_space, maasserver_subnet, and
+    maasserver_vlan tables that notifies affected nodes."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True, 'interface': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False, 'interface': True},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_iface_with_update_on_fabric_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        fabric = yield deferToThread(self.get_interface_fabric, interface.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_fabric,
+                fabric.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_iface_with_update_on_vlan_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        vlan = yield deferToThread(self.get_interface_vlan, interface.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_vlan,
+                vlan.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_subnet_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        subnet = yield deferToThread(self.get_ipaddress_subnet, ipaddress.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_subnet,
+                subnet.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_space_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        space = yield deferToThread(self.get_ipaddress_space, ipaddress.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_space, space.id,
+                {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_update(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        interface = yield deferToThread(
+            self.get_node_boot_interface, node.system_id)
+        subnet = yield deferToThread(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_staticipaddress, ipaddress.id,
+                {"ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestDeviceWithParentNetworkListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_fabric, maasserver_space, maasserver_subnet, and
+    maasserver_vlan tables that notifies affected nodes."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_iface_with_update_on_fabric_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        fabric = yield deferToThread(self.get_interface_fabric, interface.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_fabric,
+                fabric.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_iface_with_update_on_vlan_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        vlan = yield deferToThread(self.get_interface_vlan, interface.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_vlan,
+                vlan.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_subnet_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        subnet = yield deferToThread(self.get_ipaddress_subnet, ipaddress.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_subnet,
+                subnet.id, {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_space_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {"interface": interface})
+        space = yield deferToThread(self.get_ipaddress_space, ipaddress.id)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_space, space.id,
+                {"name": factory.make_name("name")})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_update(self):
+        yield deferToThread(register_all_triggers)
+        device, parent = yield deferToThread(
+            self.create_device_with_parent, {"interface": True})
+        interface = yield deferToThread(
+            self.get_node_boot_interface, device.system_id)
+        subnet = yield deferToThread(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("node", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_staticipaddress, ipaddress.id,
+                {"ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestStaticIPAddressSubnetListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_staticipaddress tables that notifies affected subnets."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_update_on_subnet(self):
+        yield deferToThread(register_all_triggers)
+        subnet = yield deferToThread(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_staticipaddress,
+                ipaddress.id, {"ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_update_on_old_and_new_subnet(self):
+        yield deferToThread(register_all_triggers)
+        old_subnet = yield deferToThread(self.create_subnet)
+        new_subnet = yield deferToThread(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(new_subnet.get_ipnetwork())
+        ipaddress = yield deferToThread(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "subnet": old_subnet,
+                "ip": "",
+                })
+        dvs = [DeferredValue(), DeferredValue()]
+
+        def set_defer_value(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    break
+
+        listener = PostgresListener()
+        listener.register("subnet", set_defer_value)
+        yield listener.start()
+        try:
+            yield deferToThread(self.update_staticipaddress, ipaddress.id, {
+                "ip": selected_ip,
+                "subnet": new_subnet,
+                })
+            yield dvs[0].get(timeout=2)
+            yield dvs[1].get(timeout=2)
+            self.assertItemsEqual([
+                ('update', '%s' % old_subnet.id),
+                ('update', '%s' % new_subnet.id),
                 ], [dvs[0].value, dvs[1].value])
         finally:
             yield listener.stop()
