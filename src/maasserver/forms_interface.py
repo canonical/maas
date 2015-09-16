@@ -34,6 +34,33 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.utils.forms import compose_invalid_choice_text
+
+
+BOND_MODE_CHOICES = (
+    ("balance-rr", "balance-rr"),
+    ("active-backup", "active-backup"),
+    ("balance-xor", "balance-xor"),
+    ("broadcast", "broadcast"),
+    ("802.3ad", "802.3ad"),
+    ("balance-tlb", "balance-tlb"),
+    ("balance-alb", "balance-alb"),
+)
+
+
+BOND_LACP_RATE_CHOICES = (
+    ("slow", "slow"),
+    ("fast", "fast"),
+)
+
+
+BOND_XMIT_HASH_POLICY_CHOICES = (
+    ("layer2", "layer2"),
+    ("layer2+3", "layer2+3"),
+    ("layer3+4", "layer3+4"),
+    ("encap2+3", "encap2+3"),
+    ("encap3+4", "encap3+4"),
+)
 
 
 class InterfaceForm(MAASModelForm):
@@ -48,6 +75,13 @@ class InterfaceForm(MAASModelForm):
     parents = forms.ModelMultipleChoiceField(
         queryset=None, required=False)
 
+    # Linux doesn't allow lower than 552 for the MTU.
+    mtu = forms.IntegerField(min_value=552, required=False)
+
+    # IPv6 parameters.
+    accept_ra = forms.NullBooleanField(required=False)
+    autoconf = forms.NullBooleanField(required=False)
+
     @staticmethod
     def get_interface_form(type):
         try:
@@ -61,9 +95,6 @@ class InterfaceForm(MAASModelForm):
 
         fields = (
             'vlan',
-            'ipv4_params',
-            'ipv6_params',
-            'params',
             'tags',
             )
 
@@ -81,6 +112,7 @@ class InterfaceForm(MAASModelForm):
 
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
+        created = self.instance.id is None
         interface = super(InterfaceForm, self).save(commit=True)
         if 'parents' in self.data:
             parents = self.cleaned_data.get('parents')
@@ -95,7 +127,10 @@ class InterfaceForm(MAASModelForm):
                     rel = interface.parent_relationships.filter(
                         parent=parent_to_del)
                     rel.delete()
+        self.set_extra_parameters(interface, created)
         interface.save()
+        if created:
+            interface.ensure_link_up()
         return Interface.objects.get(id=interface.id)
 
     def fields_ok(self, field_list):
@@ -131,6 +166,20 @@ class InterfaceForm(MAASModelForm):
         cleaned_data = super(InterfaceForm, self).clean()
         self.clean_parents_all_same_node(cleaned_data.get('parents'))
         return cleaned_data
+
+    def set_extra_parameters(self, interface, created):
+        """Sets the extra parameters on the `interface`'s params property."""
+        mtu = self.cleaned_data.get("mtu", None)
+        accept_ra = self.cleaned_data.get("accept_ra", None)
+        autoconf = self.cleaned_data.get("autoconf", None)
+        if not interface.params:
+            interface.params = {}
+        if mtu is not None:
+            interface.params["mtu"] = mtu
+        if accept_ra is not None:
+            interface.params["accept_ra"] = accept_ra
+        if autoconf is not None:
+            interface.params["autoconf"] = autoconf
 
 
 class PhysicalInterfaceForm(InterfaceForm):
@@ -186,13 +235,21 @@ class VLANInterfaceForm(InterfaceForm):
         if parents is None:
             return
         if len(parents) != 1:
-            msg = "A VLAN interface must have exactly one parent."
-            raise ValidationError({'parents': [msg]})
+            raise ValidationError(
+                "A VLAN interface must have exactly one parent.")
         if parents[0].type == INTERFACE_TYPE.VLAN:
-            msg = (
+            raise ValidationError(
                 "A VLAN interface can't have another VLAN interface as "
                 "parent.")
-            raise ValidationError({'parents': [msg]})
+        parent_has_bond_children = [
+            rel.child
+            for rel in parents[0].children_relationships.all()
+            if rel.child.type == INTERFACE_TYPE.BOND
+        ]
+        if parent_has_bond_children:
+            raise ValidationError(
+                "A VLAN interface can't have a parent that is already "
+                "in a bond.")
         return parents
 
     def clean(self):
@@ -208,6 +265,33 @@ class VLANInterfaceForm(InterfaceForm):
 
 class BondInterfaceForm(InterfaceForm):
     """Form used to create/edit a bond interface."""
+
+    bond_mode = forms.ChoiceField(
+        choices=BOND_MODE_CHOICES, required=False,
+        initial=BOND_MODE_CHOICES[0][0], error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'bond_mode', BOND_MODE_CHOICES),
+        })
+
+    bond_miimon = forms.IntegerField(min_value=0, initial=100, required=False)
+
+    bond_downdelay = forms.IntegerField(min_value=0, initial=0, required=False)
+
+    bond_updelay = forms.IntegerField(min_value=0, initial=0, required=False)
+
+    bond_lacp_rate = forms.ChoiceField(
+        choices=BOND_LACP_RATE_CHOICES, required=False,
+        initial=BOND_LACP_RATE_CHOICES[0][0], error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'bond_lacp_rate', BOND_LACP_RATE_CHOICES),
+        })
+
+    bond_xmit_hash_policy = forms.ChoiceField(
+        choices=BOND_XMIT_HASH_POLICY_CHOICES, required=False,
+        initial=BOND_XMIT_HASH_POLICY_CHOICES[0][0], error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'bond_xmit_hash_policy', BOND_XMIT_HASH_POLICY_CHOICES),
+        })
 
     class Meta:
         model = BondInterface
@@ -255,7 +339,47 @@ class BondInterfaceForm(InterfaceForm):
                     # addresses.
                     self.cleaned_data['mac_address'] = unicode(
                         parents[0].mac_address)
+
+                # Check that all of the parents are not already in use.
+                parents_with_other_children = {
+                    parent.name
+                    for parent in parents
+                    for rel in parent.children_relationships.all()
+                    if rel.child.id != self.instance.id
+                }
+                if parents_with_other_children:
+                    set_form_error(
+                        self, 'parents',
+                        "%s is already in-use by another interface." % (
+                            ', '.join(sorted(parents_with_other_children))))
         return cleaned_data
+
+    def set_extra_parameters(self, interface, created):
+        """Set the bond parameters as well."""
+        super(BondInterfaceForm, self).set_extra_parameters(interface, created)
+        # Set all the bond_* parameters.
+        bond_fields = [
+            field_name
+            for field_name in self.fields.keys()
+            if field_name.startswith("bond_")
+        ]
+        for bond_field in bond_fields:
+            value = self.cleaned_data.get(bond_field)
+            if value:
+                interface.params[bond_field] = value
+            elif created:
+                interface.params[bond_field] = self.fields[bond_field].initial
+
+    def save(self, *args, **kwargs):
+        """Persist the interface into the database."""
+        created = self.instance.id is None
+        interface = super(BondInterfaceForm, self).save()
+        if created:
+            # Bond was created we remove all the links on the parent interfaces
+            # and ensure that the bond has atleast a LINK_UP.
+            for parent in interface.parents.all():
+                parent.clear_all_links(clearing_config=True)
+        return interface
 
 
 INTERFACE_FORM_MAPPING = {

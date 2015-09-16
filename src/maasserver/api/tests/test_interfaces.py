@@ -410,6 +410,12 @@ class TestNodeInterfaceAPI(APITestCase):
                     })
             }))
 
+        # Add MTU parameter.
+        bond.params = {
+            "mtu": random.randint(800, 2000)
+        }
+        bond.save()
+
         uri = get_node_interface_uri(bond)
         response = self.client.get(uri)
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -424,6 +430,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "mac_address": Equals("%s" % bond.mac_address),
             "tags": Equals(bond.tags),
             "resource_uri": Equals(get_node_interface_uri(bond)),
+            "params": Equals(bond.params),
             }))
         self.assertEquals(sorted(
             nic.name

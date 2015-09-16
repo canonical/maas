@@ -1847,12 +1847,9 @@ class Node(CleanSave, TimestampedModel):
         commissioned. This allows the new commissioning data to create a new
         networking configuration.
         """
-        interfaces = self.interface_set.all().prefetch_related('ip_addresses')
+        interfaces = self.interface_set.all()
         for interface in interfaces:
-            for ip_address in interface.ip_addresses.all():
-                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    interface.unlink_ip_address(
-                        ip_address, clearing_config=True)
+            interface.clear_all_links(clearing_config=True)
 
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.

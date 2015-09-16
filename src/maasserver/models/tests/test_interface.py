@@ -1812,3 +1812,58 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         nic0.enabled = False
         nic0.save()
         self.assertEquals(1, bond_interface.ip_addresses.count())
+
+
+class TestMTUParams(MAASServerTestCase):
+
+    def test__updates_children_mtu(self):
+        new_mtu = random.randint(800, 2000)
+        physical_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan1_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[physical_interface])
+        vlan_mtu = random.randint(new_mtu + 1, new_mtu * 2)
+        vlan1_interface.params = {'mtu': vlan_mtu}
+        vlan1_interface.save()
+        vlan2_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[physical_interface])
+        physical_interface.params = {'mtu': new_mtu}
+        physical_interface.save()
+        self.assertEquals({
+            'mtu': new_mtu,
+            }, reload_object(vlan1_interface).params)
+        self.assertEquals('', reload_object(vlan2_interface).params)
+
+    def test__updates_parents_mtu(self):
+        node = factory.make_Node()
+        physical1_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        physical2_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        physical3_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        bond_interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            parents=[
+                physical1_interface, physical2_interface, physical3_interface])
+        # Smaller MTU will be set to larger MTU.
+        physical1_mtu = random.randint(800, 1999)
+        physical1_interface.params = {'mtu': physical1_mtu}
+        physical1_interface.save()
+        # Larger MTU will be left alone.
+        physical2_mtu = random.randint(4000, 8000)
+        physical2_interface.params = {'mtu': physical2_mtu}
+        physical2_interface.save()
+        # In between the smaller and larger MTU.
+        bond_mtu = random.randint(2000, 3999)
+        bond_interface.params = {'mtu': bond_mtu}
+        bond_interface.save()
+        self.assertEquals({
+            'mtu': bond_mtu,
+            }, reload_object(physical1_interface).params)
+        self.assertEquals({
+            'mtu': physical2_mtu,
+            }, reload_object(physical2_interface).params)
+        # Physical 3 should be set the the bond interface MTU.
+        self.assertEquals({
+            'mtu': bond_mtu,
+            }, reload_object(physical3_interface).params)

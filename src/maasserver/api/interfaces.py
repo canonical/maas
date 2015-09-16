@@ -58,6 +58,7 @@ DISPLAYED_INTERFACE_FIELDS = (
     'tags',
     'enabled',
     'links',
+    'params',
 )
 
 
@@ -90,6 +91,12 @@ class NodeInterfacesHandler(OperationsHandler):
         :param tags: Tags for the interface.
         :param vlan: Untagged VLAN the interface is connected to.
 
+        Following are extra parameters that can be set on the interface:
+
+        :param mtu: Maximum transmission unit.
+        :param accept_ra: Accept router advertisements. (IPv6 only)
+        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+
         Returns 404 if the node is not found.
         """
         node = Node.nodes.get_node_or_404(
@@ -118,6 +125,58 @@ class NodeInterfacesHandler(OperationsHandler):
         :param vlan: VLAN the interface is connected to.
         :param parents: Parent interfaces that make this bond.
 
+        Following are parameters specific to bonds:
+
+        :param bond_mode: The operating mode of the bond.
+            (Default: active-backup).
+        :param bond_miimon: The link monitoring freqeuncy in milliseconds.
+            (Default: 100).
+        :param bond_downdelay: Specifies the time, in milliseconds, to wait
+            before disabling a slave after a link failure has been detected.
+        :param bond_updelay: Specifies the time, in milliseconds, to wait
+            before enabling a slave after a link recovery has been detected.
+        :param bond_lacp_rate: Option specifying the rate in which we'll ask
+            our link partner to transmit LACPDU packets in 802.3ad mode.
+            Available options are fast or slow. (Default: slow).
+        :param bond_xmit_hash_policy: The transmit hash policy to use for
+            slave selection in balance-xor, 802.3ad, and tlb modes.
+            (Default: layer2)
+
+        Supported bonding modes (bond-mode):
+        balance-rr - Transmit packets in sequential order from the first
+        available slave through the last.  This mode provides load balancing
+        and fault tolerance.
+
+        active-backup - Only one slave in the bond is active.  A different
+        slave becomes active if, and only if, the active slave fails.  The
+        bond's MAC address is externally visible on only one port (network
+        adapter) to avoid confusing the switch.
+
+        balance-xor - Transmit based on the selected transmit hash policy.
+        The default policy is a simple [(source MAC address XOR'd with
+        destination MAC address XOR packet type ID) modulo slave count].
+
+        broadcast - Transmits everything on all slave interfaces. This mode
+        provides fault tolerance.
+
+        802.3ad - IEEE 802.3ad Dynamic link aggregation.  Creates aggregation
+        groups that share the same speed and duplex settings.  Utilizes all
+        slaves in the active aggregator according to the 802.3ad specification.
+
+        balance-tlb - Adaptive transmit load balancing: channel bonding that
+        does not require any special switch support.
+
+        balance-alb - Adaptive load balancing: includes balance-tlb plus
+        receive load balancing (rlb) for IPV4 traffic, and does not require any
+        special switch support.  The receive load balancing is achieved by
+        ARP negotiation.
+
+        Following are extra parameters that can be set on the interface:
+
+        :param mtu: Maximum transmission unit.
+        :param accept_ra: Accept router advertisements. (IPv6 only)
+        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+
         Returns 404 if the node is not found.
         """
         node = Node.nodes.get_node_or_404(
@@ -135,6 +194,12 @@ class NodeInterfacesHandler(OperationsHandler):
         :param tags: Tags for the interface.
         :param vlan: Tagged VLAN the interface is connected to.
         :param parent: Parent interface for this VLAN interface.
+
+        Following are extra parameters that can be set on the interface:
+
+        :param mtu: Maximum transmission unit.
+        :param accept_ra: Accept router advertisements. (IPv6 only)
+        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
 
         Returns 404 if the node is not found.
         """
@@ -227,6 +292,57 @@ class NodeInterfaceHandler(OperationsHandler):
         :param tags: Tags for the interface.
         :param vlan: VLAN the interface is connected to.
         :param parent: Parent interface for this VLAN interface.
+
+        Following are extra parameters that can be set on all interface types:
+
+        :param mtu: Maximum transmission unit.
+        :param accept_ra: Accept router advertisements. (IPv6 only)
+        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+
+        Following are parameters specific to bonds:
+
+        :param bond-mode: The operating mode of the bond.
+            (Default: active-backup).
+        :param bond-miimon: The link monitoring freqeuncy in milliseconds.
+            (Default: 100).
+        :param bond-downdelay: Specifies the time, in milliseconds, to wait
+            before disabling a slave after a link failure has been detected.
+        :param bond-updelay: Specifies the time, in milliseconds, to wait
+            before enabling a slave after a link recovery has been detected.
+        :param bond-lacp_rate: Option specifying the rate in which we'll ask
+            our link partner to transmit LACPDU packets in 802.3ad mode.
+            Available options are fast or slow. (Default: slow).
+        :param bond-xmit_hash_policy: The transmit hash policy to use for
+            slave selection in balance-xor, 802.3ad, and tlb modes.
+
+        Supported bonding modes (bond-mode):
+        balance-rr - Transmit packets in sequential order from the first
+        available slave through the last.  This mode provides load balancing
+        and fault tolerance.
+
+        active-backup - Only one slave in the bond is active.  A different
+        slave becomes active if, and only if, the active slave fails.  The
+        bond's MAC address is externally visible on only one port (network
+        adapter) to avoid confusing the switch.
+
+        balance-xor - Transmit based on the selected transmit hash policy.
+        The default policy is a simple [(source MAC address XOR'd with
+        destination MAC address XOR packet type ID) modulo slave count].
+
+        broadcast - Transmits everything on all slave interfaces. This mode
+        provides fault tolerance.
+
+        802.3ad - IEEE 802.3ad Dynamic link aggregation.  Creates aggregation
+        groups that share the same speed and duplex settings.  Utilizes all
+        slaves in the active aggregator according to the 802.3ad specification.
+
+        balance-tlb - Adaptive transmit load balancing: channel bonding that
+        does not require any special switch support.
+
+        balance-alb - Adaptive load balancing: includes balance-tlb plus
+        receive load balancing (rlb) for IPV4 traffic, and does not require any
+        special switch support.  The receive load balancing is achieved by
+        ARP negotiation.
 
         Returns 404 if the node or interface is not found.
         """

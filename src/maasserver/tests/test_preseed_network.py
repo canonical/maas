@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 from textwrap import dedent
 
 from maasserver.dns.zonegenerator import get_dns_server_address
@@ -112,6 +113,31 @@ class AssertNetworkConfigMixin:
                             ipv6_set = True
             return (ret, ipv4_set, ipv6_set)
 
+        def get_param_value(value):
+            if isinstance(value, (bytes, unicode)):
+                return value
+            elif isinstance(value, bool):
+                return 1 if value else 0
+            else:
+                return value
+
+        def set_interface_params(iface, ret):
+            if iface.params:
+                for key, value in iface.params.items():
+                    if not key.startswith("bond_"):
+                        ret += "  %s: %s\n" % (key, get_param_value(value))
+            return ret
+
+        def is_link_up(addresses):
+            if len(addresses) == 0:
+                return True
+            elif len(addresses) == 1:
+                address = addresses[0]
+                if (address.alloc_type == IPADDRESS_TYPE.STICKY and
+                        not address.ip):
+                    return True
+            return False
+
         ret = ""
         for iface in interfaces:
             self.assertIn(iface.type, ["physical", "bond", "vlan"])
@@ -126,17 +152,27 @@ class AssertNetworkConfigMixin:
                 ret += self.BOND_CONFIG % fmt_dict
                 for parent in iface.parents.order_by('id'):
                     ret += "  - %s\n" % parent.name
+                ret += "  params:\n"
+                if iface.params:
+                    for key, value in iface.params.items():
+                        if key.startswith("bond_"):
+                            key = key.replace("bond_", "bond-")
+                            ret += "    %s: %s\n" % (
+                                key, get_param_value(value))
             elif iface.type == "vlan":
                 fmt_dict['parent'] = iface.parents.first().get_name()
                 fmt_dict['vlan_id'] = iface.vlan.vid
                 ret += self.VLAN_CONFIG % fmt_dict
+            ret = set_interface_params(iface, ret)
             addresses = iface.ip_addresses.exclude(
                 alloc_type__in=[
                     IPADDRESS_TYPE.DISCOVERED,
                     IPADDRESS_TYPE.DHCP,
                 ]).order_by('id')
-            if len(addresses):
-                ret += "  subnets:\n"
+            ret += "  subnets:\n"
+            if is_link_up(addresses):
+                ret += "  - type: manual\n"
+            else:
                 for address in addresses:
                     subnet = address.subnet
                     if subnet is not None:
@@ -183,6 +219,12 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             factory.make_StaticIPAddress(
                 interface=iface,
                 subnet=iface.vlan.subnet_set.first())
+            iface.params = {
+                "mtu": random.randint(600, 1400),
+                "accept_ra": factory.pick_bool(),
+                "autoconf": factory.pick_bool(),
+            }
+            iface.save()
         extra_interface = node.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="",
@@ -206,6 +248,10 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         bond_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND, node=node, vlan=vlan,
             parents=interfaces)
+        bond_iface.params = {
+            "bond_mode": "balance-rr",
+        }
+        bond_iface.save()
         factory.make_StaticIPAddress(
             interface=bond_iface, alloc_type=IPADDRESS_TYPE.STICKY,
             subnet=bond_iface.vlan.subnet_set.first())
@@ -244,6 +290,10 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
         bond_iface = factory.make_Interface(iftype=INTERFACE_TYPE.BOND,
                                             node=node, vlan=phys_vlan,
                                             parents=phys_ifaces)
+        bond_iface.params = {
+            "bond_mode": "balance-rr",
+        }
+        bond_iface.save()
         vlan_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.VLAN, node=node, parents=[bond_iface])
         subnet = factory.make_Subnet(vlan=vlan_iface.vlan)

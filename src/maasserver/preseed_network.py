@@ -92,6 +92,40 @@ class CurtinNetworkGenerator:
                 raise ValueError("Unknown interface type: %d" % (
                     interface.type))
 
+    def _get_param_value(self, value):
+        """Return correct value based on type of `value`."""
+        if isinstance(value, (bytes, unicode)):
+            return value
+        elif isinstance(value, bool):
+            return 1 if value else 0
+        else:
+            return value
+
+    def _get_initial_params(self, interface):
+        """Return the starting parameters for the `interface`.
+
+        This is done by extracting parameters from the `params` property on
+        the `interface`. This is done before all the other parameters are added
+        so any colliding parameters will be overridden.
+        """
+        params = {}
+        if interface.params:
+            for key, value in interface.params.items():
+                # Don't include bond parameters.
+                if not key.startswith("bond_"):
+                    params[key] = self._get_param_value(value)
+        return params
+
+    def _get_bond_params(self, interface):
+        params = {}
+        if interface.params:
+            for key, value in interface.params.items():
+                # Don't include bond parameters.
+                if key.startswith("bond_"):
+                    params[key.replace("bond_", "bond-")] = (
+                        self._get_param_value(value))
+        return params
+
     def _generate_physical_operations(self):
         """Generate all physical interface operations."""
         for interface in self.operations["physical"]:
@@ -101,12 +135,13 @@ class CurtinNetworkGenerator:
         """Generate physical interface operation for `interface` and place in
         `network_config`."""
         addrs = self._generate_addresses(interface)
-        physical_operation = {
+        physical_operation = self._get_initial_params(interface)
+        physical_operation.update({
             "id": interface.get_name(),
             "type": "physical",
             "name": interface.get_name(),
             "mac_address": unicode(interface.mac_address),
-        }
+        })
         if addrs:
             physical_operation["subnets"] = addrs
         self.network_config.append(physical_operation)
@@ -166,31 +201,46 @@ class CurtinNetworkGenerator:
                 self.gateway_ipv6_set = True
             subnet_operation["gateway"] = unicode(gateway)
 
+    def _is_link_up(self, addresses):
+        """Return True if the interface is setup to be in LINK_UP mode."""
+        if len(addresses) == 0:
+            return True
+        elif len(addresses) == 1:
+            address = addresses[0]
+            if address.alloc_type == IPADDRESS_TYPE.STICKY and not address.ip:
+                return True
+        return False
+
     def _generate_addresses(self, iface):
         """Generate the various addresses needed for this interface."""
         addrs = []
-        addresses = iface.ip_addresses.exclude(
-            alloc_type__in=[
-                IPADDRESS_TYPE.DISCOVERED,
-                IPADDRESS_TYPE.DHCP,
-            ]).order_by('id')
-        for address in addresses:
-            subnet = address.subnet
-            if subnet is not None:
-                subnet_len = subnet.cidr.split('/')[1]
-                subnet_operation = {
-                    "type": "static",
-                    "address": "%s/%s" % (unicode(address.ip), subnet_len)
-                }
-                self._set_default_gateway(iface, subnet, subnet_operation)
-                if subnet.dns_servers is not None:
-                    subnet_operation["dns_nameservers"] = subnet.dns_servers
-                addrs.append(subnet_operation)
-        dhcp_type = self._get_dhcp_type(iface)
-        if dhcp_type:
-            addrs.append(
-                {"type": dhcp_type}
-            )
+        addresses = list(
+            iface.ip_addresses.exclude(
+                alloc_type__in=[
+                    IPADDRESS_TYPE.DISCOVERED,
+                    IPADDRESS_TYPE.DHCP,
+                ]).order_by('id'))
+        if self._is_link_up(addresses):
+            addrs.append({"type": "manual"})
+        else:
+            for address in addresses:
+                subnet = address.subnet
+                if subnet is not None:
+                    subnet_len = subnet.cidr.split('/')[1]
+                    subnet_operation = {
+                        "type": "static",
+                        "address": "%s/%s" % (unicode(address.ip), subnet_len)
+                    }
+                    self._set_default_gateway(iface, subnet, subnet_operation)
+                    if subnet.dns_servers is not None:
+                        subnet_operation["dns_nameservers"] = (
+                            subnet.dns_servers)
+                    addrs.append(subnet_operation)
+            dhcp_type = self._get_dhcp_type(iface)
+            if dhcp_type:
+                addrs.append(
+                    {"type": dhcp_type}
+                )
         return addrs
 
     def _generate_vlan_operation(self, iface):
@@ -199,14 +249,14 @@ class CurtinNetworkGenerator:
         vlan = iface.vlan
         name = iface.get_name()
         addrs = self._generate_addresses(iface)
-        vlan_operation = {
+        vlan_operation = self._get_initial_params(iface)
+        vlan_operation.update({
             "id": name,
             "type": "vlan",
             "name": name,
             "vlan_link": iface.parents.first().get_name(),
             "vlan_id": vlan.vid,
-            # XXX LJ parse params, and ipv4/ipv6 params?
-        }
+        })
         if addrs:
             vlan_operation["subnets"] = addrs
         self.network_config.append(vlan_operation)
@@ -220,15 +270,16 @@ class CurtinNetworkGenerator:
         """Generate bond operation for `iface` and place in
         `network_config`."""
         addrs = self._generate_addresses(iface)
-        bond_operation = {
+        bond_operation = self._get_initial_params(iface)
+        bond_operation.update({
             "id": iface.get_name(),
             "type": "bond",
             "name": iface.get_name(),
             "mac_address": unicode(iface.mac_address),
             "bond_interfaces": [parent.get_name() for parent in
                                 iface.parents.order_by('id')],
-            # XXX LJ parse *params
-        }
+            "params": self._get_bond_params(iface),
+        })
         if addrs:
             bond_operation["subnets"] = addrs
         self.network_config.append(bond_operation)
@@ -242,15 +293,15 @@ class CurtinNetworkGenerator:
         """Generate bridge operation for `iface` and place in
         `network_config`."""
         addrs = self._generate_addresses(iface)
-        bridge_operation = {
+        bridge_operation = self._get_initial_params(iface)
+        bridge_operation.update({
             "id": iface.get_name(),
             "type": "bridge",
             "name": iface.get_name(),
             "mac_address": unicode(iface.mac_address),
             "bridge_interfaces": [parent.get_name() for parent in
                                   iface.parents.order_by('id')]
-            # XXX LJ parse *params
-        }
+        })
         if addrs:
             bridge_operation["subnets"] = addrs
         self.network_config.append(bridge_operation)
