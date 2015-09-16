@@ -30,6 +30,58 @@ from django.db import connection
 # rationale, and an explanation of this number's origin.
 classid = 20120116
 
+# PostgreSQL advisory lock functions.
+LOCK = "pg_advisory_lock"
+LOCK_TRY = "pg_try_advisory_lock"
+LOCK_SHARED = "pg_advisory_lock_shared"
+LOCK_SHARED_TRY = "pg_try_advisory_lock_shared"
+
+LOCK_XACT = "pg_advisory_xact_lock"
+LOCK_XACT_TRY = "pg_try_advisory_xact_lock"
+LOCK_XACT_SHARED = "pg_advisory_xact_lock_shared"
+LOCK_XACT_SHARED_TRY = "pg_try_advisory_xact_lock_shared"
+
+UNLOCK = "pg_advisory_unlock"
+UNLOCK_SHARED = "pg_advisory_unlock_shared"
+
+UNUSED = None
+
+# Mapping from a lock function to its equivalent try-only lock function.
+to_try = {
+    LOCK: LOCK_TRY,
+    LOCK_TRY: LOCK_TRY,
+    LOCK_SHARED: LOCK_SHARED_TRY,
+    LOCK_SHARED_TRY: LOCK_SHARED_TRY,
+
+    LOCK_XACT: LOCK_XACT_TRY,
+    LOCK_XACT_TRY: LOCK_XACT_TRY,
+    LOCK_XACT_SHARED: LOCK_XACT_SHARED_TRY,
+    LOCK_XACT_SHARED_TRY: LOCK_XACT_SHARED_TRY,
+
+    UNLOCK: UNLOCK,
+    UNLOCK_SHARED: UNLOCK_SHARED,
+
+    UNUSED: UNUSED,
+}
+
+# Mapping from a lock function to its equivalent shared lock function.
+to_shared = {
+    LOCK: LOCK_SHARED,
+    LOCK_TRY: LOCK_SHARED_TRY,
+    LOCK_SHARED: LOCK_SHARED,
+    LOCK_SHARED_TRY: LOCK_SHARED_TRY,
+
+    LOCK_XACT: LOCK_XACT_SHARED,
+    LOCK_XACT_TRY: LOCK_XACT_SHARED_TRY,
+    LOCK_XACT_SHARED: LOCK_XACT_SHARED,
+    LOCK_XACT_SHARED_TRY: LOCK_XACT_SHARED_TRY,
+
+    UNLOCK: UNLOCK_SHARED,
+    UNLOCK_SHARED: UNLOCK_SHARED,
+
+    UNUSED: UNUSED,
+}
+
 
 class DatabaseLockAttemptWithoutConnection(Exception):
     """A locking attempt was made without a preexisting connection.
@@ -76,13 +128,27 @@ class DatabaseLockBase(tuple):
 
     """
 
-    __slots__ = ()
+    # Class attributes.
+    MODE_DEFAULT = None
+    MODE_CHOICES = ()
 
+    # Instance properties.
     classid = property(itemgetter(0))
     objid = property(itemgetter(1))
 
-    def __new__(cls, objid):
+    def __new__(cls, objid, mode=None):
         return super(DatabaseLockBase, cls).__new__(cls, (classid, objid))
+
+    def __init__(self, objid, mode=None):
+        super(DatabaseLockBase, self).__init__()
+        if mode is None:
+            self.lock, self.unlock = self.MODE_DEFAULT
+        elif mode in self.MODE_CHOICES:
+            self.lock, self.unlock = mode
+        else:
+            raise AssertionError(
+                "Unsupported mode: %r is not in %r" % (
+                    mode, self.MODE_CHOICES))
 
     def __enter__(self):
         raise NotImplementedError()
@@ -91,8 +157,9 @@ class DatabaseLockBase(tuple):
         raise NotImplementedError()
 
     def __repr__(self):
-        return b"<%s classid=%d objid=%d>" % (
-            self.__class__.__name__, self[0], self[1])
+        return "<%s classid=%d objid=%d lock=%s unlock=%s>" % (
+            self.__class__.__name__, self.classid, self.objid,
+            self.lock, self.unlock)
 
     def is_locked(self):
         stmt = (
@@ -112,6 +179,18 @@ class DatabaseLockBase(tuple):
         with closing(connection.cursor()) as cursor:
             cursor.execute(stmt, self)
             return len(cursor.fetchall()) >= 1
+
+    @property
+    def TRY(self):
+        """Return an equivalent lock that uses `try` locking functions."""
+        return self.__class__(self.objid, (
+            to_try[self.lock], to_try[self.unlock]))
+
+    @property
+    def SHARED(self):
+        """Return an equivalent lock that uses `shared` locking functions."""
+        return self.__class__(self.objid, (
+            to_shared[self.lock], to_shared[self.unlock]))
 
 
 def in_transaction():
@@ -133,17 +212,27 @@ class DatabaseLock(DatabaseLockBase):
     See :py:class:`DatabaseLockBase`.
     """
 
-    __slots__ = ()
+    MODE_DEFAULT = LOCK, UNLOCK
+    MODE_CHOICES = (
+        (LOCK, UNLOCK),
+        (LOCK_TRY, UNLOCK),
+        (LOCK_SHARED, UNLOCK_SHARED),
+        (LOCK_SHARED_TRY, UNLOCK_SHARED),
+    )
 
     def __enter__(self):
         if connection.connection is None:
             raise DatabaseLockAttemptWithoutConnection(self)
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT pg_advisory_lock(%s, %s)", self)
+            query = "SELECT %s(%%s, %%s)" % self.lock
+            cursor.execute(query, self)
+            if cursor.fetchone() == (False,):
+                raise DatabaseLockNotHeld(self)
 
     def __exit__(self, *exc_info):
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT pg_advisory_unlock(%s, %s)", self)
+            query = "SELECT %s(%%s, %%s)" % self.unlock
+            cursor.execute(query, self)
             if cursor.fetchone() != (True,):
                 raise DatabaseLockNotHeld(self)
 
@@ -160,14 +249,23 @@ class DatabaseXactLock(DatabaseLockBase):
     See :py:class:`DatabaseLockBase`.
     """
 
-    __slots__ = ()
+    MODE_DEFAULT = LOCK_XACT, UNUSED
+    MODE_CHOICES = (
+        (LOCK_XACT, UNUSED),
+        (LOCK_XACT_TRY, UNUSED),
+        (LOCK_XACT_SHARED, UNUSED),
+        (LOCK_XACT_SHARED_TRY, UNUSED),
+    )
 
     def __enter__(self):
         """Obtain lock using pg_advisory_xact_lock()."""
         if not in_transaction():
             raise DatabaseLockAttemptOutsideTransaction(self)
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT pg_advisory_xact_lock(%s, %s)", self)
+            query = "SELECT %s(%%s, %%s)" % self.lock
+            cursor.execute(query, self)
+            if cursor.fetchone() == (False,):
+                raise DatabaseLockNotHeld(self)
 
     def __exit__(self, *exc_info):
         """Do nothing: this lock can only be released by the transaction."""
