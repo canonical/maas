@@ -167,19 +167,21 @@ class InterfaceForm(MAASModelForm):
         self.clean_parents_all_same_node(cleaned_data.get('parents'))
         return cleaned_data
 
+    def _set_param(self, interface, key):
+        """Helper to set parameters on an interface."""
+        value = self.cleaned_data.get(key, None)
+        if value is not None:
+            interface.params[key] = value
+        elif self.data.get(key) == '':
+            interface.params.pop(key, None)
+
     def set_extra_parameters(self, interface, created):
         """Sets the extra parameters on the `interface`'s params property."""
-        mtu = self.cleaned_data.get("mtu", None)
-        accept_ra = self.cleaned_data.get("accept_ra", None)
-        autoconf = self.cleaned_data.get("autoconf", None)
         if not interface.params:
             interface.params = {}
-        if mtu is not None:
-            interface.params["mtu"] = mtu
-        if accept_ra is not None:
-            interface.params["accept_ra"] = accept_ra
-        if autoconf is not None:
-            interface.params["autoconf"] = autoconf
+        self._set_param(interface, "mtu")
+        self._set_param(interface, "accept_ra")
+        self._set_param(interface, "autoconf")
 
 
 class PhysicalInterfaceForm(InterfaceForm):

@@ -272,6 +272,28 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             "autoconf": new_autoconf,
             }, interface.params)
 
+    def test__update_allows_clearing_interface_parameters(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0')
+        mtu = random.randint(1000, 2000)
+        accept_ra = factory.pick_bool()
+        autoconf = factory.pick_bool()
+        interface.params = {
+            "mtu": mtu,
+            "accept_ra": accept_ra,
+            "autoconf": autoconf,
+        }
+        form = PhysicalInterfaceForm(
+            instance=interface,
+            data={
+                "mtu": "",
+                "accept_ra": "",
+                "autoconf": "",
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertEquals({}, interface.params)
+
 
 class VLANInterfaceFormTest(MAASServerTestCase):
 
