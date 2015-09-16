@@ -779,6 +779,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
             MockCalledWith(sentinel.channel, sentinel.action, sentinel.obj_id))
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_onNotify_calls_sendNotify_on_protocol(self):
         user = yield deferToThread(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
@@ -786,7 +787,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         action = maas_factory.make_name("action")
         data = maas_factory.make_name("data")
         mock_class = MagicMock()
-        mock_class.return_value.on_listen.return_value = (name, data)
+        mock_class.return_value.on_listen.return_value = (name, action, data)
         mock_sendNotify = self.patch(protocol, "sendNotify")
         yield factory.onNotify(
             mock_class, sentinel.channel, action, sentinel.obj_id)

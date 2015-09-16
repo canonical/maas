@@ -2129,6 +2129,8 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
         self.assertEqual(
             foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_does_not_trigger_update_signal(self):
         configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
 
@@ -2329,15 +2331,6 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
 
     @wait_for_reactor
     def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):
-        params = {
-            'mac_address': factory.make_mac_address(),
-        }
-
-        response = yield call_responder(
-            Region(), RequestNodeInfoByMACAddress, params)
-
-        def check(error):
-            self.assertIsInstance(error, Failure)
-            self.assertIsInstance(error.value, NoSuchNode)
-
-        yield response.addErrback(check)
+        params = {'mac_address': factory.make_mac_address()}
+        d = call_responder(Region(), RequestNodeInfoByMACAddress, params)
+        return assert_fails_with(d, NoSuchNode)
