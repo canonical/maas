@@ -67,6 +67,7 @@ from maasserver.forms import (
     ReleaseIPForm,
 )
 from maasserver.models import (
+    Config,
     Interface,
     Node,
     StaticIPAddress,
@@ -457,6 +458,8 @@ class NodeHandler(OperationsHandler):
                 "Can't start node: it hasn't been allocated.")
         if user_data is not None:
             user_data = b64decode(user_data)
+        if not node.distro_series and not series:
+            series = Config.objects.get_config('default_distro_series')
         if (series, license_key, hwe_kernel) != (None, None, None):
             Form = get_node_edit_form(request.user)
             form = Form(instance=node)

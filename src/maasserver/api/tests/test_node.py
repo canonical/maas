@@ -37,6 +37,7 @@ from maasserver.fields import (
     MAC_ERROR_MSG,
 )
 from maasserver.models import (
+    Config,
     interface as interface_module,
     Node,
     node as node_module,
@@ -394,8 +395,16 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_returns_node(self):
         node = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake')
-        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'start',
+                'distro_series': distro_series,
+            })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             node.system_id, json.loads(response.content)['system_id'])
@@ -408,7 +417,6 @@ class TestNodeAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_start_sets_osystem_and_distro_series(self):
-        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -493,18 +501,85 @@ class TestNodeAPI(APITestCase):
             ),
             (response.status_code, json.loads(response.content)))
 
+    def test_POST_start_sets_default_distro_series(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+        response_info = json.loads(response.content)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(response_info['osystem'], osystem)
+        self.assertEqual(response_info['distro_series'], distro_series)
+
+    def test_POST_start_fails_with_no_boot_source(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'distro_series': [
+                    "'%s' is not a valid distro_series.  "
+                    "It should be one of: ''." %
+                    Config.objects.get_config('default_distro_series')]}
+            ),
+            (response.status_code, json.loads(response.content)))
+
+    def test_POST_start_validates_hwe_kernel_with_default_distro_series(self):
+        architecture = make_usable_architecture(self, subarch_name="generic")
+        node = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='ether_wake',
+            architecture=architecture)
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        bad_hwe_kernel = 'hwe-' + chr(ord(distro_series[0]) - 1)
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'start',
+                'hwe_kernel': bad_hwe_kernel,
+            })
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'hwe_kernel': [
+                    "%s is not available for %s/%s on %s."
+                    % (bad_hwe_kernel, osystem, distro_series, architecture)]}
+            ),
+            (response.status_code, json.loads(response.content)))
+
     def test_POST_start_may_be_repeated(self):
         node = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake')
-        self.client.post(self.get_node_uri(node), {'op': 'start'})
-        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'start',
+            'distro_series': distro_series,
+            }
+        self.client.post(self.get_node_uri(node), request)
+        response = self.client.post(self.get_node_uri(node), request)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_start_stores_user_data(self):
         node = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake')
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
             factory.make_string().encode('ascii'))
@@ -512,6 +587,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node), {
                 'op': 'start',
                 'user_data': b64encode(user_data),
+                'distro_series': distro_series,
             })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
@@ -1394,7 +1470,8 @@ class TestNodeAPITransactional(APITransactionTestCase):
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            architecture=make_usable_architecture(self))
         boot_interface = node.get_boot_interface()
         subnet = boot_interface.ip_addresses.first().subnet
         ngi = subnet.nodegroupinterface_set.first()
@@ -1407,8 +1484,14 @@ class TestNodeAPITransactional(APITransactionTestCase):
                 ngi.network, ngi.static_ip_range_low, ngi.static_ip_range_high,
                 ngi.ip_range_low, ngi.ip_range_high)
 
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
         response = self.client.post(
-            TestNodeAPI.get_node_uri(node), {'op': 'start'})
+            TestNodeAPI.get_node_uri(node),
+            {
+                'op': 'start',
+                'distro_series': distro_series,
+            })
         self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
 

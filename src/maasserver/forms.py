@@ -427,7 +427,8 @@ class NodeForm(MAASModelForm):
                 self.instance.nodegroup.nodegroupinterface_set.all())
 
         self.set_up_architecture_field()
-        self.set_up_osystem_and_distro_series_fields(instance)
+        if self.has_owner:
+            self.set_up_osystem_and_distro_series_fields(instance)
 
         if not allow_disable_ipv4:
             # Hide the disable_ipv4 field until support works properly.  The
@@ -583,29 +584,9 @@ class NodeForm(MAASModelForm):
             nodegroup = cleaned_data['nodegroup']
             cleaned_data['disable_ipv4'] = nodegroup.default_disable_ipv4
 
-        osystem = cleaned_data.get('osystem')
-        distro_series = cleaned_data.get('distro_series')
-        usable_osystems = list_all_usable_osystems()
-        if not osystem:
-            osystem = Config.objects.get_config('default_osystem')
-            if any(i['name'] == osystem for i in usable_osystems):
-                cleaned_data['osystem'] = osystem
-            else:
-                osystem = None
-        if osystem and not distro_series:
-            distro_series = Config.objects.get_config('default_distro_series')
-            usable_releases = list_all_usable_releases(usable_osystems)
-            usable_release_names = (
-                release['name']
-                for releases in usable_releases.viewvalues()
-                for release in releases
-                )
-            if distro_series in usable_release_names:
-                cleaned_data['distro_series'] = distro_series
-            else:
-                distro_series = None
-
         if not self.instance.hwe_kernel:
+            osystem = cleaned_data.get('osystem')
+            distro_series = cleaned_data.get('distro_series')
             architecture = cleaned_data.get('architecture')
             min_hwe_kernel = cleaned_data.get('min_hwe_kernel')
             hwe_kernel = cleaned_data.get('hwe_kernel')
