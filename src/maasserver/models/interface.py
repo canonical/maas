@@ -1063,14 +1063,14 @@ def delete_related_ip_addresses(sender, instance, **kwargs):
                 # Remove its link to the interface before the interface
                 # is deleted.
                 instance.unlink_ip_address(
-                    ip_address, update_cluster=False)
+                    ip_address, update_cluster=False, clearing_config=True)
 
         # Remove all DISCOVERED IP addresses by calling remove_host_maps with
         # the IP addresses. This will make sure the leases are released on the
         # cluster that holds the lease.
         removal_mapping = defaultdict(set)
         for ip_address in instance.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip__isnull=False):
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
             if ip_address.interface_set.count() == 1:
                 # This is the last interface linked to this discovered IP
                 # address.
@@ -1079,6 +1079,9 @@ def delete_related_ip_addresses(sender, instance, **kwargs):
                     if ngi is not None:
                         removal_mapping[ngi.nodegroup].add(ip_address.ip)
                 ip_address.delete()
+            else:
+                # Just remove this interface from the IP address.
+                instance.ip_addresses.remove(ip_address)
         if len(removal_mapping) > 0:
             remove_host_maps_failures = list(
                 remove_host_maps(removal_mapping))
