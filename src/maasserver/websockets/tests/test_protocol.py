@@ -623,7 +623,8 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         self.assertItemsEqual([
             "device", "general", "node",
             "cluster", "user", "zone",
-            "event", "tag",
+            "event", "tag", "fabric",
+            "space", "vlan",
             ],
             factory.handlers.keys())
 
@@ -725,9 +726,11 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = self.make_factory()
-        self.assertItemsEqual(
-            ["node", "device", "nodegroup", "user", "zone", "event", "tag"],
-            factory.listener.listeners.keys())
+        self.assertItemsEqual([
+            "node", "device", "nodegroup", "user",
+            "zone", "event", "tag", "fabric", "space",
+            "vlan",
+            ], factory.listener.listeners.keys())
 
     @transactional
     def make_user(self):
