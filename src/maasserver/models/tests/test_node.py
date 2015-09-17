@@ -1368,6 +1368,28 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_start, MockCalledOnceWith(
             admin, user_data=ANY))
 
+    def test_start_commissioning_sets_options(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
+        node_start = self.patch(node, 'start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
+        admin = factory.make_admin()
+        enable_ssh = factory.pick_bool()
+        block_poweroff = factory.pick_bool()
+        skip_networking = factory.pick_bool()
+        node.start_commissioning(
+            admin, enable_ssh=enable_ssh, block_poweroff=block_poweroff,
+            skip_networking=skip_networking)
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        expected_attrs = {
+            'enable_ssh': enable_ssh,
+            'block_poweroff': block_poweroff,
+            'skip_networking': skip_networking,
+        }
+        self.assertAttributes(node, expected_attrs)
+
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, 'start')
@@ -1392,6 +1414,28 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.noderesult_set.all())
+
+    def test_start_commissioning_calls__clear_networking_configuration(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
+        clear_networking = self.patch_autospec(
+            node, '_clear_networking_configuration')
+        admin = factory.make_admin()
+        node.start_commissioning(admin, skip_networking=False)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertThat(clear_networking, MockCalledOnceWith())
+
+    def test_start_commissioning_doesnt_call__clear_networking(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
+        clear_networking = self.patch_autospec(
+            node, '_clear_networking_configuration')
+        admin = factory.make_admin()
+        node.start_commissioning(admin, skip_networking=True)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertThat(clear_networking, MockNotCalled())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
         node = factory.make_Node()
@@ -2630,6 +2674,15 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertItemsEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address)
         self.assertEquals(set([True]), clearing_config)
+
+    def test_set_initial_net_config_does_nothing_if_skip_networking(self):
+        node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
+        boot_interface = node.get_boot_interface()
+        node.set_initial_networking_configuration()
+        boot_interface = reload_object(boot_interface)
+        auto_ip = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).first()
+        self.assertIsNone(auto_ip)
 
     def test_set_initial_networking_configuration_auto_on_boot_nic(self):
         node = factory.make_Node_with_Interface_on_Subnet()

@@ -1221,6 +1221,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             self.assertThat(interface.mac_address, Equals(
                 expected_interfaces[interface.name]))
 
+    def test__does_nothing_if_skip_networking(self):
+        node = factory.make_Node(interface=True, skip_networking=True)
+        boot_interface = node.get_boot_interface()
+        update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
+        self.assertIsNotNone(reload_object(boot_interface))
+
     def test__add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.

@@ -187,6 +187,10 @@ def update_node_network_information(node, output, exit_status):
     if exit_status != 0:
         return
 
+    # Skip network configuration if set by the user.
+    if node.skip_networking:
+        return
+
     # Get the MAC addresses of all connected interfaces.
     ip_addr_info = parse_ip_addr(output)
     current_interfaces = set()

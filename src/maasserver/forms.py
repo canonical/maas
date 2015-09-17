@@ -23,7 +23,6 @@ __all__ = [
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
-    "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
     "list_all_usable_architectures",
@@ -59,10 +58,7 @@ from django.contrib.auth.forms import (
     UserChangeForm,
     UserCreationForm,
 )
-from django.contrib.auth.models import (
-    AnonymousUser,
-    User,
-)
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MaxValueValidator,
@@ -161,7 +157,6 @@ from maasserver.models.subnet import (
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
-    compile_node_actions,
 )
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import machine_readable_bytes
@@ -1151,85 +1146,6 @@ def get_node_create_form(user):
         return AdminNodeWithMACAddressesForm
     else:
         return NodeWithMACAddressesForm
-
-
-class NodeActionForm(forms.Form):
-    """Base form for performing a node action.
-
-    This form class should not be used directly but through subclasses
-    created using `get_action_form`.
-    """
-
-    user = AnonymousUser()
-    request = None
-
-    action = forms.ChoiceField(
-        required=True,
-        choices=[
-            (action.name, action.display)
-            for action in ACTION_CLASSES])
-
-    # The name of the input button used with this form.
-    input_name = 'action'
-
-    def __init__(self, instance, *args, **kwargs):
-        super(NodeActionForm, self).__init__(*args, **kwargs)
-        self.node = instance
-        self.actions = compile_node_actions(instance, self.user, self.request)
-        self.action_buttons = self.actions.values()
-
-    def display_message(self, message, msg_level=messages.INFO):
-        """Show `message` as feedback after performing an action."""
-        if self.request is not None:
-            messages.add_message(self.request, msg_level, message)
-
-    def clean_action(self):
-        action_name = self.cleaned_data['action']
-        # The field 'action' is required so 'action_name' will be None
-        # here only if the field itself did not validate the data.
-        if action_name is not None:
-            action = self.actions.get(action_name)
-            if action is None or not action.is_permitted():
-                error_message = 'Not a permitted action: %s.' % action_name
-                raise ValidationError(
-                    {'action': [error_message]})
-            if action is not None and action.inhibition is not None:
-                raise ValidationError(
-                    {'action': [action.inhibition]})
-        return action_name
-
-    def save(self):
-        """An action was requested.  Perform it.
-
-        This implementation of `save` does not support the `commit` argument.
-        """
-        action_name = self.data.get('action')
-        action = self.actions.get(action_name)
-        msg_level = messages.INFO
-        try:
-            message = action.execute()
-        except NodeActionError as e:
-            message = e.message
-            msg_level = messages.ERROR
-        self.display_message(message, msg_level)
-        # Return updated node.
-        return Node.objects.get(system_id=self.node.system_id)
-
-
-def get_action_form(user, request=None):
-    """Return a class derived from NodeActionForm for a specific user.
-
-    :param user: The user for which to build a form derived from
-        NodeActionForm.
-    :type user: :class:`django.contrib.auth.models.User`
-    :param request: An optional request object to publish action messages.
-    :type request: django.http.HttpRequest
-    :return: A form class derived from NodeActionForm.
-    :rtype: class:`django.forms.Form`
-    """
-    return type(
-        b"SpecificNodeActionForm", (NodeActionForm,),
-        {'user': user, 'request': request})
 
 
 class ProfileForm(MAASModelForm):

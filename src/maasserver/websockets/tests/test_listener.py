@@ -2631,7 +2631,7 @@ class TestNodePartitionListener(
             # to the random number being generated is greater than the mock
             # available disk space
             yield deferToThread(self.update_partition, partition.id, {
-                "size": random.randint(3000 * 1000, partition.size)
+                "size": partition.size - 1,
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)

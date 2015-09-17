@@ -413,7 +413,9 @@ class Node(CleanSave, TimestampedModel):
     :ivar block_poweroff: An optional flag to indicate if this node needs to
         can be prevented from being powered off automatically after the
         commissioning has finished.
-
+    :ivar skip_networking: An optional flag to indicate if this node
+        networking configuration doesn't need to be touched when it is
+        commissioned.
     """
 
     class Meta(DefaultMeta):
@@ -565,6 +567,14 @@ class Node(CleanSave, TimestampedModel):
         StaticIPAddress, default=None, blank=True, null=True,
         editable=False, related_name='+', on_delete=SET_NULL)
 
+    # Used to determine whether to:
+    #  1. Import the SSH Key during commissioning.
+    #  2. Block the automatic power off during commissioning.
+    #  3. Skip reconfiguring networking when a node is commissioned.
+    enable_ssh = BooleanField(default=False)
+    block_poweroff = BooleanField(default=False)
+    skip_networking = BooleanField(default=False)
+
     # Note that the ordering of the managers is meaningul.  More precisely, the
     # first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -577,12 +587,6 @@ class Node(CleanSave, TimestampedModel):
 
     # 'devices' are all the non-installable nodes.
     devices = DeviceManager()
-
-    # Used to determine whether to:
-    #  1. Import the SSH Key during commissioning.
-    #  2. Block the automatic power off during commissioning.
-    enable_ssh = BooleanField(default=False)
-    block_poweroff = BooleanField(default=False)
 
     def __unicode__(self):
         if self.hostname:
@@ -912,20 +916,10 @@ class Node(CleanSave, TimestampedModel):
         self.start_commissioning(user)
         return self
 
-    def set_commissioning_parameters(self, enable_ssh=False,
-                                     block_poweroff=False):
-        """Set the commissioning parameters.
-
-        This sets the parameters to:
-           enable_ssh - Enable SSH during commissioning.
-           block_poweroff - Blocks the automatic poweroff after commisioning.
-        """
-        self.enable_ssh = enable_ssh
-        self.block_poweroff = block_poweroff
-        self.save()
-
     @transactional
-    def start_commissioning(self, user):
+    def start_commissioning(
+            self, user, enable_ssh=False, block_poweroff=False,
+            skip_networking=False):
         """Install OS and self-test a new node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -937,12 +931,21 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.commissioning import generate_user_data
         from metadataserver.models import NodeResult
 
+        # Set the commissioning options on the node.
+        self.enable_ssh = enable_ssh
+        self.block_poweroff = block_poweroff
+        self.skip_networking = skip_networking
+
+        # Generate the specific user data for commissioning this node.
         commissioning_user_data = generate_user_data(node=self)
 
-        # Clear any existing commissioning results and the current network
-        # configuration.
+        # Clear any existing commissioning results.
         NodeResult.objects.clear_results(self)
-        self._clear_networking_configuration()
+
+        # Clear the current network configuration if networking is not being
+        # skipped during commissioning.
+        if not self.skip_networking:
+            self._clear_networking_configuration()
 
         # We need to mark the node as COMMISSIONING now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
@@ -1860,6 +1863,10 @@ class Node(CleanSave, TimestampedModel):
 
         This is done after commissioning has finished.
         """
+        # Do nothing if networking should be skipped.
+        if self.skip_networking:
+            return
+
         boot_interface = self.get_boot_interface()
         if boot_interface is None:
             # No interfaces on the node. Nothing to do.

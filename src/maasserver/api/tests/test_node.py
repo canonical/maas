@@ -743,6 +743,23 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
+    def test_POST_commission_commissions_node_with_options(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=factory.make_User(),
+            power_state=POWER_STATE.OFF)
+        self.become_admin()
+        response = self.client.post(self.get_node_uri(node), {
+            'op': 'commission',
+            'enable_ssh': "true",
+            'block_poweroff': True,
+            'skip_networking': 1,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertTrue(node.enable_ssh)
+        self.assertTrue(node.block_poweroff)
+        self.assertTrue(node.skip_networking)
+
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
         node = factory.make_Node(

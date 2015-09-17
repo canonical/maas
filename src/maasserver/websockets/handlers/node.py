@@ -111,6 +111,7 @@ class NodeHandler(TimestampedModelHandler):
             "gateway_link_ipv6",
             "block_poweroff",
             "enable_ssh",
+            "skip_networking",
         ]
         list_fields = [
             "system_id",

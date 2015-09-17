@@ -35,7 +35,6 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import (
-    extract_bool,
     get_mandatory_param,
     get_oauth_token,
     get_optional_list,
@@ -60,12 +59,11 @@ from maasserver.fields import MAC_RE
 from maasserver.forms import (
     BulkNodeActionForm,
     ClaimIPForm,
-    get_action_form,
     get_node_create_form,
     get_node_edit_form,
-    NodeActionForm,
     ReleaseIPForm,
 )
+from maasserver.forms_commission import CommissionForm
 from maasserver.models import (
     Config,
     Interface,
@@ -74,7 +72,6 @@ from maasserver.models import (
 )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
-from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc import getClientFor
 from maasserver.storage_layouts import (
@@ -518,6 +515,9 @@ class NodeHandler(OperationsHandler):
         :param block_poweroff: Whether to prevent the power off the node
             after the commissioning has completed.
         :type block_poweroff: bool ('0' for False, '1' for True)
+        :param skip_networking: Whether to skip re-configuring the networking
+            on the node after the commissioning has completed.
+        :type skip_networking: bool ('0' for False, '1' for True)
 
         A node in the 'ready', 'declared' or 'failed test' state may
         initiate a commissioning cycle where it is checked out and tested
@@ -528,24 +528,12 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        enable_ssh = get_optional_param(request.data, 'enable_ssh', 0)
-        block_poweroff = get_optional_param(request.data, 'block_poweroff', 0)
-
-        node = get_object_or_404(Node, system_id=system_id)
-
-        if enable_ssh:
-            enable_ssh = extract_bool(enable_ssh)
-        if block_poweroff:
-            block_poweroff = extract_bool(block_poweroff)
-        node.set_commissioning_parameters(
-            enable_ssh=enable_ssh, block_poweroff=block_poweroff)
-
-        form_class = get_action_form(user=request.user)
-        form = form_class(
-            node, data={NodeActionForm.input_name: Commission.name})
+        node = Node.nodes.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        form = CommissionForm(
+            instance=node, user=request.user, data=request.data)
         if form.is_valid():
-            node = form.save()
-            return node
+            return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 

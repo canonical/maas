@@ -239,13 +239,18 @@ class Commission(NodeAction):
     permission = NODE_PERMISSION.ADMIN
     installable_only = True
 
-    def execute(self):
+    def execute(
+            self, enable_ssh=False, block_poweroff=False,
+            skip_networking=False):
         """See `NodeAction.execute`."""
         if self.node.power_state == POWER_STATE.ON:
             raise NodeActionError(
                 "Unable to be commissioned because the power is currently on.")
+
         try:
-            self.node.start_commissioning(self.user)
+            self.node.start_commissioning(
+                self.user, enable_ssh=enable_ssh,
+                block_poweroff=block_poweroff, skip_networking=skip_networking)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
