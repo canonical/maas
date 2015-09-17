@@ -263,12 +263,17 @@ class Factory:
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv6_address)
 
-    def make_ip4_or_6_network(self):
+    def make_ip4_or_6_network(self, host_bits=None):
         """Generate a random IPv4 or IPv6 network."""
+        slash = None
         if random.randint(0, 1) == 0:
-            return self.make_ipv4_network()
+            if host_bits is not None:
+                slash = 32 - host_bits
+            return self.make_ipv4_network(slash=slash)
         else:
-            return self.make_ipv6_network()
+            if host_bits is not None:
+                slash = 128 - host_bits
+            return self.make_ipv6_network(slash=slash)
 
     def pick_ip_in_dynamic_range(self, ngi):
         first = ngi.get_dynamic_ip_range().first

@@ -46,6 +46,10 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.utils.network import (
+    MAASIPSet,
+    make_iprange,
+)
 
 
 SUBNET_NAME_VALIDATOR = RegexValidator('^[.: \w/-]+$')
@@ -281,3 +285,48 @@ class Subnet(CleanSave, TimestampedModel):
         this subnet."""
         return self.get_cluster_interfaces().exclude(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+
+    def get_staticipaddresses_in_use(self):
+        """Returns a list of `netaddr.IPAddress` objects to represent each
+        IP address in use in this `Subnet`."""
+        # We could exclude DISCOVERED addresses here, but that wouldn't be
+        # genuine. (we'd be allowing something we have observed as an in-use
+        # address to potentially be claimed for something else, which could
+        # be a conflict.)
+        return set(
+            IPAddress(ip.ip)
+            for ip in self.staticipaddress_set.exclude(ip__isnull=True)
+            if ip.ip != '')
+
+    def _get_ipranges_in_use_on_related_clusters(self):
+        """Returns a `set` of IP ranges that may be used on this `Subnet`,
+        based on querying all of its attached cluster interfaces."""
+        # We could filter by 'management' here, but we might miss some in-use
+        # IP addresses for enabled (but not actively managing) clusters.
+        cluster_interfaces = self.nodegroupinterface_set.filter(
+            nodegroup__status=NODEGROUP_STATUS.ENABLED)
+        ranges = set()
+        for ngi in cluster_interfaces:
+            ngi_ranges = ngi.get_ipranges_in_use(include_static_range=False)
+            ranges |= ngi_ranges
+        return ranges
+
+    def get_ipranges_in_use(self):
+        """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
+        in use on this `Subnet`."""
+        ranges = set()
+        assigned_ip_addresses = self.get_staticipaddresses_in_use()
+        ranges |= set(
+            make_iprange(ip, purpose="assigned-ip")
+            for ip in assigned_ip_addresses
+        )
+        # print(ranges)
+        ranges |= self._get_ipranges_in_use_on_related_clusters()
+        # print(ranges)
+        return MAASIPSet(ranges)
+
+    def get_ipranges_not_in_use(self):
+        """Returns a `MAASIPSet` of ranges which are currently free on this
+        `Subnet`."""
+        ranges = self.get_ipranges_in_use()
+        return ranges.get_unused_ranges(self.get_ipnetwork())

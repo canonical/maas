@@ -44,12 +44,20 @@ from provisioningserver.utils.network import (
     find_mac_via_arp,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
+    inet_ntop,
     intersect_iprange,
     ip_range_within_network,
+    MAASIPRange,
+    MAASIPSet,
+    make_iprange,
     make_network,
     resolve_hostname,
 )
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Contains,
+    Equals,
+    Not,
+)
 
 
 class TestMakeNetwork(MAASTestCase):
@@ -65,6 +73,17 @@ class TestMakeNetwork(MAASTestCase):
         self.assertEqual(
             [mock.call('10.1.2.0/24', foo=9)],
             network_module.IPNetwork.mock_calls)
+
+
+class TestInetNtop(MAASTestCase):
+
+    def test__ipv4(self):
+        ip = factory.make_ipv4_address()
+        self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
+
+    def test__ipv6(self):
+        ip = factory.make_ipv6_address()
+        self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
 
 
 class TestFindIPViaARP(MAASTestCase):
@@ -487,3 +506,188 @@ class TestIPRangeWithinNetwork(MAASTestCase):
         network_1 = IPNetwork('10.0.0.0/16')
         network_2 = IPNetwork('10.0.0.0/24')
         self.assertTrue(ip_range_within_network(network_2, network_1))
+
+
+class TestMAASIPSet(MAASTestCase):
+
+    def test__contains_method(self):
+        s = MAASIPSet([
+            make_iprange('10.0.0.1', '10.0.0.100'),
+            make_iprange('10.0.0.200', '10.0.0.254'),
+        ])
+        self.assertThat(s, Contains('10.0.0.1'))
+        self.assertThat(s, Contains(IPAddress('10.0.0.1')))
+        self.assertThat(s, Contains(IPRange('10.0.0.1', '10.0.0.100')))
+        self.assertThat(s, Not(Contains(IPRange('10.0.0.1', '10.0.0.101'))))
+        self.assertThat(s, Not(Contains('10.0.0.101')))
+        self.assertThat(s, Not(Contains('10.0.0.199')))
+        self.assertThat(s, Contains(IPRange('10.0.0.200', '10.0.0.254')))
+        self.assertThat(s, Not(Contains(IPRange('10.0.0.99', '10.0.0.254'))))
+        self.assertThat(s, Not(Contains('10.0.0.255')))
+
+    def test__normalizes_range(self):
+        addr1 = '10.0.0.1'
+        addr2 = IPAddress('10.0.0.2')
+        range1 = make_iprange('10.0.0.3', purpose="DNS")
+        range2 = make_iprange('10.0.0.4', '10.0.0.100', purpose='DHCP')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        for item in s:
+            self.assertThat(type(item), Equals(MAASIPRange))
+        self.assertThat(s, Contains('10.0.0.1'))
+        self.assertThat(s, Contains('10.0.0.2'))
+        self.assertThat(s, Contains('10.0.0.3'))
+        self.assertThat(s, Contains('10.0.0.4'))
+        self.assertThat(s, Contains('10.0.0.50'))
+        self.assertThat(s, Contains('10.0.0.100'))
+        self.assertThat(s, Not(Contains('10.0.0.101')))
+        self.assertThat(s, Not(Contains('10.0.0.0')))
+
+    def test__normalizes_ipv6_range(self):
+        addr1 = 'fe80::1'
+        addr2 = IPAddress('fe80::2')
+        range1 = make_iprange('fe80::3', purpose="DNS")
+        range2 = make_iprange(
+            'fe80::100', 'fe80::ffff:ffff:ffff:ffff', purpose='DHCP')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        for item in s:
+            self.assertThat(type(item), Equals(MAASIPRange))
+        self.assertThat(s, Contains('fe80::1'))
+        self.assertThat(s, Contains('fe80::2'))
+        self.assertThat(s, Contains('fe80::3'))
+        self.assertThat(s, Contains('fe80::100'))
+        self.assertThat(s, Contains('fe80::ffff:ffff:ffff:ffff'))
+        self.assertThat(s, Not(Contains('fe80::1:ffff:ffff:ffff:ffff')))
+
+    def test__normalizes_range_with_iprange(self):
+        addr1 = '10.0.0.1'
+        addr2 = IPAddress('10.0.0.2')
+        range1 = make_iprange('10.0.0.3', purpose="DNS")
+        range2 = IPRange('10.0.0.4', '10.0.0.100')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        for item in s:
+            self.assertThat(type(item), Equals(MAASIPRange))
+        self.assertThat(s, Contains('10.0.0.1'))
+        self.assertThat(s, Contains('10.0.0.2'))
+        self.assertThat(s, Contains('10.0.0.3'))
+        self.assertThat(s, Contains('10.0.0.4'))
+        self.assertThat(s, Contains('10.0.0.50'))
+        self.assertThat(s, Contains('10.0.0.100'))
+        self.assertThat(s, Not(Contains('10.0.0.101')))
+        self.assertThat(s, Not(Contains('10.0.0.0')))
+
+    def test__calculates_simple_unused_range(self):
+        addr1 = '10.0.0.2'
+        addr2 = IPAddress('10.0.0.3')
+        range1 = make_iprange('10.0.0.4', purpose="DNS")
+        range2 = IPRange('10.0.0.5', '10.0.0.100')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        u = s.get_unused_ranges('10.0.0.0/24')
+        self.assertThat(u, Not(Contains('10.0.0.0')))
+        self.assertThat(u, Contains('10.0.0.1'))
+        self.assertThat(u, Contains('10.0.0.101'))
+        self.assertThat(u, Contains('10.0.0.150'))
+        self.assertThat(u, Contains('10.0.0.254'))
+        self.assertThat(u, Not(Contains('10.0.0.255')))
+
+    def test__calculates_simple_unused_range_with_iprange_input(self):
+        addr1 = '10.0.0.1'
+        addr2 = IPAddress('10.0.0.2')
+        range1 = make_iprange('10.0.0.3', purpose="DNS")
+        range2 = IPRange('10.0.0.4', '10.0.0.100')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        u = s.get_unused_ranges(IPRange('10.0.0.0', '10.0.0.255'))
+        self.assertThat(u, Contains('10.0.0.0'))
+        self.assertThat(u, Contains('10.0.0.101'))
+        self.assertThat(u, Contains('10.0.0.150'))
+        self.assertThat(u, Contains('10.0.0.254'))
+        self.assertThat(u, Contains('10.0.0.255'))
+
+    def test__calculates_unused_range_with_overlap(self):
+        range1 = make_iprange('10.0.0.3', purpose="DNS")
+        range2 = make_iprange('10.0.0.3', '10.0.0.20', purpose="DHCP")
+        rangeset = MAASIPSet([range2, range1])
+        u = rangeset.get_unused_ranges('10.0.0.0/24')
+        self.assertThat(u, Contains('10.0.0.1'))
+        self.assertThat(u, Contains('10.0.0.2'))
+        self.assertThat(u, Not(Contains('10.0.0.3')))
+        self.assertThat(u, Not(Contains('10.0.0.4')))
+        self.assertThat(u, Not(Contains('10.0.0.20')))
+        self.assertThat(u, Contains('10.0.0.21'))
+
+    def test__calculates_unused_range_with_multiple_overlap(self):
+        range1 = make_iprange('10.0.0.3', purpose="DNS")
+        range2 = make_iprange('10.0.0.3', purpose="WINS")
+        range3 = make_iprange('10.0.0.3', '10.0.0.20', purpose="DHCP")
+        range4 = make_iprange('10.0.0.5', '10.0.0.20', purpose="DHCP")
+        range5 = make_iprange('10.0.0.5', '10.0.0.18', purpose="DHCP")
+        s = MAASIPSet([range1, range2, range3, range4, range5])
+        u = s.get_unused_ranges('10.0.0.0/24')
+        self.assertThat(u, Not(Contains('10.0.0.0')))
+        self.assertThat(u, Contains('10.0.0.1'))
+        self.assertThat(u, Contains('10.0.0.2'))
+        self.assertThat(u, Not(Contains('10.0.0.3')))
+        self.assertThat(u, Not(Contains('10.0.0.4')))
+        self.assertThat(u, Not(Contains('10.0.0.5')))
+        self.assertThat(u, Not(Contains('10.0.0.6')))
+        self.assertThat(u, Not(Contains('10.0.0.10')))
+        self.assertThat(u, Not(Contains('10.0.0.18')))
+        self.assertThat(u, Not(Contains('10.0.0.19')))
+        self.assertThat(u, Not(Contains('10.0.0.20')))
+        self.assertThat(u, Contains('10.0.0.21'))
+        self.assertThat(u, Contains('10.0.0.254'))
+        self.assertThat(u, Not(Contains('10.0.0.255')))
+
+    def test__deals_with_small_gaps(self):
+        s = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_unused_ranges('10.0.0.0/24')
+        self.assertThat(u, Not(Contains('10.0.0.0')))
+        self.assertThat(u, Contains('10.0.0.1'))
+        self.assertThat(u, Not(Contains('10.0.0.2')))
+        self.assertThat(u, Contains('10.0.0.3'))
+        self.assertThat(u, Not(Contains('10.0.0.4')))
+        self.assertThat(u, Contains('10.0.0.5'))
+        self.assertThat(u, Not(Contains('10.0.0.6')))
+        self.assertThat(u, Contains('10.0.0.7'))
+        self.assertThat(u, Not(Contains('10.0.0.8')))
+        self.assertThat(u, Contains('10.0.0.9'))
+        self.assertThat(u, Contains('10.0.0.254'))
+        self.assertThat(u, Not(Contains('10.0.0.255')))
+
+    def test__calculates_ipv6_unused_range(self):
+        addr1 = 'fe80::1'
+        addr2 = IPAddress('fe80::2')
+        range1 = make_iprange('fe80::3', purpose="DNS")
+        range2 = make_iprange(
+            'fe80::100', 'fe80::ffff:ffff:ffff:fffe', purpose='DHCP')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        u = s.get_unused_ranges('fe80::/64')
+        self.assertThat(u, Not(Contains('fe80::1')))
+        self.assertThat(u, Not(Contains('fe80::2')))
+        self.assertThat(u, Not(Contains('fe80::3')))
+        self.assertThat(u, Not(Contains('fe80::100')))
+        self.assertThat(u, Not(Contains('fe80::ffff:ffff:ffff:fffe')))
+        self.assertThat(u, Contains('fe80::ffff:ffff:ffff:ffff'))
+        self.assertThat(u, Contains('fe80::5'))
+        self.assertThat(u, Contains('fe80::50'))
+        self.assertThat(u, Contains('fe80::99'))
+        self.assertThat(u, Contains('fe80::ff'))
+
+    def test__calculates_ipv6_unused_range_for_huge_range(self):
+        addr1 = 'fe80::1'
+        addr2 = IPAddress('fe80::2')
+        range1 = make_iprange('fe80::3', purpose="DNS")
+        range2 = make_iprange(
+            'fe80::100', 'fe80::ffff:ffff:ffff:fffe', purpose='DHCP')
+        s = MAASIPSet([range2, range1, addr1, addr2])
+        u = s.get_unused_ranges('fe80::/32')
+        self.assertThat(u, Not(Contains('fe80::1')))
+        self.assertThat(u, Not(Contains('fe80::2')))
+        self.assertThat(u, Not(Contains('fe80::3')))
+        self.assertThat(u, Not(Contains('fe80::100')))
+        self.assertThat(u, Not(Contains('fe80::ffff:ffff:ffff:fffe')))
+        self.assertThat(u, Contains('fe80::ffff:ffff:ffff:ffff'))
+        self.assertThat(u, Contains('fe80::5'))
+        self.assertThat(u, Contains('fe80::50'))
+        self.assertThat(u, Contains('fe80::99'))
+        self.assertThat(u, Contains('fe80::ff'))
+        self.assertThat(u, Contains('fe80:0:ffff:ffff:ffff:ffff:ffff:ffff'))

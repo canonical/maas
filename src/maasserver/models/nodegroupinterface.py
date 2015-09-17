@@ -47,11 +47,11 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPNetwork,
-    IPRange,
 )
 from netaddr.core import AddrFormatError
 from provisioningserver.utils.network import (
     intersect_iprange,
+    make_iprange,
     make_network,
 )
 
@@ -435,19 +435,33 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             exclude = []
         self.check_for_network_interface_clashes(exclude)
 
+    def has_dyanamic_ip_range(self):
+        """Returns `True` if this `NodeGroupInterface` has a dynamic IP
+        range specified."""
+        return self.ip_range_low and self.ip_range_high
+
     def get_dynamic_ip_range(self):
-        if self.ip_range_low and self.ip_range_high:
-            return IPRange(
-                self.ip_range_low,
-                self.ip_range_high)
+        """Returns a `MAASIPRange` for this `NodeGroupInterface`, if a dynamic
+        range is specified. Otherwise, returns `None`."""
+        if self.has_dyanamic_ip_range():
+            return make_iprange(
+                self.ip_range_low, self.ip_range_high,
+                purpose='dynamic-range')
         else:
             return None
 
+    def has_static_ip_range(self):
+        """Returns `True` if this `NodeGroupInterface` has a static IP
+        range specified."""
+        return self.static_ip_range_low and self.static_ip_range_high
+
     def get_static_ip_range(self):
-        if self.static_ip_range_low and self.static_ip_range_high:
-            return IPRange(
-                self.static_ip_range_low,
-                self.static_ip_range_high)
+        """Returns a `MAASIPRange` for this `NodeGroupInterface`, if a static
+        range is specified. Otherwise, returns `None`."""
+        if self.has_static_ip_range():
+            return make_iprange(
+                self.static_ip_range_low, self.static_ip_range_high,
+                purpose='static-range')
         else:
             return None
 
@@ -525,7 +539,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         dynamic_range = {}
 
         try:
-            static_range = IPRange(
+            static_range = make_iprange(
                 static_ip_range_low, static_ip_range_high)
         except AddrFormatError:
             message = message_base % (
@@ -536,7 +550,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                 })
 
         try:
-            dynamic_range = IPRange(
+            dynamic_range = make_iprange(
                 ip_range_low, ip_range_high)
         except AddrFormatError:
             message = message_base % (ip_range_low, ip_range_high)
@@ -610,6 +624,33 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_network_config_if_managed()
         self.clean_ip_ranges()
         self.clean_overlapping_networks()
+
+    def get_ipranges_in_use(self, include_static_range=True):
+        """Returns a `set` of `MAASIPRange` objects for this
+        `NodeGroupInterface`, annotated with a purpose string indicating if
+        they are part of the dynamic range, static range, cluster IP, gateway
+        IP, or DNS server."""
+        ranges = set()
+        if self.has_dyanamic_ip_range():
+            ranges.add(self.get_dynamic_ip_range())
+
+        # The caller might want to exclude static ranges, if they will be
+        # separately looking at the static IP addresses assigned to the subnet.
+        if include_static_range:
+            if self.has_static_ip_range():
+                ranges.add(self.get_static_ip_range())
+
+        ranges.add(make_iprange(self.ip, purpose="cluster-ip"))
+
+        if self.subnet is not None:
+            if self.subnet.gateway_ip:
+                ranges.add(make_iprange(
+                    self.subnet.gateway_ip, purpose="gateway-ip"))
+            if self.subnet.dns_servers is not None:
+                for server in self.subnet.dns_servers:
+                    ranges.add(make_iprange(server, purpose="dns-server"))
+
+        return ranges
 
 
 @receiver(post_save, sender=NodeGroupInterface)

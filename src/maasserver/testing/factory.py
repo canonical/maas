@@ -671,7 +671,7 @@ class Factory(maastesting.factory.Factory):
         return space
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
-                    gateway_ip=None, dns_servers=None):
+                    gateway_ip=None, dns_servers=None, host_bits=None):
         if name is None:
             name = factory.make_name('name')
         if vlan is None:
@@ -679,7 +679,7 @@ class Factory(maastesting.factory.Factory):
         if space is None:
             space = factory.make_Space()
         if cidr is None:
-            network = factory.make_ip4_or_6_network()
+            network = factory.make_ip4_or_6_network(host_bits=host_bits)
             cidr = unicode(network.cidr)
         if gateway_ip is None:
             gateway_ip = factory.pick_ip_in_network(IPNetwork(cidr))

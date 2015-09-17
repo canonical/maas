@@ -43,6 +43,178 @@ import netifaces
 from provisioningserver.utils.shell import call_and_check
 
 
+class MAASIPRange(IPRange):
+    """IPRange object whose default end address is the start address if not
+    specified. Capable of storing a string to indicate the purpose of
+    the range."""
+    def __init__(self, start, end=None, flags=0, purpose=None):
+        if end is None:
+            end = start
+        if type(start) == IPRange:
+            end = start.last
+            start = start.first
+        super(MAASIPRange, self).__init__(start, end, flags=flags)
+        self.flags = flags
+        if type(purpose) != set:
+            purpose = {purpose}
+        self.purpose = purpose
+
+    def __unicode__(self):
+        range_str = unicode(IPAddress(self.first))
+        if not self.first == self.last:
+            range_str += '-' + unicode(IPAddress(self.last))
+            range_str += (" num_addresses=" +
+                          unicode((self.last - self.first + 1)))
+        if self.purpose:
+            range_str += " purpose=" + repr(self.purpose)
+        return range_str
+
+    def __repr__(self):
+        return ("%s('%s', '%s'%s%s)" %
+                (self.__class__.__name__,
+                 self._start, self._end,
+                 (" flags=%d" % self.flags if self.flags else ''),
+                 (" purpose=%s" % repr(self.purpose) if self.purpose else '')))
+
+
+def _deduplicate_sorted_maasipranges(ranges):
+    """Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
+    list where any adjacent overlapping ranges have been combined into a single
+    range."""
+    new_ranges = []
+    previous_min = None
+    previous_max = None
+    for item in ranges:
+        if previous_min is not None and previous_max is not None:
+            min_overlaps = previous_min <= item.first <= previous_max
+            max_overlaps = previous_min <= item.last <= previous_max
+            if min_overlaps or max_overlaps:
+                previous = new_ranges.pop()
+                item = make_iprange(
+                    min(item.first, previous_min),
+                    max(item.last, previous_max),
+                    previous.purpose | item.purpose)
+        previous_min = item.first
+        previous_max = item.last
+        new_ranges.append(item)
+    return new_ranges
+
+
+def normalize_ipranges(ranges):
+    """Converts each object in the list of ranges to an MAASIPRange, if
+    the object is not already a MAASIPRange. Then, returns a sorted list
+    of those MAASIPRange objects."""
+    new_ranges = []
+    for item in ranges:
+        if not isinstance(item, MAASIPRange):
+            item = MAASIPRange(item)
+        new_ranges.append(item)
+    return sorted(new_ranges)
+
+
+class MAASIPSet(set):
+
+    def __init__(self, ranges):
+        self.ranges = normalize_ipranges(ranges)
+        self.ranges = _deduplicate_sorted_maasipranges(self.ranges)
+        super(MAASIPSet, self).__init__(set(self.ranges))
+
+    def find(self, search):
+        """Searches the list of IPRange objects until it finds the specified
+        search parameter, and returns the range it belongs to if found.
+        (If the search parameter is a range, returns the result based on
+        matching the searching for the range containing the first IP address
+        within that range.)"""
+        if isinstance(search, IPRange):
+            for item in self.ranges:
+                if (item.first <= search.first <= item.last and
+                        item.first <= search.last <= item.last):
+                    return item
+        else:
+            addr = IPAddress(search)
+            addr = long(addr)
+            for item in self.ranges:
+                if item.first <= addr <= item.last:
+                    return item
+        return None
+
+    def __getitem__(self, item):
+        return self.find(item)
+
+    def __contains__(self, item):
+        return bool(self.find(item))
+
+    def get_unused_ranges(self, outer_range):
+        """Calculates and returns a list of unused IP ranges, based on
+        the supplied range of desired addresses.
+
+        :param outer_range: can be an IPNetwork or IPRange of addresses.
+            If an IPNetwork is supplied, the network (and broadcast, if
+            applicable) addresses will be excluded from the set of
+            addresses considered "unused". If an IPRange is supplied,
+            all addresses in the range will be considered unused.
+        """
+        if isinstance(outer_range, (bytes, unicode)):
+            if '/' in outer_range:
+                outer_range = IPNetwork(outer_range)
+        unused_ranges = []
+        if type(outer_range) == IPNetwork:
+            # Skip the network address, if this is a network
+            start = outer_range.first + 1
+        else:
+            # Otherwise, assume the first address is the start of the range
+            start = outer_range.first
+        candidate_start = start
+        # Note: by now, self.ranges is sorted from lowest
+        # to highest IP address.
+        for used_range in self.ranges:
+            candidate_end = used_range.first - 1
+            # Check if there is a gap between the start of the current
+            # candidate range, and the address just before the next used
+            # range.
+            if candidate_end - candidate_start >= 0:
+                unused_ranges.append(
+                    make_iprange(candidate_start, candidate_end, "unused"))
+            candidate_start = used_range.last + 1
+        # Skip the broadcast address, if this is an IPv4 network
+        if type(outer_range) == IPNetwork and outer_range.version == 4:
+            candidate_end = outer_range.last - 1
+        else:
+            candidate_end = outer_range.last
+        # Check if there is a gap between the last used range and the end
+        # of the range we're checking against.
+        if candidate_end - candidate_start >= 0:
+            unused_ranges.append(
+                make_iprange(candidate_start, candidate_end, "unused"))
+        return MAASIPSet(unused_ranges)
+
+    def __repr__(self):
+        item_repr = []
+        for item in self.ranges:
+            item_repr.append(item)
+        return '%s(%s)' % (self.__class__.__name__, item_repr)
+
+
+def make_iprange(first, second=None, purpose="unknown"):
+    """Returns a MAASIPRange (which is compatible with IPRange) for the
+    specified range of addresses.
+
+    :param second: the (inclusive) upper bound of the range. If not supplied,
+        uses the lower bound (creating a range of 1 address).
+    :param purpose: If supplied, stores a comment in the range object to
+        indicate the purpose of this range.
+    """
+    if isinstance(first, (int, long)):
+        first = IPAddress(first)
+    if second is None:
+        second = first
+    else:
+        if isinstance(second, (int, long)):
+            second = IPAddress(second)
+    iprange = MAASIPRange(inet_ntop(first), inet_ntop(second), purpose=purpose)
+    return iprange
+
+
 def make_network(
         ip_address, netmask_or_bits, cidr=False, **kwargs):
     """Construct an `IPNetwork` with the given address and netmask or width.
@@ -229,3 +401,9 @@ def ip_range_within_network(ip_range, network):
             IPAddress(network.first), IPAddress(network.last))
     return all([
         intersect_iprange(cidr, network) for cidr in ip_range.cidrs()])
+
+
+def inet_ntop(value):
+    """Convert IPv4 and IPv6 addresses from binary to text form.
+    (See also inet_ntop(3), the C function with the same name and function.)"""
+    return unicode(IPAddress(value))

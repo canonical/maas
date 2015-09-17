@@ -22,6 +22,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -37,10 +38,13 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.utils.network import inet_ntop
 from testtools import ExpectedException
 from testtools.matchers import (
+    Contains,
     Equals,
     MatchesStructure,
+    Not,
 )
 
 
@@ -233,3 +237,62 @@ class SubnetTest(MAASServerTestCase):
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet)
         self.assertEquals(ngi, subnet.get_managed_cluster_interface())
+
+
+class SubnetIPRangeTest(MAASServerTestCase):
+
+    def test__finds_used_ranges(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        net = subnet.get_ipnetwork()
+        free_ip_1 = inet_ntop(net.first + 1)
+        cluster_ip = inet_ntop(net.first + 2)
+        free_ip_2 = inet_ntop(net.first + 3)
+        free_ip_3 = inet_ntop(net.first + 9)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 49)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        free_ip_4 = inet_ntop(net.first + 100)
+        factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        s = subnet.get_ipranges_in_use()
+        self.assertThat(s, Contains(cluster_ip))
+        self.assertThat(s, Contains(dynamic_range_low))
+        self.assertThat(s, Contains(dynamic_range_high))
+        self.assertThat(s, Not(Contains(static_range_low)))
+        self.assertThat(s, Not(Contains(static_range_high)))
+        self.assertThat(s, Not(Contains(free_ip_1)))
+        self.assertThat(s, Not(Contains(free_ip_2)))
+        self.assertThat(s, Not(Contains(free_ip_3)))
+        self.assertThat(s, Not(Contains(free_ip_4)))
+        self.assertThat(s[cluster_ip].purpose, Contains('cluster-ip'))
+        self.assertThat(
+            s[dynamic_range_low].purpose, Contains('dynamic-range'))
+
+    def test__finds_used_ranges_includes_allocated_ip(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        net = subnet.get_ipnetwork()
+        cluster_ip = inet_ntop(net.first + 2)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 49)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        factory.make_StaticIPAddress(
+            ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        s = subnet.get_ipranges_in_use()
+        self.assertThat(s, Contains(static_range_low))
+        self.assertThat(s, Not(Contains(static_range_high)))
