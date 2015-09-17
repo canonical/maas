@@ -349,11 +349,11 @@ class StatusHandler(MetadataViewHandler):
 
                     # Setup the initial networking configuration for the node.
                     node.set_initial_networking_configuration()
-                elif result == 'FAILURE':
+                elif result in ['FAIL', 'FAILURE']:
                     node.status = NODE_STATUS.FAILED_COMMISSIONING
 
             elif node.status == NODE_STATUS.DEPLOYING:
-                if result == 'FAILURE':
+                if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(
                         "Installation failed (refer to the installation log "
                         "for more information).")
@@ -361,14 +361,13 @@ class StatusHandler(MetadataViewHandler):
                 if result == 'SUCCESS':
                     # disk erasing complete, release node.
                     node.release()
-                elif result == 'FAILURE':
+                elif result in ['FAIL', 'FAILURE']:
                     node.mark_failed("Failed to erase disks.")
 
             # Deallocate the node if we enter any terminal state.
             if node.status in [
                     NODE_STATUS.READY,
                     NODE_STATUS.FAILED_COMMISSIONING,
-                    NODE_STATUS.FAILED_DEPLOYMENT,
                     NODE_STATUS.FAILED_DISK_ERASING]:
                 node.owner = None
                 node.error = 'failed: %s' % description

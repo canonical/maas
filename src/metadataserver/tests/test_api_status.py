@@ -216,7 +216,26 @@ class TestStatusAPI(MAASServerTestCase):
             "'curtin' Command Install",
             Event.objects.filter(node=node).last().description)
 
-    def test_status_installation_failure_clears_owner(self):
+    def test_status_installation_fail_leaves_node_failed(self):
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
+        client = make_node_client(node=node)
+        payload = {
+            'event_type': 'finish',
+            'result': 'FAIL',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+        }
+        response = call_status(client, node, payload)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
+        # Check last node event.
+        self.assertEqual(
+            "'curtin' Command Install",
+            Event.objects.filter(node=node).last().description)
+
+    def test_status_installation_failure_doesnt_clear_owner(self):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYING, owner=user)
@@ -233,7 +252,7 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
-        self.assertIsNone(reload_object(node).owner)
+        self.assertIsNotNone(reload_object(node).owner)
 
     def test_status_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
