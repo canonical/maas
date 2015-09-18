@@ -340,7 +340,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIsNone(json.loads(response.content))
         self.assertThat(node_stop, MockCalledOnceWith(
-            ANY, stop_mode=ANY))
+            ANY, stop_mode=ANY, comment=None))
 
     def test_POST_stop_returns_node(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -363,11 +363,25 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         node_stop = self.patch(node_module.Node, 'stop')
         stop_mode = factory.make_name('stop_mode')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'stop', 'stop_mode': stop_mode, 'comment': comment})
+        self.assertThat(
+            node_stop,
+            MockCalledOnceWith(
+                self.logged_in_user, stop_mode=stop_mode, comment=comment))
+
+    def test_POST_stop_handles_missing_comment(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        node_stop = self.patch(node_module.Node, 'stop')
+        stop_mode = factory.make_name('stop_mode')
         self.client.post(
             self.get_node_uri(node), {'op': 'stop', 'stop_mode': stop_mode})
         self.assertThat(
             node_stop,
-            MockCalledOnceWith(self.logged_in_user, stop_mode=stop_mode))
+            MockCalledOnceWith(
+                self.logged_in_user, stop_mode=stop_mode, comment=None))
 
     def test_POST_stop_returns_503_when_power_op_already_in_progress(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -592,6 +606,44 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
+    def test_POST_start_passes_comment(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        comment = factory.make_name('comment')
+        node_start = self.patch(node_module.Node, 'start')
+        node_start.return_value = False
+        self.client.post(
+            self.get_node_uri(node), {
+                'op': 'start',
+                'user_data': None,
+                'distro_series': distro_series,
+                'comment': comment,
+            })
+        self.assertThat(node_start, MockCalledOnceWith(
+            self.logged_in_user, user_data=ANY, comment=comment))
+
+    def test_POST_start_handles_missing_comment(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        node_start = self.patch(node_module.Node, 'start')
+        node_start.return_value = False
+        self.client.post(
+            self.get_node_uri(node), {
+                'op': 'start',
+                'user_data': None,
+                'distro_series': distro_series,
+            })
+        self.assertThat(node_start, MockCalledOnceWith(
+            self.logged_in_user, user_data=ANY, comment=None))
+
     def test_POST_release_releases_owned_node(self):
         self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
@@ -720,6 +772,32 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
+    def test_POST_acquire_passes_comment(self):
+        factory.make_Node(
+            status=NODE_STATUS.READY, power_type='ipmi',
+            power_state=POWER_STATE.ON, with_boot_disk=True)
+        node_method = self.patch(node_module.Node, 'acquire')
+        comment = factory.make_name('comment')
+        self.client.post(
+            reverse('nodes_handler'),
+            {'op': 'acquire', 'comment': comment})
+        self.assertThat(
+            node_method, MockCalledOnceWith(
+                ANY, ANY, agent_name=ANY, storage_layout=ANY,
+                storage_layout_params=ANY, comment=comment))
+
+    def test_POST_acquire_handles_missing_comment(self):
+        factory.make_Node(
+            status=NODE_STATUS.READY, power_type='ipmi',
+            power_state=POWER_STATE.ON, with_boot_disk=True)
+        node_method = self.patch(node_module.Node, 'acquire')
+        self.client.post(
+            reverse('nodes_handler'), {'op': 'acquire'})
+        self.assertThat(
+            node_method, MockCalledOnceWith(
+                ANY, ANY, agent_name=ANY, storage_layout=ANY,
+                storage_layout_params=ANY, comment=None))
+
     def test_POST_release_frees_hwe_kernel(self):
         self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
@@ -732,6 +810,32 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
         self.assertEqual(None, reload_object(node).hwe_kernel)
+
+    def test_POST_release_passes_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
+            power_type='ipmi', power_state=POWER_STATE.OFF)
+        self.become_admin()
+        comment = factory.make_name('comment')
+        node_release = self.patch(node_module.Node, 'release_or_erase')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'release', 'comment': comment})
+        self.assertThat(
+            node_release,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_POST_release_handles_missing_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
+            power_type='ipmi', power_state=POWER_STATE.OFF)
+        self.become_admin()
+        node_release = self.patch(node_module.Node, 'release_or_erase')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertThat(
+            node_release,
+            MockCalledOnceWith(self.logged_in_user, None))
 
     def test_POST_commission_commissions_node(self):
         node = factory.make_Node(
@@ -1689,9 +1793,26 @@ class TestMarkBroken(APITestCase):
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_mark_broken_updates_error_description(self):
+        # 'error_description' parameter was renamed 'comment' for consistency
+        # make sure this comment updates the node's error_description
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        error_description = factory.make_name('error-description')
+        comment = factory.make_name('comment')
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'comment': comment})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, comment),
+            (node.status, node.error_description)
+        )
+
+    def test_mark_broken_updates_error_description_compatibility(self):
+        # test old 'error_description' parameter is honored for compatibility
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        error_description = factory.make_name('error_description')
         response = self.client.post(
             self.get_node_uri(node),
             {'op': 'mark_broken', 'error_description': error_description})
@@ -1701,6 +1822,28 @@ class TestMarkBroken(APITestCase):
             (NODE_STATUS.BROKEN, error_description),
             (node.status, node.error_description)
         )
+
+    def test_mark_broken_passes_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        node_mark_broken = self.patch(node_module.Node, 'mark_broken')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'comment': comment})
+        self.assertThat(
+            node_mark_broken,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_mark_broken_handles_missing_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        node_mark_broken = self.patch(node_module.Node, 'mark_broken')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertThat(
+            node_mark_broken,
+            MockCalledOnceWith(self.logged_in_user, None))
 
     def test_mark_broken_requires_ownership(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -1741,6 +1884,28 @@ class TestMarkFixed(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_mark_fixed_passes_comment(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_mark_fixed = self.patch(node_module.Node, 'mark_fixed')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_fixed', 'comment': comment})
+        self.assertThat(
+            node_mark_fixed,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_mark_fixed_handles_missing_comment(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_mark_fixed = self.patch(node_module.Node, 'mark_fixed')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertThat(
+            node_mark_fixed,
+            MockCalledOnceWith(self.logged_in_user, None))
 
 
 class TestPowerParameters(APITestCase):
@@ -1800,6 +1965,30 @@ class TestAbortOperation(APITransactionTestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_abort_operation_passes_comment(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
+        node_method = self.patch(node_module.Node, 'abort_operation')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'abort_operation', 'comment': comment})
+        self.assertThat(
+            node_method,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_abort_operation_handles_missing_comment(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
+        node_method = self.patch(node_module.Node, 'abort_operation')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'abort_operation'})
+        self.assertThat(
+            node_method,
+            MockCalledOnceWith(self.logged_in_user, None))
 
 
 class TestSetStorageLayout(APITestCase):

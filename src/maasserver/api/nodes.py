@@ -402,15 +402,19 @@ class NodeHandler(OperationsHandler):
             gracefully before powering off, while a hard power off
             occurs immediately without any warning to the OS.
         :type stop_mode: unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
 
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to stop the node.
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
+        comment = get_optional_param(request.POST, 'comment')
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
-        power_action_sent = node.stop(request.user, stop_mode=stop_mode)
+        power_action_sent = node.stop(
+            request.user, stop_mode=stop_mode, comment=comment)
         if power_action_sent:
             return node
         else:
@@ -429,6 +433,8 @@ class NodeHandler(OperationsHandler):
         :param hwe_kernel: If present, this parameter specified the kernel to
             be used on the node
         :type hwe_kernel: unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -445,6 +451,7 @@ class NodeHandler(OperationsHandler):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
+        comment = get_optional_param(request.POST, 'comment')
 
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -472,7 +479,7 @@ class NodeHandler(OperationsHandler):
                 raise MAASAPIValidationError(form.errors)
 
         try:
-            node.start(request.user, user_data=user_data)
+            node.start(request.user, user_data=user_data, comment=comment)
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.
@@ -485,10 +492,14 @@ class NodeHandler(OperationsHandler):
     def release(self, request, system_id):
         """Release a node.  Opposite of `NodesHandler.acquire`.
 
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to release the node.
         Returns 409 if the node is in a state where it may not be released.
         """
+        comment = get_optional_param(request.POST, 'comment')
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.RELEASING or \
@@ -498,7 +509,7 @@ class NodeHandler(OperationsHandler):
             # postcondition is achieved, so call this success.
             pass
         elif node.status in RELEASABLE_STATUSES:
-            node.release_or_erase(request.user)
+            node.release_or_erase(request.user, comment)
         else:
             raise NodeStateViolation(
                 "Node cannot be released in its current state ('%s')."
@@ -665,9 +676,9 @@ class NodeHandler(OperationsHandler):
 
         If the node is allocated, release it first.
 
-        :param error_description: An optional description of the reason the
-            node is being marked broken.
-        :type error_description: unicode
+        :param comment: Optional comment for the event log. Will be
+            displayed on the Node as an error description until marked fixed.
+        :type comment: unicode
 
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to mark the node
@@ -675,22 +686,28 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
-        error_description = get_optional_param(
-            request.POST, 'error_description', '')
-        node.mark_broken(request.user, error_description)
+        comment = get_optional_param(request.POST, 'comment')
+        if not comment:
+            # read old error_description to for backward compatibility
+            comment = get_optional_param(request.POST, 'error_description')
+        node.mark_broken(request.user, comment)
         return node
 
     @operation(idempotent=False)
     def mark_fixed(self, request, system_id):
         """Mark a broken node as fixed and set its status as 'ready'.
 
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to mark the node
         broken.
         """
+        comment = get_optional_param(request.POST, 'comment')
         node = Node.nodes.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
-        node.mark_fixed(request.user)
+        node.mark_fixed(request.user, comment)
         maaslog.info(
             "%s: User %s marked node as fixed", node.hostname,
             request.user.username)
@@ -775,16 +792,20 @@ class NodeHandler(OperationsHandler):
     def abort_operation(self, request, system_id):
         """Abort a node's current operation.
 
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
         This currently only supports aborting of the 'Disk Erasing' operation.
 
         Returns 404 if the node could not be found.
         Returns 403 if the user does not have permission to abort the
         current operation.
         """
+        comment = get_optional_param(request.POST, 'comment')
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
-        node.abort_operation(request.user)
+        node.abort_operation(request.user, comment)
         return node
 
     @operation(idempotent=False)
@@ -1209,6 +1230,8 @@ class NodesHandler(OperationsHandler):
 
         :param nodes: system_ids of the nodes which are to be released.
            (An empty list is acceptable).
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
         :return: The system_ids of any nodes that have their status
             changed by this call. Thus, nodes that were already released
             are excluded from the result.
@@ -1220,6 +1243,7 @@ class NodesHandler(OperationsHandler):
         current state.
         """
         system_ids = set(request.POST.getlist('nodes'))
+        comment = get_optional_param(request.POST, 'comment')
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
@@ -1239,7 +1263,7 @@ class NodesHandler(OperationsHandler):
                 # Nothing to do.
                 pass
             elif node.status in RELEASABLE_STATUSES:
-                node.release_or_erase(request.user)
+                node.release_or_erase(request.user, comment)
                 released_ids.append(node.system_id)
             else:
                 failed.append(
@@ -1329,11 +1353,14 @@ class NodesHandler(OperationsHandler):
         :param agent_name: An optional agent name to attach to the
             acquired node.
         :type agent_name: unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
 
         Returns 409 if a suitable node matching the constraints could not be
         found.
         """
         form = AcquireNodeForm(data=request.data)
+        comment = get_optional_param(request.POST, 'comment')
         maaslog.info(
             "Request from user %s to acquire a node with constraints %s",
             request.user.username, request.data)
@@ -1369,7 +1396,8 @@ class NodesHandler(OperationsHandler):
                     request.user, get_oauth_token(request),
                     agent_name=agent_name,
                     storage_layout=storage_layout,
-                    storage_layout_params=storage_layout_params)
+                    storage_layout_params=storage_layout_params,
+                    comment=comment)
             except StorageLayoutMissingBootDiskError:
                 raise MAASAPIBadRequest(
                     "Failed to acquire node; missing a boot disk (no storage "

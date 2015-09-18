@@ -1357,7 +1357,7 @@ class TestNodesAPI(APITestCase):
             mock_acquire,
             MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY, storage_layout='flat',
-                storage_layout_params={'root_size': '50%'}))
+                storage_layout_params={'root_size': '50%'}, comment=None))
 
     def test_POST_accept_gets_node_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,
