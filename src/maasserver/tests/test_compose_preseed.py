@@ -14,7 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.compose_preseed import compose_preseed
+from maasserver.compose_preseed import (
+    compose_preseed,
+    get_apt_proxy_for_node,
+)
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
@@ -44,6 +47,7 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        apt_proxy = get_apt_proxy_for_node(node)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertIn('datasource', preseed)
@@ -52,6 +56,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
+        self.assertEquals(apt_proxy, preseed['apt_proxy'])
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -97,6 +102,7 @@ class TestComposePreseed(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
+        apt_proxy = get_apt_proxy_for_node(node)
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
 
         keyname = "cloud-init/local-cloud-config"
@@ -115,15 +121,17 @@ class TestComposePreseed(MAASServerTestCase):
         data = yaml.safe_load(value)
 
         self.assertIn("manage_etc_hosts", data)
-        self.assertEqual(data["manage_etc_hosts"], False)
+        self.assertFalse(data["manage_etc_hosts"])
         self.assertIn("apt_preserve_sources_list", data)
-        self.assertEqual(data["apt_preserve_sources_list"], True)
+        self.assertTrue(data["apt_preserve_sources_list"])
+        self.assertEqual(apt_proxy, data["apt_proxy"])
 
     def test_compose_preseed_with_curtin_installer(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
+        apt_proxy = get_apt_proxy_for_node(node)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 
@@ -136,6 +144,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
+        self.assertEqual(apt_proxy, preseed['apt_proxy'])
 
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name('os')

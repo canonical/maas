@@ -331,7 +331,7 @@ def get_curtin_context(node):
     token = NodeKey.objects.get_token_for_node(node)
     base_url = node.nodegroup.maas_url
     return {
-        'curtin_preseed': compose_cloud_init_preseed(token, base_url)
+        'curtin_preseed': compose_cloud_init_preseed(node, token, base_url)
     }
 
 

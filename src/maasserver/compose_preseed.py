@@ -20,6 +20,8 @@ from urllib import urlencode
 
 from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.enum import PRESEED_TYPE
+from maasserver.models.config import Config
+from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -28,7 +30,16 @@ from provisioningserver.rpc.exceptions import (
 import yaml
 
 
-def compose_cloud_init_preseed(token, base_url=''):
+def get_apt_proxy_for_node(node):
+    """Return the APT proxy for the `node`."""
+    http_proxy = Config.objects.get_config("http_proxy")
+    if http_proxy:
+        return http_proxy
+    else:
+        return "http://%s:8000/" % get_maas_facing_server_host(node.nodegroup)
+
+
+def compose_cloud_init_preseed(node, token, base_url=''):
     """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
@@ -43,6 +54,7 @@ def compose_cloud_init_preseed(token, base_url=''):
         # See bug 1087183 for details.
         "manage_etc_hosts": False,
         "apt_preserve_sources_list": True,
+        "apt_proxy": get_apt_proxy_for_node(node),
     })
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
@@ -66,20 +78,24 @@ def compose_cloud_init_preseed(token, base_url=''):
         for item_name, item_type, item_value in preseed_items)
 
 
-def compose_commissioning_preseed(token, base_url=''):
+def compose_commissioning_preseed(node, token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
+    apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('metadata', base_url=base_url)
-    return _compose_cloud_init_preseed(token, metadata_url)
+    return _compose_cloud_init_preseed(
+        token, metadata_url, apt_proxy=apt_proxy)
 
 
-def compose_curtin_preseed(token, base_url=''):
+def compose_curtin_preseed(node, token, base_url=''):
     """Compose the preseed value for a node being installed with curtin."""
+    apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
-    return _compose_cloud_init_preseed(token, metadata_url)
+    return _compose_cloud_init_preseed(
+        token, metadata_url, apt_proxy=apt_proxy)
 
 
-def _compose_cloud_init_preseed(token, metadata_url):
-    return "#cloud-config\n%s" % yaml.safe_dump({
+def _compose_cloud_init_preseed(token, metadata_url, apt_proxy=None):
+    cloud_config = {
         'datasource': {
             'MAAS': {
                 'metadata_url': metadata_url,
@@ -88,7 +104,10 @@ def _compose_cloud_init_preseed(token, metadata_url):
                 'token_secret': token.secret,
             }
         }
-    })
+    }
+    if apt_proxy:
+        cloud_config['apt_proxy'] = apt_proxy
+    return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 
 def _get_metadata_url(preseed_type, base_url):
@@ -118,7 +137,7 @@ def compose_preseed(preseed_type, node):
     base_url = node.nodegroup.maas_url
 
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
-        return compose_commissioning_preseed(token, base_url)
+        return compose_commissioning_preseed(node, token, base_url)
     else:
         metadata_url = _get_metadata_url(preseed_type, base_url)
 
@@ -148,6 +167,6 @@ def compose_preseed(preseed_type, node):
 
         # There is no OS-specific preseed data.
         if preseed_type == PRESEED_TYPE.CURTIN:
-            return compose_curtin_preseed(token, base_url)
+            return compose_curtin_preseed(node, token, base_url)
         else:
-            return compose_cloud_init_preseed(token, base_url)
+            return compose_cloud_init_preseed(node, token, base_url)

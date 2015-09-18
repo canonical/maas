@@ -1,10 +1,4 @@
 #cloud-config
-{{if http_proxy}}
-apt_proxy: {{http_proxy}}
-{{elif server_host}}
-apt_proxy: http://{{server_host}}:8000/
-{{endif}}
-
 system_info:
    package_mirrors:
      - arches: [i386, amd64]
