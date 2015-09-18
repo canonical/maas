@@ -1109,17 +1109,21 @@ def remove_gateway_link_when_ip_address_removed_from_interface(
     the IP address was not deleted just moved. In that case we need to removed
     the gateway links on the node model."""
     if (type(instance) in ALL_INTERFACE_TYPES and
-            model == StaticIPAddress and
-            instance.node is not None and
-            action == "post_remove"):
-        node = instance.node
-        for pk in pk_set:
-            if node.gateway_link_ipv4_id == pk:
-                node.gateway_link_ipv4_id = None
-                node.save(update_fields=["gateway_link_ipv4_id"])
-            if node.gateway_link_ipv6_id == pk:
-                node.gateway_link_ipv6_id = None
-                node.save(update_fields=["gateway_link_ipv6_id"])
+            model == StaticIPAddress and action == "post_remove"):
+        # Circular imports.
+        from maasserver.models.node import Node
+        try:
+            node = instance.node
+        except Node.DoesNotExist:
+            return
+        if node is not None:
+            for pk in pk_set:
+                if node.gateway_link_ipv4_id == pk:
+                    node.gateway_link_ipv4_id = None
+                    node.save(update_fields=["gateway_link_ipv4_id"])
+                if node.gateway_link_ipv6_id == pk:
+                    node.gateway_link_ipv6_id = None
+                    node.save(update_fields=["gateway_link_ipv6_id"])
 
 
 models.signals.m2m_changed.connect(
