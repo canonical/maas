@@ -64,6 +64,20 @@ class EVENT_TYPES:
     NODE_STATUS_EVENT = "NODE_STATUS_EVENT"
     NODE_COMMISSIONING_EVENT = "NODE_COMMISSIONING_EVENT"
     NODE_INSTALL_EVENT = "NODE_INSTALL_EVENT"
+    # Node user request events
+    REQUEST_NODE_START_COMMISSIONING = "REQUEST_NODE_START_COMMISSIONING"
+    REQUEST_NODE_ABORT_COMMISSIONING = "REQUEST_NODE_ABORT_COMMISSIONING"
+    REQUEST_NODE_ABORT_DEPLOYMENT = "REQUEST_NODE_ABORT_DEPLOYMENT"
+    REQUEST_NODE_ACQUIRE = "REQUEST_NODE_ACQUIRE"
+    REQUEST_NODE_ERASE_DISK = "REQUEST_NODE_ERASE_DISK"
+    REQUEST_NODE_ABORT_ERASE_DISK = "REQUEST_NODE_ABORT_ERASE_DISK"
+    REQUEST_NODE_RELEASE = "REQUEST_NODE_RELEASE"
+    REQUEST_NODE_MARK_FAILED = "REQUEST_NODE_MARK_FAILED"
+    REQUEST_NODE_MARK_BROKEN = "REQUEST_NODE_MARK_BROKEN"
+    REQUEST_NODE_MARK_FIXED = "REQUEST_NODE_MARK_FIXED"
+    REQUEST_NODE_START_DEPLOYMENT = "REQUEST_NODE_START_DEPLOYMENT"
+    REQUEST_NODE_START = "REQUEST_NODE_START"
+    REQUEST_NODE_STOP = "REQUEST_NODE_STOP"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -126,6 +140,58 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_INSTALL_EVENT: EventDetail(
         description="Node installation",
         level=DEBUG,
+    ),
+    EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
+        description="User starting node commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING: EventDetail(
+        description="User aborting node commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT: EventDetail(
+        description="User aborting deployment",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ACQUIRE: EventDetail(
+        description="User acquiring node",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ERASE_DISK: EventDetail(
+        description="User erasing disk",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK: EventDetail(
+        description="User aborting disk erase",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_RELEASE: EventDetail(
+        description="User releasing node",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_MARK_FAILED: EventDetail(
+        description="User marking node failed",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_MARK_BROKEN: EventDetail(
+        description="User marking node broken",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_MARK_FIXED: EventDetail(
+        description="User marking node fixed",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT: EventDetail(
+        description="User starting deployment",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_START: EventDetail(
+        description="User powering up node",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_STOP: EventDetail(
+        description="User powering down node",
+        level=INFO,
     ),
 }
 

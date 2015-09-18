@@ -120,6 +120,10 @@ from maasserver.utils.orm import (
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
 from piston.models import Token
+from provisioningserver.events import (
+    EVENT_DETAILS,
+    EVENT_TYPES,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
@@ -635,7 +639,22 @@ class Node(CleanSave, TimestampedModel):
         """
         return timedelta(minutes=5).total_seconds()
 
-    def start_deployment(self):
+    def _register_request_event(self, user, type_name, comment=None):
+        """Register a node user request event."""
+        # don't register system generated non-user requests
+        if user is not None:
+            event_details = EVENT_DETAILS[type_name]
+            description = "(%s)" % user.username
+            if comment:
+                description = "%s - %s" % (description, comment)
+            # Avoid circular imports.
+            from maasserver.models.event import Event
+            Event.objects.register_event_and_event_type(
+                self.system_id, type_name, type_level=event_details.level,
+                type_description=event_details.description,
+                event_description=description)
+
+    def _start_deployment(self):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
         self.save()
@@ -669,8 +688,8 @@ class Node(CleanSave, TimestampedModel):
         failed_status = get_failed_status(self.status)
         if failed_status is not None:
             timeout_timedelta = timedelta(seconds=context['timeout'])
-            self.mark_failed(
-                "Node operation '%s' timed out after %s." % (
+            self._mark_failed(
+                None, "Node operation '%s' timed out after %s." % (
                     (
                         NODE_STATUS_CHOICES_DICT[self.status],
                         timeout_timedelta
@@ -931,6 +950,9 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.commissioning import generate_user_data
         from metadataserver.models import NodeResult
 
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING)
+
         # Set the commissioning options on the node.
         self.enable_ssh = enable_ssh
         self.block_poweroff = block_poweroff
@@ -965,7 +987,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self.start(user, user_data=commissioning_user_data)
+            starting = self._start(user, commissioning_user_data)
         except Exception as error:
             self.status = old_status
             self.save()
@@ -1045,7 +1067,7 @@ class Node(CleanSave, TimestampedModel):
                 "must be started manually", hostname)
 
     @transactional
-    def abort_commissioning(self, user):
+    def abort_commissioning(self, user, comment=None):
         """Power off a commissioning node and set its status to NEW.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1058,6 +1080,9 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING, comment)
+
         # Prepare a transition monitor for later.
         monitor = TransitionMonitor.fromNode(self)
 
@@ -1065,7 +1090,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            stopping = self.stop(user)
+            stopping = self._stop(user)
             if self.owner is not None:
                 self.owner = None
                 self.save()
@@ -1104,7 +1129,7 @@ class Node(CleanSave, TimestampedModel):
             return stopping.addErrback(eb_abort, self.hostname)
 
     @transactional
-    def abort_deploying(self, user):
+    def abort_deploying(self, user, comment=None):
         """Power off a deploying node and set its status to ALLOCATED.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1117,6 +1142,9 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT, comment)
+
         # Prepare a transition monitor for later.
         monitor = TransitionMonitor.fromNode(self)
 
@@ -1124,7 +1152,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            stopping = self.stop(user)
+            stopping = self._stop(user)
         except Exception as error:
             maaslog.error(
                 "%s: Error when aborting deployment: %s",
@@ -1410,7 +1438,7 @@ class Node(CleanSave, TimestampedModel):
 
     def acquire(
             self, user, token=None, agent_name='',
-            storage_layout=None, storage_layout_params={}):
+            storage_layout=None, storage_layout_params={}, comment=None):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
@@ -1420,6 +1448,9 @@ class Node(CleanSave, TimestampedModel):
             storage_layout = Config.objects.get_config(
                 "default_storage_layout")
         self.set_storage_layout(storage_layout, params=storage_layout_params)
+
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, comment)
 
         # Now allocate the node since the storage layout is setup correctly.
         self.status = NODE_STATUS.ALLOCATED
@@ -1464,7 +1495,7 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s: moved from %s zone to %s zone." % (
             self.hostname, old_zone_name, self.zone.name))
 
-    def start_disk_erasing(self, user):
+    def start_disk_erasing(self, user, comment=None):
         """Erase the disks on a node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1476,6 +1507,10 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.disk_erasing import generate_user_data
 
         disk_erase_user_data = generate_user_data(node=self)
+
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ERASE_DISK, comment)
+
         # Change the status of the node now to avoid races when starting
         # nodes in bulk.
         self.status = NODE_STATUS.DISK_ERASING
@@ -1485,7 +1520,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self.start(user, user_data=disk_erase_user_data)
+            starting = self._start(user, disk_erase_user_data)
         except Exception as error:
             # We always mark the node as failed here, although we could
             # potentially move it back to the state it was in previously. For
@@ -1545,7 +1580,7 @@ class Node(CleanSave, TimestampedModel):
                 "%s: Could not start node for disk erasure; it "
                 "must be started manually", hostname)
 
-    def abort_disk_erasing(self, user):
+    def abort_disk_erasing(self, user, comment=None):
         """Power off disk erasing node and set a failed status.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1558,11 +1593,14 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK, comment)
+
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            stopping = self.stop(user)
+            stopping = self._stop(user)
         except Exception as error:
             maaslog.error(
                 "%s: Error when aborting disk erasure: %s",
@@ -1613,26 +1651,29 @@ class Node(CleanSave, TimestampedModel):
                 callOut, maaslog.warning, "%s: Could not stop node to abort "
                 "disk erasure; it must be stopped manually", hostname)
 
-    def abort_operation(self, user):
+    def abort_operation(self, user, comment=None):
         """Abort the current operation.
-        This currently only supports aborting Disk Erasing.
         """
         if self.status == NODE_STATUS.DISK_ERASING:
-            self.abort_disk_erasing(user)
+            self.abort_disk_erasing(user, comment)
             return
         if self.status == NODE_STATUS.COMMISSIONING:
-            self.abort_commissioning(user)
+            self.abort_commissioning(user, comment)
             return
         if self.status == NODE_STATUS.DEPLOYING:
-            self.abort_deploying(user)
+            self.abort_deploying(user, comment)
             return
-
         raise NodeStateViolation(
             "Cannot abort in current state: "
             "node %s is in state %s."
             % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-    def release(self):
+    def release(self, user=None, comment=None):
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_RELEASE, comment)
+        self._release(user)
+
+    def _release(self, user=None):
         """Mark allocated or reserved node as available again and power off.
         """
         maaslog.info("%s: Releasing node", self.hostname)
@@ -1643,7 +1684,7 @@ class Node(CleanSave, TimestampedModel):
         # the issue this will cause.
         if self.power_state != POWER_STATE.OFF:
             try:
-                self.stop(self.owner)
+                self._stop(self.owner)
             except Exception as ex:
                 maaslog.error(
                     "%s: Unable to shut node down: %s", self.hostname,
@@ -1694,16 +1735,15 @@ class Node(CleanSave, TimestampedModel):
         # If this node has non-installable children, remove them.
         self.children.all().delete()
 
-    def release_or_erase(self):
+    def release_or_erase(self, user, comment=None):
         """Either release the node or erase the node then release it, depending
         on settings."""
         erase_on_release = Config.objects.get_config(
             'enable_disk_erasing_on_release')
         if erase_on_release:
-            self.start_disk_erasing(self.owner)
-            return
-
-        self.release()
+            self.start_disk_erasing(user, comment)
+        else:
+            self.release(user, comment)
 
     def set_netboot(self, on=True):
         """Set netboot on or off."""
@@ -1725,7 +1765,12 @@ class Node(CleanSave, TimestampedModel):
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 
-    def mark_failed(self, error_description):
+    def mark_failed(self, user, comment=None):
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, comment)
+        self._mark_failed(user, comment)
+
+    def _mark_failed(self, user, comment=None):
         """Mark this node as failed.
 
         The actual 'failed' state depends on the current status of the
@@ -1734,11 +1779,10 @@ class Node(CleanSave, TimestampedModel):
         new_status = get_failed_status(self.status)
         if new_status is not None:
             self.status = new_status
-            self.error_description = error_description
+            self.error_description = comment if comment else ''
             self.save()
             maaslog.error(
-                "%s: Marking node failed: %s", self.hostname,
-                error_description)
+                "%s: Marking node failed: %s", self.hostname, comment)
         elif self.status == NODE_STATUS.NEW:
             # Silently ignore, failing a new node makes no sense.
             pass
@@ -1751,22 +1795,26 @@ class Node(CleanSave, TimestampedModel):
                 "be transitioned to a corresponding failed status." %
                 self.status)
 
-    def mark_broken(self, error_description):
+    def mark_broken(self, user, comment=None):
         """Mark this node as 'BROKEN'.
 
         If the node is allocated, release it first.
         """
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_MARK_BROKEN, comment)
         if self.status in RELEASABLE_STATUSES:
-            self.release()
+            self._release(user)
         # release() normally sets the status to RELEASING and leaves the
         # owner in place, override that here as we're broken.
         self.status = NODE_STATUS.BROKEN
         self.owner = None
-        self.error_description = error_description
+        self.error_description = comment if comment else ''
         self.save()
 
-    def mark_fixed(self):
+    def mark_fixed(self, user, comment=None):
         """Mark a broken node as fixed and change its state to 'READY'."""
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_MARK_FIXED, comment)
         if self.status != NODE_STATUS.BROKEN:
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
@@ -2116,11 +2164,23 @@ class Node(CleanSave, TimestampedModel):
         return False
 
     @transactional
-    def start(self, by_user, user_data=None):
+    def start(self, user, user_data=None, comment=None):
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't start a node you don't own unless you're an admin.
+            raise PermissionDenied()
+        event = EVENT_TYPES.REQUEST_NODE_START
+        # if status is ALLOCATED, this start is actually for a deplyment
+        if self.status == NODE_STATUS.ALLOCATED:
+            event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
+        self._register_request_event(user, event, comment)
+        return self._start(user, user_data)
+
+    @transactional
+    def _start(self, user, user_data=None):
         """Request on given user's behalf that the node be started up.
 
-        :param by_user: Requesting user.
-        :type by_user: User_
+        :param user: Requesting user.
+        :type user: User_
         :param user_data: Optional blob of user-data to be made available to
             the node through the metadata service. If not given, any previous
             user data is used.
@@ -2129,7 +2189,7 @@ class Node(CleanSave, TimestampedModel):
         :raise StaticIPAddressExhaustion: if there are not enough IP addresses
             left in the static range for this node to get all the addresses it
             needs.
-        :raise PermissionDenied: If `by_user` does not have permission to
+        :raise PermissionDenied: If `user` does not have permission to
             start this node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -2142,7 +2202,7 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
 
-        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
 
@@ -2151,16 +2211,14 @@ class Node(CleanSave, TimestampedModel):
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, user_data)
 
-        # Claim AUTO IP addresses for the node if it's ALLOCATED.
         if self.status == NODE_STATUS.ALLOCATED:
+            # Claim AUTO IP addresses for the node if it's ALLOCATED.
             self.claim_auto_ips()
-
-        if self.status == NODE_STATUS.ALLOCATED:
             transition_monitor = (
                 TransitionMonitor.fromNode(self)
                 .within(seconds=self.get_deployment_time())
                 .status_should_be(self.status))
-            self.start_deployment()
+            self._start_deployment()
         else:
             transition_monitor = None
 
@@ -2185,15 +2243,24 @@ class Node(CleanSave, TimestampedModel):
             self.nodegroup.uuid, power_info)
 
     @transactional
-    def stop(self, by_user, stop_mode='hard'):
+    def stop(self, user, stop_mode='hard', comment=None):
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't stop a node you don't own unless you're an admin.
+            raise PermissionDenied()
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_STOP, comment)
+        return self._stop(user, stop_mode)
+
+    @transactional
+    def _stop(self, user, stop_mode='hard'):
         """Request that the node be powered down.
 
-        :param by_user: Requesting user.
-        :type by_user: User_
+        :param user: Requesting user.
+        :type user: User_
         :param stop_mode: Power off mode - usually 'soft' or 'hard'.
         :type stop_mode: unicode
 
-        :raise PermissionDenied: If `by_user` does not have permission to
+        :raise PermissionDenied: If `user` does not have permission to
             stop this node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -2203,7 +2270,7 @@ class Node(CleanSave, TimestampedModel):
             does not support it, `None` will be returned. The node must be
             powered off manually.
         """
-        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
 

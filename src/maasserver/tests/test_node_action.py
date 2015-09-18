@@ -282,7 +282,7 @@ class TestCommissionAction(MAASServerTestCase):
             interface=True, status=self.status,
             power_type='ether_wake', power_state=POWER_STATE.OFF)
         self.patch_autospec(node, 'start_transition_monitor')
-        node_start = self.patch(node, 'start')
+        node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
         action = Commission(node, admin)
@@ -290,7 +290,7 @@ class TestCommissionAction(MAASServerTestCase):
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            node_start, MockCalledOnceWith(admin, user_data=ANY))
+            node_start, MockCalledOnceWith(admin, ANY))
 
 
 class TestAbortAction(MAASTransactionServerTestCase):
@@ -301,7 +301,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             node = factory.make_Node(
                 status=NODE_STATUS.DISK_ERASING, owner=owner)
 
-        node_stop = self.patch_autospec(node, 'stop')
+        node_stop = self.patch_autospec(node, '_stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
 
@@ -326,7 +326,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             admin = factory.make_admin()
 
         self.patch_autospec(node, 'stop_transition_monitor')
-        node_stop = self.patch_autospec(node, 'stop')
+        node_stop = self.patch_autospec(node, '_stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
 
@@ -351,7 +351,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             admin = factory.make_admin()
 
         self.patch_autospec(node, 'stop_transition_monitor')
-        node_stop = self.patch_autospec(node, 'stop')
+        node_stop = self.patch_autospec(node, '_stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
 
@@ -701,7 +701,7 @@ class TestReleaseAction(MAASServerTestCase):
             power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
         self.patch(node, 'start_transition_monitor')
-        node_stop = self.patch_autospec(node, 'stop')
+        node_stop = self.patch_autospec(node, '_stop')
 
         Release(node, user).execute()
 
@@ -727,7 +727,7 @@ class TestMarkBrokenAction(MAASServerTestCase):
         self.assertTrue(action.is_permitted())
         action.execute()
         self.assertEqual(
-            "Manually marked as broken by user '%s'" % user.username,
+            "via web interface",
             reload_object(node).error_description
         )
 
@@ -831,8 +831,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
 
     def patch_rpc_methods(self, node):
         exception = self.make_exception()
-        self.patch(node, 'start').side_effect = exception
-        self.patch(node, 'stop').side_effect = exception
+        self.patch(node, '_start').side_effect = exception
+        self.patch(node, '_stop').side_effect = exception
         self.patch_autospec(node, 'start_transition_monitor')
         self.patch_autospec(node, 'stop_transition_monitor')
 
@@ -852,8 +852,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
-            get_error_message_for_exception(
-                action.node.start.side_effect),
+            get_error_message_for_exception(action.node._start.side_effect),
             unicode(exception))
 
     def test_Abort_handles_rpc_errors(self):
@@ -862,8 +861,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
-            get_error_message_for_exception(
-                action.node.stop.side_effect),
+            get_error_message_for_exception(action.node._stop.side_effect),
             unicode(exception))
 
     def test_PowerOn_handles_rpc_errors(self):
@@ -871,8 +869,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
-            get_error_message_for_exception(
-                action.node.start.side_effect),
+            get_error_message_for_exception(action.node._start.side_effect),
             unicode(exception))
 
     def test_PowerOff_handles_rpc_errors(self):
@@ -880,8 +877,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
-            get_error_message_for_exception(
-                action.node.stop.side_effect),
+            get_error_message_for_exception(action.node._stop.side_effect),
             unicode(exception))
 
     def test_Release_handles_rpc_errors(self):
@@ -890,6 +886,5 @@ class TestActionsErrorHandling(MAASServerTestCase):
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
-            get_error_message_for_exception(
-                action.node.stop.side_effect),
+            get_error_message_for_exception(action.node._stop.side_effect),
             unicode(exception))

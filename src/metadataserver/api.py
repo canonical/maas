@@ -355,14 +355,15 @@ class StatusHandler(MetadataViewHandler):
             elif node.status == NODE_STATUS.DEPLOYING:
                 if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(
-                        "Installation failed (refer to the installation log "
-                        "for more information).")
+                        None,
+                        "Installation failed (refer to the "
+                        "installation log for more information).")
             elif node.status == NODE_STATUS.DISK_ERASING:
                 if result == 'SUCCESS':
                     # disk erasing complete, release node.
                     node.release()
                 elif result in ['FAIL', 'FAILURE']:
-                    node.mark_failed("Failed to erase disks.")
+                    node.mark_failed(None, "Failed to erase disks.")
 
             # Deallocate the node if we enter any terminal state.
             if node.status in [
@@ -518,15 +519,16 @@ class VersionIndexHandler(MetadataViewHandler):
             self._store_installation_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
                 node.mark_failed(
-                    "Installation failed (refer to the installation log "
-                    "for more information).")
+                    None,
+                    "Installation failed (refer to the "
+                    "installation log for more information).")
             target_status = None
         elif node.status == NODE_STATUS.DISK_ERASING:
             if status == SIGNAL_STATUS.OK:
                 # disk erasing complete, release node
                 node.release()
             elif status == SIGNAL_STATUS.FAILED:
-                node.mark_failed("Failed to erase disks.")
+                node.mark_failed(None, "Failed to erase disks.")
             target_status = None
 
         if target_status in (None, node.status):

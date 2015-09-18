@@ -498,7 +498,7 @@ class NodeHandler(OperationsHandler):
             # postcondition is achieved, so call this success.
             pass
         elif node.status in RELEASABLE_STATUSES:
-            node.release_or_erase()
+            node.release_or_erase(request.user)
         else:
             raise NodeStateViolation(
                 "Node cannot be released in its current state ('%s')."
@@ -677,7 +677,7 @@ class NodeHandler(OperationsHandler):
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         error_description = get_optional_param(
             request.POST, 'error_description', '')
-        node.mark_broken(error_description)
+        node.mark_broken(request.user, error_description)
         return node
 
     @operation(idempotent=False)
@@ -690,7 +690,7 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
-        node.mark_fixed()
+        node.mark_fixed(request.user)
         maaslog.info(
             "%s: User %s marked node as fixed", node.hostname,
             request.user.username)
@@ -1239,7 +1239,7 @@ class NodesHandler(OperationsHandler):
                 # Nothing to do.
                 pass
             elif node.status in RELEASABLE_STATUSES:
-                node.release_or_erase()
+                node.release_or_erase(request.user)
                 released_ids.append(node.system_id)
             else:
                 failed.append(

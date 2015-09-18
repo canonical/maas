@@ -2933,7 +2933,7 @@
     disable_ipv4: false
     distro_series: ''
     error: finished [8/8]
-    error_description: Manually marked as broken by user 'ubuntu'
+    error_description: via web interface
     hostname: eager-needle
     installable: true
     license_key: ''

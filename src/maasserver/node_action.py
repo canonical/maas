@@ -410,7 +410,7 @@ class Release(NodeAction):
     def execute(self):
         """See `NodeAction.execute`."""
         try:
-            self.node.release_or_erase()
+            self.node.release_or_erase(self.user)
             self.node.hwe_kernel = ""
             self.node.save()
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
@@ -437,8 +437,7 @@ class MarkBroken(NodeAction):
 
     def execute(self):
         """See `NodeAction.execute`."""
-        self.node.mark_broken(
-            "Manually marked as broken by user '%s'" % self.user.username)
+        self.node.mark_broken(self.user, "via web interface")
 
 
 class MarkFixed(NodeAction):
@@ -459,7 +458,7 @@ class MarkFixed(NodeAction):
             raise NodeActionError(
                 "Unable to be mark fixed because it has not been commissioned "
                 "successfully.")
-        self.node.mark_fixed()
+        self.node.mark_fixed(self.user)
 
     def has_commissioning_data(self):
         """Return True when the node is missing the required commissioning
