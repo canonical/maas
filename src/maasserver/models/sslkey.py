@@ -72,7 +72,7 @@ def get_html_display_for_key(key):
     """Returns the html escaped string for the key."""
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, key)
     subject = cert.get_subject()
-    md5 = cert.digest('MD5')
+    md5 = cert.digest(b'MD5')
     cn = find_ssl_common_name(subject)
     if cn is not None:
         key = "%s %s" % (cn, md5)

@@ -97,11 +97,11 @@ class ZoneListingViewTest(MAASServerTestCase):
                                         'tab': 'devices'})
                              for zone in sorted_zones]
         node_links_on_page = [link for link in get_content_links(response)
-                              if link.startswith('/#/nodes')
-                              and '&tab=devices' not in link]
+                              if link.startswith('/#/nodes') and
+                              '&tab=devices' not in link]
         device_links_on_page = [link for link in get_content_links(response)
-                                if link.startswith('/#/nodes')
-                                and '&tab=devices' in link]
+                                if link.startswith('/#/nodes') and
+                                '&tab=devices' in link]
         self.assertEqual(zone_device_links, device_links_on_page)
         self.assertEqual(zone_node_links, node_links_on_page)
 

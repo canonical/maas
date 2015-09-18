@@ -86,18 +86,18 @@ class WinRMX509:
         cert = OpenSSL.crypto.X509()
         cert.get_subject().CN = self.upn_name
         subjectAltName = OpenSSL.crypto.X509Extension(
-            "subjectAltName",
+            b"subjectAltName",
             True,
-            "otherName:1.3.6.1.4.1.311.20.2.3;UTF8:%s" % self.upn_name)
+            bytes("otherName:1.3.6.1.4.1.311.20.2.3;UTF8:%s" % self.upn_name))
         key_usage = OpenSSL.crypto.X509Extension(
-            "extendedKeyUsage", True, "clientAuth")
+            b"extendedKeyUsage", True, b"clientAuth")
         cert.set_serial_number(1000)
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
         cert.add_extensions([subjectAltName, key_usage, ])
         cert.set_pubkey(key)
         cert.set_issuer(cert.get_subject())
-        cert.sign(key, 'sha1')
+        cert.sign(key, b'sha1')
         return key, cert
 
     def get_cert_details(self, pem_file):
@@ -105,7 +105,7 @@ class WinRMX509:
         contents."""
         cert, contents = self.load_pem_file(pem_file)
         subject = cert.get_subject().CN
-        thumb = cert.digest('SHA1')
+        thumb = cert.digest(b'SHA1')
         return {'subject': subject, 'thumbprint': thumb, 'contents': contents}
 
     def write_privatekey(self, key):
@@ -155,7 +155,9 @@ class WinRMX509:
         p12 = OpenSSL.crypto.PKCS12()
         p12.set_certificate(cert)
         p12.set_privatekey(key)
-        atomic_write(p12.export(passphrase=passphrase), self.pfx_file)
+        atomic_write(
+            p12.export(
+                passphrase=bytes(passphrase.encode("utf-8"))), self.pfx_file)
 
     def get_ssl_dir(self, cert_dir=None):
         """Return the directory in which to save the certificates. This also

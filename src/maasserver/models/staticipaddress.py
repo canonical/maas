@@ -759,8 +759,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         self.subnet = subnet
         if interfaces is not None:
             for iface in interfaces:
-                if (iface is not None and subnet is not None
-                        and iface.vlan_id != subnet.vlan_id):
+                if (iface is not None and subnet is not None and
+                        iface.vlan_id != subnet.vlan_id):
                     iface.vlan = subnet.vlan
                     iface.save()
 

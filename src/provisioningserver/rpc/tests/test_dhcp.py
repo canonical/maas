@@ -71,10 +71,10 @@ class TestConfigureDHCP(MAASTestCase):
         return self.patch_autospec(dhcp, 'sudo_write_file')
 
     def patch_restart_service(self):
-        return self.patch_autospec(dhcp.service_monitor, 'restart_service')
+        return self.patch(dhcp.service_monitor, 'restart_service')
 
     def patch_ensure_service(self):
-        return self.patch_autospec(dhcp.service_monitor, 'ensure_service')
+        return self.patch(dhcp.service_monitor, 'ensure_service')
 
     def patch_get_config(self):
         return self.patch_autospec(dhcp, 'get_config')
@@ -257,10 +257,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
     def test__does_nothing_if_service_already_on(self):
         service = self.make_dhcpv4_service()
         service.on()
-        mock_get_state = self.patch_autospec(
+        mock_get_state = self.patch(
             dhcp.service_monitor, "get_service_state")
         mock_get_state.return_value = SERVICE_STATE.ON
-        mock_ensure_service = self.patch_autospec(
+        mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
         dhcp._ensure_dhcpv4_is_accessible(factory.make_exception_type())
         self.assertThat(mock_ensure_service, MockNotCalled())
@@ -268,10 +268,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
     def test__calls_try_connection_to_check_omshell(self):
         service = self.make_dhcpv4_service()
         service.on()
-        mock_get_state = self.patch_autospec(
+        mock_get_state = self.patch(
             dhcp.service_monitor, "get_service_state")
         mock_get_state.return_value = SERVICE_STATE.OFF
-        mock_ensure_service = self.patch_autospec(
+        mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
         mock_omshell = self.patch_autospec(dhcp, "Omshell")
         mock_try_connection = mock_omshell.return_value.try_connection
@@ -283,10 +283,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
     def test__calls_try_connection_three_times_to_check_omshell(self):
         service = self.make_dhcpv4_service()
         service.on()
-        mock_get_state = self.patch_autospec(
+        mock_get_state = self.patch(
             dhcp.service_monitor, "get_service_state")
         mock_get_state.return_value = SERVICE_STATE.OFF
-        mock_ensure_service = self.patch_autospec(
+        mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
         mock_omshell = self.patch_autospec(dhcp, "Omshell")
         self.patch_autospec(dhcp.time, "sleep")
@@ -301,10 +301,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
     def test__raises_exception_on_ServiceActionError(self):
         service = self.make_dhcpv4_service()
         service.on()
-        mock_get_state = self.patch_autospec(
+        mock_get_state = self.patch(
             dhcp.service_monitor, "get_service_state")
         mock_get_state.return_value = SERVICE_STATE.OFF
-        mock_ensure_service = self.patch_autospec(
+        mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
         mock_ensure_service.side_effect = ServiceActionError()
         exception_type = factory.make_exception_type()
@@ -314,10 +314,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
     def test__raises_exception_on_other_exceptions(self):
         service = self.make_dhcpv4_service()
         service.on()
-        mock_get_state = self.patch_autospec(
+        mock_get_state = self.patch(
             dhcp.service_monitor, "get_service_state")
         mock_get_state.return_value = SERVICE_STATE.OFF
-        mock_ensure_service = self.patch_autospec(
+        mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
         mock_ensure_service.side_effect = factory.make_exception()
         exception_type = factory.make_exception_type()

@@ -3772,10 +3772,10 @@ class CreateRaidForm(Form):
         # It is not possible to create a RAID without any devices or
         # partitions, but we catch this situation here in order to provide a
         # clearer error message.
-        if ('block_devices' in cleaned_data and 'partitions' in cleaned_data
-                and len(
-                    cleaned_data['block_devices'] + cleaned_data['partitions'])
-                == 0):
+        if ('block_devices' in cleaned_data and
+                'partitions' in cleaned_data and len(
+                    cleaned_data['block_devices'] +
+                    cleaned_data['partitions']) == 0):
             raise ValidationError(
                 'At least one block device or partition must be added to the '
                 'array.')
@@ -3941,15 +3941,15 @@ class UpdateRaidForm(Form):
         for device_id in (
                 self.cleaned_data['remove_block_devices'] +
                 self.cleaned_data['remove_spare_devices']):
-            if (device_id in current_block_device_ids
-                    + current_spare_device_ids):
+            if (device_id in current_block_device_ids +
+                    current_spare_device_ids):
                 self.raid.remove_device(BlockDevice.objects.get(id=device_id))
 
         for partition_id in (
                 self.cleaned_data['remove_partitions'] +
                 self.cleaned_data['remove_spare_partitions']):
-            if (partition_id in current_partition_ids
-                    + current_spare_partition_ids):
+            if (partition_id in current_partition_ids +
+                    current_spare_partition_ids):
                 self.raid.remove_partition(
                     Partition.objects.get(id=partition_id))
 

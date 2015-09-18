@@ -228,7 +228,8 @@ lint-css:
 lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' -print0 \
-	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123 --config=/dev/null
+	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
+	    --config=/dev/null
 	@utilities/check-maaslog-exception
 
 lint-doc:

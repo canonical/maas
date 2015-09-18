@@ -91,7 +91,7 @@ class RPCViewTest(DjangoTransactionTestCase):
             eventloop.loop.name: MatchesSetwise(*(
                 MatchesListwise((Equals(addr), is_valid_port))
                 for addr in get_all_interface_addresses()
-                if not IPAddress(addr).is_link_local()
-                and IPAddress(addr).version == 4
+                if not IPAddress(addr).is_link_local() and
+                IPAddress(addr).version == 4
             )),
         }))

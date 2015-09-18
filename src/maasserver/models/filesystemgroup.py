@@ -844,8 +844,8 @@ class RAID(FilesystemGroup):
         Raises a ValidationError if the device is not part of the array or if
         the array becomes invalid with the deletion.
         """
-        if (device.filesystem is None
-                or device.filesystem.filesystem_group_id != self.id):
+        if (device.filesystem is None or
+                device.filesystem.filesystem_group_id != self.id):
             raise ValidationError("Device does not belong to this array.")
         else:
             # If validation passes, delete the filesystem.
@@ -870,8 +870,8 @@ class RAID(FilesystemGroup):
         Raises a ValidationError if the device is not part of the array or if
         the array becomes invalid with the deletion.
         """
-        if (partition.filesystem is None
-                or partition.filesystem.filesystem_group_id != self.id):
+        if (partition.filesystem is None or
+                partition.filesystem.filesystem_group_id != self.id):
             raise ValidationError("Partition does not belong to this array.")
         elif partition.filesystem is not None:
             self.filesystems.remove(partition.filesystem)

@@ -716,8 +716,8 @@ class TestRaidAPI(APITestCase):
             device.id,
             [
                 bd['id'] for bd in parsed_device['devices']
-                if bd['type'] == 'physical'
-                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+                if bd['type'] == 'physical' and
+                bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
         self.assertEqual(FILESYSTEM_TYPE.RAID, device.filesystem.fstype)
 
@@ -738,8 +738,8 @@ class TestRaidAPI(APITestCase):
             device.id,
             [
                 bd['id'] for bd in parsed_device['devices']
-                if bd['type'] == 'physical'
-                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+                if bd['type'] == 'physical' and
+                bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
         self.assertIsNone(device.filesystem)
 
@@ -759,8 +759,8 @@ class TestRaidAPI(APITestCase):
             partition.id,
             [
                 p['id'] for p in parsed_device['devices']
-                if p['type'] == 'partition'
-                and p['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+                if p['type'] == 'partition' and
+                p['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
 
     def test_remove_valid_partition(self):
@@ -782,8 +782,8 @@ class TestRaidAPI(APITestCase):
             partition.id,
             [
                 bd['id'] for bd in parsed_device['spare_devices']
-                if bd['type'] == 'partition'
-                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
+                if bd['type'] == 'partition' and
+                bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
         self.assertIsNone(partition.filesystem)
 
@@ -821,8 +821,8 @@ class TestRaidAPI(APITestCase):
             device.id,
             [
                 bd['id'] for bd in parsed_device['spare_devices']
-                if bd['type'] == 'physical'
-                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
+                if bd['type'] == 'physical' and
+                bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
             ])
 
     def test_add_valid_spare_partition(self):
@@ -865,8 +865,8 @@ class TestRaidAPI(APITestCase):
             partition.id,
             [
                 bd['id'] for bd in parsed_device['spare_devices']
-                if bd['type'] == 'partition'
-                and bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
+                if bd['type'] == 'partition' and
+                bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID_SPARE
             ])
 
     def test_add_invalid_blockdevice_fails(self):

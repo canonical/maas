@@ -139,8 +139,8 @@ class Filesystem(CleanSave, TimestampedModel):
 
         # If fstype is for a bcache as a cache device it needs to be in a
         # cache_set.
-        if (self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE
-                and self.cache_set is None):
+        if (self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE and
+                self.cache_set is None):
             raise ValidationError(
                 "BCACHE_CACHE must be inside of a cache_set.")
 

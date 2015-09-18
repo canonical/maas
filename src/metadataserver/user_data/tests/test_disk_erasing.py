@@ -24,10 +24,22 @@ class TestDiskErasingUserData(MAASServerTestCase):
 
     def test_generate_user_data_produces_disk_erase_script(self):
         node = factory.make_Node()
-        self.assertThat(
-            generate_user_data(node), ContainsAll({
-                'maas-signal',
-                'erase_disks',
-                'def authenticate_headers',
-                'def encode_multipart_data',
-            }))
+        user_data = generate_user_data(node)
+        # On Vivid and above the email library defaults to encoding the MIME
+        # data as base64. We only check the inner contents if its not base64.
+        if "Content-Transfer-Encoding: base64" not in user_data:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                    'maas-signal',
+                    'erase_disks',
+                    'def authenticate_headers',
+                    'def encode_multipart_data',
+                }))
+        else:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                }))

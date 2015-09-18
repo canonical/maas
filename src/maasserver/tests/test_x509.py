@@ -137,7 +137,7 @@ class TestWinRMX509(MAASTestCase):
         cert, winrmx509 = self.make_certificate()
         self.assertItemsEqual({
             'subject': cert.get_subject().CN,
-            'thumbprint': cert.digest('SHA1'),
+            'thumbprint': cert.digest(b'SHA1'),
             'contents': self.dump_certificate(cert),
             }, winrmx509.get_cert_details(winrmx509.pem_file))
 
@@ -170,7 +170,8 @@ class TestWinRMX509(MAASTestCase):
         winrmx509.export_p12(key, cert, passphrase)
         with open(winrmx509.pfx_file, 'rb') as stream:
             p12_contents = stream.read()
-        p12 = OpenSSL.crypto.load_pkcs12(p12_contents, passphrase)
+        p12 = OpenSSL.crypto.load_pkcs12(
+            p12_contents, bytes(passphrase.encode("utf-8")))
         self.assertEqual(
             self.dump_certificate(cert),
             self.dump_certificate(p12.get_certificate()))

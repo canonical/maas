@@ -25,7 +25,6 @@ import json
 import os.path
 import random
 from random import randint
-from unittest import skip
 from urlparse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
@@ -1118,18 +1117,18 @@ class TestClusterClient(MAASTestCase):
             """,
             logger.dump())
 
-    @skip(
-        "XXX: blake_r 2015-02-26 bug=1426089: Failing because of an "
-        "unknown reason.")
-    @inlineCallbacks
-    def test_secureConnection_end_to_end(self):
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop()
-        self.addCleanup((yield connecting))
-        client = yield getRegionClient()
-        # XXX: Expose secureConnection() in the client.
-        yield client._conn.secureConnection()
-        self.assertTrue(client.isSecure())
+    # XXX: blake_r 2015-02-26 bug=1426089: Failing because of an unknown
+    # reason. This is commented out instead of using @skip because of
+    # running MAASTwistedRunTest will cause twisted to complain.
+    # @inlineCallbacks
+    # def test_secureConnection_end_to_end(self):
+    #     fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+    #     protocol, connecting = fixture.makeEventLoop()
+    #     self.addCleanup((yield connecting))
+    #     client = yield getRegionClient()
+    #     # XXX: Expose secureConnection() in the client.
+    #     yield client._conn.secureConnection()
+    #     self.assertTrue(client.isSecure())
 
     def test_authenticateRegion_accepts_matching_digests(self):
         client = self.make_running_client()

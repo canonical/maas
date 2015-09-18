@@ -1077,7 +1077,7 @@ class TestLinkSubnet(MAASServerTestCase):
             subnet=subnet)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_network(subnet.get_ipnetwork()),
+            ip=unicode(IPAddress(subnet.get_ipnetwork().last - 1)),
             subnet=subnet, interface=interface)
         interface.link_subnet(
             INTERFACE_LINK_TYPE.STATIC, subnet)

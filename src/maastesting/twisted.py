@@ -35,6 +35,8 @@ class TwistedLoggerFixture(Fixture):
     def __init__(self):
         super(TwistedLoggerFixture, self).__init__()
         self.logs = []
+        # Check if new logger from Twisted 15+ is being used.
+        self.isNewLogger = hasattr(log.theLogPublisher, "_publishPublisher")
 
     def dump(self):
         """Return all logs as a string."""
@@ -47,12 +49,25 @@ class TwistedLoggerFixture(Fixture):
     def containsError(self):
         return any(log["isError"] for log in self.logs)
 
+    def newSetUp(self):
+        """Twisted 15+ uses a new logger."""
+        self._publishPublisher = log.theLogPublisher._publishPublisher
+        log.theLogPublisher._publishPublisher = self.logs.append
+
+    def newCleanUp(self):
+        """Twisted 15+ uses a new logger."""
+        log.theLogPublisher._publishPublisher = self._publishPublisher
+
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
-        self.addCleanup(
-            operator.setitem, log.theLogPublisher.observers,
-            slice(None), log.theLogPublisher.observers[:])
-        log.theLogPublisher.observers[:] = [self.logs.append]
+        if self.isNewLogger:
+            self.addCleanup(self.newCleanUp)
+            self.newSetUp()
+        else:
+            self.addCleanup(
+                operator.setitem, log.theLogPublisher.observers,
+                slice(None), log.theLogPublisher.observers[:])
+            log.theLogPublisher.observers[:] = [self.logs.append]
 
 
 def always_succeed_with(result):

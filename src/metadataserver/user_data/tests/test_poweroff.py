@@ -24,8 +24,20 @@ class TestPoweroffUserData(MAASServerTestCase):
 
     def test_generate_user_data_produces_poweroff_script(self):
         node = factory.make_Node()
-        self.assertThat(
-            generate_user_data(node), ContainsAll({
-                'Powering node off',
-                'poweroff',
-            }))
+        user_data = generate_user_data(node)
+        # On Vivid and above the email library defaults to encoding the MIME
+        # data as base64. We only check the inner contents if its not base64.
+        if "Content-Transfer-Encoding: base64" not in user_data:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                    'Powering node off',
+                    'poweroff',
+                }))
+        else:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                }))

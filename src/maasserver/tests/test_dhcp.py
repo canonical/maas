@@ -30,7 +30,10 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    NodeGroup,
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -613,6 +616,12 @@ class TestDHCPConnect(MAASServerTestCase):
     def test_dhcp_config_gets_written_when_ntp_server_changes(self):
         # When the "ntp_server" Config item is changed, check that all
         # nodegroups get their DHCP config re-written.
+
+        # XXX 2015-09-17 blake_r: Isolation issue where an extra NodeGroup
+        # already exists. So we remove all the nodegroup's before performing
+        # this test.
+        NodeGroup.objects.all().delete()
+
         num_active_nodegroups = random.randint(1, 10)
         num_inactive_nodegroups = random.randint(1, 10)
         for _ in range(num_active_nodegroups):

@@ -154,7 +154,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')
         self.assertFalse(conn.login(poweraddr=None, password=None))
-        mock_close.assert_called()
+        self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_login_invalid(self):
         virsh_outputs = [
@@ -163,7 +163,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')
         self.assertFalse(conn.login(poweraddr=None))
-        mock_close.assert_called()
+        self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_logout(self):
         conn = self.configure_virshssh_pexpect()
@@ -171,7 +171,7 @@ class TestVirshSSH(MAASTestCase):
         mock_close = self.patch(conn, 'close')
         conn.logout()
         self.assertThat(mock_sendline, MockCalledOnceWith('quit'))
-        mock_close.assert_called()
+        self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_prompt(self):
         virsh_outputs = [
@@ -197,7 +197,7 @@ class TestVirshSSH(MAASTestCase):
         mock_prompt = self.patch(conn, 'prompt')
         output = conn.run(cmd)
         self.assertThat(mock_sendline, MockCalledOnceWith(expected))
-        mock_prompt.assert_called()
+        self.assertThat(mock_prompt, MockCalledOnceWith())
         self.assertEqual('\n'.join(names), output)
 
     def test_list(self):
@@ -371,7 +371,7 @@ class TestVirsh(MAASTestCase):
                     fake_macs[3], fake_arch, 'virsh', called_params[3],
                     machines[3]),
             ))
-        mock_logout.assert_called()
+        self.assertThat(mock_logout, MockCalledOnceWith())
         self.expectThat(
             mock_commission_node,
             MockCalledWith(system_id, user))

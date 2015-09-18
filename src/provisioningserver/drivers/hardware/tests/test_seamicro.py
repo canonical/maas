@@ -488,7 +488,7 @@ class TestSeaMicro(MAASTestCase):
         mock_get_api.return_value = fake_client
 
         power_control_seamicro15k_v2(ip, username, password, '0', 'on')
-        mock_power_on.assert_called()
+        self.assertThat(mock_power_on, MockCalledOnceWith(using_pxe=True))
 
     def test_power_control_seamicro15k_v2_raises_error_when_api_None(self):
         ip = factory.make_ipv4_address()

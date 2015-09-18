@@ -30,14 +30,26 @@ class TestCommissioningUserData(MAASServerTestCase):
         # generate_user_data produces a commissioning script which contains
         # both definitions and use of various commands in python.
         node = factory.make_Node()
-        self.assertThat(
-            generate_user_data(node), ContainsAll({
-                'maas-get',
-                'maas-signal',
-                'maas-ipmi-autodetect',
-                'def authenticate_headers',
-                'def encode_multipart_data',
-            }))
+        user_data = generate_user_data(node)
+        # On Vivid and above the email library defaults to encoding the MIME
+        # data as base64. We only check the inner contents if its not base64.
+        if "Content-Transfer-Encoding: base64" not in user_data:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                    'maas-get',
+                    'maas-signal',
+                    'maas-ipmi-autodetect',
+                    'def authenticate_headers',
+                    'def encode_multipart_data',
+                }))
+        else:
+            self.assertThat(
+                user_data, ContainsAll({
+                    'config',
+                    'user_data.sh',
+                }))
 
     def test_nodegroup_passed_to_get_preseed_context(self):
         # I don't care about what effect it has, I just want to know

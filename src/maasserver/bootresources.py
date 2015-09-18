@@ -32,10 +32,7 @@ from textwrap import dedent
 import threading
 import time
 
-from django.db import (
-    close_old_connections,
-    connections,
-)
+from django.db import connections
 from django.db.utils import load_backend
 from django.http import (
     Http404,
@@ -809,12 +806,10 @@ class BootResourceStore(ObjectStore):
                 "Finalization of imported images skipped, "
                 "or all %s synced images would be deleted.",
                 self._resources_to_delete)
-            close_old_connections()
             return
         self.resource_cleaner()
         self.perform_write()
         self.resource_set_cleaner()
-        close_old_connections()
 
 
 class BootResourceRepoWriter(BasicMirrorWriter):
