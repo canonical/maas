@@ -46,3 +46,33 @@ drivers:
   module: snic
   package: snic-dkms
   repository: http://ppa.launchpad.net/cisco-ucs-team/snic-stable/ubuntu 
+- blacklist: ahci
+  comment: HPDSA driver
+  key_binary: !!binary |
+         mQENBFRtGAgBCADlSku65P14hVdx9E/W0n6MwuB3WGqmsyKNoa3HezFdMjWERldINNUdi8O28cZ6
+         j2+Hi9L1HeQIQ9+7FHpR3JyQePBJtRX8WSEusfRtML98opDhJxKm8Jyxb7aTvCwdNHz3yxADINkM
+         tOj5oRm7VCr8XHkG7YU27ELs8B+BXWvjO21oSosiFurnhT+H3hQsYXfYA55aa21q0qX+L5dFJSNd
+         zZVo7m9ybioVv2R5+PfBvdaSxCnmOpcGXFaKAsqVHeTW0pd3sdkin1rkbhOBaU5lFBt2ZiMtKpKH
+         pT8TZnqHpFHFbgi8j2ARJj4IDct2OGILddUIZSFyue6WE2hpV5c/ABEBAAG0OEhld2xldHQtUGFj
+         a2FyZCBDb21wYW55IFJTQSAoSFAgQ29kZXNpZ25pbmcgU2VydmljZSkgLSAxiQE+BBMBAgAoBQJU
+         bRgIAhsDBQkSzAMABgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRD63Y1ksSdeo6BJCADOfIPP
+         LPpIOnFK9jH4t8lLUd+RyMc+alA3uTDPUJa/ZHa6DHfh42iaPYVEV8OG0tnbMlHmwvsZ5c1/MRMw
+         1UbxCvD88P2qM4SUrUjQUlSCms2GLGvFftFXBiOJQ7/yBc9o+yoSvwPrrTxSCk4+Sqm0IfVXVzCh
+         DM9dM9YPY2Vzjd+LUaYC3X+eSuggUDO0TmJLJd7tZdF9fVXq3lr63BZ5PY98MTCuOoeSMDa9FIUQ
+         f6vn6UUJMDSRZ9OzhpNJOKR+ShVRwDK6My8gtVIW1EAW2w3VQWI2UNF07aLeO8UG6nTNWA23+OuZ
+         kUdgQovjcq01caSefgOkmiQOx6d74CAkuQENBFRtGAgBCAC35eBfUIpnTdF5lpIBWOsWGKwNZEg1
+         f5GRCc3qv2Cd0dpcDPFDiE6Oa0OjtnyzhBXWEQXfckWh53tIl5Sjhoy4Gh7z7vZEgmuw1L+ILy0Q
+         00SqMpZFZaXNn4cnkc4wy5XG1bs81ij4Xp8Gkk9oRDJfCxv6ztW7++uhmU/2w4iqJghJRZwjMKl7
+         hGis8cx6vP5UCr7K7nnJqHVeO/z82ooE6XgxHHeGrLNPrzebO74PQ5iV/F5Dq9DFwYk61JaoJ9mA
+         R9CKn+CDtTTCkbdv7yQKFxXQSludHInRBfuBeM28djOddZF9XCBL3n+KYWC9Mjf0SCyqiUKA/f3P
+         c6KaTqCZABEBAAGJASUEGAECAA8FAlRtGAgCGwwFCRLMAwAACgkQ+t2NZLEnXqM0/gf/VwQY9rVG
+         X0ZEoEAto+naRi2wLxae8AJ+JTwChaybyOFtIblM4PnG3rUmQCqFM18PNcfeSiX+dd8CuXOI/voI
+         hwcfM7HP4hPTykmquHgEHp5t+/gA4+iRYDZvHthURmBzFUl4NS9AhOT7V1udUkn1lAORFc8/bcu1
+         yiFIhaQRT3MtOzp+qvThPrspXAgpfOwqjSkPR2YdvvZeqWAs77k2RZQc2aknaMgjWaPLb+V8mBmg
+         zRO1RDvShu8hsREaKYVMHyAeKhEYC+lX2bNCImQIs/TqhYo5sn0I5+sbpmFNwtF1gP7AF9DjcFfJ
+         ruvNnfrWpNvn7vuBH6g//Qk5ZnBpwg==
+  modaliases:
+  - 'pci:v0000103Cd0000193Fsv0000103Csd00003381bc*sc*i*'
+  module: hpdsa
+  package: hpdsa-dkms
+  repository: http://downloads.linux.hp.com/SDR/repo/ubuntu-hpdsa
