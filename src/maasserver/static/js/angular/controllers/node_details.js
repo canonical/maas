@@ -95,13 +95,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             parameters: {}
         };
 
-        // Storage section.
-        $scope.storage = {
-            editing: false,
-            column: 'model',
-            physicalDisks: []
-        };
-
         // Events section.
         $scope.events = {
             limit: 10
@@ -294,30 +287,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updatePower();
         }
 
-        // Updates the storage section.
-        function updateStorage() {
-            // Update the viewable errors.
-            updateErrors();
-
-            // Do not update the items, when editing this would
-            // cause the users changes to change.
-            if($scope.storage.editing) {
-                return;
-            }
-
-            $scope.storage.physicalDisks = angular.copy(
-                $scope.node.physical_disks);
-
-            // Fix tags so they are stored correctly for the ngTagsInput.
-            angular.forEach($scope.storage.physicalDisks, function(disk) {
-                var tags = [];
-                angular.forEach(disk.tags, function(tag) {
-                    tags.push({ text: tag });
-                });
-                disk.tags = tags;
-            });
-        }
-
         // Updates the machine output section.
         function updateMachineOutput() {
             // Set if it should even be viewable.
@@ -435,8 +404,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // calls updateErrors
             $scope.$watch("summary.cluster.selected.connected", updatePower);
 
-            // Update the storage when the node physical_disks are updated.
-            $scope.$watch("node.physical_disks", updateStorage);
 
             // Update the machine output view when summary, commissioning, or
             // installation results are updated on the node.
@@ -484,7 +451,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         }
 
         // Update the node with new data on the region.
-        function updateNode(node) {
+        $scope.updateNode = function(node) {
             NodesManager.updateItem(node).then(function(node) {
                 // If it was able to save correctly then the cluster is
                 // connected. An error would have been raised if it wasn't.
@@ -495,15 +462,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
                 updateName();
                 updateSummary();
-                updateStorage();
                 resetAddMACAddressState();
             }, function(error) {
                 handleSaveError(error);
                 updateName();
                 updateSummary();
-                updateStorage();
             });
-        }
+        };
 
         // Called when the node has been loaded.
         function nodeLoaded(node) {
@@ -514,6 +479,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateSummary();
             updateMachineOutput();
             startWatching();
+
+            // Tell the storageController that the node has been loaded.
+            if(angular.isObject($scope.storageController)) {
+                $scope.storageController.nodeLoaded();
+            }
         }
 
         // Clears Add MAC Address form error state
@@ -792,7 +762,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.hostname = $scope.nameHeader.value;
 
             // Update the node.
-            updateNode(node);
+            $scope.updateNode(node);
         };
 
         // Called to enter edit mode in the summary section.
@@ -838,7 +808,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
 
             // Update the node.
-            updateNode(node);
+            $scope.updateNode(node);
         };
 
         // Return true if the current power type selection is invalid.
@@ -877,7 +847,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.power_parameters = angular.copy($scope.power.parameters);
 
             // Update the node.
-            updateNode(node);
+            $scope.updateNode(node);
         };
 
         // Called to add a new network interface.
@@ -887,7 +857,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.extra_macs.push($scope.nic.mac);
 
             // Update the node.
-            updateNode(node);
+            $scope.updateNode(node);
         };
 
         // Called to close the NIC add form (and clean it up).
@@ -912,42 +882,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return nic.networks.map(function(network) {
                 return network.name + " (" + network.cidr + ")";
             }).join(', ');
-        };
-
-        // Called to enter edit mode in the storage section.
-        $scope.editStorage = function() {
-            if(!$scope.canEdit()) {
-                return;
-            }
-            $scope.storage.editing = true;
-        };
-
-        // Called to cancel editing in the storage section.
-        $scope.cancelEditStorage = function() {
-            $scope.storage.editing = false;
-            updateStorage();
-        };
-
-        // Called to save the changes made in the storage section.
-        $scope.saveEditStorage = function() {
-            $scope.storage.editing = false;
-
-            // Copy the node and make the changes.
-            var node = angular.copy($scope.node);
-            node.physical_disks = $scope.storage.physicalDisks;
-
-            // Fix the tags as ngTagsInput stores the tags as an object with
-            // a text field.
-            angular.forEach(node.physical_disks, function(disk) {
-                var tags = [];
-                angular.forEach(disk.tags, function(tag) {
-                    tags.push(tag.text);
-                });
-                disk.tags = tags;
-            });
-
-            // Update the node.
-            updateNode(node);
         };
 
         // Return true if the "load more" events button should be available.

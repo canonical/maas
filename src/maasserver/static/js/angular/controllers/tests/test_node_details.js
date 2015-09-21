@@ -241,15 +241,6 @@ describe("NodeDetailsController", function() {
         });
     });
 
-    it("sets initial values for storage section", function() {
-        var controller = makeController();
-        expect($scope.storage).toEqual({
-            editing: false,
-            column: 'model',
-            physicalDisks: []
-        });
-    });
-
     it("sets initial values for events section", function() {
         var controller = makeController();
         expect($scope.events).toEqual({
@@ -479,35 +470,6 @@ describe("NodeDetailsController", function() {
         expect($scope.power.editing).toBe(false);
     });
 
-    it("storage section is updated once setActiveItem resolves", function() {
-        var physicalDisks = [
-            {
-                id: 0,
-                model: makeName("model"),
-                tags: [makeName("tag")]
-            },
-            {
-                id: 1,
-                model: makeName("model"),
-                tags: [makeName("tag")]
-            }
-        ];
-        node.physical_disks = physicalDisks;
-
-        var withFixesTags = angular.copy(physicalDisks);
-        angular.forEach(withFixesTags, function(disk) {
-            var tags = [];
-            angular.forEach(disk.tags, function(tag) {
-                tags.push({ text: tag });
-            });
-            disk.tags = tags;
-        });
-
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.storage.physicalDisks).toEqual(withFixesTags);
-        expect($scope.storage.physicalDisks).not.toBe(physicalDisks);
-    });
-
     it("machine output not visible if all required data missing", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.machine_output.viewable).toBe(false);
@@ -665,7 +627,6 @@ describe("NodeDetailsController", function() {
             "node.power_type",
             "node.power_parameters",
             "summary.cluster.selected.connected",
-            "node.physical_disks",
             "node.summary_xml",
             "node.summary_yaml",
             "node.commissioning_results",
@@ -1906,114 +1867,6 @@ describe("NodeDetailsController", function() {
             // If the error message was logged to the console then
             // handleSaveError was called.
             expect(console.log).toHaveBeenCalledWith(error);
-        });
-    });
-
-    describe("editStorage", function() {
-
-        it("doesnt sets editing to true if cannot edit", function() {
-            var controller = makeController();
-            spyOn($scope, "canEdit").and.returnValue(false);
-            $scope.storage.editing = false;
-            $scope.editStorage();
-            expect($scope.storage.editing).toBe(false);
-        });
-
-        it("sets editing to true for storage section", function() {
-            var controller = makeController();
-            spyOn($scope, "canEdit").and.returnValue(true);
-            $scope.storage.editing = false;
-            $scope.editStorage();
-            expect($scope.storage.editing).toBe(true);
-        });
-    });
-
-    describe("cancelEditStorage", function() {
-
-        it("sets editing to false for storage section", function() {
-            var controller = makeController();
-            $scope.node = node;
-            $scope.storage.editing = true;
-            $scope.cancelEditStorage();
-            expect($scope.storage.editing).toBe(false);
-        });
-
-        it("calls updateStorage", function() {
-            var controller = makeController();
-            $scope.node = node;
-            $scope.storage.editing = true;
-
-            // Updates physicalDisks so we can check that updateStorage
-            // is called.
-            $scope.node.physical_disks = [
-                {
-                    id: 0,
-                    model: makeName("model"),
-                    tags: []
-                }
-            ];
-
-            $scope.cancelEditStorage();
-
-            // Since updateStorage is private in the controller, check
-            // that the physicalDisks are updated on the storage section.
-            expect($scope.storage.physicalDisks).toEqual(
-                $scope.node.physical_disks);
-        });
-    });
-
-    describe("saveEditStorage", function() {
-
-        it("sets editing to false", function() {
-            var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                $q.defer().promise);
-
-            $scope.node = node;
-            $scope.storage.editing = true;
-            $scope.saveEditStorage();
-
-            expect($scope.storage.editing).toBe(false);
-        });
-
-        it("calls updateItem with copy of node", function() {
-            var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                $q.defer().promise);
-
-            $scope.node = node;
-            $scope.storage.editing = true;
-            $scope.saveEditStorage();
-
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
-            expect(calledWithNode).not.toBe(node);
-        });
-
-        it("calls updateItem with new tags on physical_disks", function() {
-            var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                $q.defer().promise);
-
-            var physicalDisks = [
-                {
-                    id: 0,
-                    model: makeName("model"),
-                    tags: [makeName("tag"), makeName("tag")]
-                }
-            ];
-            var disksWithnewTags = angular.copy(physicalDisks);
-            disksWithnewTags[0].tags = [makeName("tag"), makeName("tag")];
-
-            $scope.node = node;
-            $scope.node.physical_disks = physicalDisks;
-            $scope.storage.editing = true;
-            $scope.storage.physicalDisks = disksWithnewTags;
-            $scope.saveEditStorage();
-
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
-            expect(calledWithNode.physical_disks).toBe(disksWithnewTags);
-            expect(calledWithNode.physical_disks).not.toBe(
-                physicalDisks);
         });
     });
 

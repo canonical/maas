@@ -212,7 +212,7 @@
                             </dd>
                         <dt class="two-col">Storage</dt>
                             <dd class="four-col last-col">
-                                {$ node.storage $}GB over {$ node.disks $} disks
+                                {$ node.storage $}GB over {$ node.physical_disk_count $} disks
                             </dd>
                         <dt class="two-col">Operating System</dt>
                             <dd class="four-col last-col">{$ getOSText() $}</dd>
@@ -321,16 +321,16 @@
         </div>
     </div>
     <div class="row">
-        <div class="inner-wrapper">
+        <div class="inner-wrapper" ng-controller="NodeStorageController">
             <form>
                 <div class="twelve-col">
                     <h3 class="title">Storage</h3>
                 </div>
                 <div class="twelve-col">
-                    <h4 data-ng-hide="storage.physicalDisks.length">
+                    <h4 data-ng-hide="disks.length">
                         No storage information. Commissioning this node will gather the storage information.
                     </h4>
-                    <table class="table-listing ng-hide" data-ng-show="storage.physicalDisks.length">
+                    <table class="table-listing ng-hide" data-ng-show="disks.length">
                         <thead>
                             <tr>
                                 <th class="t20">Name</th>
@@ -338,11 +338,11 @@
                                 <th class="t10">Size (GB)</th>
                                 <th class="table-listing__header" class="t25" colspan="2">
                                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                                    <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'model'" data-ng-class="{active: storage.column === 'model'}">
+                                    <a class="table-listing__header-link" href="" data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">
                                         Model
                                     </a>
                                     <span class="divide"></span>
-                                    <a class="table-listing__header-link" href="" data-ng-click="storage.column = 'serial'" data-ng-class="{active: storage.column === 'serial'}">
+                                    <a class="table-listing__header-link" href="" data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">
                                         Serial
                                     </a>
                                 </th>
@@ -350,34 +350,34 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="table-listing__row" data-ng-repeat="disk in storage.physicalDisks">
+                            <tr class="table-listing__row" data-ng-repeat="disk in disks">
                                 <td class="t20">{$ disk.name $}</td>
                                 <td class="t25">{$ disk.path $}</td>
                                 <td class="t10">{$ disk.size_gb $}</td>
-                                <td class="t25" colspan="2" data-ng-show="storage.column === 'model'">{$ disk.model $}</td>
-                                <td class="t25 ng-hide" colspan="2" data-ng-show="storage.column === 'serial'">{$ disk.serial $}</td>
+                                <td class="t25" colspan="2" data-ng-show="column === 'model'">{$ disk.model $}</td>
+                                <td class="t25 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ disk.serial $}</td>
                                 <td class="t20">
-                                    <span class="tag-link" data-ng-repeat="tag in disk.tags" data-ng-hide="storage.editing">
+                                    <span class="tag-link" data-ng-repeat="tag in disk.tags" data-ng-hide="editing">
                                         <a href="#/nodes/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                     </span>
                                     <tags-input ng-model="disk.tags"
-                                        data-ng-show="storage.editing" allowed-tags-pattern="[\w-]+">
+                                        data-ng-show="editing" allowed-tags-pattern="[\w-]+">
                                     </tags-input>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="controls" data-ng-show="storage.physicalDisks.length && !storage.editing">
+                <div class="controls" data-ng-show="disks.length && !editing">
                     <a href="" class="link-cta-ubuntu secondary"
                         data-ng-show="canEdit()"
-                        data-ng-click="editStorage()">Edit</a>
+                        data-ng-click="edit()">Edit</a>
                 </div>
-                <div class="controls ng-hide" data-ng-show="storage.editing">
+                <div class="controls ng-hide" data-ng-show="editing">
                     <a href="" class="link-cta-ubuntu clear"
-                        data-ng-click="cancelEditStorage()">Cancel</a>
+                        data-ng-click="cancel()">Cancel</a>
                     <button class="cta-ubuntu"
-                        data-ng-click="saveEditStorage()">Save changes</button>
+                        data-ng-click="save()">Save changes</button>
                 </div>
 
 

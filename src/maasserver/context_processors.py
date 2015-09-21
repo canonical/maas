@@ -73,6 +73,7 @@ def static_resources(context):
             'js/angular/controllers/add_hardware.js',
             'js/angular/controllers/add_device.js',
             'js/angular/controllers/node_details.js',
+            'js/angular/controllers/node_details_storage.js',
             'js/angular/controllers/node_result.js',
             'js/angular/controllers/node_events.js',
         ],
