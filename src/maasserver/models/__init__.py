@@ -27,6 +27,8 @@ __all__ = [
     'Device',
     'DownloadProgress',
     'Event',
+    'Fabric',
+    'FanNetwork',
     'FileStorage',
     'Filesystem',
     'FilesystemGroup',
@@ -49,6 +51,7 @@ __all__ = [
     'Tag',
     'UserProfile',
     'VirtualBlockDevice',
+    'VLAN',
     'VolumeGroup',
     'Zone',
     ]
@@ -78,6 +81,7 @@ from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.models.fabric import Fabric
+from maasserver.models.fannetwork import FanNetwork
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import (
@@ -259,7 +263,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (Fabric, Interface, Subnet, Space)):
+        elif isinstance(obj, (Fabric, FanNetwork, Interface, Subnet, Space)):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a fabric or interface regardless
                 # of its state.

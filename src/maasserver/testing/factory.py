@@ -64,6 +64,7 @@ from maasserver.models import (
     Event,
     EventType,
     Fabric,
+    FanNetwork,
     FileStorage,
     Filesystem,
     FilesystemGroup,
@@ -691,6 +692,21 @@ class Factory(maastesting.factory.Factory):
             space=space, dns_servers=dns_servers)
         subnet.save()
         return subnet
+
+    def make_FanNetwork(self, name=None, underlay=None, overlay=None,
+                        dhcp=None, host_reserve=1, bridge=None, off=None):
+        if name is None:
+            name = self.make_name('fan network')
+        if underlay is None:
+            underlay = factory.make_ipv4_network(slash=16)
+        if overlay is None:
+            overlay = factory.make_ipv4_network(
+                slash=8, disjoint_from=[underlay])
+        fannetwork = FanNetwork(
+            name=name, underlay=underlay, overlay=overlay, dhcp=dhcp,
+            host_reserve=host_reserve, bridge=bridge, off=off)
+        fannetwork.save()
+        return fannetwork
 
     def make_Fabric(self, name=None):
         if name is None:

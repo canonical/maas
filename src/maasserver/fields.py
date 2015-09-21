@@ -16,6 +16,7 @@ __all__ = [
     "CIDRField",
     "EditableBinaryField",
     "IPListFormField",
+    "IPv4CIDRField",
     "MAASIPAddressField",
     "MAC",
     "MACAddressField",
@@ -107,6 +108,7 @@ add_introspection_rules(
         "^maasserver\.fields\.MAASIPAddressField",
         "^maasserver\.fields\.LargeObjectField",
         "^maasserver\.fields\.CIDRField",
+        "^maasserver\.fields\.IPv4CIDRField",
     ])
 
 
@@ -578,6 +580,23 @@ class CIDRField(Field):
         }
         defaults.update(kwargs)
         return super(CIDRField, self).formfield(**defaults)
+
+
+class IPv4CIDRField(CIDRField):
+    """IPv4-only CIDR"""
+
+    def to_python(self, value):
+        if value is None:
+            return None
+        else:
+            try:
+                cidr = IPNetwork(value)
+            except AddrFormatError:
+                raise ValidationError("Invalid network: %s" % value)
+            if cidr.cidr.version != 4:
+                raise ValidationError(
+                    "%s: Only IPv4 networks supported." % value)
+        return unicode(cidr.cidr)
 
 
 class IPListFormField(CharField):

@@ -50,6 +50,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     CIDRTestModel,
+    IPv4CIDRTestModel,
     JSONFieldModel,
     LargeObjectFieldModel,
     MAASIPAddressFieldModel,
@@ -547,6 +548,33 @@ class TestCIDRField(TestModelMixin, MAASServerTestCase):
         normalized_cidr = '192.0.2.0/24'
         instance = CIDRTestModel.objects.create(cidr=cidr)
         self.assertEqual(normalized_cidr, reload_object(instance).cidr)
+
+
+class TestIPv4CIDRField(TestModelMixin, MAASServerTestCase):
+
+    app = 'maasserver.tests'
+
+    def test_stores_cidr(self):
+        cidr = '192.0.2.0/24'
+        instance = IPv4CIDRTestModel.objects.create(cidr=cidr)
+        self.assertEqual(cidr, reload_object(instance).cidr)
+
+    def test_validates_cidr(self):
+        cidr = 'invalid-cidr'
+        error = self.assertRaises(
+            ValidationError, IPv4CIDRTestModel.objects.create, cidr=cidr)
+        self.assertEqual("Invalid network: %s" % cidr, error.message)
+
+    def test_stores_cidr_with_bit_set_in_host_part(self):
+        cidr = '192.0.2.1/24'
+        normalized_cidr = '192.0.2.0/24'
+        instance = IPv4CIDRTestModel.objects.create(cidr=cidr)
+        self.assertEqual(normalized_cidr, reload_object(instance).cidr)
+
+    def test_fails_to_store_ipv6_cidr(self):
+        cidr = "2001:DB8::/32"
+        self.assertRaises(
+            ValidationError, IPv4CIDRTestModel.objects.create, cidr=cidr)
 
 
 class IPListFormFieldTest(MAASServerTestCase):

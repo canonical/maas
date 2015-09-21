@@ -18,6 +18,7 @@ __all__ = [
     'CIDRTestModel',
     'FieldChangeTestModel',
     'GenericTestModel',
+    'IPv4CIDRTestModel',
     'JSONFieldModel',
     'LargeObjectFieldModel',
     'MAASIPAddressFieldModel',
@@ -33,6 +34,7 @@ from django.db.models import (
 )
 from maasserver.fields import (
     CIDRField,
+    IPv4CIDRField,
     JSONObjectField,
     LargeObjectField,
     MAASIPAddressField,
@@ -97,3 +99,7 @@ class LargeObjectFieldModel(Model):
 
 class CIDRTestModel(Model):
     cidr = CIDRField()
+
+
+class IPv4CIDRTestModel(Model):
+    cidr = IPv4CIDRField()

@@ -131,6 +131,13 @@ class TestInterfaceManager(MAASServerTestCase):
 
 class InterfaceTest(MAASServerTestCase):
 
+    def test_rejects_invalid_name(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Interface,
+            INTERFACE_TYPE.PHYSICAL,
+            name='invalid*name')
+
     def test_get_type_returns_None(self):
         self.assertIsNone(Interface.get_type())
 
