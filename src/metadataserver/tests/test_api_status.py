@@ -18,6 +18,7 @@ import base64
 import bz2
 import httplib
 import json
+import urllib
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
@@ -119,6 +120,23 @@ class TestStatusAPI(MAASServerTestCase):
         self.assertEqual(
             "'curtin' Command Install",
             Event.objects.filter(node=node).last().description)
+
+    def test_status_with_non_json_payload_fails(self):
+        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
+        client = make_node_client(node=node)
+        payload = {
+            'event_type': 'finish',
+            'result': 'SUCCESS',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+        }
+        client = make_node_client(node)
+        url = reverse('metadata-status', args=[node.system_id])
+        response = client.post(
+            url, content_type='application/json',
+            data=urllib.urlencode(payload))
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_status_comissioning_success_populates_tags(self):
         populate_tags_for_single_node = self.patch(

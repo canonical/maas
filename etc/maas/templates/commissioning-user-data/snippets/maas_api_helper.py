@@ -14,7 +14,6 @@ import time
 import urllib2
 import uuid
 
-import oauth.oauth as oauth
 import yaml
 
 
@@ -22,6 +21,14 @@ __all__ = [
     'geturl',
     'read_config',
     ]
+
+
+new_oauth = False
+try:
+    import oauth.oauth as oauth
+except ImportError:
+    import oauthlib.oauth1 as oauth
+    new_oauth = True
 
 
 def read_config(url, creds):
@@ -54,22 +61,33 @@ def read_config(url, creds):
 def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
                   clockskew=0):
     """Build OAuth headers using given credentials."""
-    consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
-    token = oauth.OAuthToken(token_key, token_secret)
 
     timestamp = int(time.time()) + clockskew
 
-    params = {
-        'oauth_version': "1.0",
-        'oauth_nonce': uuid.uuid4().get_hex(),
-        'oauth_timestamp': timestamp,
-        'oauth_token': token.key,
-        'oauth_consumer_key': consumer.key,
-    }
-    req = oauth.OAuthRequest(http_url=url, parameters=params)
-    req.sign_request(
-        oauth.OAuthSignatureMethod_PLAINTEXT(), consumer, token)
-    return(req.to_header())
+    if new_oauth:
+        client = oauth.Client(
+            consumer_key,
+            client_secret=consumer_secret,
+            resource_owner_key=token_key,
+            resource_owner_secret=token_secret,
+            signature_method=oauth.SIGNATURE_PLAINTEXT,
+            timestamp=str(timestamp))
+        uri, signed_headers, body = client.sign(url)
+        return signed_headers
+    else:
+        consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
+        token = oauth.OAuthToken(token_key, token_secret)
+        params = {
+            'oauth_version': "1.0",
+            'oauth_nonce': uuid.uuid4().get_hex(),
+            'oauth_timestamp': timestamp,
+            'oauth_token': token.key,
+            'oauth_consumer_key': consumer.key,
+        }
+        req = oauth.OAuthRequest(http_url=url, parameters=params)
+        req.sign_request(
+            oauth.OAuthSignatureMethod_PLAINTEXT(), consumer, token)
+        return(req.to_header())
 
 
 def authenticate_headers(url, headers, creds, clockskew):

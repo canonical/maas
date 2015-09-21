@@ -57,6 +57,11 @@ class TestComposePreseed(MAASServerTestCase):
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
         self.assertEquals(apt_proxy, preseed['apt_proxy'])
+        self.assertThat(
+            preseed['reporting']['maas'],
+            KeysEqual(
+                'consumer_key', 'endpoint', 'token_key', 'token_secret',
+                'type'))
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -68,15 +73,22 @@ class TestComposePreseed(MAASServerTestCase):
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
-        self.assertIn(absolute_reverse('metadata'), preseed)
+        reverse = absolute_reverse('metadata')
+        self.assertIn(reverse, preseed)
+        status = absolute_reverse('metadata-status', args=[node.system_id])
+        self.assertIn(status, preseed)
 
-    def test_compose_preseed_for_commissioning_includes_metadata_url(self):
+    def test_compose_preseed_for_commissioning_includes_metadata_status_url(
+            self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertEqual(
             absolute_reverse('metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
+        self.assertEqual(
+            absolute_reverse('metadata-status', args=[node.system_id]),
+            preseed['reporting']['maas']['endpoint'])
 
     def test_compose_preseed_includes_node_oauth_token(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -88,15 +100,19 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertIn('oauth_token_key=%s' % token.key, preseed)
         self.assertIn('oauth_token_secret=%s' % token.secret, preseed)
 
-    def test_compose_preseed_for_commissioning_includes_auth_token(self):
+    def test_compose_preseed_for_commissioning_includes_auth_tokens(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         maas_dict = preseed['datasource']['MAAS']
+        reporting_dict = preseed['reporting']['maas']
         token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(token.consumer.key, maas_dict['consumer_key'])
         self.assertEqual(token.key, maas_dict['token_key'])
         self.assertEqual(token.secret, maas_dict['token_secret'])
+        self.assertEqual(token.consumer.key, reporting_dict['consumer_key'])
+        self.assertEqual(token.key, reporting_dict['token_key'])
+        self.assertEqual(token.secret, reporting_dict['token_secret'])
 
     def test_compose_preseed_valid_local_cloud_config(self):
         node = factory.make_Node(status=NODE_STATUS.READY)

@@ -296,7 +296,12 @@ class StatusHandler(MetadataViewHandler):
 
         node = get_queried_node(request)
         payload = request.read()
-        message = json.loads(payload)
+        try:
+            message = json.loads(payload)
+        except ValueError:
+            message = "Status payload is not valid JSON:\n%s\n\n" % payload
+            logger.error(message)
+            raise MAASAPIBadRequest(message)
 
         # Mandatory attributes.
         try:

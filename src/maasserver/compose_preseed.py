@@ -55,6 +55,20 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         "manage_etc_hosts": False,
         "apt_preserve_sources_list": True,
         "apt_proxy": get_apt_proxy_for_node(node),
+        # This is used as preseed for a node that's been installed.
+        # This will allow cloud-init to be configured with reporting for
+        # a node that has already been installed.
+        'reporting': {
+            'maas': {
+                'type': 'webhook',
+                'endpoint': absolute_reverse(
+                    'metadata-status', args=[node.system_id],
+                    base_url=base_url),
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+            }
+        },
     })
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
@@ -83,7 +97,7 @@ def compose_commissioning_preseed(node, token, base_url=''):
     apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('metadata', base_url=base_url)
     return _compose_cloud_init_preseed(
-        token, metadata_url, apt_proxy=apt_proxy)
+        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy)
 
 
 def compose_curtin_preseed(node, token, base_url=''):
@@ -91,10 +105,11 @@ def compose_curtin_preseed(node, token, base_url=''):
     apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
     return _compose_cloud_init_preseed(
-        token, metadata_url, apt_proxy=apt_proxy)
+        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy)
 
 
-def _compose_cloud_init_preseed(token, metadata_url, apt_proxy=None):
+def _compose_cloud_init_preseed(
+        node, token, metadata_url, base_url, apt_proxy=None):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -103,7 +118,19 @@ def _compose_cloud_init_preseed(token, metadata_url, apt_proxy=None):
                 'token_key': token.key,
                 'token_secret': token.secret,
             }
-        }
+        },
+        # This configures reporting for the ephemeral environment
+        'reporting': {
+            'maas': {
+                'type': 'webhook',
+                'endpoint': absolute_reverse(
+                    'metadata-status', args=[node.system_id],
+                    base_url=base_url),
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+            },
+        },
     }
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
