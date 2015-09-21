@@ -32,6 +32,7 @@ from maasserver.models import interface as interface_module
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -88,18 +89,61 @@ from twisted.internet.threads import deferToThread
 
 class TestNodeHandler(MAASServerTestCase):
 
-    def dehydrate_physicalblockdevice(self, blockdevice):
+    def dehydrate_blockdevice(self, blockdevice):
+        # model and serial are currently only avalible on physical block
+        # devices
+        if isinstance(blockdevice, PhysicalBlockDevice):
+            model = blockdevice.model
+            serial = blockdevice.serial
+        else:
+            serial = model = ""
+        partition_table = blockdevice.get_partitiontable()
+        if partition_table is not None:
+            partition_table_type = partition_table.table_type
+        else:
+            partition_table_type = ""
         return {
             "id": blockdevice.id,
             "name": blockdevice.name,
             "tags": blockdevice.tags,
+            "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
             "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
             "block_size": blockdevice.block_size,
-            "model": blockdevice.model,
-            "serial": blockdevice.serial,
+            "model": model,
+            "serial": serial,
+            "partition_table_type": partition_table_type,
+            "filesystem": self.dehydrate_filesystem(
+                blockdevice.filesystem),
+            "partitions": self.dehydrate_partitions(
+                blockdevice.get_partitiontable()),
         }
+
+    def dehydrate_partitions(self, partition_table):
+        if partition_table is None:
+            return None
+        return [
+            {
+                "filesystem": self.dehydrate_filesystem(
+                    partition.filesystem),
+                "path": partition.path,
+                "type": partition.type,
+                "id": partition.id,
+                "size": partition.size,
+                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
+            }
+            for partition in partition_table.partitions.all()
+        ]
+
+    def dehydrate_filesystem(self, filesystem):
+        if filesystem is None:
+            return None
+        return {
+            "label": filesystem.label,
+            "mount_point": filesystem.mount_point,
+            "fstype": filesystem.fstype,
+            }
 
     def dehydrate_event(self, event):
         return {
@@ -165,9 +209,9 @@ class TestNodeHandler(MAASServerTestCase):
             for mac_address in node.interface_set.all().order_by('id')
         ], key=itemgetter('is_pxe'), reverse=True)
 
-    def get_all_storage_tags(self, physicalblockdevices):
+    def get_all_storage_tags(self, blockdevices):
         tags = set()
-        for blockdevice in physicalblockdevices:
+        for blockdevice in blockdevices:
             tags = tags.union(blockdevice.tags)
         return list(tags)
 
@@ -175,8 +219,14 @@ class TestNodeHandler(MAASServerTestCase):
             self, node, user, for_list=False, include_summary=False):
         boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
-        physicalblockdevices = list(
-            node.physicalblockdevice_set.all().order_by('name'))
+        blockdevices = [
+            blockdevice.actual_instance
+            for blockdevice in node.blockdevice_set.all()
+            ]
+        physical_blockdevices = [
+            blockdevice for blockdevice in blockdevices
+            if isinstance(blockdevice, PhysicalBlockDevice)
+            ]
         power_parameters = (
             None if node.power_parameters == "" else node.power_parameters)
         events = (
@@ -206,7 +256,11 @@ class TestNodeHandler(MAASServerTestCase):
                 for device in node.children.all().order_by('id')
             ], key=itemgetter('fqdn')),
             "disable_ipv4": node.disable_ipv4,
-            "disks": len(physicalblockdevices),
+            "physical_disk_count": len(physical_blockdevices),
+            "disks": [
+                self.dehydrate_blockdevice(blockdevice)
+                for blockdevice in blockdevices
+            ],
             "distro_series": node.get_distro_series(),
             "error": node.error,
             "error_description": node.error_description,
@@ -239,10 +293,6 @@ class TestNodeHandler(MAASServerTestCase):
             },
             "osystem": node.get_osystem(),
             "owner": "" if node.owner is None else node.owner.username,
-            "physical_disks": [
-                self.dehydrate_physicalblockdevice(blockdevice)
-                for blockdevice in physicalblockdevices
-            ],
             "power_parameters": power_parameters,
             "power_state": node.power_state,
             "power_type": node.power_type,
@@ -257,9 +307,9 @@ class TestNodeHandler(MAASServerTestCase):
             "status": node.display_status(),
             "storage": "%3.1f" % (sum([
                 blockdevice.size
-                for blockdevice in physicalblockdevices
+                for blockdevice in physical_blockdevices
             ]) / (1000 ** 3)),
-            "storage_tags": self.get_all_storage_tags(physicalblockdevices),
+            "storage_tags": self.get_all_storage_tags(blockdevices),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
@@ -286,7 +336,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "extra_macs",
                 "tags",
                 "networks",
-                "disks",
+                "physical_disk_count",
                 "storage",
                 "storage_tags",
             ]
@@ -319,6 +369,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = NodeHandler(user, {})
         node = factory.make_Node_with_Interface_on_Subnet()
+        factory.make_FilesystemGroup(node=node)
         node.owner = user
         node.save()
         for _ in range(100):
@@ -394,7 +445,7 @@ class TestNodeHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEquals(
-            query_10_count, 8,
+            query_10_count, 9,
             "Number of queries has changed; make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,
@@ -694,10 +745,10 @@ class TestNodeHandler(MAASServerTestCase):
             for _ in range(3)
             ]
         node_data = self.dehydrate_node(node, user)
-        node_data["physical_disks"][0]["tags"] = blockdevice_tags
+        node_data["disks"][0]["tags"] = blockdevice_tags
         updated_node = handler.update(node_data)
         self.assertItemsEqual(
-            blockdevice_tags, updated_node["physical_disks"][0]["tags"])
+            blockdevice_tags, updated_node["disks"][0]["tags"])
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()

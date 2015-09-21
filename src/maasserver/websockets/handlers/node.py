@@ -26,6 +26,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.node import Node
@@ -85,7 +86,8 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
                 .prefetch_related('zone')
                 .prefetch_related('tags')
-                .prefetch_related('blockdevice_set__physicalblockdevice'))
+                .prefetch_related('blockdevice_set__physicalblockdevice')
+                .prefetch_related('blockdevice_set__virtualblockdevice'))
         pk = 'system_id'
         pk_type = unicode
         allowed_methods = [
@@ -192,14 +194,18 @@ class NodeHandler(TimestampedModelHandler):
         else:
             data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 
-        physicalblockdevices = self.get_physicalblockdevices_for(obj)
-        data["disks"] = len(physicalblockdevices)
+        blockdevices = self.get_blockdevices_for(obj)
+        physical_blockdevices = [
+            blockdevice for blockdevice in blockdevices
+            if isinstance(blockdevice, PhysicalBlockDevice)
+            ]
+        data["physical_disk_count"] = len(physical_blockdevices)
         data["storage"] = "%3.1f" % (
             sum([
                 blockdevice.size
-                for blockdevice in physicalblockdevices
+                for blockdevice in physical_blockdevices
                 ]) / (1000 ** 3))
-        data["storage_tags"] = self.get_all_storage_tags(physicalblockdevices)
+        data["storage_tags"] = self.get_all_storage_tags(blockdevices)
 
         data["tags"] = [
             tag.name
@@ -227,9 +233,9 @@ class NodeHandler(TimestampedModelHandler):
                 devices, key=itemgetter("fqdn"))
 
             # Storage
-            data["physical_disks"] = [
-                self.dehydrate_physicalblockdevice(blockdevice)
-                for blockdevice in physicalblockdevices
+            data["disks"] = [
+                self.dehydrate_blockdevice(blockdevice)
+                for blockdevice in blockdevices
             ]
 
             # Events
@@ -263,19 +269,64 @@ class NodeHandler(TimestampedModelHandler):
             ],
         }
 
-    def dehydrate_physicalblockdevice(self, blockdevice):
-        """Return `PhysicalBlockDevice` formatted for JSON encoding."""
+    def dehydrate_blockdevice(self, blockdevice):
+        """Return `BlockDevice` formatted for JSON encoding."""
+        # model and serial are currently only avalible on physical block
+        # devices
+        if isinstance(blockdevice, PhysicalBlockDevice):
+            model = blockdevice.model
+            serial = blockdevice.serial
+        else:
+            serial = model = ""
+        partition_table = blockdevice.get_partitiontable()
+        if partition_table is not None:
+            partition_table_type = partition_table.table_type
+        else:
+            partition_table_type = ""
         return {
             "id": blockdevice.id,
             "name": blockdevice.name,
             "tags": blockdevice.tags,
+            "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
             "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
             "block_size": blockdevice.block_size,
-            "model": blockdevice.model,
-            "serial": blockdevice.serial,
+            "model": model,
+            "serial": serial,
+            "partition_table_type": partition_table_type,
+            "filesystem": self.dehydrate_filesystem(
+                blockdevice.filesystem),
+            "partitions": self.dehydrate_partitions(
+                blockdevice.get_partitiontable()),
         }
+
+    def dehydrate_partitions(self, partition_table):
+        """Return `PartitionTable` formatted for JSON encoding."""
+        if partition_table is None:
+            return None
+        return [
+            {
+                "filesystem": self.dehydrate_filesystem(
+                    partition.filesystem),
+                "path": partition.path,
+                "type": partition.type,
+                "id": partition.id,
+                "size": partition.size,
+                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
+            }
+            for partition in partition_table.partitions.all()
+        ]
+
+    def dehydrate_filesystem(self, filesystem):
+        """Return `Filesystem` formatted for JSON encoding."""
+        if filesystem is None:
+            return None
+        return {
+            "label": filesystem.label,
+            "mount_point": filesystem.mount_point,
+            "fstype": filesystem.fstype,
+            }
 
     def dehydrate_interface(self, interface, obj):
         """Dehydrate a `interface` into a interface definition."""
@@ -378,19 +429,18 @@ class NodeHandler(TimestampedModelHandler):
             for event in events
         ]
 
-    def get_all_storage_tags(self, physicalblockdevices):
-        """Return list of all storage tags in `physicalblockdevices`."""
+    def get_all_storage_tags(self, blockdevices):
+        """Return list of all storage tags in `blockdevices`."""
         tags = set()
-        for blockdevice in physicalblockdevices:
+        for blockdevice in blockdevices:
             tags = tags.union(blockdevice.tags)
         return list(tags)
 
-    def get_physicalblockdevices_for(self, obj):
-        """Return only `PhysicalBlockDevice`s using the prefetched query."""
+    def get_blockdevices_for(self, obj):
+        """Return only `BlockDevice`s using the prefetched query."""
         return [
-            blockdevice.physicalblockdevice
+            blockdevice.actual_instance
             for blockdevice in obj.blockdevice_set.all()
-            if hasattr(blockdevice, "physicalblockdevice")
         ]
 
     def get_object(self, params):
@@ -481,9 +531,9 @@ class NodeHandler(TimestampedModelHandler):
         if node_obj.power_parameters is None:
             node_obj.power_parameters = {}
 
-        # Update the tags for the node and physical disks.
+        # Update the tags for the node and disks.
         self.update_tags(node_obj, params['tags'])
-        self.update_physical_disk_tags(params['physical_disks'])
+        self.update_disk_tags(params['disks'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
 
@@ -509,10 +559,10 @@ class NodeHandler(TimestampedModelHandler):
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
 
-    def update_physical_disk_tags(self, physical_disks):
-        # Loop through each physical disk and update the tags array list.
-        for disk in physical_disks:
-            disk_obj = PhysicalBlockDevice.objects.get(id=disk["id"])
+    def update_disk_tags(self, disks):
+        # Loop through each disk and update the tags array list.
+        for disk in disks:
+            disk_obj = BlockDevice.objects.get(id=disk["id"])
             disk_obj.tags = disk["tags"]
             disk_obj.save(update_fields=['tags'])
 
