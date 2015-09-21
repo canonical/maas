@@ -19,9 +19,18 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
-from maasserver.testing.api import APITestCase
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODEGROUP_STATUS,
+)
+from maasserver.testing.api import (
+    APITestCase,
+    explain_unexpected_response,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.utils.network import inet_ntop
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -195,3 +204,158 @@ class TestSubnetAPI(APITestCase):
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+
+class TestSubnetAPIAuth(MAASServerTestCase):
+    """Authorization tests for subnet API."""
+    def test__reserved_ip_ranges_fails_if_not_logged_in(self):
+        subnet = factory.make_Subnet()
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'reserved_ip_ranges'})
+        self.assertEqual(
+            httplib.UNAUTHORIZED, response.status_code,
+            explain_unexpected_response(httplib.UNAUTHORIZED, response))
+
+    def test__unreserved_ip_ranges_fails_if_not_logged_in(self):
+        subnet = factory.make_Subnet()
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'unreserved_ip_ranges'})
+        self.assertEqual(
+            httplib.UNAUTHORIZED, response.status_code,
+            explain_unexpected_response(httplib.UNAUTHORIZED, response))
+
+
+class TestSubnetReservedIPRangesAPI(APITestCase):
+
+    def test__returns_empty_list_for_empty_subnet(self):
+        subnet = factory.make_Subnet()
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'reserved_ip_ranges'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        self.assertThat(result, Equals([]))
+
+    def test__accounts_for_reserved_ip_address(self):
+        subnet = factory.make_Subnet()
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            ip=ip, alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet)
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'reserved_ip_ranges'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        self.assertThat(result, Equals([
+            {
+                "start": ip,
+                "end": ip,
+                "purpose": ["assigned-ip"],
+                "num_addresses": 1,
+            }]))
+
+
+class TestSubnetUnreservedIPRangesAPI(APITestCase):
+
+    def test__returns_full_list_for_empty_subnet(self):
+        subnet = factory.make_Subnet()
+        network = subnet.get_ipnetwork()
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'unreserved_ip_ranges'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        expected_addresses = (network.last - network.first + 1)
+        expected_first_address = inet_ntop(network.first + 1)
+        if network.version == 6:
+            # Don't count the IPv6 network address in num_addresses
+            expected_addresses -= 1
+            expected_last_address = inet_ntop(network.last)
+        else:
+            # Don't count the IPv4 broadcast/network addresses in num_addresses
+            expected_addresses -= 2
+            expected_last_address = inet_ntop(network.last - 1)
+        self.assertThat(result, Equals([
+            {
+                "start": expected_first_address,
+                "end": expected_last_address,
+                "num_addresses": expected_addresses,
+            }]))
+
+    def test__returns_empty_list_for_full_subnet(self):
+        subnet = factory.make_Subnet()
+        network = subnet.get_ipnetwork()
+        first_address = inet_ntop(network.first + 1)
+        range_start = inet_ntop(network.first + 2)
+        if network.version == 6:
+            last_address = inet_ntop(network.last)
+        else:
+            last_address = inet_ntop(network.last - 1)
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(
+            ng, ip=first_address, ip_range_low=range_start,
+            ip_range_high=last_address, static_ip_range_low='',
+            static_ip_range_high='', subnet=subnet)
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'unreserved_ip_ranges'})
+        result = json.loads(response.content)
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        self.assertThat(
+            result, Equals([]), unicode(subnet.get_ipranges_in_use()))
+
+    def test__accounts_for_reserved_ip_address(self):
+        subnet = factory.make_Subnet()
+        network = subnet.get_ipnetwork()
+        # Pick an address in the middle of the range. (that way we'll always
+        # expect there to be two unreserved ranges, arranged around the
+        # allocated IP address.)
+        middle_ip = (network.first + network.last) / 2
+        ip = inet_ntop(middle_ip)
+        factory.make_StaticIPAddress(
+            ip=ip, alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet)
+
+        expected_addresses = (network.last - network.first + 1)
+        expected_first_address = inet_ntop(network.first + 1)
+        first_range_end = inet_ntop(middle_ip - 1)
+        first_range_size = middle_ip - network.first - 1
+        second_range_start = inet_ntop(middle_ip + 1)
+        if network.version == 6:
+            # Don't count the IPv6 network address in num_addresses
+            expected_addresses -= 1
+            expected_last_address = inet_ntop(network.last)
+            second_range_size = network.last - middle_ip
+        else:
+            # Don't count the IPv4 broadcast/network addresses in num_addresses
+            expected_addresses -= 2
+            expected_last_address = inet_ntop(network.last - 1)
+            second_range_size = network.last - middle_ip - 1
+
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'unreserved_ip_ranges'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        self.assertThat(result, Equals([
+            {
+                "start": expected_first_address,
+                "end": first_range_end,
+                "num_addresses": first_range_size,
+            },
+            {
+                "start": second_range_start,
+                "end": expected_last_address,
+                "num_addresses": second_range_size,
+            }]))

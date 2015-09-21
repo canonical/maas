@@ -1584,7 +1584,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
             "controller to be able to enable DNS management."
             ))
 
-    router_ip = forms.CharField(required=False)
+    router_ip = forms.CharField(required=False, label="Default Gateway IP")
 
     # XXX mpontillo 2015-07-23: need a custom field for this, for IPv4/IPv6
     # address or prefix length.
@@ -1609,6 +1609,8 @@ class NodeGroupInterfaceForm(MAASModelForm):
         super(NodeGroupInterfaceForm, self).__init__(*args, **kwargs)
         if not self.initial.get('subnet_mask'):
             self.initial['subnet_mask'] = self.get_subnet_mask()
+        if not self.initial.get('router_ip'):
+            self.initial['router_ip'] = self.get_router_ip()
 
     def save(self, *args, **kwargs):
         """Override `MAASModelForm`.save() so that the network data is copied
@@ -1751,6 +1753,23 @@ class NodeGroupInterfaceForm(MAASModelForm):
                 return ''
         else:
             return subnet_mask
+
+    def get_router_ip(self, cleaned_data=None):
+        # `router_ip` is not among the form's fields and thus its
+        # initial value isn't populated from the related ngi instance
+        # by BaseModelForm.__init__.
+        router_ip = None
+        if cleaned_data is not None:
+            router_ip = cleaned_data.get('router_ip')
+        if not router_ip:
+            router_ip = self.data.get('router_ip')
+        if not router_ip:
+            if self.instance is not None:
+                return self.instance.router_ip
+            else:
+                return ''
+        else:
+            return router_ip
 
     def clean_dependant_subnet_mask(self, cleaned_data):
         ip_addr = cleaned_data.get('ip')

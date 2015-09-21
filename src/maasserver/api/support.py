@@ -118,7 +118,7 @@ METHOD_RESERVED_ADMIN = "This method is reserved for admin users."
 def admin_method(func):
     """Decorator to protect a method from non-admin users.
 
-    If a non-admin tries to call a methode decorated with this decorator,
+    If a non-admin tries to call a method decorated with this decorator,
     they will get an HTTP "forbidden" error and a message saying the
     operation is accessible only to administrators.
     """

@@ -15,6 +15,7 @@ __metaclass__ = type
 
 from maasserver.api.support import (
     admin_method,
+    operation,
     OperationsHandler,
 )
 from maasserver.enum import NODE_PERMISSION
@@ -139,3 +140,23 @@ class SubnetHandler(OperationsHandler):
             subnet_id, request.user, NODE_PERMISSION.ADMIN)
         subnet.delete()
         return rc.DELETED
+
+    @operation(idempotent=True)
+    def reserved_ip_ranges(self, request, subnet_id):
+        """Lists IP ranges currently reserved in the subnet"""
+        subnet = Subnet.objects.get_subnet_or_404(
+            subnet_id, request.user, NODE_PERMISSION.VIEW)
+        return [
+            iprange.render_json()
+            for iprange in subnet.get_ipranges_in_use().ranges
+            ]
+
+    @operation(idempotent=True)
+    def unreserved_ip_ranges(self, request, subnet_id):
+        """Lists IP ranges currently unreserved in the subnet"""
+        subnet = Subnet.objects.get_subnet_or_404(
+            subnet_id, request.user, NODE_PERMISSION.VIEW)
+        return [
+            iprange.render_json(include_purpose=False)
+            for iprange in subnet.get_ipranges_not_in_use().ranges
+            ]

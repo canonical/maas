@@ -76,6 +76,20 @@ class MAASIPRange(IPRange):
                  (" flags=%d" % self.flags if self.flags else ''),
                  (" purpose=%s" % repr(self.purpose) if self.purpose else '')))
 
+    @property
+    def num_addresses(self):
+        return self.last - self.first + 1
+
+    def render_json(self, include_purpose=True):
+        json = {
+            "start": inet_ntop(self.first),
+            "end": inet_ntop(self.last),
+            "num_addresses": self.num_addresses,
+        }
+        if include_purpose:
+            json["purpose"] = sorted(list(self.purpose))
+        return json
+
 
 def _deduplicate_sorted_maasipranges(ranges):
     """Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
@@ -193,6 +207,17 @@ class MAASIPSet(set):
         for item in self.ranges:
             item_repr.append(item)
         return '%s(%s)' % (self.__class__.__name__, item_repr)
+
+
+def make_ipaddress(input):
+    """Returns an `IPAddress` object for the specified input, or `None` if
+    `bool(input)` is `False`. Returns `input` if it is already an
+    `IPAddress.`"""
+    if input:
+        if isinstance(input, IPAddress):
+            return input
+        return IPAddress(input)
+    return None
 
 
 def make_iprange(first, second=None, purpose="unknown"):

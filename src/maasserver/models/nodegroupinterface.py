@@ -51,6 +51,7 @@ from netaddr import (
 from netaddr.core import AddrFormatError
 from provisioningserver.utils.network import (
     intersect_iprange,
+    make_ipaddress,
     make_iprange,
     make_network,
 )
@@ -625,30 +626,40 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_ip_ranges()
         self.clean_overlapping_networks()
 
-    def get_ipranges_in_use(self, include_static_range=True):
+    def get_ipranges_in_use_on_ipnetwork(
+            self, ipnetwork, include_static_range=True):
         """Returns a `set` of `MAASIPRange` objects for this
         `NodeGroupInterface`, annotated with a purpose string indicating if
         they are part of the dynamic range, static range, cluster IP, gateway
         IP, or DNS server."""
+        assert isinstance(ipnetwork, IPNetwork)
+
         ranges = set()
         if self.has_dyanamic_ip_range():
-            ranges.add(self.get_dynamic_ip_range())
+            dynamic_range = self.get_dynamic_ip_range()
+            if dynamic_range in ipnetwork:
+                ranges.add(dynamic_range)
 
         # The caller might want to exclude static ranges, if they will be
         # separately looking at the static IP addresses assigned to the subnet.
         if include_static_range:
             if self.has_static_ip_range():
-                ranges.add(self.get_static_ip_range())
+                static_range = self.get_static_ip_range()
+                if static_range in ipnetwork:
+                    ranges.add(static_range)
 
-        ranges.add(make_iprange(self.ip, purpose="cluster-ip"))
+        if make_ipaddress(self.ip) in ipnetwork:
+            ranges.add(make_iprange(self.ip, purpose="cluster-ip"))
 
         if self.subnet is not None:
-            if self.subnet.gateway_ip:
+            gateway_ip = make_ipaddress(self.subnet.gateway_ip)
+            if gateway_ip and gateway_ip in ipnetwork:
                 ranges.add(make_iprange(
                     self.subnet.gateway_ip, purpose="gateway-ip"))
             if self.subnet.dns_servers is not None:
                 for server in self.subnet.dns_servers:
-                    ranges.add(make_iprange(server, purpose="dns-server"))
+                    if make_ipaddress(server) in ipnetwork:
+                        ranges.add(make_iprange(server, purpose="dns-server"))
 
         return ranges
 

@@ -215,7 +215,8 @@ class Factory:
             random_address_factory = self.make_ipv4_address
         # Look randomly for a network that matches our criteria.
         for _ in range(100):
-            network = IPNetwork('%s/%s' % (random_address_factory(), slash))
+            network = IPNetwork(
+                '%s/%s' % (random_address_factory(), slash)).cidr
             forbidden = (network in but_not)
             clashes = network_clashes(network, disjoint_from)
             if not forbidden and not clashes:

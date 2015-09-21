@@ -48,6 +48,7 @@ from netaddr import (
 )
 from provisioningserver.utils.network import (
     MAASIPSet,
+    make_ipaddress,
     make_iprange,
 )
 
@@ -73,15 +74,21 @@ def create_cidr(network, subnet_mask=None):
     :param subnet_mask:An IPv4 or IPv6 netmask or prefix length
     :return:An IPNetwork representing the CIDR.
     """
-    if type(network) == IPNetwork:
-        if not subnet_mask:
-            subnet_mask = network.netmask
-        network = network.network
-    elif type(network) == IPAddress:
-        if subnet_mask and type(subnet_mask) is not IPAddress:
-            subnet_mask = IPAddress(subnet_mask)
-
-    cidr = IPNetwork(unicode(network) + '/' + unicode(subnet_mask)).cidr
+    if isinstance(network, IPNetwork) and subnet_mask is None:
+        return unicode(network.cidr)
+    else:
+        network = make_ipaddress(network)
+    if subnet_mask is None and isinstance(network, (bytes, unicode)):
+        if '/' in network:
+            return unicode(IPNetwork(network).cidr)
+        else:
+            assert False, "Network passed as CIDR string must contain '/'."
+    network = unicode(make_ipaddress(network))
+    if isinstance(subnet_mask, (int, long)):
+        mask = unicode(subnet_mask)
+    else:
+        mask = unicode(make_ipaddress(subnet_mask))
+    cidr = IPNetwork(network + '/' + mask).cidr
     return unicode(cidr)
 
 
@@ -307,7 +314,8 @@ class Subnet(CleanSave, TimestampedModel):
             nodegroup__status=NODEGROUP_STATUS.ENABLED)
         ranges = set()
         for ngi in cluster_interfaces:
-            ngi_ranges = ngi.get_ipranges_in_use(include_static_range=False)
+            ngi_ranges = ngi.get_ipranges_in_use_on_ipnetwork(
+                self.get_ipnetwork(), include_static_range=False)
             ranges |= ngi_ranges
         return ranges
 
@@ -320,9 +328,7 @@ class Subnet(CleanSave, TimestampedModel):
             make_iprange(ip, purpose="assigned-ip")
             for ip in assigned_ip_addresses
         )
-        # print(ranges)
         ranges |= self._get_ipranges_in_use_on_related_clusters()
-        # print(ranges)
         return MAASIPSet(ranges)
 
     def get_ipranges_not_in_use(self):

@@ -698,7 +698,8 @@ class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
     def test__returns_cluster_ip(self):
         ng = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(ng)
-        ranges = MAASIPSet(ngi.get_ipranges_in_use())
+        ranges = MAASIPSet(ngi.get_ipranges_in_use_on_ipnetwork(
+            ngi.subnet.get_ipnetwork()))
         expected_range = make_iprange(ngi.ip)
         self.assertThat(ranges, Contains(expected_range))
         self.assertThat(
@@ -707,7 +708,8 @@ class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
     def test__returns_static_range(self):
         ng = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(ng)
-        ranges = ngi.get_ipranges_in_use()
+        ranges = ngi.get_ipranges_in_use_on_ipnetwork(
+            ngi.subnet.get_ipnetwork())
         self.assertThat(ranges, Contains(make_iprange(ngi.ip)))
 
     def test__finds_used_ranges(self):
@@ -730,7 +732,7 @@ class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
             ip_range_high=dynamic_range_high,
             static_ip_range_low=static_range_low,
             static_ip_range_high=static_range_high)
-        s = MAASIPSet(ngi.get_ipranges_in_use())
+        s = MAASIPSet(ngi.get_ipranges_in_use_on_ipnetwork(net))
         self.assertThat(s, Contains(cluster_ip))
         self.assertThat(s, Contains(dynamic_range_low))
         self.assertThat(s, Contains(dynamic_range_high))
@@ -765,7 +767,43 @@ class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
             ip_range_high=dynamic_range_high,
             static_ip_range_low=static_range_low,
             static_ip_range_high=static_range_high)
-        s = MAASIPSet(ngi.get_ipranges_in_use(include_static_range=False))
+        s = MAASIPSet(ngi.get_ipranges_in_use_on_ipnetwork(
+            net, include_static_range=False))
+        self.assertThat(s, Contains(cluster_ip))
+        self.assertThat(s, Contains(dynamic_range_low))
+        self.assertThat(s, Contains(dynamic_range_high))
+        self.assertThat(s, Not(Contains(static_range_low)))
+        self.assertThat(s, Not(Contains(static_range_high)))
+        self.assertThat(s, Not(Contains(free_ip_1)))
+        self.assertThat(s, Not(Contains(free_ip_2)))
+        self.assertThat(s, Not(Contains(free_ip_3)))
+        self.assertThat(s, Not(Contains(free_ip_4)))
+        self.assertThat(s[cluster_ip].purpose, Contains('cluster-ip'))
+        self.assertThat(
+            s[dynamic_range_low].purpose, Contains('dynamic-range'))
+
+    def test__finds_used_ranges_excludes_outside_addresses(self):
+        ng = factory.make_NodeGroup()
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=['8.8.8.8'], cidr='10.0.0.0/8')
+        net = subnet.get_ipnetwork()
+        free_ip_1 = inet_ntop(net.first + 1)
+        cluster_ip = inet_ntop(net.first + 2)
+        free_ip_2 = inet_ntop(net.first + 3)
+        free_ip_3 = inet_ntop(net.first + 9)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 49)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        free_ip_4 = inet_ntop(net.first + 100)
+        ngi = factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        s = MAASIPSet(ngi.get_ipranges_in_use_on_ipnetwork(
+            net, include_static_range=False))
         self.assertThat(s, Contains(cluster_ip))
         self.assertThat(s, Contains(dynamic_range_low))
         self.assertThat(s, Contains(dynamic_range_high))
