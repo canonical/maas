@@ -26,6 +26,7 @@ from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
 from twisted.python import usage
+from twisted.python.threadable import isInIOThread
 from zope.interface import implementer
 
 
@@ -48,14 +49,6 @@ class Options(usage.Options):
     ]
 
 
-# The maximum number of threads used by the default twisted thread pool.
-# This value is a trade-off between a small value (such as the default: 10)
-# which can create deadlocks (see 1470013) and a huge value which can cause
-# MAAS to hit other limitations such as the number of open files or the
-# number of concurrent database connexions.
-MAX_THREADS = 100
-
-
 @implementer(IServiceMaker, IPlugin)
 class RegionServiceMaker:
     """Create a service for the Twisted plugin."""
@@ -66,6 +59,11 @@ class RegionServiceMaker:
         self.tapname = name
         self.description = description
 
+    def _configureThreads(self):
+        from maasserver.utils import threads
+        threads.install_default_pool()
+        threads.install_database_pool()
+
     def _configureLogging(self):
         # Get something going with the logs.
         from provisioningserver import logger
@@ -73,7 +71,9 @@ class RegionServiceMaker:
 
     def _configureDjango(self):
         # Some region services use the ORM at class-load time: force Django to
-        # load the models first.
+        # load the models first. This is OK to run in the reactor because
+        # having Django -- most specifically the ORM -- up and running is a
+        # prerequisite of almost everything in the region controller.
         try:
             from django import setup as django_setup
         except ImportError:
@@ -117,15 +117,19 @@ class RegionServiceMaker:
                 # Things look good.
                 pass
 
+    def _configureReactor(self):
+        # Disable all database connections in the reactor.
+        from maasserver.utils.orm import disable_all_database_connections
+        if isInIOThread():
+            disable_all_database_connections()
+        else:
+            reactor.callFromThread(disable_all_database_connections)
+
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
         import crochet
         crochet.no_setup()
-
-    def _configurePoolSize(self):
-        threadpool = reactor.getThreadPool()
-        threadpool.adjustPoolsize(10, MAX_THREADS)
 
     def _makeIntrospectionService(self, endpoint):
         from provisioningserver.utils import introspect
@@ -139,11 +143,12 @@ class RegionServiceMaker:
         """Construct the MAAS Region service."""
         register_sigusr2_thread_dump_handler()
 
+        self._configureThreads()
         self._configureLogging()
         self._configureDjango()
         self._checkDatabase()
+        self._configureReactor()
         self._configureCrochet()
-        self._configurePoolSize()
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop

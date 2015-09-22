@@ -59,6 +59,7 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
+from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
 from provisioningserver.rpc import (
     cluster,
@@ -90,7 +91,6 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
-from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
@@ -125,7 +125,7 @@ class Region(RPCProtocol):
 
     @region.Register.responder
     def register(self, uuid, networks, url):
-        d = deferToThread(
+        d = deferToDatabase(
             clusters.register_cluster, uuid, networks=networks, url=url)
 
         def cb_cluster_registered(cluster):
@@ -154,7 +154,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
         """
-        return deferToThread(leases.update_leases, uuid, mappings)
+        return deferToDatabase(leases.update_leases, uuid, mappings)
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):
@@ -198,7 +198,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetArchiveMirrors`.
         """
-        d = deferToThread(configuration.get_archive_mirrors)
+        d = deferToDatabase(configuration.get_archive_mirrors)
         return d
 
     @region.GetProxies.responder
@@ -208,7 +208,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetProxies`.
         """
-        d = deferToThread(configuration.get_proxies)
+        d = deferToDatabase(configuration.get_proxies)
         return d
 
     @region.MarkNodeFailed.responder
@@ -218,7 +218,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.MarkNodeFailed`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             nodes.mark_node_failed, system_id, error_description)
         d.addCallback(lambda args: {})
         return d
@@ -230,7 +230,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             nodes.list_cluster_nodes_power_parameters, uuid)
         d.addCallback(lambda nodes: {b"nodes": nodes})
         return d
@@ -242,7 +242,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.UpdateNodePowerState`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             nodes.update_node_power_state, system_id, power_state)
         d.addCallback(lambda args: {})
         return d
@@ -254,7 +254,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.RegisterEventType`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             events.register_event_type, name, description, level)
         d.addCallback(lambda args: {})
         return d
@@ -266,7 +266,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             events.send_event, system_id, type_name, description)
         d.addCallback(lambda args: {})
         return d
@@ -278,7 +278,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             events.send_event_mac_address, mac_address, type_name, description)
         d.addCallback(lambda args: {})
         return d
@@ -291,7 +291,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             update_foreign_dhcp_ip, cluster_uuid, interface_name,
             foreign_dhcp_ip)
         d.addCallback(lambda _: {})
@@ -304,7 +304,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetClusterInterfaces`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             get_cluster_interfaces_as_dicts, cluster_uuid)
         d.addCallback(lambda interfaces: {b'interfaces': interfaces})
         return d
@@ -316,7 +316,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.MonitorExpired`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             handle_monitor_expired, id, context)
         d.addCallback(lambda _: {})
         return d
@@ -329,7 +329,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.CreateNode`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             create_node, cluster_uuid, architecture,
             power_type, power_parameters, mac_addresses, hostname=hostname)
         d.addCallback(lambda node: {'system_id': node.system_id})
@@ -342,7 +342,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.CommissionNode`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             commission_node, system_id, user)
         d.addCallback(lambda args: {})
         return d
@@ -354,7 +354,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.RequestNodeInfoByMACAddress`.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             request_node_info_by_mac_address, mac_address)
 
         def get_node_info(data):
@@ -699,7 +699,7 @@ class RegionAdvertisingService(TimerService, object):
             interval, self.try_update)
 
     def try_update(self):
-        return deferToThread(self.update).addErrback(
+        return deferToDatabase(self.update).addErrback(
             log.err, "Failed to update this event-loop's advertisement; "
             "%s's record may be out of date" % (eventloop.loop.name,))
 
@@ -723,7 +723,7 @@ class RegionAdvertisingService(TimerService, object):
         if self.starting.called:
             # Start-up is complete; remove all records then up-call in
             # the usual way.
-            self.stopping = deferToThread(self.remove)
+            self.stopping = deferToDatabase(self.remove)
             self.stopping.addCallback(lambda ignore: (
                 super(RegionAdvertisingService, self).stopService()))
             return self.stopping
@@ -747,7 +747,7 @@ class RegionAdvertisingService(TimerService, object):
         """
         while True:
             try:
-                yield deferToThread(self.prepare)
+                yield deferToDatabase(self.prepare)
             except defer.CancelledError:
                 raise
             except Exception as e:

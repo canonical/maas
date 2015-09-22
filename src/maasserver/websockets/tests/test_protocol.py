@@ -26,6 +26,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import protocol as protocol_module
 from maasserver.websockets.base import Handler
 from maasserver.websockets.handlers import (
@@ -53,7 +54,6 @@ from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
     Equals,
     Is,
-    IsInstance,
 )
 from twisted.internet import defer
 from twisted.internet.defer import (
@@ -61,8 +61,6 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
-from twisted.internet.threads import deferToThread
-from twisted.python.threadpool import ThreadPool
 from twisted.web.server import NOT_DONE_YET
 
 
@@ -210,9 +208,9 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_getUserFromSessionId_returns_User(self):
-        user, session_id = yield deferToThread(self.get_user_and_session_id)
+        user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         protocol, factory = self.make_protocol()
-        protocol_user = yield deferToThread(
+        protocol_user = yield deferToDatabase(
             lambda: protocol.getUserFromSessionId(session_id))
         self.assertEquals(user, protocol_user)
 
@@ -270,7 +268,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_invalid_csrftoken(self):
-        user, session_id = yield deferToThread(self.get_user_and_session_id)
+        user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
         protocol, factory = self.make_protocol(
@@ -290,7 +288,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_csrftoken_is_missing(self):
-        user, session_id = yield deferToThread(self.get_user_and_session_id)
+        user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         uri = self.make_ws_uri(csrftoken=None)
         protocol, factory = self.make_protocol(
             patch_authenticate=False, transport_uri=uri)
@@ -493,7 +491,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
         def delete_node():
             node.delete()
 
-        return deferToThread(delete_node)
+        return deferToDatabase(delete_node)
 
     def test_handleRequest_builds_handler(self):
         protocol, factory = self.make_protocol()
@@ -516,7 +514,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
 
         self.assertThat(d, IsFiredDeferred())
         self.assertThat(handler_class, MockCalledOnceWith(
-            protocol.user, protocol.cache[handler_name], factory.threadpool))
+            protocol.user, protocol.cache[handler_name]))
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
         self.assertIs(
@@ -526,7 +524,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handleRequest_sends_response(self):
-        node = yield deferToThread(self.make_node)
+        node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
 
@@ -551,7 +549,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handleRequest_sends_error(self):
-        node = yield deferToThread(self.make_node)
+        node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
         protocol, factory = self.make_protocol()
@@ -669,17 +667,6 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_startFactory_starts_threadpool(self):
-        factory = self.make_factory()
-        yield factory.startFactory()
-        try:
-            self.assertThat(factory.threadpool, IsInstance(ThreadPool))
-            self.expectThat(factory.threadpool.started, Equals(True))
-        finally:
-            yield factory.stopFactory()
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_startFactory_registers_rpc_handlers(self):
         rpc_service = MagicMock()
         factory = self.make_factory(rpc_service)
@@ -701,14 +688,6 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         yield factory.startFactory()
         yield factory.stopFactory()
         self.expectThat(factory.listener.connected(), Equals(False))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_stopFactory_stops_threadpool(self):
-        factory = self.make_factory()
-        yield factory.startFactory()
-        yield factory.stopFactory()
-        self.assertEqual([], factory.threadpool.threads)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -739,7 +718,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test_onNotify_creates_handler_class_with_protocol_user(self):
-        user = yield deferToThread(self.make_user)
+        user = yield deferToDatabase(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
         mock_class = MagicMock()
         mock_class.return_value.on_listen.return_value = None
@@ -751,7 +730,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test_onNotify_creates_handler_class_with_protocol_cache(self):
-        user = yield deferToThread(self.make_user)
+        user = yield deferToDatabase(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
         handler_class = MagicMock()
         handler_class.return_value.on_listen.return_value = None
@@ -760,8 +739,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
             handler_class, sentinel.channel, sentinel.action, sentinel.obj_id)
         self.assertThat(
             handler_class, MockCalledOnceWith(
-                user, protocol.cache[handler_class._meta.handler_name],
-                factory.threadpool))
+                user, protocol.cache[handler_class._meta.handler_name]))
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
         self.assertIs(
@@ -771,7 +749,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test_onNotify_calls_handler_class_on_listen(self):
-        user = yield deferToThread(self.make_user)
+        user = yield deferToDatabase(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
         mock_class = MagicMock()
         mock_class.return_value.on_listen.return_value = None
@@ -784,7 +762,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test_onNotify_calls_sendNotify_on_protocol(self):
-        user = yield deferToThread(self.make_user)
+        user = yield deferToDatabase(self.make_user)
         protocol, factory = self.make_protocol_with_factory(user=user)
         name = maas_factory.make_name("name")
         action = maas_factory.make_name("action")
@@ -804,8 +782,8 @@ class TestWebSocketFactoryTransactional(
     @wait_for_reactor
     @inlineCallbacks
     def test_updateCluster_calls_onNotify_for_cluster_update(self):
-        user = yield deferToThread(transactional(maas_factory.make_User))
-        cluster = yield deferToThread(
+        user = yield deferToDatabase(transactional(maas_factory.make_User))
+        cluster = yield deferToDatabase(
             transactional(maas_factory.make_NodeGroup))
         protocol, factory = self.make_protocol_with_factory(user=user)
         mock_onNotify = self.patch(factory, "onNotify")

@@ -27,6 +27,7 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.security import (
     get_shared_secret_filesystem_path,
     get_shared_secret_from_filesystem,
@@ -40,7 +41,6 @@ from provisioningserver.utils.twisted import (
 )
 from pytz import UTC
 from twisted.internet import ssl
-from twisted.internet.threads import deferToThread
 
 
 def get_serial():
@@ -140,4 +140,4 @@ def get_shared_secret():
     :raises crochet.TimeoutError: when it times-out after being called from
         thread other than the IO/reactor thread.
     """
-    return deferToThread(get_shared_secret_txn)
+    return deferToDatabase(get_shared_secret_txn)

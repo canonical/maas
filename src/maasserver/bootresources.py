@@ -73,6 +73,7 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
@@ -105,7 +106,6 @@ from twisted.internet.defer import (
     DeferredList,
     inlineCallbacks,
 )
-from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
@@ -1007,7 +1007,7 @@ def _import_resources_in_thread(force=False):
     Errors are logged. The returned `Deferred` will never errback so it's safe
     to use in a `TimerService`, for example.
     """
-    d = deferToThread(_import_resources, force=force)
+    d = deferToDatabase(_import_resources, force=force)
     d.addErrback(_handle_import_failures)
     return d
 
@@ -1054,7 +1054,7 @@ class ImportResourcesService(TimerService, object):
             interval.total_seconds(), self.maybe_import_resources)
 
     def maybe_import_resources(self):
-        d = deferToThread(
+        d = deferToDatabase(
             transactional(Config.objects.get_config),
             'boot_images_auto_import')
         d.addCallback(self.import_resources_if_configured)
@@ -1083,10 +1083,11 @@ class ImportResourcesProgressService(TimerService, object):
 
     @inlineCallbacks
     def check_boot_images(self):
-        if (yield deferToThread(self.are_boot_images_available_in_the_region)):
+        if (yield deferToDatabase(
+                self.are_boot_images_available_in_the_region)):
             # The region has boot resources. The clusters will too soon if
             # they haven't already. Nothing to see here, please move along.
-            yield deferToThread(self.clear_import_warning)
+            yield deferToDatabase(self.clear_import_warning)
         else:
             # We can ask clusters if they somehow have some imported images
             # already, from another source perhaps. We can provide a better
@@ -1095,7 +1096,7 @@ class ImportResourcesProgressService(TimerService, object):
                 warning = self.warning_cluster_has_boot_images
             else:
                 warning = self.warning_cluster_has_no_boot_images
-            yield deferToThread(self.set_import_warning, warning)
+            yield deferToDatabase(self.set_import_warning, warning)
 
     warning_cluster_has_boot_images = dedent("""\
     One or more of your clusters currently has boot images, but your region

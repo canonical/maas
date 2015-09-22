@@ -20,6 +20,7 @@ from crochet import run_in_reactor
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.utils.threads import deferToDatabase
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
@@ -35,7 +36,6 @@ from testtools.matchers import (
     MatchesSetwise,
 )
 from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 is_valid_port = MatchesAll(
@@ -76,7 +76,7 @@ class RPCViewTest(DjangoTransactionTestCase):
             yield getServiceNamed("rpc-advertise").starting
             # Force an update, because it's very hard to track when the
             # first iteration of the rpc-advertise service has completed.
-            yield deferToThread(getServiceNamed("rpc-advertise").update)
+            yield deferToDatabase(getServiceNamed("rpc-advertise").update)
         wait_for_startup().wait(5)
 
         response = self.client.get(reverse('rpc-info'))

@@ -53,7 +53,6 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from testtools.testcase import ExpectedException
-from twisted.internet import reactor
 
 
 def make_handler(name, **kwargs):
@@ -347,12 +346,11 @@ class TestHandler(MAASServerTestCase):
         # thread that originates from a specific threadpool.
         handler = self.make_nodes_handler()
         params = {"system_id": factory.make_name("system_id")}
-        self.patch(base, "deferToThreadPool").return_value = sentinel.thing
+        self.patch(base, "deferToDatabase").return_value = sentinel.thing
         result = handler.execute("get", params).wait()
         self.assertThat(result, Is(sentinel.thing))
-        self.assertThat(base.deferToThreadPool, MockCalledOnceWith(
-            reactor, reactor.getThreadPool(), ANY, params))
-        [_, _, func, _] = base.deferToThreadPool.call_args[0]
+        self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
+        [func, _] = base.deferToDatabase.call_args[0]
         self.assertThat(func.func, Equals(handler.get))
 
     def test_execute_calls_asynchronous_method_with_params(self):

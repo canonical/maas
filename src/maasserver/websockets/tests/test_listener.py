@@ -50,6 +50,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_all_triggers
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.listener import (
     PostgresListener,
     PostgresListenerNotifyError,
@@ -68,7 +69,6 @@ from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
@@ -90,7 +90,7 @@ class TestPostgresListener(MAASServerTestCase):
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.send_notification, "node_create", 1)
+            yield deferToDatabase(self.send_notification, "node_create", 1)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '1'), dv.value)
         finally:
@@ -732,13 +732,13 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            node = yield deferToThread(self.create_node, self.params)
+            node = yield deferToDatabase(self.create_node, self.params)
             yield dv.get(timeout=2)
             self.assertEqual(('create', node.system_id), dv.value)
         finally:
@@ -747,14 +747,14 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        node = yield deferToThread(self.create_node, self.params)
+        node = yield deferToDatabase(self.create_node, self.params)
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_node,
                 node.system_id,
                 {'hostname': factory.make_name('hostname')})
@@ -766,14 +766,14 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        node = yield deferToThread(self.create_node, self.params)
+        node = yield deferToDatabase(self.create_node, self.params)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_node, node.system_id)
+            yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', node.system_id), dv.value)
         finally:
@@ -787,14 +787,14 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        parent = yield deferToThread(self.create_node)
+        parent = yield deferToDatabase(self.create_node)
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_node, {
                     "installable": False,
                     "parent": parent,
@@ -807,14 +807,14 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        device, parent = yield deferToThread(self.create_device_with_parent)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_node,
                 device.system_id,
                 {'hostname': factory.make_name('hostname')})
@@ -826,14 +826,14 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        device, parent = yield deferToThread(self.create_device_with_parent)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_node, device.system_id)
+            yield deferToDatabase(self.delete_node, device.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', parent.system_id), dv.value)
         finally:
@@ -848,13 +848,13 @@ class TestClusterListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            nodegroup = yield deferToThread(self.create_nodegroup)
+            nodegroup = yield deferToDatabase(self.create_nodegroup)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % nodegroup.id), dv.value)
         finally:
@@ -863,15 +863,15 @@ class TestClusterListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        nodegroup = yield deferToThread(self.create_nodegroup)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_nodegroup,
                 nodegroup.id,
                 {'cluster_name': factory.make_name('cluster_name')})
@@ -883,14 +883,14 @@ class TestClusterListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        nodegroup = yield deferToThread(self.create_nodegroup)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_nodegroup, nodegroup.id)
+            yield deferToDatabase(self.delete_nodegroup, nodegroup.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % nodegroup.id), dv.value)
         finally:
@@ -905,15 +905,15 @@ class TestClusterInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_nodegroup_update_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
-        nodegroup = yield deferToThread(self.create_nodegroup)
+        yield deferToDatabase(register_all_triggers)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_nodegroupinterface, nodegroup)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
@@ -923,9 +923,9 @@ class TestClusterInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_nodegroup_update_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
-        nodegroup = yield deferToThread(self.create_nodegroup)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
+        interface = yield deferToDatabase(
             self.create_nodegroupinterface, nodegroup)
 
         listener = self.make_listener_without_delay()
@@ -933,7 +933,7 @@ class TestClusterInterfaceListener(
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_nodegroupinterface,
                 interface.id,
                 {'name': factory.make_name('name')})
@@ -945,9 +945,9 @@ class TestClusterInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_nodegroup_update_handler_on_update_subnet_mask(self):
-        yield deferToThread(register_all_triggers)
-        nodegroup = yield deferToThread(self.create_nodegroup)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
+        interface = yield deferToDatabase(
             self.create_nodegroupinterface, nodegroup,
             params=dict(ip='10.0.0.1', subnet_mask='255.255.255.0'))
 
@@ -956,7 +956,7 @@ class TestClusterInterfaceListener(
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_nodegroupinterface_subnet_mask,
                 interface.id, '255.255.0.0')
             yield dv.get(timeout=2)
@@ -967,9 +967,9 @@ class TestClusterInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_nodegroup_update_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
-        nodegroup = yield deferToThread(self.create_nodegroup)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
+        interface = yield deferToDatabase(
             self.create_nodegroupinterface, nodegroup)
 
         listener = self.make_listener_without_delay()
@@ -977,7 +977,7 @@ class TestClusterInterfaceListener(
         listener.register("nodegroup", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_nodegroupinterface, interface.id)
+            yield deferToDatabase(self.delete_nodegroupinterface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
@@ -991,13 +991,13 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            zone = yield deferToThread(self.create_zone)
+            zone = yield deferToDatabase(self.create_zone)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % zone.id), dv.value)
         finally:
@@ -1006,15 +1006,15 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
-        zone = yield deferToThread(self.create_zone)
+        zone = yield deferToDatabase(self.create_zone)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_zone,
                 zone.id,
                 {'cluster_name': factory.make_name('cluster_name')})
@@ -1026,14 +1026,14 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
-        zone = yield deferToThread(self.create_zone)
+        zone = yield deferToDatabase(self.create_zone)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_zone, zone.id)
+            yield deferToDatabase(self.delete_zone, zone.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % zone.id), dv.value)
         finally:
@@ -1047,13 +1047,13 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            tag = yield deferToThread(self.create_tag)
+            tag = yield deferToDatabase(self.create_tag)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % tag.id), dv.value)
         finally:
@@ -1062,15 +1062,15 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
-        tag = yield deferToThread(self.create_tag)
+        tag = yield deferToDatabase(self.create_tag)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_tag,
                 tag.id,
                 {'name': factory.make_name('tag')})
@@ -1082,14 +1082,14 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
-        tag = yield deferToThread(self.create_tag)
+        tag = yield deferToDatabase(self.create_tag)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_tag, tag.id)
+            yield deferToDatabase(self.delete_tag, tag.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % tag.id), dv.value)
         finally:
@@ -1115,16 +1115,16 @@ class TestNodeTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        tag = yield deferToThread(self.create_tag)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        tag = yield deferToDatabase(self.create_tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.add_node_to_tag, node, tag)
+            yield deferToDatabase(self.add_node_to_tag, node, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1133,16 +1133,16 @@ class TestNodeTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        tag = yield deferToThread(self.create_tag)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        tag = yield deferToDatabase(self.create_tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.remove_node_from_tag, node, tag)
+            yield deferToDatabase(self.remove_node_from_tag, node, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1151,17 +1151,17 @@ class TestNodeTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_node_handler_with_update_on_tag_rename(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        tag = yield deferToThread(self.create_tag)
-        yield deferToThread(self.add_node_to_tag, node, tag)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        tag = yield deferToDatabase(self.create_tag)
+        yield deferToDatabase(self.add_node_to_tag, node, tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            tag = yield deferToThread(
+            tag = yield deferToDatabase(
                 self.update_tag, tag.id, {'name': factory.make_name("tag")})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -1177,16 +1177,16 @@ class TestDeviceWithParentTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        tag = yield deferToThread(self.create_tag)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        tag = yield deferToDatabase(self.create_tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.add_node_to_tag, device, tag)
+            yield deferToDatabase(self.add_node_to_tag, device, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1195,16 +1195,16 @@ class TestDeviceWithParentTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        tag = yield deferToThread(self.create_tag)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        tag = yield deferToDatabase(self.create_tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.remove_node_from_tag, device, tag)
+            yield deferToDatabase(self.remove_node_from_tag, device, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1213,17 +1213,17 @@ class TestDeviceWithParentTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_node_handler_with_update_on_tag_rename(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        tag = yield deferToThread(self.create_tag)
-        yield deferToThread(self.add_node_to_tag, device, tag)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        tag = yield deferToDatabase(self.create_tag)
+        yield deferToDatabase(self.add_node_to_tag, device, tag)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            tag = yield deferToThread(
+            tag = yield deferToDatabase(
                 self.update_tag, tag.id, {'name': factory.make_name("tag")})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
@@ -1238,13 +1238,13 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            user = yield deferToThread(self.create_user)
+            user = yield deferToDatabase(self.create_user)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % user.id), dv.value)
         finally:
@@ -1253,15 +1253,15 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        user = yield deferToThread(self.create_user)
+        user = yield deferToDatabase(self.create_user)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_user,
                 user.id,
                 {'username': factory.make_name('username')})
@@ -1273,14 +1273,14 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        user = yield deferToThread(self.create_user)
+        user = yield deferToDatabase(self.create_user)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_user, user.id)
+            yield deferToDatabase(self.delete_user, user.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % user.id), dv.value)
         finally:
@@ -1294,13 +1294,13 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            event = yield deferToThread(self.create_event)
+            event = yield deferToDatabase(self.create_event)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % event.id), dv.value)
         finally:
@@ -1309,15 +1309,15 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
-        event = yield deferToThread(self.create_event)
+        event = yield deferToDatabase(self.create_event)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_event,
                 event.id,
                 {'description': factory.make_name('description')})
@@ -1329,14 +1329,14 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
-        event = yield deferToThread(self.create_event)
+        event = yield deferToDatabase(self.create_event)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_event, event.id)
+            yield deferToDatabase(self.delete_event, event.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % event.id), dv.value)
         finally:
@@ -1362,15 +1362,15 @@ class TestNodeEventListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_event, {"node": node})
+            yield deferToDatabase(self.create_event, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1385,15 +1385,15 @@ class TestDeviceWithParentEventListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_event, {"node": device})
+            yield deferToDatabase(self.create_event, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1419,9 +1419,9 @@ class TestNodeStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
 
         listener = PostgresListener()
@@ -1429,7 +1429,7 @@ class TestNodeStaticIPAddressListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_staticipaddress, {"interface": interface})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -1439,11 +1439,11 @@ class TestNodeStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        sip = yield deferToThread(
+        sip = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
 
         listener = PostgresListener()
@@ -1451,7 +1451,7 @@ class TestNodeStaticIPAddressListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_staticipaddress, sip.id)
+            yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1466,10 +1466,10 @@ class TestDeviceWithParentStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
 
         listener = PostgresListener()
@@ -1477,7 +1477,7 @@ class TestDeviceWithParentStaticIPAddressListener(
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_staticipaddress, {"interface": interface})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
@@ -1487,12 +1487,12 @@ class TestDeviceWithParentStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        sip = yield deferToThread(
+        sip = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
 
         listener = PostgresListener()
@@ -1500,7 +1500,7 @@ class TestDeviceWithParentStaticIPAddressListener(
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_staticipaddress, sip.id)
+            yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1526,15 +1526,15 @@ class TestNodeNodeResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_noderesult, {"node": node})
+            yield deferToDatabase(self.create_noderesult, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1543,16 +1543,16 @@ class TestNodeNodeResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        result = yield deferToThread(self.create_noderesult, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        result = yield deferToDatabase(self.create_noderesult, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_noderesult, result.id)
+            yield deferToDatabase(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1567,15 +1567,15 @@ class TestDeviceWithParentNodeResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_noderesult, {"node": device})
+            yield deferToDatabase(self.create_noderesult, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1584,16 +1584,17 @@ class TestDeviceWithParentNodeResultListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        result = yield deferToThread(self.create_noderesult, {"node": device})
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        result = yield deferToDatabase(
+            self.create_noderesult, {"node": device})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_noderesult, result.id)
+            yield deferToDatabase(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1619,15 +1620,15 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_interface, {"node": node})
+            yield deferToDatabase(self.create_interface, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1636,16 +1637,17 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(self.create_interface, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_interface, interface.id)
+            yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1654,16 +1656,17 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(self.create_interface, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_interface, interface.id, {
+            yield deferToDatabase(self.update_interface, interface.id, {
                 "mac_address": factory.make_MAC()
                 })
             yield dv.get(timeout=2)
@@ -1674,10 +1677,11 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_old_node_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node1 = yield deferToThread(self.create_node, self.params)
-        node2 = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(self.create_interface, {"node": node1})
+        yield deferToDatabase(register_all_triggers)
+        node1 = yield deferToDatabase(self.create_node, self.params)
+        node2 = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
+            self.create_interface, {"node": node1})
         dvs = [DeferredValue(), DeferredValue()]
 
         def set_defer_value(*args):
@@ -1690,7 +1694,7 @@ class TestNodeInterfaceListener(
         listener.register(self.listener, set_defer_value)
         yield listener.start()
         try:
-            yield deferToThread(self.update_interface, interface.id, {
+            yield deferToDatabase(self.update_interface, interface.id, {
                 "node": node2
                 })
             yield dvs[0].get(timeout=2)
@@ -1711,15 +1715,15 @@ class TestDeviceWithParentInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_interface, {"node": device})
+            yield deferToDatabase(self.create_interface, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1728,9 +1732,9 @@ class TestDeviceWithParentInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        interface = yield deferToDatabase(
             self.create_interface, {"node": device})
 
         listener = PostgresListener()
@@ -1738,7 +1742,7 @@ class TestDeviceWithParentInterfaceListener(
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_interface, interface.id)
+            yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -1747,9 +1751,9 @@ class TestDeviceWithParentInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(self.create_device_with_parent)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(self.create_device_with_parent)
+        interface = yield deferToDatabase(
             self.create_interface, {"node": device})
 
         listener = PostgresListener()
@@ -1757,7 +1761,7 @@ class TestDeviceWithParentInterfaceListener(
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_interface, interface.id, {
+            yield deferToDatabase(self.update_interface, interface.id, {
                 "mac_address": factory.make_MAC()
                 })
             yield dv.get(timeout=2)
@@ -1768,10 +1772,12 @@ class TestDeviceWithParentInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_old_node_on_update(self):
-        yield deferToThread(register_all_triggers)
-        device1, parent1 = yield deferToThread(self.create_device_with_parent)
-        device2, parent2 = yield deferToThread(self.create_device_with_parent)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device1, parent1 = yield deferToDatabase(
+            self.create_device_with_parent)
+        device2, parent2 = yield deferToDatabase(
+            self.create_device_with_parent)
+        interface = yield deferToDatabase(
             self.create_interface, {"node": device1})
         dvs = [DeferredValue(), DeferredValue()]
 
@@ -1785,7 +1791,7 @@ class TestDeviceWithParentInterfaceListener(
         listener.register("node", set_defer_value)
         yield listener.start()
         try:
-            yield deferToThread(self.update_interface, interface.id, {
+            yield deferToDatabase(self.update_interface, interface.id, {
                 "node": device2
                 })
             yield dvs[0].get(timeout=2)
@@ -1806,13 +1812,13 @@ class TestFabricListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            fabric = yield deferToThread(self.create_fabric)
+            fabric = yield deferToDatabase(self.create_fabric)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % fabric.id), dv.value)
         finally:
@@ -1821,15 +1827,15 @@ class TestFabricListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
-        fabric = yield deferToThread(self.create_fabric)
+        fabric = yield deferToDatabase(self.create_fabric)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_fabric,
                 fabric.id,
                 {'name': factory.make_name('name')})
@@ -1841,14 +1847,14 @@ class TestFabricListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
-        fabric = yield deferToThread(self.create_fabric)
+        fabric = yield deferToDatabase(self.create_fabric)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_fabric, fabric.id)
+            yield deferToDatabase(self.delete_fabric, fabric.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % fabric.id), dv.value)
         finally:
@@ -1863,14 +1869,14 @@ class TestVLANListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        fabric = yield deferToThread(self.create_fabric)
-        yield deferToThread(register_all_triggers)
+        fabric = yield deferToDatabase(self.create_fabric)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+            vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % vlan.id), dv.value)
         finally:
@@ -1879,16 +1885,16 @@ class TestVLANListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        fabric = yield deferToThread(self.create_fabric)
-        yield deferToThread(register_all_triggers)
+        fabric = yield deferToDatabase(self.create_fabric)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
-        vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+        vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_vlan,
                 vlan.id,
                 {'name': factory.make_name('name')})
@@ -1900,15 +1906,15 @@ class TestVLANListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        fabric = yield deferToThread(self.create_fabric)
-        yield deferToThread(register_all_triggers)
+        fabric = yield deferToDatabase(self.create_fabric)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
-        vlan = yield deferToThread(self.create_vlan, {'fabric': fabric})
+        vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
         yield listener.start()
         try:
-            yield deferToThread(self.delete_vlan, vlan.id)
+            yield deferToDatabase(self.delete_vlan, vlan.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % vlan.id), dv.value)
         finally:
@@ -1923,13 +1929,13 @@ class TestSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            subnet = yield deferToThread(self.create_subnet)
+            subnet = yield deferToDatabase(self.create_subnet)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % subnet.id), dv.value)
         finally:
@@ -1938,15 +1944,15 @@ class TestSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
-        subnet = yield deferToThread(self.create_subnet)
+        subnet = yield deferToDatabase(self.create_subnet)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_subnet,
                 subnet.id,
                 {'name': factory.make_name('name')})
@@ -1958,14 +1964,14 @@ class TestSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
-        subnet = yield deferToThread(self.create_subnet)
+        subnet = yield deferToDatabase(self.create_subnet)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_subnet, subnet.id)
+            yield deferToDatabase(self.delete_subnet, subnet.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % subnet.id), dv.value)
         finally:
@@ -1980,13 +1986,13 @@ class TestSpaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            space = yield deferToThread(self.create_space)
+            space = yield deferToDatabase(self.create_space)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % space.id), dv.value)
         finally:
@@ -1995,15 +2001,15 @@ class TestSpaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_update_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
-        space = yield deferToThread(self.create_space)
+        space = yield deferToDatabase(self.create_space)
 
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_space,
                 space.id,
                 {'name': factory.make_name('name')})
@@ -2015,14 +2021,14 @@ class TestSpaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
-        yield deferToThread(register_all_triggers)
+        yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
-        space = yield deferToThread(self.create_space)
+        space = yield deferToDatabase(self.create_space)
         yield listener.start()
         try:
-            yield deferToThread(self.delete_space, space.id)
+            yield deferToDatabase(self.delete_space, space.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % space.id), dv.value)
         finally:
@@ -2049,20 +2055,20 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_iface_with_update_on_fabric_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        yield deferToThread(
+        yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        fabric = yield deferToThread(self.get_interface_fabric, interface.id)
+        fabric = yield deferToDatabase(self.get_interface_fabric, interface.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_fabric,
                 fabric.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2073,20 +2079,20 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_iface_with_update_on_vlan_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        yield deferToThread(
+        yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        vlan = yield deferToThread(self.get_interface_vlan, interface.id)
+        vlan = yield deferToDatabase(self.get_interface_vlan, interface.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_vlan,
                 vlan.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2097,20 +2103,20 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_subnet_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        subnet = yield deferToThread(self.get_ipaddress_subnet, ipaddress.id)
+        subnet = yield deferToDatabase(self.get_ipaddress_subnet, ipaddress.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_subnet,
                 subnet.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2121,20 +2127,20 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_space_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        space = yield deferToThread(self.get_ipaddress_space, ipaddress.id)
+        space = yield deferToDatabase(self.get_ipaddress_space, ipaddress.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_space, space.id,
                 {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2145,13 +2151,13 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_ip_address_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        interface = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
-        subnet = yield deferToThread(self.create_subnet)
+        subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {
                 "alloc_type": IPADDRESS_TYPE.AUTO,
                 "interface": interface,
@@ -2164,7 +2170,7 @@ class TestNodeNetworkListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_staticipaddress, ipaddress.id,
                 {"ip": selected_ip})
             yield dv.get(timeout=2)
@@ -2182,21 +2188,21 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_iface_with_update_on_fabric_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        yield deferToThread(
+        yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        fabric = yield deferToThread(self.get_interface_fabric, interface.id)
+        fabric = yield deferToDatabase(self.get_interface_fabric, interface.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_fabric,
                 fabric.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2207,21 +2213,21 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_iface_with_update_on_vlan_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        yield deferToThread(
+        yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        vlan = yield deferToThread(self.get_interface_vlan, interface.id)
+        vlan = yield deferToDatabase(self.get_interface_vlan, interface.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_vlan,
                 vlan.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2232,21 +2238,21 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_subnet_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        subnet = yield deferToThread(self.get_ipaddress_subnet, ipaddress.id)
+        subnet = yield deferToDatabase(self.get_ipaddress_subnet, ipaddress.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_subnet,
                 subnet.id, {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2257,21 +2263,21 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_space_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
-        space = yield deferToThread(self.get_ipaddress_space, ipaddress.id)
+        space = yield deferToDatabase(self.get_ipaddress_space, ipaddress.id)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_space, space.id,
                 {"name": factory.make_name("name")})
             yield dv.get(timeout=2)
@@ -2282,14 +2288,14 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_ip_address_update(self):
-        yield deferToThread(register_all_triggers)
-        device, parent = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True})
-        interface = yield deferToThread(
+        interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
-        subnet = yield deferToThread(self.create_subnet)
+        subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {
                 "alloc_type": IPADDRESS_TYPE.AUTO,
                 "interface": interface,
@@ -2302,7 +2308,7 @@ class TestDeviceWithParentNetworkListener(
         listener.register("node", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_staticipaddress, ipaddress.id,
                 {"ip": selected_ip})
             yield dv.get(timeout=2)
@@ -2319,10 +2325,10 @@ class TestStaticIPAddressSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_update_on_subnet(self):
-        yield deferToThread(register_all_triggers)
-        subnet = yield deferToThread(self.create_subnet)
+        yield deferToDatabase(register_all_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {
                 "alloc_type": IPADDRESS_TYPE.AUTO,
                 "subnet": subnet,
@@ -2334,7 +2340,7 @@ class TestStaticIPAddressSubnetListener(
         listener.register("subnet", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_staticipaddress,
                 ipaddress.id, {"ip": selected_ip})
             yield dv.get(timeout=2)
@@ -2345,11 +2351,11 @@ class TestStaticIPAddressSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_update_on_old_and_new_subnet(self):
-        yield deferToThread(register_all_triggers)
-        old_subnet = yield deferToThread(self.create_subnet)
-        new_subnet = yield deferToThread(self.create_subnet)
+        yield deferToDatabase(register_all_triggers)
+        old_subnet = yield deferToDatabase(self.create_subnet)
+        new_subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(new_subnet.get_ipnetwork())
-        ipaddress = yield deferToThread(
+        ipaddress = yield deferToDatabase(
             self.create_staticipaddress, {
                 "alloc_type": IPADDRESS_TYPE.AUTO,
                 "subnet": old_subnet,
@@ -2367,7 +2373,7 @@ class TestStaticIPAddressSubnetListener(
         listener.register("subnet", set_defer_value)
         yield listener.start()
         try:
-            yield deferToThread(self.update_staticipaddress, ipaddress.id, {
+            yield deferToDatabase(self.update_staticipaddress, ipaddress.id, {
                 "ip": selected_ip,
                 "subnet": new_subnet,
                 })
@@ -2397,15 +2403,15 @@ class TestNodeBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_blockdevice, {"node": node})
+            yield deferToDatabase(self.create_blockdevice, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2414,9 +2420,9 @@ class TestNodeBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        blockdevice = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node})
 
         listener = PostgresListener()
@@ -2424,7 +2430,7 @@ class TestNodeBlockDeviceListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_blockdevice, blockdevice.id)
+            yield deferToDatabase(self.delete_blockdevice, blockdevice.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2433,9 +2439,9 @@ class TestNodeBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        blockdevice = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node})
 
         listener = PostgresListener()
@@ -2443,7 +2449,7 @@ class TestNodeBlockDeviceListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_blockdevice, blockdevice.id, {
+            yield deferToDatabase(self.update_blockdevice, blockdevice.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
             yield dv.get(timeout=2)
@@ -2454,9 +2460,9 @@ class TestNodeBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_physicalblockdevice_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        blockdevice = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        blockdevice = yield deferToDatabase(
             self.create_physicalblockdevice, {"node": node})
 
         listener = PostgresListener()
@@ -2464,7 +2470,7 @@ class TestNodeBlockDeviceListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_physicalblockdevice, blockdevice.id, {
                     "model": factory.make_name("model")
                 })
@@ -2476,9 +2482,9 @@ class TestNodeBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_virtualblockdevice_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        blockdevice = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        blockdevice = yield deferToDatabase(
             self.create_virtualblockdevice, {"node": node})
 
         listener = PostgresListener()
@@ -2486,7 +2492,7 @@ class TestNodeBlockDeviceListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_virtualblockdevice, blockdevice.id, {
                     "uuid": factory.make_UUID()
                 })
@@ -2511,15 +2517,15 @@ class TestNodePartitionTableListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_partitiontable, {"node": node})
+            yield deferToDatabase(self.create_partitiontable, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2528,9 +2534,9 @@ class TestNodePartitionTableListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partitiontable = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node})
 
         listener = PostgresListener()
@@ -2538,7 +2544,8 @@ class TestNodePartitionTableListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_partitiontable, partitiontable.id)
+            yield deferToDatabase(
+                self.delete_partitiontable, partitiontable.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2547,9 +2554,9 @@ class TestNodePartitionTableListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partitiontable = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node})
 
         listener = PostgresListener()
@@ -2557,7 +2564,7 @@ class TestNodePartitionTableListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_partitiontable, partitiontable.id, {
                     "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
@@ -2582,15 +2589,15 @@ class TestNodePartitionListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_partition, {"node": node})
+            yield deferToDatabase(self.create_partition, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2599,9 +2606,9 @@ class TestNodePartitionListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
             self.create_partition, {"node": node})
 
         listener = PostgresListener()
@@ -2609,7 +2616,7 @@ class TestNodePartitionListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_partition, partition.id)
+            yield deferToDatabase(self.delete_partition, partition.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2618,9 +2625,10 @@ class TestNodePartitionListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
@@ -2630,7 +2638,7 @@ class TestNodePartitionListener(
             # Only downsize the partition otherwise the test may fail due
             # to the random number being generated is greater than the mock
             # available disk space
-            yield deferToThread(self.update_partition, partition.id, {
+            yield deferToDatabase(self.update_partition, partition.id, {
                 "size": partition.size - 1,
                 })
             yield dv.get(timeout=2)
@@ -2654,16 +2662,17 @@ class TestNodeFilesystemListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_filesystem, {"partition": partition})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -2673,10 +2682,11 @@ class TestNodeFilesystemListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
-        filesystem = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
+        filesystem = yield deferToDatabase(
             self.create_filesystem, {"partition": partition})
 
         listener = PostgresListener()
@@ -2684,7 +2694,7 @@ class TestNodeFilesystemListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_filesystem, filesystem.id)
+            yield deferToDatabase(self.delete_filesystem, filesystem.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2693,10 +2703,11 @@ class TestNodeFilesystemListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
-        filesystem = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
+        filesystem = yield deferToDatabase(
             self.create_filesystem, {"partition": partition})
 
         listener = PostgresListener()
@@ -2704,7 +2715,7 @@ class TestNodeFilesystemListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_filesystem, filesystem.id, {
+            yield deferToDatabase(self.update_filesystem, filesystem.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
             yield dv.get(timeout=2)
@@ -2728,15 +2739,15 @@ class TestNodeFilesystemgroupListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_filesystemgroup, {"node": node})
+            yield deferToDatabase(self.create_filesystemgroup, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2745,9 +2756,9 @@ class TestNodeFilesystemgroupListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        filesystemgroup = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})
 
@@ -2756,7 +2767,7 @@ class TestNodeFilesystemgroupListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.delete_filesystemgroup, filesystemgroup.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -2766,9 +2777,9 @@ class TestNodeFilesystemgroupListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        filesystemgroup = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})
 
@@ -2777,7 +2788,7 @@ class TestNodeFilesystemgroupListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.update_filesystemgroup, filesystemgroup.id, {
                     "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
@@ -2802,16 +2813,17 @@ class TestNodeCachesetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
 
         listener = PostgresListener()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(
+            yield deferToDatabase(
                 self.create_cacheset, {"node": node, "partition": partition})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -2821,10 +2833,11 @@ class TestNodeCachesetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
-        cacheset = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
+        cacheset = yield deferToDatabase(
             self.create_cacheset, {"node": node, "partition": partition})
 
         listener = PostgresListener()
@@ -2832,7 +2845,7 @@ class TestNodeCachesetListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_cacheset, cacheset.id)
+            yield deferToDatabase(self.delete_cacheset, cacheset.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2841,10 +2854,11 @@ class TestNodeCachesetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):
-        yield deferToThread(register_all_triggers)
-        node = yield deferToThread(self.create_node, self.params)
-        partition = yield deferToThread(self.create_partition, {"node": node})
-        cacheset = yield deferToThread(
+        yield deferToDatabase(register_all_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        partition = yield deferToDatabase(
+            self.create_partition, {"node": node})
+        cacheset = yield deferToDatabase(
             self.create_cacheset, {"node": node, "partition": partition})
 
         listener = PostgresListener()
@@ -2852,7 +2866,7 @@ class TestNodeCachesetListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.update_cacheset, cacheset.id, {
+            yield deferToDatabase(self.update_cacheset, cacheset.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
                 })
             yield dv.get(timeout=2)
@@ -2869,15 +2883,15 @@ class TestUserSSHKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        user = yield deferToThread(self.create_user)
+        yield deferToDatabase(register_all_triggers)
+        user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_sshkey, {"user": user})
+            yield deferToDatabase(self.create_sshkey, {"user": user})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
@@ -2886,16 +2900,16 @@ class TestUserSSHKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        user = yield deferToThread(self.create_user)
-        sshkey = yield deferToThread(self.create_sshkey, {"user": user})
+        yield deferToDatabase(register_all_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_sshkey, sshkey.id)
+            yield deferToDatabase(self.delete_sshkey, sshkey.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
@@ -2910,15 +2924,15 @@ class TestUserSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_create(self):
-        yield deferToThread(register_all_triggers)
-        user = yield deferToThread(self.create_user)
+        yield deferToDatabase(register_all_triggers)
+        user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.create_sslkey, {"user": user})
+            yield deferToDatabase(self.create_sslkey, {"user": user})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
@@ -2927,16 +2941,16 @@ class TestUserSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_delete(self):
-        yield deferToThread(register_all_triggers)
-        user = yield deferToThread(self.create_user)
-        sslkey = yield deferToThread(self.create_sslkey, {"user": user})
+        yield deferToDatabase(register_all_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         yield listener.start()
         try:
-            yield deferToThread(self.delete_sslkey, sslkey.id)
+            yield deferToDatabase(self.delete_sslkey, sslkey.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:

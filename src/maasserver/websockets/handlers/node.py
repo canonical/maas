@@ -39,6 +39,7 @@ from maasserver.rpc import getClientFor
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -64,13 +65,11 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     deferWithTimeout,
 )
-from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
     returnValue,
 )
-from twisted.internet.threads import deferToThreadPool
 
 
 maaslog = get_maas_logger("websockets.node")
@@ -578,10 +577,6 @@ class NodeHandler(TimestampedModelHandler):
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
 
-    def in_thread(self, func, *args, **kwargs):
-        return deferToThreadPool(
-            reactor, self.threadpool, func, *args, **kwargs)
-
     @asynchronous
     @inlineCallbacks
     def check_power(self, params):
@@ -616,9 +611,9 @@ class NodeHandler(TimestampedModelHandler):
         # the database. If it can't be queried we can return early, but first
         # update the node's power state with what we know we don't know.
         node_info, cluster_info, power_info = (
-            yield self.in_thread(get_node_cluster_and_power_info))
+            yield deferToDatabase(get_node_cluster_and_power_info))
         if power_info is None or not power_info.can_be_queried:
-            yield self.in_thread(update_power_state, "unknown")
+            yield deferToDatabase(update_power_state, "unknown")
             returnValue("unknown")
 
         # Get a client to talk to the node's cluster. If we're not connected
@@ -655,5 +650,5 @@ class NodeHandler(TimestampedModelHandler):
         else:
             state = response["state"]
 
-        yield self.in_thread(update_power_state, state)
+        yield deferToDatabase(update_power_state, state)
         returnValue(state)

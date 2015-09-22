@@ -28,6 +28,7 @@ from maasserver.utils.orm import (
 )
 
 
+@transactional
 def discard_persistent_error(component):
     """Drop the persistent error for `component`.
 

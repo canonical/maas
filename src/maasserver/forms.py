@@ -180,6 +180,7 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
+from maasserver.utils.threads import deferToDatabase
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import (
@@ -205,7 +206,6 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet.defer import DeferredList
 from twisted.internet.task import coiterate
-from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 
@@ -2341,7 +2341,7 @@ class BulkNodeActionForm(forms.Form):
         # We're going to be making the same call for every specified node, so
         # bundle up the common bits here to keep the noise down later on.
         perform = partial(
-            deferToThread, self._perform_action_on_node,
+            deferToDatabase, self._perform_action_on_node,
             action_class=action_class)
 
         # The results will be a `system_id` -> `result` mapping, where

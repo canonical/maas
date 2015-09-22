@@ -76,6 +76,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -176,7 +177,6 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
-from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
@@ -247,7 +247,7 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
         args = {"uuid": uuid}
         response = yield call_responder(Region(), Register, args)
         self.assertEqual({}, response)
-        nodegroup = yield deferToThread(self.get_nodegroup, uuid)
+        nodegroup = yield deferToDatabase(self.get_nodegroup, uuid)
         self.assertEqual(uuid, nodegroup.uuid)
 
     @transactional
@@ -266,9 +266,9 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
         args = {"uuid": uuid, "networks": networks}
         response = yield call_responder(Region(), Register, args)
         self.assertEqual({}, response)
-        nodegroup = yield deferToThread(self.get_nodegroup, uuid)
+        nodegroup = yield deferToDatabase(self.get_nodegroup, uuid)
         self.assertEqual(uuid, nodegroup.uuid)
-        networks_observed = yield deferToThread(
+        networks_observed = yield deferToDatabase(
             self.get_cluster_networks, nodegroup)
         self.assertItemsEqual(networks, networks_observed)
 
@@ -417,7 +417,7 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__stores_leases(self):
-        interface, ngi, nodegroup = yield deferToThread(
+        interface, ngi, nodegroup = yield deferToDatabase(
             self.make_interface_on_managed_cluster_interface)
         mapping = {
             "ip": ngi.ip_range_low,
@@ -429,7 +429,7 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
 
         self.assertThat(response, Equals({}))
 
-        [(ip, mac)] = yield deferToThread(
+        [(ip, mac)] = yield deferToDatabase(
             self.get_leases_for, nodegroup=nodegroup)
         self.expectThat(ip, Equals(mapping["ip"]))
         self.expectThat(mac, Equals(mapping["mac"]))
@@ -502,10 +502,10 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_port_archive_default(self):
-        yield deferToThread(self.set_main_archive,
-                            "http://archive.ubuntu.com/ubuntu")
-        yield deferToThread(self.set_ports_archive,
-                            "http://ports.ubuntu.com/ubuntu-ports")
+        yield deferToDatabase(
+            self.set_main_archive, "http://archive.ubuntu.com/ubuntu")
+        yield deferToDatabase(
+            self.set_ports_archive, "http://ports.ubuntu.com/ubuntu-ports")
 
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
@@ -518,7 +518,7 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_set(self):
         url = factory.make_parsed_url()
-        yield deferToThread(self.set_main_archive, url.geturl())
+        yield deferToDatabase(self.set_main_archive, url.geturl())
 
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
@@ -530,7 +530,7 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
     @inlineCallbacks
     def test_get_archive_mirrors_with_ports_archive_set(self):
         url = factory.make_parsed_url()
-        yield deferToThread(self.set_ports_archive, url.geturl())
+        yield deferToDatabase(self.set_ports_archive, url.geturl())
 
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
@@ -554,7 +554,7 @@ class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_proxies_with_http_proxy_not_set(self):
-        yield deferToThread(self.set_http_proxy, None)
+        yield deferToDatabase(self.set_http_proxy, None)
 
         response = yield call_responder(Region(), GetProxies, {})
 
@@ -566,7 +566,7 @@ class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
     @inlineCallbacks
     def test_get_proxies_with_http_proxy_set(self):
         url = factory.make_parsed_url()
-        yield deferToThread(self.set_http_proxy, url.geturl())
+        yield deferToDatabase(self.set_http_proxy, url.geturl())
 
         response = yield call_responder(Region(), GetProxies, {})
 
@@ -602,7 +602,7 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
         self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', False)
 
-        system_id = yield deferToThread(self.create_deploying_node)
+        system_id = yield deferToDatabase(self.create_deploying_node)
 
         error_description = factory.make_name('error-description')
         response = yield call_responder(
@@ -610,8 +610,8 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
             {b'system_id': system_id, b'error_description': error_description})
 
         self.assertEqual({}, response)
-        new_status = yield deferToThread(self.get_node_status, system_id)
-        new_error_description = yield deferToThread(
+        new_status = yield deferToDatabase(self.get_node_status, system_id)
+        new_error_description = yield deferToDatabase(
             self.get_node_error_description, system_id)
         self.assertEqual(
             (NODE_STATUS.FAILED_DEPLOYMENT, error_description),
@@ -660,14 +660,14 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__returns_correct_arguments(self):
-        nodegroup = yield deferToThread(self.create_nodegroup)
+        nodegroup = yield deferToDatabase(self.create_nodegroup)
         nodes = []
         for _ in range(3):
-            node = yield deferToThread(
+            node = yield deferToDatabase(
                 self.create_node, nodegroup,
                 power_type=random.choice(QUERY_POWER_TYPES),
                 power_state_updated=None)
-            power_params = yield deferToThread(
+            power_params = yield deferToDatabase(
                 self.get_node_power_parameters, node)
             nodes.append({
                 'system_id': node.system_id,
@@ -679,7 +679,7 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
         # Create a node with an invalid power type (i.e. the empty string).
         # This will not be reported by the call to ListNodePowerParameters.
-        yield deferToThread(
+        yield deferToDatabase(
             self.create_node, nodegroup, power_type="",
             power_state_updated=None)
 
@@ -722,14 +722,14 @@ class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
     @inlineCallbacks
     def test__changes_power_state(self):
         power_state = factory.pick_enum(POWER_STATE)
-        node = yield deferToThread(self.create_node, power_state)
+        node = yield deferToDatabase(self.create_node, power_state)
 
         new_state = factory.pick_enum(POWER_STATE, but_not=power_state)
         yield call_responder(
             Region(), UpdateNodePowerState,
             {b'system_id': node.system_id, b'power_state': new_state})
 
-        db_state = yield deferToThread(
+        db_state = yield deferToDatabase(
             self.get_node_power_state, node.system_id)
         self.assertEqual(new_state, db_state)
 
@@ -773,7 +773,7 @@ class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
             {b'name': name, b'description': description, b'level': level})
 
         self.assertEqual({}, response)
-        event_type = yield deferToThread(self.get_event_type, name)
+        event_type = yield deferToDatabase(self.get_event_type, name)
         self.assertThat(
             event_type,
             MatchesStructure.byEquality(
@@ -834,8 +834,8 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
-        yield deferToThread(self.create_event_type, name, description, level)
-        system_id = yield deferToThread(self.create_node)
+        yield deferToDatabase(self.create_event_type, name, description, level)
+        system_id = yield deferToDatabase(self.create_node)
 
         event_description = factory.make_name('description')
         response = yield call_responder(
@@ -848,7 +848,7 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         )
 
         self.assertEqual({}, response)
-        event = yield deferToThread(self.get_event, system_id, name)
+        event = yield deferToDatabase(self.get_event, system_id, name)
         self.assertEquals(
             (system_id, event_description, name),
             (event.node.system_id, event.description, event.type.name)
@@ -881,7 +881,7 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
-        yield deferToThread(self.create_event_type, name, description, level)
+        yield deferToDatabase(self.create_event_type, name, description, level)
 
         system_id = factory.make_name('system_id')
         event_description = factory.make_name('event-description')
@@ -940,8 +940,8 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
-        yield deferToThread(self.create_event_type, name, description, level)
-        interface = yield deferToThread(self.make_interface)
+        yield deferToDatabase(self.create_event_type, name, description, level)
+        interface = yield deferToDatabase(self.make_interface)
         mac_address = interface.mac_address.get_raw()
 
         event_description = factory.make_name('description')
@@ -955,7 +955,7 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         )
 
         self.assertEqual({}, response)
-        event = yield deferToThread(self.get_event, mac_address, name)
+        event = yield deferToDatabase(self.get_event, mac_address, name)
         self.assertEquals(
             (interface.node.system_id, event_description, name),
             (event.node.system_id, event.description, event.type.name)
@@ -988,7 +988,7 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
-        yield deferToThread(self.create_event_type, name, description, level)
+        yield deferToDatabase(self.create_event_type, name, description, level)
 
         mac_address = factory.make_mac_address()
         event_description = factory.make_name('event-description')
@@ -1738,7 +1738,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.starting.addCallback(
             lambda ignore: self.assertTrue(service.running))
         service.starting.addCallback(
-            lambda ignore: deferToThread(check_query_eventloops))
+            lambda ignore: deferToDatabase(check_query_eventloops))
         service.starting.addCallback(
             lambda ignore: service.stopService())
 
@@ -2032,10 +2032,10 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.call = (lambda: None), (), {}
 
         yield service.startService()
-        yield deferToThread(service.update)
+        yield deferToDatabase(service.update)
         yield service.stopService()
 
-        dump = yield deferToThread(service.dump)
+        dump = yield deferToDatabase(service.dump)
         self.assertItemsEqual([], dump)
 
     def test__get_addresses(self):
@@ -2110,7 +2110,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
     @inlineCallbacks
     def test_sets_foreign_dhcp_value(self):
         foreign_dhcp_ip = factory.make_ipv4_address()
-        cluster_interface = yield deferToThread(
+        cluster_interface = yield deferToDatabase(
             self.create_cluster_interface)
         cluster = cluster_interface.nodegroup
 
@@ -2123,7 +2123,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
             })
 
         self.assertEqual({}, response)
-        cluster_interface = yield deferToThread(
+        cluster_interface = yield deferToDatabase(
             transactional_reload_object, cluster_interface)
 
         self.assertEqual(
@@ -2135,7 +2135,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
         configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
 
         foreign_dhcp_ip = factory.make_ipv4_address()
-        cluster_interface = yield deferToThread(
+        cluster_interface = yield deferToDatabase(
             self.create_cluster_interface)
         cluster = cluster_interface.nodegroup
 
@@ -2176,7 +2176,7 @@ class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_returns_all_cluster_interfaces(self):
-        cluster, expected_interfaces = yield deferToThread(
+        cluster, expected_interfaces = yield deferToDatabase(
             self.create_cluster_and_interfaces)
 
         response = yield call_responder(
@@ -2204,7 +2204,7 @@ class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
     @inlineCallbacks
     def test_calls_create_node_function(self):
         create_node_function = self.patch(regionservice, 'create_node')
-        create_node_function.return_value = yield deferToThread(
+        create_node_function.return_value = yield deferToDatabase(
             self.create_node)
 
         params = {
@@ -2308,12 +2308,11 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
     @inlineCallbacks
     def test_calls_request_node_info_by_mac_address_function(self):
         purpose = factory.make_name('purpose')
-        node = yield deferToThread(self.create_node)
+        node = yield deferToDatabase(self.create_node)
         node_info_function = self.patch(
             regionservice, 'request_node_info_by_mac_address')
         node_info_function.return_value = (node, purpose)
-        interface = yield deferToThread(
-            self.make_interface, node)
+        interface = yield deferToDatabase(self.make_interface, node)
 
         params = {
             'mac_address': interface.mac_address.get_raw(),

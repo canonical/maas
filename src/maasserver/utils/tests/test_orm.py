@@ -901,6 +901,13 @@ class TestDisablingDatabaseConnections(DjangoTransactionTestCase):
         enable_all_database_connections()
         self.assertConnectionsEnabled()
 
+    def test_disable_can_be_called_multiple_times(self):
+        self.addCleanup(enable_all_database_connections)
+        disable_all_database_connections()
+        self.assertConnectionsDisabled()
+        disable_all_database_connections()
+        self.assertConnectionsDisabled()
+
     def test_DisabledDatabaseConnection(self):
         connection = DisabledDatabaseConnection()
         self.assertRaises(RuntimeError, getattr, connection, "connect")

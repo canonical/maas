@@ -21,7 +21,6 @@ from datetime import (
 import random
 from random import randint
 
-import crochet
 from maasserver.models.signals import power as node_query
 from maasserver.node_status import (
     get_failed_status,
@@ -58,9 +57,6 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import succeed
 from twisted.protocols import amp
-
-# Ensure that the reactor is running; one or more tests need it.
-crochet.setup()
 
 
 class TestHandleMonitorExpired(MAASServerTestCase):

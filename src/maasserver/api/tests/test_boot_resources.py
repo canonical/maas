@@ -40,6 +40,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from mock import MagicMock
@@ -292,7 +293,8 @@ class TestBootResourcesAPI(APITestCase):
         # Create a largefile to get a random sha256 and size. We delete it
         # immediately so the new resource does not pick it up.
         largefile = factory.make_LargeFile()
-        largefile.delete()
+        with post_commit_hooks:
+            largefile.delete()
 
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
@@ -439,7 +441,8 @@ class TestBootResourceFileUploadAPI(APITestCase):
         sha256 = largefile.sha256
         with largefile.content.open('rb') as stream:
             content = stream.read()
-        largefile.delete()
+        with post_commit_hooks:
+            largefile.delete()
 
         # Empty largefile
         largeobject = LargeObjectFile()

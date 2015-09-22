@@ -18,11 +18,33 @@ from cStringIO import StringIO
 from random import randint
 
 from crochet import wait_for_reactor
+from django.db import transaction
+from maasserver.fields import LargeObjectFile
 from maasserver.models import largefile as largefile_module
 from maasserver.models.largefile import LargeFile
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import post_commit_hooks
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
+from mock import (
+    ANY,
+    call,
+)
+import psycopg2
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Is,
+    MatchesListwise,
+    MatchesStructure,
+)
+from twisted.internet.task import Clock
 
 
 class TestLargeFileManager(MAASServerTestCase):
@@ -119,16 +141,6 @@ class TestLargeFile(MAASServerTestCase):
         largefile = factory.make_LargeFile()
         self.assertTrue(largefile.valid)
 
-    def test_delete_calls__async_delete_large_object_on_content(self):
-        largefile = factory.make_LargeFile()
-        content = largefile.content
-        self.addCleanup(content.unlink)
-        _async_delete_large_object = self.patch(
-            largefile_module, '_async_delete_large_object')
-        largefile.delete()
-        self.assertThat(
-            _async_delete_large_object, MockCalledOnceWith(content))
-
     def test_delete_does_nothing_if_linked(self):
         largefile = factory.make_LargeFile()
         resource = factory.make_BootResource()
@@ -139,15 +151,69 @@ class TestLargeFile(MAASServerTestCase):
 
     def test_delete_deletes_if_not_linked(self):
         largefile = factory.make_LargeFile()
-        largefile.delete()
+        with post_commit_hooks:
+            largefile.delete()
         self.assertFalse(LargeFile.objects.filter(id=largefile.id).exists())
 
-    def test__async_delete_large_object(self):
+    def test_deletes_content_asynchronously(self):
+        self.patch(largefile_module, "delete_large_object_content_later")
         largefile = factory.make_LargeFile()
-        content = largefile.content
-        self.addCleanup(content.unlink)
-        self.patch(content, 'unlink')
-        _async_delete_large_object = wait_for_reactor(
-            largefile_module._async_delete_large_object)
-        _async_delete_large_object(content)
-        self.assertThat(content.unlink, MockCalledOnceWith())
+        self.addCleanup(largefile.content.unlink)
+        with post_commit_hooks:
+            largefile.delete()
+        self.assertThat(
+            largefile_module.delete_large_object_content_later,
+            MockCalledOnceWith(largefile.content))
+
+    def test_deletes_content_asynchronously_for_queries_too(self):
+        self.patch(largefile_module, "delete_large_object_content_later")
+        for _ in 1, 2:
+            largefile = factory.make_LargeFile()
+            self.addCleanup(largefile.content.unlink)
+        with post_commit_hooks:
+            LargeFile.objects.all().delete()
+        self.assertThat(
+            largefile_module.delete_large_object_content_later,
+            MockCallsMatch(call(ANY), call(ANY)))
+
+
+class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
+
+    def test__schedules_unlink(self):
+        # We're going to capture the delayed call that
+        # delete_large_object_content_later() creates.
+        clock = self.patch(largefile_module, "reactor", Clock())
+
+        with transaction.atomic():
+            largefile = factory.make_LargeFile()
+            oid = largefile.content.oid
+
+        with post_commit_hooks:
+            largefile.delete()
+
+        # Deleting `largefile` resulted in a call being scheduled.
+        delayed_calls = clock.getDelayedCalls()
+        self.assertThat(delayed_calls, HasLength(1))
+        [delayed_call] = delayed_calls
+
+        # It is scheduled to be run on the next iteration of the reactor.
+        self.assertFalse(delayed_call.called)
+        self.assertThat(delayed_call, MatchesStructure(
+            func=MatchesStructure.byEquality(__name__="unlink"),
+            args=MatchesListwise([Is(largefile.content)]),
+            kw=Equals({}), time=Equals(0),
+        ))
+
+        # Call the delayed function ourselves instead of advancing `clock` so
+        # that we can wait for it to complete (it returns a Deferred).
+        func = wait_for_reactor(delayed_call.func)
+        func(*delayed_call.args, **delayed_call.kw)
+
+        # The content has been removed from the database.
+        with transaction.atomic():
+            error = self.assertRaises(
+                psycopg2.OperationalError,
+                LargeObjectFile(oid).open, "rb")
+            self.assertDocTestMatches(
+                "ERROR: large object ... does not exist",
+                unicode(error))

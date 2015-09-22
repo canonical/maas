@@ -692,12 +692,31 @@ class ThreadUnpool:
     thread-pool.
     """
 
+    started = None
+
     def __init__(self, lock, context=None):
         super(ThreadUnpool, self).__init__()
         self.context = context
         self.lock = lock
 
+    def start(self):
+        """Start this thread-pool.
+
+        This actually does almost nothing, but it does make this object more
+        compatible with a regular Twisted thread-pool.
+        """
+        self.started = True
+
+    def stop(self):
+        """Stop this thread-pool.
+
+        This actually does almost nothing, but it does make this object more
+        compatible with a regular Twisted thread-pool.
+        """
+        self.started = False
+
     def callInThread(self, func, *args, **kwargs):
+
         """See :class:`twisted.python.threadpool.ThreadPool`.
 
         :return: a `Deferred`, which is mainly intended for testing.
@@ -767,6 +786,7 @@ class ThreadPool(threadpool.ThreadPool, object):
         ct = self.currentThread()
         try:
             # Make the context active throughout the worker's lifetime.
+            # XXX: What if self.context is None?
             with self.context():
                 return super(ThreadPool, self)._worker()
         finally:

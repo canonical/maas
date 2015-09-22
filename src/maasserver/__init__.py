@@ -18,6 +18,8 @@ __all__ = [
     ]
 
 import logging
+import os.path
+import sys
 
 
 logger = logging.getLogger("maasserver")
@@ -35,13 +37,20 @@ class DefaultMeta:
 
 def execute_from_command_line():
     # On Vivid, we need to explicitly use Django 1.6.
-    import os
-    import sys
     if os.path.isdir("/usr/lib/django16"):
         sys.path.insert(1, "/usr/lib/django16")
-
-    import django.core.management
-    django.core.management.execute_from_command_line()
+    # Limit concurrency in all thread-pools to ONE.
+    from maasserver.utils import threads
+    threads.install_default_pool(maxthreads=1)
+    threads.install_database_unpool(maxthreads=1)
+    # Disable all database connections in the reactor.
+    from maasserver.utils import orm
+    from twisted.internet import reactor
+    assert not reactor.running, "The reactor has been started too early."
+    reactor.callFromThread(orm.disable_all_database_connections)
+    # Hand over to Django.
+    from django.core import management
+    management.execute_from_command_line()
 
 
 try:

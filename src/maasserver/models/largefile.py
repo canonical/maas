@@ -35,11 +35,16 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import (
     get_one,
+    post_commit_do,
     transactional,
 )
+from maasserver.utils.threads import deferToDatabase
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    FOREVER,
+)
 from twisted.internet import reactor
-from twisted.internet.task import deferLater
-from twisted.internet.threads import deferToThread
+from twisted.python import log
 
 
 class FileStorageManager(Manager):
@@ -168,20 +173,21 @@ class LargeFile(CleanSave, TimestampedModel):
         super(LargeFile, self).delete(*args, **kwargs)
 
 
-def _async_delete_large_object(content):
-    """Schedule for the `unlink_content` to be called
-    later from within the reactor.
+@asynchronous(timeout=FOREVER)
+def delete_large_object_content_later(content):
+    """Schedule the content to be unlinked later.
 
-    This prevents the running task from blocking waiting for
-    this task to finish. This can cause blocking and thread starvation
-    inside the reactor threadpool.
+    This prevents the running task from blocking waiting for this task to
+    finish. This can cause blocking and thread starvation inside the reactor
+    threadpool.
     """
+    def unlink(content):
+        d = deferToDatabase(transactional(content.unlink))
+        d.addErrback(
+            log.err, "Failure deleting large object (oid=%d)." % content.oid)
+        return d
 
-    def unlink_content(content):
-        content.unlink()
-
-    return deferLater(reactor, 0, deferToThread,
-                      transactional(unlink_content), content)
+    return reactor.callLater(0, unlink, content)
 
 
 @receiver(post_delete)
@@ -189,9 +195,8 @@ def delete_large_object(sender, instance, **kwargs):
     """Delete the large object when the `LargeFile` is deleted.
 
     This is done using the `post_delete` signal instead of overriding delete
-    on `LargeFile`, so it works correctly for both the model and
-    `QuerySet`.
+    on `LargeFile`, so it works correctly for both the model and `QuerySet`.
     """
     if sender == LargeFile:
         if instance.content is not None:
-            _async_delete_large_object(instance.content)
+            post_commit_do(delete_large_object_content_later, instance.content)

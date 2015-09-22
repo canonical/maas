@@ -21,11 +21,11 @@ __all__ = [
 import time
 
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from oauth.oauth import OAuthServer
 from piston.models import Nonce
 from provisioningserver.utils.twisted import synchronous
 from twisted.application.internet import TimerService
-from twisted.internet.threads import deferToThread
 
 
 timestamp_threshold = OAuthServer.timestamp_threshold
@@ -110,4 +110,4 @@ class NonceCleanupService(TimerService, object):
     def __init__(self, interval=(24 * 60 * 60)):
         cleanup = synchronous(transactional(cleanup_old_nonces))
         super(NonceCleanupService, self).__init__(
-            interval, deferToThread, cleanup)
+            interval, deferToDatabase, cleanup)

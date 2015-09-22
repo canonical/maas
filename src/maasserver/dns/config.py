@@ -45,6 +45,7 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
+from maasserver.utils.threads import callOutToDatabase
 from provisioningserver.dns.actions import (
     bind_reconfigure,
     bind_reload,
@@ -55,10 +56,7 @@ from provisioningserver.dns.actions import (
     bind_write_zones,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.twisted import (
-    callOut,
-    callOutToThread,
-)
+from provisioningserver.utils.twisted import callOut
 
 
 maaslog = get_maas_logger("dns")
@@ -261,7 +259,7 @@ class Changes:
         """
         if self.hook is None:
             self.hook = post_commit()
-            self.hook.addCallback(callOutToThread, self.apply)
+            self.hook.addCallback(callOutToDatabase, self.apply)
             self.hook.addBoth(callOut, self.reset)
         return self.hook
 

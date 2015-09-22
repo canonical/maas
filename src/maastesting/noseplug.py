@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Crochet",
     "main",
     "Select",
 ]
@@ -23,6 +24,30 @@ import logging
 from nose.core import TestProgram
 from nose.plugins.base import Plugin
 from twisted.python.filepath import FilePath
+
+
+class Crochet(Plugin):
+    """Start the Twisted reactor via Crochet."""
+
+    name = "crochet"
+    log = logging.getLogger('nose.plugins.%s' % name)
+
+    def configure(self, options, conf):
+        """Configure, based on the parsed options.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        super(Crochet, self).configure(options, conf)
+        if self.enabled:
+            import crochet
+            crochet.setup()
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
 
 
 class Select(Plugin):
@@ -105,7 +130,8 @@ class Select(Plugin):
 def main():
     """Invoke Nose's `TestProgram` with extra plugins.
 
-    Specifically the `Select` plugin. At the command-line it's still necessary
-    to enable this plugin using ``--with-select``.
+    Specifically the `Crochet` and `Select` plugins. At the command-line it's
+    still necessary to enable these with the flags ``--with-crochet`` and/or
+    ``--with-select``.
     """
-    return TestProgram(addplugins=[Select()])
+    return TestProgram(addplugins=[Crochet(), Select()])

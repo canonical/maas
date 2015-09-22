@@ -86,6 +86,7 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
 )
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -136,7 +137,6 @@ from twisted.internet import (
     defer,
     reactor,
 )
-from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 
 
@@ -1038,7 +1038,7 @@ class TestNode(MAASServerTestCase):
                     node.nodegroup.uuid, expected_power_info),
                 # Also a call to deallocate AUTO IP addresses.
                 call(
-                    reactor.callLater, 0, deferToThread,
+                    reactor.callLater, 0, deferToDatabase,
                     node.release_auto_ips),
             ))
 
@@ -2788,7 +2788,7 @@ class TestNodeNetworking(MAASServerTestCase):
             mock_post_commit_do,
             MockCalledOnceWith(
                 reactor.callLater, 0,
-                deferToThread, node.release_auto_ips))
+                deferToDatabase, node.release_auto_ips))
 
     def test__clear_networking_configuration(self):
         node = factory.make_Node()

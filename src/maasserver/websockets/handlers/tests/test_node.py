@@ -50,6 +50,7 @@ from maasserver.testing.testcase import (
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -84,7 +85,6 @@ from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
 from testtools.matchers import Equals
 from twisted.internet.defer import CancelledError
-from twisted.internet.threads import deferToThread
 
 
 class TestNodeHandler(MAASServerTestCase):
@@ -806,7 +806,7 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
     @asynchronous
     def make_node(self, power_type="ipmi"):
         """Makes a node that is committed in the database."""
-        return deferToThread(
+        return deferToDatabase(
             transactional(factory.make_Node), power_type=power_type)
 
     def make_handler_with_user(self):

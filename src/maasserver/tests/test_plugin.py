@@ -19,14 +19,18 @@ import random
 
 import crochet
 from django.db import connections
+from django.db.backends import BaseDatabaseWrapper
 from maasserver import eventloop
 from maasserver.plugin import (
-    MAX_THREADS,
     Options,
     RegionServiceMaker,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import DisabledDatabaseConnection
+from maasserver.utils.orm import (
+    disable_all_database_connections,
+    DisabledDatabaseConnection,
+    enable_all_database_connections,
+)
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -34,9 +38,13 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    ThreadPool,
+)
 from south import migration
-from testtools.matchers import GreaterThan
+from testtools import monkey
+from testtools.matchers import IsInstance
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 
@@ -72,12 +80,16 @@ class TestRegionServiceMaker(MAASTestCase):
         self.patch(eventloop.loop, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "basicConfig")
-        # _checkDatabase() is called early on when starting the region, before
-        # controls are put in place to inhibit database access from the
-        # reactor's thread. However, at this point in testing, those controls
-        # are firmly in place. _checkDatabase() is tested separately.
+        # Enable database access in the reactor just for these tests.
+        asynchronous(enable_all_database_connections, 5)()
+        # _checkDatabase() is tested separately; see later.
         self.patch_autospec(RegionServiceMaker, "_checkDatabase")
         import_websocket_handlers()
+
+    def tearDown(self):
+        super(TestRegionServiceMaker, self).tearDown()
+        # Disable database access in the reactor again.
+        asynchronous(disable_all_database_connections, 5)()
 
     def test_init(self):
         service_maker = RegionServiceMaker("Harry", "Hill")
@@ -91,6 +103,8 @@ class TestRegionServiceMaker(MAASTestCase):
         """
         options = Options()
         service_maker = RegionServiceMaker("Harry", "Hill")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
@@ -112,13 +126,41 @@ class TestRegionServiceMaker(MAASTestCase):
             MockCalledOnceWith(service_maker))
 
     @asynchronous(timeout=5)
-    def test__sets_pool_size(self):
+    def test_configures_thread_pool(self):
+        # Patch and restore where it's visible because patching a running
+        # reactor is potentially fairly harmful.
+        patcher = monkey.MonkeyPatcher()
+        patcher.add_patch(reactor, "threadpool", None)
+        patcher.add_patch(reactor, "threadpoolForDatabase", None)
+        patcher.patch()
+        try:
+            service_maker = RegionServiceMaker("Harry", "Hill")
+            service_maker.makeService(Options())
+            threadpool = reactor.getThreadPool()
+            self.assertThat(threadpool, IsInstance(ThreadPool))
+        finally:
+            patcher.restore()
+
+    def assertConnectionsEnabled(self):
+        for alias in connections:
+            self.assertThat(
+                connections[alias],
+                IsInstance(BaseDatabaseWrapper))
+
+    def assertConnectionsDisabled(self):
+        for alias in connections:
+            self.assertEqual(
+                DisabledDatabaseConnection,
+                type(connections[alias]))
+
+    @asynchronous(timeout=5)
+    def test_disables_database_connections_in_reactor(self):
+        self.assertConnectionsEnabled()
         service_maker = RegionServiceMaker("Harry", "Hill")
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(Options())
-        threadpool = reactor.getThreadPool()
-        self.assertEqual(MAX_THREADS, threadpool.max)
-        # Max threads is reasonable.
-        self.assertThat(threadpool.max, GreaterThan(50))
+        self.assertConnectionsDisabled()
 
 
 class TestRegionServiceMakerDatabaseChecks(MAASServerTestCase):
@@ -128,11 +170,14 @@ class TestRegionServiceMakerDatabaseChecks(MAASServerTestCase):
         super(TestRegionServiceMakerDatabaseChecks, self).setUp()
         import_websocket_handlers()
 
+    @asynchronous(timeout=5)
     def test__checks_database_connectivity_early(self):
         exception_type = factory.make_exception_type()
         service_maker = RegionServiceMaker("Harry", "Hill")
         _checkDatabase = self.patch_autospec(service_maker, "_checkDatabase")
         _checkDatabase.side_effect = exception_type
+        # Disable _configureThreads() as it's too invasive right now.
+        self.patch_autospec(service_maker, "_configureThreads")
         self.patch_autospec(eventloop.loop, "populate")
         self.assertRaises(exception_type, service_maker.makeService, Options())
         self.assertThat(_checkDatabase, MockCalledOnceWith())

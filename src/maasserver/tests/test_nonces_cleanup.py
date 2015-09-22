@@ -138,8 +138,8 @@ class TestNonceCleanupService(MAASServerTestCase):
         # a couple of decorators. This indirection makes it clearer to
         # mock `cleanup_old_nonces` here and track calls to it.
         cleanup_old_nonces = self.patch(nonces_cleanup, "cleanup_old_nonces")
-        # Making `deferToThread` use the current thread helps testing.
-        self.patch(nonces_cleanup, "deferToThread", maybeDeferred)
+        # Making `deferToDatabase` use the current thread helps testing.
+        self.patch(nonces_cleanup, "deferToDatabase", maybeDeferred)
 
         service = NonceCleanupService()
         # Use a deterministic clock instead of the reactor for testing.

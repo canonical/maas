@@ -24,10 +24,9 @@ from maasserver.models.bootsource import BootSource
 from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
-from provisioningserver.utils.twisted import deferToNewThread
 from twisted.internet import reactor
-from twisted.internet.threads import deferToThread
 
 
 def make_BootSource():
@@ -147,7 +146,7 @@ class TestBootSource(MAASServerTestCase):
         self.assertThat(
             mock_callLater,
             MockCalledOnceWith(
-                1, deferToThread, cache_boot_sources))
+                1, deferToDatabase, cache_boot_sources))
 
 
 class TestBootSourceSignals(MAASServerTestCase):
@@ -157,4 +156,4 @@ class TestBootSourceSignals(MAASServerTestCase):
         post_commit_do = self.patch(bootsource_module, "post_commit_do")
         make_BootSource()
         self.assertThat(post_commit_do, MockCalledOnceWith(
-            reactor.callLater, 0, deferToNewThread, cache_boot_sources))
+            reactor.callLater, 0, cache_boot_sources))

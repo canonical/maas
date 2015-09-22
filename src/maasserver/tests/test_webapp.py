@@ -18,7 +18,6 @@ __all__ = []
 import random
 from textwrap import dedent
 
-import crochet
 from django.core.handlers.wsgi import WSGIHandler
 from lxml import html
 from maasserver import (
@@ -28,7 +27,10 @@ from maasserver import (
 )
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from mock import sentinel
@@ -44,13 +46,9 @@ from twisted.internet import (
     reactor,
 )
 from twisted.internet.endpoints import TCP4ServerEndpoint
-from twisted.python.threadpool import ThreadPool
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 from twisted.web.test.requesthelper import DummyRequest
-
-
-crochet.setup()
 
 
 class TestCleanPathRequest(MAASTestCase):
@@ -107,6 +105,7 @@ class TestResourceOverlay(MAASTestCase):
 
 
 class TestWebApplicationService(MAASTestCase):
+
     def make_endpoint(self):
         return TCP4ServerEndpoint(reactor, 0, interface="localhost")
 
@@ -119,15 +118,12 @@ class TestWebApplicationService(MAASTestCase):
         self.patch(eventloop.services, "getServiceNamed")
         return service
 
-    def test__init_creates_site_and_threadpool(self):
+    def test__init_creates_site(self):
         service = self.make_webapp()
         self.assertThat(service.site, IsInstance(Site))
         self.assertThat(
             service.site.requestFactory, Is(webapp.CleanPathRequest))
-        self.assertThat(service.threadpool, IsInstance(ThreadPool))
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
-        # The thread-pool has not been started.
-        self.assertFalse(service.threadpool.started)
 
     def test__default_site_renders_starting_page(self):
         service = self.make_webapp()
@@ -148,7 +144,7 @@ class TestWebApplicationService(MAASTestCase):
             request.outgoingHeaders,
             ContainsDict({"retry-after": Equals("5")}))
 
-    def test__startService_starts_threadpool_websocket_and_application(self):
+    def test__startService_starts_websocket_and_application(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
@@ -160,7 +156,6 @@ class TestWebApplicationService(MAASTestCase):
         service.startService()
 
         self.assertTrue(service.running)
-        self.assertTrue(service.threadpool.started)
         self.assertThat(start_up.start_up, MockCalledOnceWith())
         self.assertTrue(service.websocket.listener.connected())
 
@@ -235,14 +230,28 @@ class TestWebApplicationService(MAASTestCase):
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),
             _application=IsInstance(WSGIHandler)))
 
-    def test__stopService_stops_the_service_threadpool_and_the_websocket(self):
+    def test__stopService_stops_the_service_and_the_websocket(self):
         service = self.make_webapp()
         self.patch_autospec(start_up, "start_up")
         start_up.start_up.return_value = defer.succeed(None)
 
-        service.startService()
-        service.stopService()
+        with TwistedLoggerFixture() as logger:
+            service.startService()
+
+        self.expectThat(
+            logger.output, DocTestMatches("""\
+            Site starting on ...
+            ---
+            Listening for notificaton from database.
+            """))
+
+        with TwistedLoggerFixture() as logger:
+            service.stopService()
+
+        self.expectThat(
+            logger.output, DocTestMatches("""\
+            (TCP Port ... Closed)
+            """))
 
         self.assertFalse(service.running)
-        self.assertEqual([], service.threadpool.threads)
         self.assertFalse(service.websocket.listener.connected())

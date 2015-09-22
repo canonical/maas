@@ -19,7 +19,6 @@ from textwrap import dedent
 import threading
 from time import time
 
-import crochet
 from crochet import wait_for_reactor
 from maasserver.exceptions import IteratorReusedError
 from maasserver.testing.orm import PostCommitHooksTestMixin
@@ -53,9 +52,6 @@ from twisted.internet.defer import Deferred
 from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
-
-# Ensure that the reactor is running; one or more tests need it.
-crochet.setup()
 
 
 class TestGather(MAASTestCase):

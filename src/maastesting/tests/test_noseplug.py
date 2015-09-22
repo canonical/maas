@@ -21,10 +21,17 @@ from os.path import (
     join,
 )
 
+import crochet as crochet_module
 from maastesting import noseplug
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
-from maastesting.noseplug import Select
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
+from maastesting.noseplug import (
+    Crochet,
+    Select,
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
@@ -34,9 +41,49 @@ from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesListwise,
+    MatchesSetwise,
     MatchesStructure,
 )
 from twisted.python.filepath import FilePath
+
+
+class TestCrochet(MAASTestCase):
+
+    def test__options_adds_options(self):
+        crochet = Crochet()
+        parser = OptionParser()
+        crochet.options(parser=parser, env={})
+        self.assertThat(
+            parser.option_list[-1:],
+            MatchesListwise([
+                # The --with-crochet option.
+                MatchesStructure.byEquality(
+                    action="store_true", default=None,
+                    dest="enable_plugin_crochet",
+                ),
+            ]))
+
+    def test__configure_sets_up_crochet_if_enabled(self):
+        self.patch_autospec(crochet_module, "setup")
+
+        crochet = Crochet()
+        parser = OptionParser()
+        crochet.add_options(parser=parser, env={})
+        options, rest = parser.parse_args(["--with-crochet"])
+        crochet.configure(options, sentinel.conf)
+
+        self.assertThat(crochet_module.setup, MockCalledOnceWith())
+
+    def test__configure_does_not_set_up_crochet_if_not_enabled(self):
+        self.patch_autospec(crochet_module, "setup")
+
+        crochet = Crochet()
+        parser = OptionParser()
+        crochet.add_options(parser=parser, env={})
+        options, rest = parser.parse_args([])
+        crochet.configure(options, sentinel.conf)
+
+        self.assertThat(crochet_module.setup, MockNotCalled())
 
 
 class TestSelect(MAASTestCase):
@@ -106,6 +153,7 @@ class TestMain(MAASTestCase):
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=[ANY]))
-        [plugin] = noseplug.TestProgram.call_args[1]["addplugins"]
-        self.assertThat(plugin, IsInstance(Select))
+            MockCalledOnceWith(addplugins=[ANY, ANY]))
+        plugins = noseplug.TestProgram.call_args[1]["addplugins"]
+        self.assertThat(plugins, MatchesSetwise(
+            IsInstance(Select), IsInstance(Crochet)))

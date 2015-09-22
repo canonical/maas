@@ -639,8 +639,9 @@ def disable_all_database_connections():
     """
     for alias in connections:
         connection = connections[alias]
-        connections[alias] = DisabledDatabaseConnection()
-        connection.close()
+        if type(connection) is not DisabledDatabaseConnection:
+            connections[alias] = DisabledDatabaseConnection()
+            connection.close()
 
 
 def enable_all_database_connections():

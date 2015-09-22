@@ -1181,6 +1181,18 @@ class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
         unpool = ThreadUnpool(lock)
         self.assertThat(unpool.lock, Is(lock))
 
+    def test__start_sets_started(self):
+        unpool = ThreadUnpool(sentinel.lock)
+        self.assertThat(unpool.started, Is(None))
+        unpool.start()
+        self.assertThat(unpool.started, Is(True))
+
+    def test__stop_unsets_started(self):
+        unpool = ThreadUnpool(sentinel.lock)
+        self.assertThat(unpool.started, Is(None))
+        unpool.stop()
+        self.assertThat(unpool.started, Is(False))
+
     def test__callInThreadWithCallback_makes_callback(self):
         lock = self.make_semaphore()
         unpool = ThreadUnpool(lock)

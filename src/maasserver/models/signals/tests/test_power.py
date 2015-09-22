@@ -36,6 +36,7 @@ from maasserver.utils.orm import (
     post_commit_hooks,
     transactional,
 )
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -55,7 +56,6 @@ from testtools.matchers import (
     Is,
 )
 from twisted.internet.task import Clock
-from twisted.internet.threads import deferToThread
 
 
 class TestStatusQueryEvent(MAASServerTestCase):
@@ -142,7 +142,7 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
         def delete_node_then_get_client(uuid):
             from maasserver.rpc import getClientFor
-            d = deferToThread(transactional(node.delete))
+            d = deferToDatabase(transactional(node.delete))
             d.addCallback(lambda _: getClientFor(uuid))
             return d
 

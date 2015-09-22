@@ -66,6 +66,7 @@ from maasserver.utils.orm import (
     make_serialization_failure,
     transactional,
 )
+from maasserver.utils.threads import deferToDatabase
 from netaddr import (
     IPAddress,
     IPRange,
@@ -73,7 +74,6 @@ from netaddr import (
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("node")
@@ -266,7 +266,7 @@ class StaticIPAddressManager(Manager):
 
     @asynchronous
     def _async_find_free_ip(self, *args, **kwargs):
-        return deferToThread(
+        return deferToDatabase(
             transactional(self._find_free_ip), *args, **kwargs)
 
     def _find_free_ip(

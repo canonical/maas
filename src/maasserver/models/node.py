@@ -117,6 +117,10 @@ from maasserver.utils.orm import (
     post_commit_do,
     transactional,
 )
+from maasserver.utils.threads import (
+    callOutToDatabase,
+    deferToDatabase,
+)
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
 from piston.models import Token
@@ -131,12 +135,10 @@ from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
-    callOutToThread,
     synchronous,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
-from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("node")
@@ -1020,7 +1022,7 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToThread, self._set_status, self.system_id,
+                callOutToDatabase, self._set_status, self.system_id,
                 status=old_status)
 
             def eb_start(failure, hostname):
@@ -1216,7 +1218,7 @@ class Node(CleanSave, TimestampedModel):
         :param hostname: The node's hostname, for logging.
         :param system_id: The system ID for the node.
         """
-        d = deferToThread(cls._set_status, system_id, status=NODE_STATUS.NEW)
+        d = deferToDatabase(cls._set_status, system_id, status=NODE_STATUS.NEW)
         if is_stopping:
             return d.addCallback(
                 callOut, maaslog.info, "%s: Commissioning aborted", hostname)
@@ -1235,8 +1237,8 @@ class Node(CleanSave, TimestampedModel):
         :param hostname: The node's hostname, for logging.
         :param system_id: The system ID for the node.
         """
-        d = deferToThread(cls._set_status, system_id,
-                          status=NODE_STATUS.ALLOCATED)
+        d = deferToDatabase(
+            cls._set_status, system_id, status=NODE_STATUS.ALLOCATED)
         if is_stopping:
             return d.addCallback(
                 callOut, maaslog.info, "%s: Deployment aborted", hostname)
@@ -1553,7 +1555,7 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToThread, self._set_status, self.system_id,
+                callOutToDatabase, self._set_status, self.system_id,
                 status=NODE_STATUS.FAILED_DISK_ERASING)
 
             def eb_start(failure, hostname):
@@ -1641,7 +1643,7 @@ class Node(CleanSave, TimestampedModel):
         :param hostname: The node's hostname, for logging.
         :param system_id: The system ID for the node.
         """
-        d = deferToThread(
+        d = deferToDatabase(
             cls._set_status, system_id, status=NODE_STATUS.FAILED_DISK_ERASING)
         if is_stopping:
             return d.addCallback(
@@ -1888,7 +1890,7 @@ class Node(CleanSave, TimestampedModel):
         reactor threadpool.
         """
         post_commit_do(
-            reactor.callLater, 0, deferToThread,
+            reactor.callLater, 0, deferToDatabase,
             self.release_auto_ips)
 
     def _clear_networking_configuration(self):
@@ -2235,7 +2237,7 @@ class Node(CleanSave, TimestampedModel):
                 d.addCallback(
                     callOut, self._start_transition_monitor_async,
                     transition_monitor, hostname)
-            d.addErrback(callOutToThread, self.release_auto_ips)
+            d.addErrback(callOutToDatabase, self.release_auto_ips)
             return d
 
         return post_commit_do(

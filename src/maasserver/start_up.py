@@ -46,6 +46,7 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.twisted import (
@@ -55,7 +56,6 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("start-up")
@@ -85,7 +85,7 @@ def start_up():
             # Execute other start-up tasks that must not run concurrently with
             # other invocations of themselves, across the whole of this MAAS
             # installation.
-            yield deferToThread(inner_start_up)
+            yield deferToDatabase(inner_start_up)
         except SystemExit:
             raise
         except KeyboardInterrupt:
@@ -192,7 +192,7 @@ def inner_start_up():
     # Start import on upgrade if needed, but not until there's a good chance
     # than one or more clusters are connected.
     post_commit_do(
-        reactor.callLater, randrange(45, 90), reactor.callInThread,
+        reactor.callLater, randrange(45, 90), reactor.callInDatabase,
         start_import_on_upgrade)
 
     # Register all of the triggers.

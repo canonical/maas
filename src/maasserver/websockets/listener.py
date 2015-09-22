@@ -20,6 +20,7 @@ from contextlib import closing
 
 from django.db import connections
 from django.db.utils import load_backend
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.twisted import synchronous
 from psycopg2 import OperationalError
@@ -30,7 +31,6 @@ from twisted.internet import (
     reactor,
     task,
 )
-from twisted.internet.threads import deferToThread
 from twisted.python import (
     failure,
     log,
@@ -87,7 +87,7 @@ class PostgresListener:
         self.autoReconnect = False
         reactor.removeReader(self)
         self.cancelHandleNotify()
-        return deferToThread(self.stopConnection)
+        return deferToDatabase(self.stopConnection)
 
     def connected(self):
         """Return True if connected."""
@@ -212,8 +212,8 @@ class PostgresListener:
             # callers don't lose a handle on what's happening.
             reactor.callLater(3, self.tryConnection)
 
-        d = deferToThread(self.startConnection)
-        d.addCallback(lambda _: deferToThread(self.registerChannels))
+        d = deferToDatabase(self.startConnection)
+        d.addCallback(lambda _: deferToDatabase(self.registerChannels))
         d.addCallback(lambda _: reactor.addReader(self))
         d.addCallback(
             lambda _: self.runHandleNotify(delay=self.HANDLE_NOTIFY_DELAY))

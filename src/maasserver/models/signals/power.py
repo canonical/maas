@@ -25,6 +25,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -46,7 +47,6 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
 )
-from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger('node_query')
@@ -103,7 +103,7 @@ def update_power_state_of_node(system_id):
         enum, or `None` which denotes that the status could not be queried or
         updated for any of a number of reasons; check the log.
     """
-    node, cluster, power_info = yield deferToThread(
+    node, cluster, power_info = yield deferToDatabase(
         get_node_cluster_and_power_info, system_id)
 
     if node is None:
@@ -165,7 +165,7 @@ def update_power_state_of_node(system_id):
         # This denotes that no update should be made. Abandon this task.
         return
 
-    node = yield deferToThread(
+    node = yield deferToDatabase(
         set_node_power_state, system_id, power_state)
 
     if node is None:

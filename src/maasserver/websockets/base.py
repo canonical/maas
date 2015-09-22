@@ -24,14 +24,14 @@ from operator import attrgetter
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
+from maasserver import concurrency
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.twisted import (
     asynchronous,
     IAsynchronous,
 )
-from twisted.internet import reactor
-from twisted.internet.threads import deferToThreadPool
 
 
 class HandlerError(Exception):
@@ -151,16 +151,9 @@ class Handler:
 
     __metaclass__ = HandlerMetaclass
 
-    def __init__(self, user, cache, threadpool=None):
+    def __init__(self, user, cache):
         self.user = user
         self.cache = cache
-        # Allowing a default threadpool, namely the reactor's threadpool, is a
-        # convenience when testing and not a decent production option.
-        if threadpool is None:
-            self.threadpool = reactor.getThreadPool()
-        else:
-            self.threadpool = threadpool
-
         # Holds a set of all pks that the client has loaded and has on their
         # end of the connection. This is used to inform the client of the
         # correct notifications based on what items the client has.
@@ -312,11 +305,10 @@ class Handler:
                     # The @asynchronous decorator will DTRT.
                     return method(params)
                 else:
-                    # This is going to block. For good measure we also assume
-                    # it's going to use the database.
-                    return deferToThreadPool(
-                        reactor, self.threadpool,
-                        transactional(method), params)
+                    # This is going to block and hold a database connection so
+                    # we limit its concurrency.
+                    return concurrency.webapp.run(
+                        deferToDatabase, transactional(method), params)
         else:
             raise HandlerNoSuchMethodError(method_name)
 

@@ -20,6 +20,7 @@ from httplib import SERVICE_UNAVAILABLE
 import re
 
 from lxml import html
+from maasserver import concurrency
 from maasserver.config import RegionConfiguration
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
@@ -27,12 +28,13 @@ from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
     WebSocketsResource,
 )
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    ThreadPoolLimiter,
+)
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
-from twisted.internet.threads import deferToThread
 from twisted.python import log
-from twisted.python.threadpool import ThreadPool
 from twisted.web.resource import (
     ErrorPage,
     Resource,
@@ -130,8 +132,9 @@ class WebApplicationService(StreamServerEndpointService):
         self.site = Site(StartPage())
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
-        self.threadpool = ThreadPool(name=self.__class__.__name__)
         self.websocket = WebSocketFactory()
+        self.threadpool = ThreadPoolLimiter(
+            reactor.threadpoolForDatabase, concurrency.webapp)
 
     def prepareApplication(self):
         """Perform start-up tasks and return the WSGI application.
@@ -185,17 +188,11 @@ class WebApplicationService(StreamServerEndpointService):
 
     @asynchronous(timeout=30)
     def startService(self):
-        self.threadpool.start()
         super(WebApplicationService, self).startService()
         return self.startApplication()
 
     @asynchronous(timeout=30)
     def stopService(self):
-        self.websocket.stopFactory()
         d = super(WebApplicationService, self).stopService()
-        # Stop the threadpool from a thread in the reactor's thread-pool so
-        # that we don't block the reactor thread (or the thread-pool we're
-        # trying to stop).
-        d.addCallback(lambda _: deferToThread(self.threadpool.stop))
         d.addCallback(lambda _: self.websocket.stopFactory())
         return d

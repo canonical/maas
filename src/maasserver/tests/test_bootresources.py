@@ -72,7 +72,10 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import absolute_reverse
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    post_commit_hooks,
+)
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -725,7 +728,8 @@ class TestBootResourceStore(MAASServerTestCase):
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
         name, architecture, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
-        resource.sets.all().delete()
+        with post_commit_hooks:
+            resource.sets.all().delete()
         store = BootResourceStore()
         resource_set = store.get_or_create_boot_resource_set(resource, product)
         self.assertEqual(product['version_name'], resource_set.version)
@@ -744,7 +748,8 @@ class TestBootResourceStore(MAASServerTestCase):
         name, architecture, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
-        resource_set.files.all().delete()
+        with post_commit_hooks:
+            resource_set.files.all().delete()
         store = BootResourceStore()
         rfile = store.get_or_create_boot_resource_file(resource_set, product)
         self.assertEqual(product['ftype'], rfile.filename)
@@ -804,7 +809,8 @@ class TestBootResourceStore(MAASServerTestCase):
         rfile, _, _ = make_boot_resource_file_with_stream()
         reader = StringIO(factory.make_string())
         store = BootResourceStore()
-        store.write_content(rfile, reader)
+        with post_commit_hooks:
+            store.write_content(rfile, reader)
         self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
 
     def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):
@@ -867,7 +873,8 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
             resource_set = resource.sets.first()
-            resource_set.files.all().delete()
+            with post_commit_hooks:
+                resource_set.files.all().delete()
             largefile = factory.make_LargeFile()
         product['sha256'] = largefile.sha256
         product['size'] = largefile.total_size
@@ -1258,24 +1265,24 @@ class TestImportResourcesInThread(MAASTestCase):
     """Tests for `_import_resources_in_thread`."""
 
     def test__defers__import_resources_to_thread(self):
-        deferToThread = self.patch(bootresources, "deferToThread")
+        deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread(force=sentinel.force)
         self.assertThat(
-            deferToThread, MockCalledOnceWith(
+            deferToDatabase, MockCalledOnceWith(
                 bootresources._import_resources, force=sentinel.force))
 
     def tests__defaults_force_to_False(self):
-        deferToThread = self.patch(bootresources, "deferToThread")
+        deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
         self.assertThat(
-            deferToThread, MockCalledOnceWith(
+            deferToDatabase, MockCalledOnceWith(
                 bootresources._import_resources, force=False))
 
     def test__logs_errors_and_does_not_errback(self):
         logger = self.useFixture(TwistedLoggerFixture())
         exception_type = factory.make_exception_type()
-        deferToThread = self.patch(bootresources, "deferToThread")
-        deferToThread.return_value = fail(exception_type())
+        deferToDatabase = self.patch(bootresources, "deferToDatabase")
+        deferToDatabase.return_value = fail(exception_type())
         d = bootresources._import_resources_in_thread(force=sentinel.force)
         self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
@@ -1291,8 +1298,8 @@ class TestImportResourcesInThread(MAASTestCase):
         exception = CalledProcessError(
             2, [factory.make_name("command")],
             factory.make_name("output"))
-        deferToThread = self.patch(bootresources, "deferToThread")
-        deferToThread.return_value = fail(exception)
+        deferToDatabase = self.patch(bootresources, "deferToDatabase")
+        deferToDatabase.return_value = fail(exception)
         d = bootresources._import_resources_in_thread(force=sentinel.force)
         self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
@@ -1325,9 +1332,9 @@ class TestImportResourcesService(MAASTestCase):
 
     def test_maybe_import_resources_does_not_error(self):
         service = bootresources.ImportResourcesService()
-        deferToThread = self.patch(bootresources, "deferToThread")
+        deferToDatabase = self.patch(bootresources, "deferToDatabase")
         exception_type = factory.make_exception_type()
-        deferToThread.return_value = fail(exception_type())
+        deferToDatabase.return_value = fail(exception_type())
         d = service.maybe_import_resources()
         self.assertIsNone(extract_result(d))
 

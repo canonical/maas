@@ -29,6 +29,7 @@ from maasserver.utils.orm import (
     post_commit,
     transactional,
 )
+from maasserver.utils.threads import callOutToDatabase
 from netaddr import IPAddress
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
@@ -36,7 +37,6 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.utils.twisted import (
     callOut,
-    callOutToThread,
     synchronous,
 )
 
@@ -197,7 +197,7 @@ class Changes:
         """
         if self.hook is None:
             self.hook = post_commit()
-            self.hook.addCallback(callOutToThread, self.apply)
+            self.hook.addCallback(callOutToDatabase, self.apply)
             self.hook.addBoth(callOut, self.reset)
         return self.hook
 

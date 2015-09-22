@@ -209,10 +209,3 @@ class TestDisablingDatabaseConnections(MAASTestCase):
         for alias in connections:
             connection = connections[alias]
             self.assertTrue(connection.is_usable())
-
-    def test_DisabledDatabaseConnection(self):
-        connection = DisabledDatabaseConnection()
-        self.assertRaises(RuntimeError, getattr, connection, "connect")
-        self.assertRaises(RuntimeError, getattr, connection, "__call__")
-        self.assertRaises(RuntimeError, setattr, connection, "foo", "bar")
-        self.assertRaises(RuntimeError, delattr, connection, "baz")

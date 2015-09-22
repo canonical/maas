@@ -186,5 +186,6 @@ class TestInnerStartUp(MAASServerTestCase):
         start_up.inner_start_up()
         self.assertThat(
             start_up.post_commit_do, MockCalledOnceWith(
-                reactor.callLater, ANY, reactor.callInThread,
+                reactor.callLater, ANY,
+                reactor.threadpoolForDatabase.callInThread,
                 start_up.start_import_on_upgrade))

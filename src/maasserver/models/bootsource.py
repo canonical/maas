@@ -28,7 +28,6 @@ from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import post_commit_do
-from provisioningserver.utils.twisted import deferToNewThread
 from twisted.internet import reactor
 
 
@@ -121,6 +120,6 @@ def update_boot_source_cache(sender, instance, **kwargs):
     run in a thread. Nothing waits for its completion.
     """
     from maasserver.bootsources import cache_boot_sources  # Circular import.
-    post_commit_do(reactor.callLater, 0, deferToNewThread, cache_boot_sources)
+    post_commit_do(reactor.callLater, 0, cache_boot_sources)
 
 post_save.connect(update_boot_source_cache, BootSource)
