@@ -27,6 +27,8 @@ __all__ = [
     'reactor_sync',
     'retries',
     'synchronous',
+    'ThreadPool',
+    'ThreadPoolLimiter',
     'ThreadUnpool',
     ]
 
@@ -37,6 +39,7 @@ from functools import (
     wraps,
 )
 from itertools import repeat
+from operator import attrgetter
 import sys
 import threading
 
@@ -705,6 +708,11 @@ class ThreadUnpool:
     def callInThreadWithCallback(self, onResult, func, *args, **kwargs):
         """See :class:`twisted.python.threadpool.ThreadPool`.
 
+        One difference from Twisted's thread-pool is that `onResult` will be
+        called in the reactor thread, not the thread in which `func` is
+        called. This is an artefact of the implementation and not a
+        fundamental limitation, so could be changed.
+
         :return: a `Deferred`, which is mainly intended for testing.
             Twisted's `ThreadPool` does not return anything.
         """
@@ -765,3 +773,73 @@ class ThreadPool(threadpool.ThreadPool, object):
             # Belt-n-braces, in case the context blows up.
             if ct in self.threads:
                 self.threads.remove(ct)
+
+
+class ThreadPoolLimiter:
+    """Limit the number of concurrent users of a given thread-pool.
+
+    This wraps another thread-pool and gates access via the given lock, which
+    should be a `DeferredLock` or `DeferredSemaphore`. This allows a larger
+    thread-pool to be portioned out.
+    """
+
+    def __init__(self, pool, lock):
+        super(ThreadPoolLimiter, self).__init__()
+        self.pool = pool
+        self.lock = lock
+
+    start = property(attrgetter("pool.start"))
+    started = property(attrgetter("pool.started"))
+    stop = property(attrgetter("pool.stop"))
+
+    def callInThread(self, func, *args, **kwargs):
+        """Acquires the lock then calls the underlying pool."""
+        return self.callInThreadWithCallback(None, func, *args, **kwargs)
+
+    def callInThreadWithCallback(self, onResult, func, *args, **kwargs):
+        """Acquires the lock then calls the underlying pool."""
+
+        def signal(success, result, done=[False]):
+            # Call onResult once and once only.
+            if not done[0]:
+                try:
+                    onResult(success, result)
+                finally:
+                    done[0] = True
+
+        def release(lock, done=[False]):
+            # Release the lock once and once only.
+            if not done[0]:
+                try:
+                    lock.release()
+                finally:
+                    done[0] = True
+
+        if onResult is None:
+            def callback(success, result, lock=self.lock):
+                # Ignore the result; it was never wanted anyway.
+                reactor.callFromThread(release, lock)
+        else:
+            def callback(success, result, lock=self.lock):
+                # Make the callback before releasing the lock.
+                try:
+                    signal(success, result)
+                finally:
+                    reactor.callFromThread(release, lock)
+
+        def locked(lock, pool=self.pool):
+            try:
+                # If this fails we have serious problems. On the other hand,
+                # if this succeeds we have handed off all responsibility.
+                pool.callInThreadWithCallback(callback, func, *args, **kwargs)
+            except:
+                try:
+                    if onResult is None:
+                        raise  # Don't suppress this; it's bad.
+                    else:
+                        signal(False, Failure())
+                finally:
+                    release(lock)
+
+        return self.lock.acquire().addCallback(locked).addErrback(
+            log.err, "Critical failure arranging call in thread")

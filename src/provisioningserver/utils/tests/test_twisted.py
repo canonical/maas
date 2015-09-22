@@ -39,6 +39,7 @@ from maastesting.testcase import (
 )
 from maastesting.twisted import TwistedLoggerFixture
 from mock import (
+    ANY,
     Mock,
     sentinel,
 )
@@ -59,6 +60,7 @@ from provisioningserver.utils.twisted import (
     retries,
     synchronous,
     ThreadPool,
+    ThreadPoolLimiter,
     ThreadUnpool,
 )
 from testtools.deferredruntest import extract_result
@@ -87,7 +89,10 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.task import Clock
-from twisted.internet.threads import deferToThread
+from twisted.internet.threads import (
+    deferToThread,
+    deferToThreadPool,
+)
 from twisted.python import (
     context,
     threadable,
@@ -1377,3 +1382,151 @@ class TestThreadPoolCommonBehaviour(MAASTestCase):
         # That thread was not this thread.
         currentThread = threading.currentThread()
         self.assertThat(threads, Not(Contains(currentThread.ident)))
+
+
+class DummyThreadPool:
+    start = sentinel.start
+    started = sentinel.started
+    stop = sentinel.stop
+
+
+class TestThreadPoolLimiter(MAASTestCase):
+    """Tests for `ThreadPoolLimiter`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__init(self):
+        pool_beneath = DummyThreadPool()
+        pool = ThreadPoolLimiter(pool_beneath, sentinel.lock)
+        self.assertThat(pool, MatchesStructure(
+            pool=Is(pool_beneath), lock=Is(sentinel.lock),
+            start=Equals(pool.pool.start), started=Equals(pool.pool.started),
+            stop=Equals(pool.pool.stop)))
+
+    def make_pool(self):
+        # Create a pool limited to one thread, with an underlying pool that
+        # allows a greater number of concurrent threads so it won't interfere
+        # with the test.
+        pool_beneath = ThreadUnpool(DeferredSemaphore(2))
+        pool = ThreadPoolLimiter(pool_beneath, DeferredSemaphore(1))
+        return pool
+
+    def test__callInThread_calls_callInThreadWithCallback(self):
+        pool = self.make_pool()
+        self.patch_autospec(pool, "callInThreadWithCallback")
+        pool.callInThreadWithCallback.return_value = sentinel.called
+        pool.callInThread(sentinel.func, sentinel.arg, kwarg=sentinel.kwarg)
+        self.assertThat(pool.callInThreadWithCallback, MockCalledOnceWith(
+            None, sentinel.func, sentinel.arg, kwarg=sentinel.kwarg))
+
+    @inlineCallbacks
+    def test__without_callback_acquires_and_releases_lock(self):
+        pool = self.make_pool()  # Limit to a single thread.
+        # Callback from a thread.
+        d = Deferred()
+
+        def function():
+            reactor.callFromThread(d.callback, sentinel.done)
+            return sentinel.result
+
+        pool.callInThreadWithCallback(None, function)
+        self.assertThat((yield d), Is(sentinel.done))
+        # The lock has not yet been released.
+        self.assertThat(pool.lock.tokens, Equals(0))
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
+
+    @inlineCallbacks
+    def test__with_callback_acquires_and_releases_lock(self):
+        pool = self.make_pool()  # Limit to a single thread.
+        # Callback from a thread.
+        d, callback = Deferred(), Mock()
+
+        def function():
+            reactor.callFromThread(d.callback, sentinel.done)
+            return sentinel.result
+
+        pool.callInThreadWithCallback(callback, function)
+        self.assertThat((yield d), Is(sentinel.done))
+        # The lock has not yet been released.
+        self.assertThat(pool.lock.tokens, Equals(0))
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
+        # The callback has also been called.
+        self.assertThat(callback, MockCalledOnceWith(True, sentinel.result))
+
+    @inlineCallbacks
+    def test__without_callback_releases_lock_when_underlying_pool_breaks(self):
+        pool = self.make_pool()  # Limit to a single thread.
+
+        exception_type = factory.make_exception_type()
+        citwc = self.patch_autospec(pool.pool, "callInThreadWithCallback")
+        citwc.side_effect = exception_type
+
+        with TwistedLoggerFixture() as logger:
+            yield pool.callInThreadWithCallback(None, noop)
+
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
+
+        # An alarming message is logged.
+        self.assertDocTestMatches(
+            """\
+            Critical failure arranging call in thread
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """,
+            logger.output)
+
+    @inlineCallbacks
+    def test__with_callback_releases_lock_when_underlying_pool_breaks(self):
+        pool = self.make_pool()  # Limit to a single thread.
+
+        exception_type = factory.make_exception_type()
+        citwc = self.patch_autospec(pool.pool, "callInThreadWithCallback")
+        citwc.side_effect = exception_type
+
+        callback = Mock()
+        with TwistedLoggerFixture() as logger:
+            yield pool.callInThreadWithCallback(callback, noop)
+
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
+
+        # Nothing is logged...
+        self.assertThat(logger.output, Equals(""))
+        # ... but the callback has been called.
+        self.assertThat(callback, MockCalledOnceWith(False, ANY))
+        [success, result] = callback.call_args[0]
+        self.assertThat(result, IsInstance(Failure))
+        self.assertThat(result.value, IsInstance(exception_type))
+
+    @inlineCallbacks
+    def test__when_deferring_acquires_and_releases_lock(self):
+        pool = self.make_pool()
+        # Within the thread the lock had been acquired.
+        tokens_in_thread = yield deferToThreadPool(
+            reactor, pool, lambda: pool.lock.tokens)
+        self.assertThat(tokens_in_thread, Equals(0))
+        # The lock has not yet been released.
+        self.assertThat(pool.lock.tokens, Equals(0))
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
+
+    @inlineCallbacks
+    def test__when_deferring_acquires_and_releases_lock_on_error(self):
+        pool = self.make_pool()
+        # Within the thread the lock had been acquired.
+        with ExpectedException(ZeroDivisionError):
+            yield deferToThreadPool(reactor, pool, lambda: 0 / 0)
+        # The lock has not yet been released.
+        self.assertThat(pool.lock.tokens, Equals(0))
+        # Wait and it shall be released.
+        yield pool.lock.run(noop)
+        self.assertThat(pool.lock.tokens, Equals(1))
