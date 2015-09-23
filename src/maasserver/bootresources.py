@@ -71,6 +71,7 @@ from maasserver.utils import (
 )
 from maasserver.utils.orm import (
     get_one,
+    in_transaction,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
@@ -920,10 +921,8 @@ def hold_lock_thread(kill_event, run_event):
         kill_event.wait()
 
 
-# FIXME: How this function deals with transactions is not clear. It uses the
-# ORM without ensuring there's a transaction. It also does network IO and we
-# don't want to be holding open a transaction for an indefinite time while
-# that happens.
+# FIXME: This does network IO while holding two database connections and two
+# transactions. This is bad for concurrency.
 @synchronous
 def _import_resources(force=False):
     """Import boot resources.
@@ -931,10 +930,16 @@ def _import_resources(force=False):
     Pulls the sources from `BootSource`. This only starts the process if
     some SYNCED `BootResource` already exist.
 
+    This MUST be called from outside of a database transaction.
+
     :param force: True will force the import, even if no SYNCED `BootResource`
         exist. This is used because we want the user to start the first import
         action, not let it run automatically.
     """
+    assert not in_transaction(), (
+        "_import_resources() must not be called within a preexisting "
+        "transaction; it manages its own.")
+
     # If the lock is already held, then import is already running.
     if locks.import_images.is_locked():
         maaslog.debug("Skipping import as another import is already running.")

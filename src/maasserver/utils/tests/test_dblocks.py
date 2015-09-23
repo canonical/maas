@@ -20,18 +20,17 @@ from contextlib import (
 )
 from random import randint
 import sys
-import threading
 
 from django.db import (
     connection,
     transaction,
 )
+from maasserver.testing.dblocks import lock_held_in_other_thread
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import dblocks
-from maasserver.utils.orm import transactional
 from testtools.matchers import Equals
 
 
@@ -77,29 +76,6 @@ def capture_queries_while_holding_lock(lock):
             pass  # Just being here is enough.
     return "\n--\n".join(
         query["sql"] for query in connection.queries)
-
-
-@contextmanager
-def lock_held_in_other_thread(lock, timeout=10):
-    """Hold `lock` in another thread."""
-    held = threading.Event()
-    done = threading.Event()
-
-    @transactional
-    def hold():
-        with lock:
-            held.set()
-            done.wait(timeout)
-
-    thread = threading.Thread(target=hold)
-    thread.start()
-
-    held.wait(timeout)
-    try:
-        yield
-    finally:
-        done.set()
-        thread.join()
 
 
 class TestDatabaseLock(MAASTransactionServerTestCase):

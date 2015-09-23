@@ -22,6 +22,7 @@ __all__ = [
     'get_exception_class',
     'get_first',
     'get_one',
+    'in_transaction',
     'is_serialization_failure',
     'macs_contain',
     'macs_do_not_contain',
@@ -552,7 +553,7 @@ def outside_atomic_block(using="default"):
             depth = depth - 1
 
 
-def in_transaction(connection):
+def in_transaction(connection=connection):
     """Is `connection` in the midst of a transaction?
 
     This only enquires as to Django's perspective on the situation. It does

@@ -32,7 +32,6 @@ from maasserver.utils.orm import (
     ExclusivelyConnected,
     FullyConnected,
     TotallyDisconnected,
-    transactional,
 )
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -147,7 +146,7 @@ def deferToDatabase(func, *args, **kwargs):
     """Call `func` in a thread where database activity is permitted."""
     return deferToThreadPool(
         reactor, reactor.threadpoolForDatabase,
-        transactional(func), *args, **kwargs)
+        func, *args, **kwargs)
 
 
 def callOutToDatabase(thing, func, *args, **kwargs):

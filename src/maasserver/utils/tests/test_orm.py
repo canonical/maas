@@ -47,6 +47,7 @@ from maasserver.utils.orm import (
     get_one,
     get_psycopg2_exception,
     get_psycopg2_serialization_exception,
+    in_transaction,
     is_serialization_failure,
     macs_contain,
     macs_do_not_contain,
@@ -832,6 +833,24 @@ class TestCommitWithinAtomicBlock(MAASTransactionServerTestCase):
             context_manager.__enter__, MockCalledOnceWith())
         self.expectThat(
             context_manager.__exit__, MockCalledOnceWith(None, None, None))
+
+
+class TestInTransaction(DjangoTransactionTestCase):
+    """Tests for `in_transaction`."""
+
+    def test__true_within_atomic_block(self):
+        with transaction.atomic():
+            self.assertTrue(in_transaction())
+
+    def test__true_when_legacy_transaction_is_active(self):
+        transaction.enter_transaction_management()
+        try:
+            self.assertTrue(in_transaction())
+        finally:
+            transaction.leave_transaction_management()
+
+    def test__false_when_no_transaction_is_active(self):
+        self.assertFalse(in_transaction())
 
 
 class TestValidateInTransaction(DjangoTransactionTestCase):

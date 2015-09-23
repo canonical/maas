@@ -61,6 +61,7 @@ from maasserver.models import (
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.config import RegionConfigurationFixture
+from maasserver.testing.dblocks import lock_held_in_other_thread
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
@@ -1144,9 +1145,8 @@ class TestImportImages(MAASTransactionServerTestCase):
     def test__import_resources_exits_early_if_lock_held(self):
         has_synced_resources = self.patch_autospec(
             bootresources, "has_synced_resources")
-        with transaction.atomic():
-            with bootresources.locks.import_images:
-                bootresources._import_resources(force=True)
+        with lock_held_in_other_thread(bootresources.locks.import_images):
+            bootresources._import_resources(force=True)
         # The test for already-synced resources is not called if the
         # lock is already held.
         self.assertThat(has_synced_resources, MockNotCalled())

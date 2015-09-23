@@ -116,6 +116,7 @@ class TestDeferToDatabase(MAASTestCase):
     @inlineCallbacks
     def test__defers_to_database_threadpool(self):
 
+        @orm.transactional
         def call_in_database_thread(a, b):
             orm.validate_in_transaction(connection)
             return sentinel.called, a, b
@@ -132,6 +133,7 @@ class TestCallOutToDatabase(MAASTestCase):
     @inlineCallbacks
     def test__calls_out_to_database_threadpool(self):
 
+        @orm.transactional
         def call_in_database_thread(a, b):
             orm.validate_in_transaction(connection)
             return sentinel.bar, a, b
