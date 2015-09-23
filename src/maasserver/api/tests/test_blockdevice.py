@@ -16,7 +16,6 @@ __all__ = []
 
 import httplib
 import json
-import random
 import uuid
 
 from django.core.urlresolvers import reverse
@@ -24,6 +23,7 @@ from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
+    NODE_STATUS,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
@@ -374,6 +374,13 @@ class TestBlockDeviceAPI(APITestCase):
             "mount_point": filesystem2.mount_point,
             }, parsed_device['partitions'][1]['filesystem'])
 
+    def test_delete_returns_403_when_not_admin(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_delete_returns_404_when_system_id_doesnt_match(self):
         self.become_admin()
         block_device = factory.make_PhysicalBlockDevice()
@@ -383,48 +390,28 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
-    def test_delete_returns_403_when_physical_device_and_not_admin(self):
-        block_device = factory.make_PhysicalBlockDevice()
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.delete(uri)
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
-    def test_delete_returns_403_when_virtual_device_and_not_owner(self):
-        block_device = factory.make_VirtualBlockDevice()
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.delete(uri)
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
-    def test_delete_deletes_block_device_when_physical_and_admin(self):
+    def test_delete_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
-        block_device = factory.make_PhysicalBlockDevice()
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.delete(uri)
-        self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
-        self.assertIsNone(reload_object(block_device))
-
-    def test_delete_deletes_block_device_when_virtual_and_owner(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
         block_device = factory.make_VirtualBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.delete(uri)
         self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_delete_deletes_block_device(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.delete(uri)
+        self.assertEqual(
             httplib.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(block_device))
 
-    def test_add_tag_returns_403_for_physical_device_and_not_admin(self):
+    def test_add_tag_returns_403_when_not_admin(self):
         block_device = factory.make_PhysicalBlockDevice()
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
-            uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
-    def test_add_tag_returns_403_for_virtual_device_and_not_owner(self):
-        block_device = factory.make_VirtualBlockDevice()
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
@@ -441,23 +428,21 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
-    def test_add_tag_to_block_device_when_physical_and_admin(self):
+    def test_add_tag_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
-        block_device = factory.make_PhysicalBlockDevice()
-        tag_to_be_added = factory.make_name('tag')
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
-            uri, {'op': 'add_tag', 'tag': tag_to_be_added})
-
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertIn(tag_to_be_added, parsed_device['tags'])
-        block_device = reload_object(block_device)
-        self.assertIn(tag_to_be_added, block_device.tags)
-
-    def test_add_tag_to_block_device_when_virtual_and_owner(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
         block_device = factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(
+            uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_add_tag_to_block_device(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
         tag_to_be_added = factory.make_name('tag')
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(
@@ -469,17 +454,8 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = reload_object(block_device)
         self.assertIn(tag_to_be_added, block_device.tags)
 
-    def test_remove_tag_returns_403_for_physical_device_and_not_admin(self):
+    def test_remove_tag_returns_403_when_not_admin(self):
         block_device = factory.make_PhysicalBlockDevice()
-        uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
-            uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
-
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
-    def test_remove_tag_returns_403_for_virtual_device_and_not_owner(self):
-        block_device = factory.make_VirtualBlockDevice()
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
@@ -498,9 +474,22 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
-    def test_remove_tag_from_block_device_when_physical_and_admin(self):
+    def test_remove_tag_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
-        block_device = factory.make_PhysicalBlockDevice()
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(
+            uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_remove_tag_from_block_device(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
         tag_to_be_removed = block_device.tags[0]
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(
@@ -512,22 +501,33 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = reload_object(block_device)
         self.assertNotIn(tag_to_be_removed, block_device.tags)
 
-    def test_remove_tag_from_block_device_when_virtual_and_owner(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_format_returns_409_if_not_allocated_or_ready(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        tag_to_be_removed = block_device.tags[0]
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
-            uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
+        response = self.client.post(
+            uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertNotIn(tag_to_be_removed, parsed_device['tags'])
-        block_device = reload_object(block_device)
-        self.assertNotIn(tag_to_be_removed, block_device.tags)
+    def test_format_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fsuuid = '%s' % uuid.uuid4()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_format_formats_block_device_by_creating_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_format_formats_block_device_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         fsuuid = '%s' % uuid.uuid4()
@@ -545,8 +545,51 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = reload_object(block_device)
         self.assertIsNotNone(block_device.filesystem)
 
+    def test_format_formats_block_device_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fsuuid = '%s' % uuid.uuid4()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertDictContainsSubset({
+            'fstype': fstype,
+            'uuid': fsuuid,
+            'mount_point': None,
+            }, parsed_device['filesystem'])
+        block_device = reload_object(block_device)
+        self.assertIsNotNone(block_device.filesystem)
+
+    def test_unformat_returns_409_if_not_allocated_or_ready(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_unformat_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_unformat_returns_400_if_not_formatted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
@@ -557,7 +600,8 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual("Block device is not formatted.", response.content)
 
     def test_unformat_returns_400_if_mounted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device, mount_point="/mnt")
         uri = get_blockdevice_uri(block_device)
@@ -572,11 +616,12 @@ class TestBlockDeviceAPI(APITestCase):
             response.content)
 
     def test_unformat_returns_400_if_in_filesystem_group(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         lvm_filesystem = factory.make_Filesystem(
             block_device=block_device, fstype=FILESYSTEM_TYPE.LVM_PV)
-        factory.make_FilesystemGroup(
+        fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
             filesystems=[lvm_filesystem])
         uri = get_blockdevice_uri(block_device)
@@ -586,13 +631,15 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
-            "Filesystem is part of a filesystem group, and cannot be "
-            "unformatted. Remove block device from filesystem group "
-            "before unformatting the block device.",
+            "Filesystem is part of a %s, and cannot be "
+            "unformatted. Remove block device from %s "
+            "before unformatting the block device." % (
+                fsgroup.get_nice_name(), fsgroup.get_nice_name()),
             response.content)
 
-    def test_unformat_deletes_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unformat_deletes_filesystem_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
@@ -608,8 +655,49 @@ class TestBlockDeviceAPI(APITestCase):
         block_device = reload_object(block_device)
         self.assertIsNone(block_device.filesystem)
 
-    def test_mount_sets_mount_path_on_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unformat_deletes_filesystem_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device, acquired=True)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unformat'})
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertFalse(
+            "filesystem" in parsed_device,
+            "Filesystem field should not be in the resulting device.")
+        block_device = reload_object(block_device)
+        self.assertIsNone(block_device.filesystem)
+
+    def test_mount_returns_409_if_not_allocated_or_ready(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'mount'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_mount_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'mount'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_mount_sets_mount_path_on_filesystem_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
         mount_point = factory.make_absolute_path()
@@ -624,8 +712,49 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEquals(
             mount_point, reload_object(filesystem).mount_point)
 
+    def test_mount_sets_mount_path_on_filesystem_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, acquired=True)
+        mount_point = factory.make_absolute_path()
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'mount', 'mount_point': mount_point})
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEquals(
+            mount_point, parsed_device['filesystem']['mount_point'])
+        self.assertEquals(
+            mount_point, reload_object(filesystem).mount_point)
+
+    def test_unmount_returns_409_if_not_allocated_or_ready(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device, mount_point="/mnt")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_unmount_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device, mount_point="/mnt")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_mount_returns_400_on_missing_mount_point(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
@@ -640,7 +769,8 @@ class TestBlockDeviceAPI(APITestCase):
             parsed_error)
 
     def test_unmount_returns_400_if_not_formatted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
@@ -652,7 +782,8 @@ class TestBlockDeviceAPI(APITestCase):
             "Block device is not formatted.", response.content)
 
     def test_unmount_returns_400_if_already_unmounted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
@@ -664,11 +795,29 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEquals(
             "Filesystem is already unmounted.", response.content)
 
-    def test_unmount_unmounts_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unmount_unmounts_filesystem_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
             block_device=block_device, mount_point="/mnt")
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.post(
+            uri, {'op': 'unmount'})
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        self.assertIsNone(
+            json.loads(response.content)['filesystem']['mount_point'])
+        self.assertIsNone(
+            reload_object(filesystem).mount_point)
+
+    def test_unmount_unmounts_filesystem_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, mount_point="/mnt", acquired=True)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
             uri, {'op': 'unmount'})
@@ -686,7 +835,8 @@ class TestBlockDeviceAPI(APITestCase):
         PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
         """
         self.become_admin()
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=self.logged_in_user)
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             name='myblockdevice',
@@ -711,7 +861,8 @@ class TestBlockDeviceAPI(APITestCase):
         PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
         """
         self.become_admin()
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=self.logged_in_user)
         filesystem_group = factory.make_FilesystemGroup(
             node=node, group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
@@ -742,34 +893,39 @@ class TestBlockDeviceAPI(APITestCase):
             'name': 'mynewname',
             'block_size': 4096
         })
-        block_device = reload_object(block_device)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_update_virtual_block_device_as_normal_user(self):
-        """Check update block device with a virtual one works with a normal
+        """Check update block device with a virtual one fails for a normal
         user."""
         node = factory.make_Node(owner=self.logged_in_user)
         newname = factory.make_name("lv")
         block_device = factory.make_VirtualBlockDevice(
             node=node, name=newname)
-        volume_group = block_device.filesystem_group
-        newsize = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
         uri = get_blockdevice_uri(block_device)
         response = self.client.put(uri, {
             'name': newname,
-            'size': newsize
         })
-        block_device = reload_object(block_device)
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEqual(parsed_device['id'], block_device.id)
-        self.assertEqual(
-            '%s-%s' % (volume_group.name, newname), parsed_device['name'])
-        self.assertEqual(newsize, parsed_device['size'])
+            httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_update_returns_409_for_none_ready_node(self):
+        """Check update block device with a virtual one fails for a normal
+        user."""
+        self.become_admin()
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
+        newname = factory.make_name("lv")
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': newname,
+        })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    """
     def test_set_boot_disk_returns_400_for_virtual_device(self):
         self.become_admin()
         node = factory.make_Node(owner=self.logged_in_user)
@@ -816,3 +972,4 @@ class TestBlockDeviceAPI(APITestCase):
             httplib.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertEquals(block_device, node.boot_disk)
+    """

@@ -13,16 +13,21 @@ str = None
 
 __metaclass__ = type
 
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
+    NodeStateViolation,
 )
 from maasserver.forms import (
     AddPartitionForm,
@@ -66,6 +71,18 @@ def get_partition_by_id_or_name__or_404(partition_id, partition_table):
     return partition
 
 
+def raise_error_for_invalid_state_on_allocated_operations(
+        node, user, operation):
+    if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
+        raise NodeStateViolation(
+            "Cannot %s partition because it's node is not Ready "
+            "or Allocated." % operation)
+    if node.status == NODE_STATUS.READY and not user.is_superuser:
+        raise PermissionDenied(
+            "Cannot %s partition because you don't have the "
+            "permissions on a Ready node." % operation)
+
+
 class PartitionsHandler(OperationsHandler):
     """Manage partitions on a block device."""
     api_doc_section_name = "Partitions"
@@ -101,7 +118,11 @@ class PartitionsHandler(OperationsHandler):
         Returns 404 if the node or the block device are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot create partition because the node is not Ready.")
         form = AddPartitionForm(device, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -149,11 +170,15 @@ class PartitionHandler(OperationsHandler):
         Returns 404 if the node, block device, or partition are not found.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot delete block device because it's node is not Ready.")
         partition.delete()
         return rc.DELETED
 
@@ -175,6 +200,9 @@ class PartitionHandler(OperationsHandler):
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "format")
         form = FormatPartitionForm(partition, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -190,6 +218,9 @@ class PartitionHandler(OperationsHandler):
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "unformat")
         filesystem = partition.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
@@ -198,11 +229,12 @@ class PartitionHandler(OperationsHandler):
                 "Filesystem is mounted and cannot be unformatted. Unmount the "
                 "filesystem before unformatting the partition.")
         if filesystem.filesystem_group is not None:
+            nice_name = filesystem.filesystem_group.get_nice_name()
             raise MAASAPIBadRequest(
-                "Filesystem is part of a filesystem group, and cannot be "
-                "unformatted. Remove partition from filesystem group "
-                "before unformatting the partition.")
-        partition.remove_filesystem()
+                "Filesystem is part of a %s, and cannot be "
+                "unformatted. Remove partition from %s "
+                "before unformatting the partition." % (nice_name, nice_name))
+        filesystem.delete()
         return partition
 
     @operation(idempotent=False)
@@ -221,6 +253,9 @@ class PartitionHandler(OperationsHandler):
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "mount")
         form = MountPartitionForm(partition, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -243,6 +278,9 @@ class PartitionHandler(OperationsHandler):
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "unmount")
         filesystem = partition.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")

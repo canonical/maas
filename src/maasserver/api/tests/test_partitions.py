@@ -20,7 +20,10 @@ import random
 from uuid import uuid4
 
 from django.core.urlresolvers import reverse
-from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
+from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
+    NODE_STATUS,
+)
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
@@ -59,15 +62,55 @@ class TestPartitions(APITestCase):
             partition_table=partition_table,
             size=MIN_PARTITION_SIZE)
 
-    def test_create_partition(self):
-        """
-        Tests creation of a partition on a block device.
+    def test_create_returns_403_if_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_size = 1024
+        device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+            block_size=block_size)
+        factory.make_PartitionTable(block_device=device)
+        uri = get_partitions_uri(device)
 
-        Create partition on block device
-        - Size
-        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions
-        """
-        node = factory.make_Node(owner=self.logged_in_user)
+        # Add a partition to the start of the drive.
+        size = round_size_to_nearest_block(
+            random.randint(
+                MIN_PARTITION_SIZE, MIN_PARTITION_SIZE * 2),
+            block_size)
+        response = self.client.post(
+            uri, {
+                'size': size,
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_returns_409_if_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
+        block_size = 1024
+        device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
+            block_size=block_size)
+        factory.make_PartitionTable(block_device=device)
+        uri = get_partitions_uri(device)
+
+        # Add a partition to the start of the drive.
+        size = round_size_to_nearest_block(
+            random.randint(
+                MIN_PARTITION_SIZE, MIN_PARTITION_SIZE * 2),
+            block_size)
+        response = self.client.post(
+            uri, {
+                'size': size,
+            })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_create_partition(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_size = 1024
         device = factory.make_PhysicalBlockDevice(
             node=node,
@@ -89,10 +132,6 @@ class TestPartitions(APITestCase):
             httplib.OK, response.status_code, response.content)
 
     def test_list_partitions(self):
-        """Lists all partitions on a given device
-
-        GET /nodes/{system_id}/blockdevice/{id}/partitions
-        """
         device = factory.make_PhysicalBlockDevice(
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
@@ -116,11 +155,6 @@ class TestPartitions(APITestCase):
         self.assertEqual(partition2.uuid, p2['uuid'])
 
     def test_read_partition(self):
-        """Tests reading metadata about a partition
-
-        Read partition on block device
-        GET /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
-        """
         device = factory.make_PhysicalBlockDevice(
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
@@ -139,11 +173,6 @@ class TestPartitions(APITestCase):
         self.assertEqual(partition.size, parsed_partition['size'])
 
     def test_read_partition_by_name(self):
-        """Tests reading metadata about a partition
-
-        Read partition on block device
-        GET /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
-        """
         device = factory.make_PhysicalBlockDevice(
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(block_device=device)
@@ -161,13 +190,27 @@ class TestPartitions(APITestCase):
         self.assertEqual(partition.id, parsed_partition['id'])
         self.assertEqual(partition.size, parsed_partition['size'])
 
-    def test_delete_partition(self):
-        """Tests deleting a partition
-
-        Delete partition on block device
-        DELETE /api/1.0/nodes/{system_id}/blockdevice/{id}/partitions/{idx}
-        """
+    def test_delete_returns_403_for_non_admin(self):
         node = factory.make_Node(owner=self.logged_in_user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_delete_returns_409_for_not_ready_node(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_delete_partition(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.delete(uri)
@@ -177,13 +220,62 @@ class TestPartitions(APITestCase):
             httplib.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(partition))
 
-    def test_format_partition(self):
-        """Tests formatting a partition.
+    def test_format_returns_409_if_not_allocated_or_ready(self):
+        self.become_admin()
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        fs_uuid = unicode(uuid4())
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': fstype,
+            'label': 'mylabel',
+        })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
 
-        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
-             ?op=format
-        """
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_format_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        fs_uuid = unicode(uuid4())
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': fstype,
+            'label': 'mylabel',
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_format_partition_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        partition = self.make_partition(node)
+        uri = get_partition_uri(partition)
+        fs_uuid = unicode(uuid4())
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        response = self.client.post(uri, {
+            'op': 'format',
+            'uuid': fs_uuid,
+            'fstype': fstype,
+            'label': 'mylabel',
+        })
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        filesystem = json.loads(response.content)['filesystem']
+        self.assertEqual(fstype, filesystem['fstype'])
+        self.assertEqual('mylabel', filesystem['label'])
+        self.assertEqual(fs_uuid, filesystem['uuid'])
+
+    def test_format_partition_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = unicode(uuid4())
@@ -202,12 +294,8 @@ class TestPartitions(APITestCase):
         self.assertEqual(fs_uuid, filesystem['uuid'])
 
     def test_format_missing_partition(self):
-        """Tests formatting a missing partition - Fails with a 404.
-
-        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
-             ?op=format
-        """
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
@@ -229,12 +317,8 @@ class TestPartitions(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_format_partition_with_invalid_parameters(self):
-        """Tests formatting a partition with invalid parameters
-
-        POST /api/1.0/nodes/{system_id}/blockdevice/{id}/partition/{idx}/
-             ?op=format
-        """
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {
@@ -247,10 +331,30 @@ class TestPartitions(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
 
+    def test_unformat_returns_409_if_not_allocated_or_ready(self):
+        self.become_admin()
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        partition = self.make_partition(node)
+        factory.make_Filesystem(partition=partition)
+        uri = get_partition_uri(partition)
+        response = self.client.post(uri, {'op': 'unformat'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_unformat_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        partition = self.make_partition(node)
+        factory.make_Filesystem(partition=partition)
+        uri = get_partition_uri(partition)
+        response = self.client.post(uri, {'op': 'unformat'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_unformat_partition_as_admin(self):
-        """Unformatting a partition as the administrator succeeds and returns
-        an OK status."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
@@ -262,36 +366,23 @@ class TestPartitions(APITestCase):
         self.assertIsNone(
             partition.get('filesystem'), 'Partition still has a filesystem.')
 
-    def test_unformat_partition_as_node_owner(self):
-        """Unformatting a partition on a node the user is allowed to edit
-        succeeds and returns an OK status."""
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unformat_partition_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         partition = self.make_partition(node)
-        factory.make_Filesystem(partition=partition)
+        factory.make_Filesystem(partition=partition, acquired=True)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
         # Returns the partition without the filesystem.
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
         partition = json.loads(response.content)
         self.assertIsNone(
             partition.get('filesystem'), 'Partition still has a filesystem.')
 
-    def test_unformat_partition_as_other_user(self):
-        """Unformatting a partition on a node the user is not allowed to edit
-        fails with a FORBIDDEN status."""
-        node = factory.make_Node(owner=factory.make_User())
-        partition = self.make_partition(node)
-        factory.make_Filesystem(partition=partition)
-        uri = get_partition_uri(partition)
-        response = self.client.post(uri, {'op': 'unformat'})
-        # Returns nothing and a FORBIDDEN status
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
     def test_unformat_missing_filesystem(self):
-        """Unformatting a partition that does not contain a filesystem  fails
-        with a BAD_REQUEST status."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unformat'})
@@ -299,9 +390,8 @@ class TestPartitions(APITestCase):
             httplib.BAD_REQUEST, response.status_code, response.content)
 
     def test_unformat_missing_partition(self):
-        """Unformatting a partition that does not exist fails with a NOT_FOUND
-        status."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
@@ -316,8 +406,42 @@ class TestPartitions(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
-    def test_mount_sets_mount_path_on_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_mount_returns_409_if_not_allocated_or_ready(self):
+        self.become_admin()
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = partition_table.add_partition()
+        factory.make_Filesystem(
+            partition=partition)
+        uri = get_partition_uri(partition)
+        mount_point = '/mnt'
+        response = self.client.post(
+            uri, {'op': 'mount', 'mount_point': mount_point})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_mount_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = partition_table.add_partition()
+        factory.make_Filesystem(
+            partition=partition)
+        uri = get_partition_uri(partition)
+        mount_point = '/mnt'
+        response = self.client.post(
+            uri, {'op': 'mount', 'mount_point': mount_point})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_mount_sets_mount_path_on_filesystem_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -335,8 +459,29 @@ class TestPartitions(APITestCase):
         self.assertEquals(
             mount_point, reload_object(filesystem).mount_point)
 
+    def test_mount_sets_mount_path_on_filesystem_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = partition_table.add_partition()
+        filesystem = factory.make_Filesystem(
+            partition=partition, acquired=True)
+        uri = get_partition_uri(partition)
+        mount_point = '/mnt'
+        response = self.client.post(
+            uri, {'op': 'mount', 'mount_point': mount_point})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.assertEquals(
+            mount_point, parsed_device['filesystem']['mount_point'])
+        self.assertEquals(
+            mount_point, reload_object(filesystem).mount_point)
+
     def test_mount_returns_400_on_missing_mount_point(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
@@ -348,8 +493,32 @@ class TestPartitions(APITestCase):
             {"mount_point": ["This field is required."]},
             parsed_error)
 
+    def test_unmount_returns_409_if_not_allocated_or_ready(self):
+        self.become_admin()
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
+        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        partition = self.make_partition(node)
+        factory.make_Filesystem(
+            partition=partition, mount_point="/mnt")
+        uri = get_partition_uri(partition)
+        response = self.client.post(uri, {'op': 'unmount'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
+    def test_unmount_returns_403_if_ready_and_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        partition = self.make_partition(node)
+        factory.make_Filesystem(
+            partition=partition, mount_point="/mnt")
+        uri = get_partition_uri(partition)
+        response = self.client.post(uri, {'op': 'unmount'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_unmount_returns_400_if_not_formatted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unmount'})
@@ -359,7 +528,8 @@ class TestPartitions(APITestCase):
             "Partition is not formatted.", response.content)
 
     def test_unmount_returns_400_if_already_unmounted(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
@@ -369,8 +539,9 @@ class TestPartitions(APITestCase):
         self.assertEquals(
             "Filesystem is already unmounted.", response.content)
 
-    def test_unmount_unmounts_filesystem(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unmount_unmounts_filesystem_as_admin(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         partition = self.make_partition(node)
         filesystem = factory.make_Filesystem(
             partition=partition, mount_point="/mnt")
@@ -383,28 +554,17 @@ class TestPartitions(APITestCase):
         self.assertIsNone(
             reload_object(filesystem).mount_point)
 
-    def test_unformat_mounted_partition(self):
-        """Unformatting a mounted partition fails with a BAD_REQUEST status."""
-        node = factory.make_Node(owner=self.logged_in_user)
+    def test_unmount_unmounts_filesystem_as_user(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         partition = self.make_partition(node)
-        factory.make_Filesystem(
-            partition=partition, mount_point='/mnt/cantdeleteme')
+        filesystem = factory.make_Filesystem(
+            partition=partition, mount_point="/mnt", acquired=True)
         uri = get_partition_uri(partition)
-        response = self.client.post(uri, {'op': 'unformat'})
-        # Returns nothing and a BAD_REQUEST status
+        response = self.client.post(uri, {'op': 'unmount'})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-
-    def test_unformat_filesystemgroup_partition(self):
-        """Unformatting a partition that's part of a filesystem group fails
-        with a BAD_REQUEST status."""
-        node = factory.make_Node(owner=self.logged_in_user)
-        partition = self.make_partition(node)
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        factory.make_Filesystem(
-            partition=partition, filesystem_group=filesystem_group)
-        uri = get_partition_uri(partition)
-        response = self.client.post(uri, {'op': 'unformat'})
-        # Returns nothing and a BAD_REQUEST status
-        self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            httplib.OK, response.status_code, response.content)
+        self.assertIsNone(
+            json.loads(response.content)['filesystem']['mount_point'])
+        self.assertIsNone(
+            reload_object(filesystem).mount_point)

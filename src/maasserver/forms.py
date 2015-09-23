@@ -3018,14 +3018,16 @@ class BytesField(forms.RegexField):
 
 class FormatBlockDeviceForm(Form):
     """Form used to format a block device."""
-    uuid = UUID4Field(required=False)
 
+    uuid = UUID4Field(required=False)
     fstype = forms.ChoiceField(
         choices=FILESYSTEM_FORMAT_TYPE_CHOICES, required=True)
+    label = forms.CharField(required=False)
 
     def __init__(self, block_device, *args, **kwargs):
         super(FormatBlockDeviceForm, self).__init__(*args, **kwargs)
         self.block_device = block_device
+        self.node = block_device.get_node()
 
     def clean(self):
         """Validate block device doesn't have a partition table."""
@@ -3047,14 +3049,17 @@ class FormatBlockDeviceForm(Form):
         This implementation of `save` does not support the `commit` argument.
         """
         # Remove the previous format if one already exists.
-        Filesystem.objects.filter(block_device=self.block_device).delete()
+        Filesystem.objects.filter(
+            block_device=self.block_device,
+            acquired=self.node.is_in_allocated_state()).delete()
 
         # Create the new filesystem
-        filesystem = Filesystem(
+        Filesystem.objects.create(
             block_device=self.block_device,
             fstype=self.cleaned_data['fstype'],
-            uuid=self.cleaned_data.get('uuid', None))
-        filesystem.save()
+            uuid=self.cleaned_data.get('uuid', None),
+            label=self.cleaned_data.get('label', None),
+            acquired=self.node.is_in_allocated_state())
         return self.block_device
 
 
@@ -3136,6 +3141,7 @@ class FormatPartitionForm(Form):
     def __init__(self, partition, *args, **kwargs):
         super(FormatPartitionForm, self).__init__(*args, **kwargs)
         self.partition = partition
+        self.node = partition.get_node()
 
     def save(self):
         """Add the Filesystem to the partition.
@@ -3143,12 +3149,17 @@ class FormatPartitionForm(Form):
         This implementation of `save` does not support the `commit` argument.
         """
         # Remove the previous format if one already exists.
-        self.partition.remove_filesystem()
-        data = self.cleaned_data
-        self.partition.add_filesystem(
-            uuid=data['uuid'],
-            fstype=data['fstype'],
-            label=data['label'])
+        Filesystem.objects.filter(
+            partition=self.partition,
+            acquired=self.node.is_in_allocated_state()).delete()
+
+        # Create the new filesystem
+        Filesystem.objects.create(
+            partition=self.partition,
+            fstype=self.cleaned_data['fstype'],
+            uuid=self.cleaned_data.get('uuid', None),
+            label=self.cleaned_data.get('label', None),
+            acquired=self.node.is_in_allocated_state())
         return self.partition
 
 

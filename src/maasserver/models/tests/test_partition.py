@@ -236,40 +236,6 @@ class TestPartition(MAASServerTestCase):
         partition.save()
         self.assertEquals(prev_size, partition.size)
 
-    def test_partition_add_filesystem(self):
-        """Add a file system to a partition"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        filesystem = partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
-        self.assertEquals(filesystem.partition_id, partition.id)
-        self.assertEquals(filesystem.fstype, FILESYSTEM_TYPE.EXT4)
-
-    def test_partition_add_second_filesystem(self):
-        """Adding a second file system to a partition should fail"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
-
-        # Adding a second one should fail
-        self.assertRaises(ValidationError, partition.add_filesystem,
-                          **{'fstype': FILESYSTEM_TYPE.EXT4})
-
-    def test_partition_remove_filesystem(self):
-        """Tests filesystem removal from a partition"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        partition.add_filesystem(fstype=FILESYSTEM_TYPE.EXT4)
-        # After removal, partition.filesystem should be None
-        partition.remove_filesystem()
-        self.assertIsNone(partition.filesystem)
-
-    def test_partition_remove_absent_filesystem(self):
-        """Tests whether attempting to remove a non-existent FS fails"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        # Removal should do nothing
-        self.assertIsNone(partition.remove_filesystem())
-
     def test_filesystem_calls_get_active_filesystem_and_returns_result(self):
         mock_get_active_filesystem = self.patch_autospec(
             partition_module, "get_active_filesystem")

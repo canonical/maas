@@ -20,10 +20,14 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+)
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
+    NodeStateViolation,
 )
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
@@ -63,6 +67,18 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'partition_table_type',
     'partitions',
 )
+
+
+def raise_error_for_invalid_state_on_allocated_operations(
+        node, user, operation):
+    if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
+        raise NodeStateViolation(
+            "Cannot %s block device because it's node is not Ready "
+            "or Allocated." % operation)
+    if node.status == NODE_STATUS.READY and not user.is_superuser:
+        raise PermissionDenied(
+            "Cannot %s block device because you don't have the "
+            "permissions on a Ready node." % operation)
 
 
 class BlockDevicesHandler(OperationsHandler):
@@ -192,15 +208,14 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 404 if the node or block device is not found.
         Returns 403 if the user is not allowed to delete the block device.
+        Returns 409 if the node is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        # Standard user cannot delete a physical block device.
-        cannot_delete = (
-            not request.user.is_superuser and
-            isinstance(device, PhysicalBlockDevice))
-        if cannot_delete:
-            raise PermissionDenied()
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot delete block device because it's node is not Ready.")
         device.delete()
         return rc.DELETED
 
@@ -225,12 +240,15 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 404 if the node or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
+        Returns 409 if the node is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot update block device because it's node is not Ready.")
         if device.type == 'physical':
-            if not request.user.is_superuser:
-                raise PermissionDenied()
             form = UpdatePhysicalBlockDeviceForm(
                 instance=device, data=request.data)
         elif device.type == 'virtual':
@@ -249,15 +267,17 @@ class BlockDeviceHandler(OperationsHandler):
         """Add a tag to block device on node.
 
         :param tag: The tag being added.
+
+        Returns 404 if the node or block device is not found.
+        Returns 403 if the user is not allowed to update the block device.
+        Returns 409 if the node is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        # Standard user cannot add a tag to a physical block device.
-        cannot_delete = (
-            not request.user.is_superuser and
-            isinstance(device, PhysicalBlockDevice))
-        if cannot_delete:
-            raise PermissionDenied()
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot update block device because it's node is not Ready.")
         device.add_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -267,15 +287,17 @@ class BlockDeviceHandler(OperationsHandler):
         """Remove a tag from block device on node.
 
         :param tag: The tag being removed.
+
+        Returns 404 if the node or block device is not found.
+        Returns 403 if the user is not allowed to update the block device.
+        Returns 409 if the node is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        # Standard user cannot remove a tag from a physical block device.
-        cannot_delete = (
-            not request.user.is_superuser and
-            isinstance(device, PhysicalBlockDevice))
-        if cannot_delete:
-            raise PermissionDenied()
+            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot update block device because it's node is not Ready.")
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -290,9 +312,13 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 403 when the user doesn't have the ability to format the \
             block device.
         Returns 404 if the node or block device is not found.
+        Returns 409 if the node is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "format")
         form = FormatBlockDeviceForm(device, data=request.data)
         if form.is_valid():
             return form.save()
@@ -308,9 +334,13 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 403 when the user doesn't have the ability to unformat the \
             block device.
         Returns 404 if the node or block device is not found.
+        Returns 409 if the node is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "unformat")
         filesystem = device.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
@@ -319,10 +349,12 @@ class BlockDeviceHandler(OperationsHandler):
                 "Filesystem is mounted and cannot be unformatted. Unmount the "
                 "filesystem before unformatting the block device.")
         if filesystem.filesystem_group is not None:
+            nice_name = filesystem.filesystem_group.get_nice_name()
             raise MAASAPIBadRequest(
-                "Filesystem is part of a filesystem group, and cannot be "
-                "unformatted. Remove block device from filesystem group "
-                "before unformatting the block device.")
+                "Filesystem is part of a %s, and cannot be "
+                "unformatted. Remove block device from %s "
+                "before unformatting the block device." % (
+                    nice_name, nice_name))
         filesystem.delete()
         return device
 
@@ -335,9 +367,13 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 403 when the user doesn't have the ability to mount the \
             block device.
         Returns 404 if the node or block device is not found.
+        Returns 409 if the node is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "mount")
         form = MountBlockDeviceForm(device, data=request.data)
         if form.is_valid():
             return form.save()
@@ -353,9 +389,13 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 403 when the user doesn't have the ability to unmount the \
             block device.
         Returns 404 if the node or block device is not found.
+        Returns 409 if the node is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+        node = device.get_node()
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "unmount")
         filesystem = device.filesystem
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
@@ -372,9 +412,14 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 400 if the block device is a virtual block device.
         Returns 404 if the node or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
+        Returns 409 if the node is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+        node = device.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot set as boot disk because it's node is not Ready.")
         if not isinstance(device, PhysicalBlockDevice):
             raise MAASAPIBadRequest(
                 "Cannot set a %s block device as the boot disk." % device.type)
