@@ -633,6 +633,16 @@ class TestNode(MAASServerTestCase):
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
 
+    def test_acquire_calls__create_acquired_filesystems(self):
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
+        user = factory.make_User()
+        token = create_auth_token(user)
+        agent_name = factory.make_name('agent-name')
+        mock_create_acquired_filesystems = self.patch_autospec(
+            node, "_create_acquired_filesystems")
+        node.acquire(user, token, agent_name)
+        self.assertThat(mock_create_acquired_filesystems, MockCalledOnceWith())
+
     def test_acquire_logs_user_request(self):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         user = factory.make_User()
@@ -643,18 +653,45 @@ class TestNode(MAASServerTestCase):
         self.assertThat(register_event, MockCalledOnceWith(
             user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, None))
 
-    def test_acquire_calls_set_storage_layout(self):
-        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
-        user = factory.make_User()
-        token = create_auth_token(user)
-        agent_name = factory.make_name('agent-name')
+    def test_set_default_storage_layout_uses_default(self):
+        node = factory.make_Node()
+        default_layout = Config.objects.get_config("default_storage_layout")
         mock_set_storage_layout = self.patch(node, "set_storage_layout")
-        node.acquire(
-            user, token, agent_name, storage_layout=sentinel.layout,
-            storage_layout_params=sentinel.params)
+        node.set_default_storage_layout()
         self.assertThat(
-            mock_set_storage_layout,
-            MockCalledOnceWith(sentinel.layout, params=sentinel.params))
+            mock_set_storage_layout, MockCalledOnceWith(default_layout))
+
+    def test_set_default_storage_layout_logs_error_missing_boot_disk(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        layout_object = MagicMock()
+        layout_object.configure.side_effect = (
+            StorageLayoutMissingBootDiskError())
+        mock_get_layout.return_value = layout_object
+        node.set_default_storage_layout()
+        self.assertThat(
+            maaslog.error,
+            MockCalledOnceWith(
+                "%s: Unable to set any default storage layout because "
+                "it has no writable disks.", node.hostname))
+
+    def test_set_default_storage_layout_logs_error_when_layout_fails(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_get_layout = self.patch(
+            node_module, "get_storage_layout_for_node")
+        maaslog = self.patch(node_module, 'maaslog')
+        layout_object = MagicMock()
+        exception = StorageLayoutError(factory.make_name("error"))
+        layout_object.configure.side_effect = exception
+        mock_get_layout.return_value = layout_object
+        node.set_default_storage_layout()
+        self.assertThat(
+            maaslog.error,
+            MockCalledOnceWith(
+                "%s: Failed to configure storage layout: %s",
+                node.hostname, exception))
 
     def test_set_storage_layout_calls_configure_on_layout(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -686,60 +723,18 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             maaslog.info,
             MockCalledOnceWith(
-                "%s: storage layout was set to %s.",
+                "%s: Storage layout was set to %s.",
                 node.hostname, used_layout))
 
-    def test_set_storage_layout_logs_error_when_missing_boot_disk(self):
+    def test_set_storage_layout_raises_error_when_unknown_layout(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         mock_get_layout = self.patch(
             node_module, "get_storage_layout_for_node")
-        maaslog = self.patch(node_module, 'maaslog')
-        layout_object = MagicMock()
-        layout_object.configure.side_effect = (
-            StorageLayoutMissingBootDiskError())
-        mock_get_layout.return_value = layout_object
-        with ExpectedException(StorageLayoutMissingBootDiskError):
-            node.set_storage_layout(
-                sentinel.layout, sentinel.params)
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "%s: missing boot disk; no storage layout can be "
-                "applied.", node.hostname))
-
-    def test_set_storage_layout_logs_error_when_layout_fails(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        mock_get_layout = self.patch(
-            node_module, "get_storage_layout_for_node")
-        maaslog = self.patch(node_module, 'maaslog')
-        layout_object = MagicMock()
-        exception = StorageLayoutError(factory.make_name("error"))
-        layout_object.configure.side_effect = exception
-        mock_get_layout.return_value = layout_object
-        with ExpectedException(StorageLayoutError):
-            node.set_storage_layout(
-                sentinel.layout, sentinel.params)
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "%s: failed to configure storage layout: %s",
-                node.hostname, exception))
-
-    def test_set_storage_layout_logs_error_when_unknown_layout(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        mock_get_layout = self.patch(
-            node_module, "get_storage_layout_for_node")
-        maaslog = self.patch(node_module, 'maaslog')
         mock_get_layout.return_value = None
         unknown_layout = factory.make_name("layout")
         with ExpectedException(StorageLayoutError):
             node.set_storage_layout(
                 unknown_layout, sentinel.params)
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "%s: unable to configure storage layout; unknown storage "
-                "layout '%s'.", node.hostname, unknown_layout))
 
     def test_start_disk_erasing_changes_state_and_starts_node(self):
         agent_name = factory.make_name('agent-name')
@@ -1345,10 +1340,10 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_stop, MockCalledOnceWith(node.owner))
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
-    def test_release_calls__clear_storage_configuration(self):
+    def test_release_calls__clear_acquired_filesystems(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        mock_clear = self.patch(node, "_clear_storage_configuration")
+        mock_clear = self.patch(node, "_clear_acquired_filesystems")
         with post_commit_hooks:
             node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
@@ -2205,7 +2200,7 @@ class TestNode(MAASServerTestCase):
             for interface in interfaces[1:]
             ], node.get_extra_macs())
 
-    def test__clear_storage_configuration_removes_all_related_objects(self):
+    def test__clear_full_storage_configuration_removes_related_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
@@ -2232,7 +2227,7 @@ class TestNode(MAASServerTestCase):
             filesystems=[filesystem_on_vbd1])
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
             filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3)
-        node._clear_storage_configuration()
+        node._clear_full_storage_configuration()
         for pbd in physical_block_devices:
             self.expectThat(
                 reload_object(pbd), Not(Is(None)),
@@ -2268,6 +2263,45 @@ class TestNode(MAASServerTestCase):
             reload_object(vbd3_on_vbd1), Is(None),
             "Virtual block device on another virtual block device should have "
             "been removed.")
+
+    def test__create_acquired_filesystems(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.EXT4)
+        node._create_acquired_filesystems()
+        self.assertIsNotNone(
+            reload_object(filesystem),
+            "Original filesystem on should not have been deleted.")
+        self.assertIsNot(
+            filesystem, block_device.filesystem,
+            "Filesystem on block device should now be a different object.")
+        self.assertTrue(
+            block_device.filesystem.acquired,
+            "Filesystem on block device should have acquired set.")
+
+    def test__create_acquired_filesystems_calls_clear(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        mock_clear_acquired_filesystems = self.patch_autospec(
+            node, "_clear_acquired_filesystems")
+        node._create_acquired_filesystems()
+        self.assertThat(mock_clear_acquired_filesystems, MockCalledOnceWith())
+
+    def test__clear_acquired_filesystems_only_removes_acquired(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.EXT4)
+        acquired_filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.EXT4,
+            acquired=True)
+        node._clear_acquired_filesystems()
+        self.expectThat(
+            reload_object(acquired_filesystem), Is(None),
+            "Acquired filesystem should have been deleted.")
+        self.expectThat(
+            reload_object(filesystem), Not(Is(None)),
+            "Non-acquired filesystem should not have been deleted.")
 
     def test_boot_interface_displays_error_if_not_hosts_interface(self):
         node0 = factory.make_Node(interface=True)

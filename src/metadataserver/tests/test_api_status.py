@@ -157,6 +157,24 @@ class TestStatusAPI(MAASServerTestCase):
             populate_tags_for_single_node,
             MockCalledOnceWith(ANY, node))
 
+    def test_status_comissioning_success_sets_default_storage_layout(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        self.patch_autospec(Node, "set_default_storage_layout")
+        client = make_node_client(node=node)
+        payload = {
+            'event_type': 'finish',
+            'result': 'SUCCESS',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Command Install',
+        }
+        response = call_status(client, node, payload)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockCalledOnceWith(node))
+
     def test_status_comissioning_success_sets_node_network_configuration(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)

@@ -38,7 +38,7 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     round_size_to_nearest_block,
 )
-from maasserver.utils.orm import get_one
+from maasserver.utils.storage import get_active_filesystem
 
 
 MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
@@ -142,8 +142,8 @@ class Partition(CleanSave, TimestampedModel):
 
     @property
     def filesystem(self):
-        """Returns the filesystem that's using this partition."""
-        return get_one(self.filesystem_set.all())
+        """Return the filesystem that is placed on this partition."""
+        return get_active_filesystem(self)
 
     def get_name(self):
         """Return the name of the partition."""

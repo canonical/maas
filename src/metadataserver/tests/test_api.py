@@ -956,6 +956,37 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertThat(node.release_leases, MockNotCalled())
 
+    def test_signal_sets_default_storage_layout_if_OK(self):
+        self.patch_autospec(Node, "set_default_storage_layout")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockCalledOnceWith(node))
+
+    def test_signal_does_not_set_default_storage_layout_if_WORKING(self):
+        self.patch_autospec(Node, "set_default_storage_layout")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='WORKING', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockNotCalled())
+
+    def test_signal_does_not_set_default_storage_layout_if_FAILED(self):
+        self.patch_autospec(Node, "set_default_storage_layout")
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='FAILED', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockNotCalled())
+
     def test_signal_calls_sets_initial_network_config_if_OK(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")

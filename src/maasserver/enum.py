@@ -123,6 +123,15 @@ NODE_STATUS_CHOICES = (
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
 
 
+# NODE_STATUS when the node is owned by an owner and its is not commissioning.
+ALLOCATED_NODE_STATUSES = [
+    NODE_STATUS.ALLOCATED,
+    NODE_STATUS.DEPLOYING,
+    NODE_STATUS.DEPLOYED,
+    NODE_STATUS.FAILED_DEPLOYMENT,
+]
+
+
 class NODE_PERMISSION:
     """Permissions relating to nodes."""
     VIEW = 'view_node'
@@ -418,6 +427,7 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.BCACHE_BACKING, "bcache-backing"),
     )
 
+
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation). When a user does a format operation only these values
 # are allowed. The other values are reserved for internal use.
@@ -426,6 +436,10 @@ FILESYSTEM_FORMAT_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.EXT4, "ext4"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
     )
+
+
+FILESYSTEM_FORMAT_TYPE_CHOICES_DICT = OrderedDict(
+    FILESYSTEM_FORMAT_TYPE_CHOICES)
 
 
 class FILESYSTEM_GROUP_TYPE:

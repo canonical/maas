@@ -1278,7 +1278,8 @@ class Factory(maastesting.factory.Factory):
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
             filesystem_group=None, label=None, create_params=None,
-            mount_point=None, mount_params=None, block_device_size=None):
+            mount_point=None, mount_params=None, block_device_size=None,
+            acquired=False):
         if fstype is None:
             fstype = self.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         if partition is None and block_device is None:
@@ -1291,7 +1292,7 @@ class Factory(maastesting.factory.Factory):
             uuid=uuid, fstype=fstype, partition=partition,
             block_device=block_device, filesystem_group=filesystem_group,
             label=label, create_params=create_params, mount_point=mount_point,
-            mount_params=mount_params)
+            mount_params=mount_params, acquired=acquired)
 
     def make_CacheSet(self, block_device=None, partition=None, node=None):
         if node is None:

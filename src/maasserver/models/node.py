@@ -58,6 +58,8 @@ from maasserver.clusterrpc.power import (
     power_on_node,
 )
 from maasserver.enum import (
+    ALLOCATED_NODE_STATUSES,
+    FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -1439,55 +1441,20 @@ class Node(CleanSave, TimestampedModel):
             )
 
     def acquire(
-            self, user, token=None, agent_name='',
-            storage_layout=None, storage_layout_params={}, comment=None):
+            self, user, token=None, agent_name='', comment=None):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
-        # Configure the storage first that way if it fails the node is
-        # never allocated and the log information is never written.
-        if storage_layout is None:
-            storage_layout = Config.objects.get_config(
-                "default_storage_layout")
-        self.set_storage_layout(storage_layout, params=storage_layout_params)
 
+        self._create_acquired_filesystems()
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, comment)
-
-        # Now allocate the node since the storage layout is setup correctly.
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
         self.token = token
         self.save()
         maaslog.info("%s: allocated to user %s", self.hostname, user.username)
-
-    def set_storage_layout(self, layout, params={}, allow_fallback=True):
-        """Set storage layout for this node."""
-        storage_layout = get_storage_layout_for_node(
-            layout, self, params=params)
-        if storage_layout is not None:
-            try:
-                used_layout = storage_layout.configure(
-                    allow_fallback=allow_fallback)
-                maaslog.info(
-                    "%s: storage layout was set to %s.",
-                    self.hostname, used_layout)
-            except StorageLayoutMissingBootDiskError:
-                maaslog.error(
-                    "%s: missing boot disk; no storage layout can be "
-                    "applied.", self.hostname)
-                raise
-            except StorageLayoutError as e:
-                maaslog.error(
-                    "%s: failed to configure storage layout: %s",
-                    self.hostname, e)
-                raise
-        else:
-            maaslog.error(
-                "%s: unable to configure storage layout; unknown storage "
-                "layout '%s'.", self.hostname, layout)
-            raise StorageLayoutError("Unknown storage layout: %s" % layout)
 
     def set_zone(self, zone):
         """Set this node's zone"""
@@ -1731,8 +1698,8 @@ class Node(CleanSave, TimestampedModel):
         if release_auto_ips:
             self.release_auto_ips_later()
 
-        # Clear the nodes storage configuration.
-        self._clear_storage_configuration()
+        # Clear the nodes acquired filesystems.
+        self._clear_acquired_filesystems()
 
         # If this node has non-installable children, remove them.
         self.children.all().delete()
@@ -1849,6 +1816,92 @@ class Node(CleanSave, TimestampedModel):
             self.stop_transition_monitor()
             self.release_auto_ips_later()
         self.save()
+
+    def is_in_allocated_state(self):
+        """Return True if the node is in a state where it is allocated.
+
+        See status in `ALLOCATED_NODE_STATUSES`.
+        """
+        return self.status in ALLOCATED_NODE_STATUSES
+
+    def set_default_storage_layout(self):
+        """Sets the default storage layout.
+
+        This is called after a node has been commissioned to set the default
+        storage layout. This is done after commissioning because only then
+        will the node actually have some `PhysicalBlockDevice`'s.
+        """
+        storage_layout = Config.objects.get_config("default_storage_layout")
+        try:
+            self.set_storage_layout(storage_layout)
+        except StorageLayoutMissingBootDiskError:
+            maaslog.error(
+                "%s: Unable to set any default storage layout because it "
+                "has no writable disks.", self.hostname)
+        except StorageLayoutError as e:
+            maaslog.error(
+                "%s: Failed to configure storage layout: %s",
+                self.hostname, e)
+
+    def set_storage_layout(self, layout, params={}, allow_fallback=True):
+        """Set storage layout for this node."""
+        storage_layout = get_storage_layout_for_node(
+            layout, self, params=params)
+        if storage_layout is not None:
+            used_layout = storage_layout.configure(
+                allow_fallback=allow_fallback)
+            maaslog.info(
+                "%s: Storage layout was set to %s.",
+                self.hostname, used_layout)
+        else:
+            raise StorageLayoutError("Unknown storage layout: %s" % layout)
+
+    def _clear_full_storage_configuration(self):
+        """Clear's the full storage configuration for this node.
+
+        This will remove all related models to `PhysicalBlockDevice`'s on
+        this node and all `VirtualBlockDevice`'s.
+
+        This is used before commissioning to clear the entire storage model
+        except for the `PhysicalBlockDevice`'s. Commissioing will update the
+        `PhysicalBlockDevice` information on this node.
+        """
+        physical_block_devices = self.physicalblockdevice_set.all()
+        PartitionTable.objects.filter(
+            block_device__in=physical_block_devices).delete()
+        Filesystem.objects.filter(
+            block_device__in=physical_block_devices).delete()
+        for block_device in self.virtualblockdevice_set.all():
+            try:
+                block_device.filesystem_group.delete(force=True)
+            except FilesystemGroup.DoesNotExist:
+                # When a filesystem group has multiple virtual block devices
+                # it is possible that accessing `filesystem_group` will
+                # result in it already being deleted.
+                pass
+
+    def _create_acquired_filesystems(self):
+        """Copy all filesystems that have a user mountable filesystem to be
+        in acquired mode.
+
+        Any modification to the filesystems from this point forward should use
+        the acquired filesystems instead of the original. The acquired
+        filesystems will be removed on release of the node.
+        """
+        self._clear_acquired_filesystems()
+        filesystems = Filesystem.objects.filter_by_node(self).filter(
+            fstype__in=FILESYSTEM_FORMAT_TYPE_CHOICES_DICT, acquired=False)
+        for filesystem in filesystems:
+            filesystem.id = None
+            filesystem.acquired = True
+            filesystem.save()
+
+    def _clear_acquired_filesystems(self):
+        """Clear the filesystems that are created when the node is acquired.
+        """
+        filesystems = Filesystem.objects.filter_by_node(self).filter(
+            acquired=True)
+        filesystems.delete()
 
     def release_leases(self):
         """Release all leases assigned to the node."""
@@ -2301,26 +2354,6 @@ class Node(CleanSave, TimestampedModel):
         node = cls.objects.get(system_id=system_id)
         node.status = status
         node.save()
-
-    def _clear_storage_configuration(self):
-        """Clear's the current storage configuration for this node.
-
-        This will remove all related models to `PhysicalBlockDevice`'s on
-        this node and all `VirtualBlockDevice`'s.
-        """
-        physical_block_devices = self.physicalblockdevice_set.all()
-        PartitionTable.objects.filter(
-            block_device__in=physical_block_devices).delete()
-        Filesystem.objects.filter(
-            block_device__in=physical_block_devices).delete()
-        for block_device in self.virtualblockdevice_set.all():
-            try:
-                block_device.filesystem_group.delete(force=True)
-            except FilesystemGroup.DoesNotExist:
-                # When a filesystem group has multiple virtual block devices
-                # it is possible that accessing `filesystem_group` will
-                # result in it already being deleted.
-                pass
 
 
 # Piston serializes objects based on the object class.

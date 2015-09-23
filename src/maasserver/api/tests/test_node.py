@@ -783,8 +783,7 @@ class TestNodeAPI(APITestCase):
             {'op': 'acquire', 'comment': comment})
         self.assertThat(
             node_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY, storage_layout=ANY,
-                storage_layout_params=ANY, comment=comment))
+                ANY, ANY, agent_name=ANY, comment=comment))
 
     def test_POST_acquire_handles_missing_comment(self):
         factory.make_Node(
@@ -795,8 +794,7 @@ class TestNodeAPI(APITestCase):
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertThat(
             node_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY, storage_layout=ANY,
-                storage_layout_params=ANY, comment=None))
+                ANY, ANY, agent_name=ANY, comment=None))
 
     def test_POST_release_frees_hwe_kernel(self):
         self.patch(node_module, 'power_off_node')

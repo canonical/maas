@@ -21,11 +21,15 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
+    Manager,
+    Q,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     FILESYSTEM_TYPE,
     FILESYSTEM_TYPE_CHOICES,
 )
@@ -35,6 +39,16 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.partition import Partition
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+class FilesystemManager(Manager):
+    """Manager for `Filesystem` class."""
+
+    def filter_by_node(self, node):
+        """Return all filesystems on this node."""
+        return self.filter(
+            Q(block_device__node=node) |
+            Q(partition__partition_table__block_device__node=node))
 
 
 class Filesystem(CleanSave, TimestampedModel):
@@ -58,19 +72,25 @@ class Filesystem(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+        unique_together = (
+            ("partition", "acquired"),
+            ("block_device", "acquired"),
+            )
+
+    objects = FilesystemManager()
 
     uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False, editable=False)
+        max_length=36, unique=False, null=False, blank=False, editable=False)
 
     fstype = CharField(
         max_length=20, choices=FILESYSTEM_TYPE_CHOICES,
         default=FILESYSTEM_TYPE.EXT4)
 
     partition = ForeignKey(
-        Partition, unique=True, null=True, blank=True)
+        Partition, unique=False, null=True, blank=True)
 
     block_device = ForeignKey(
-        BlockDevice, unique=True, null=True, blank=True)
+        BlockDevice, unique=False, null=True, blank=True)
 
     label = CharField(
         max_length=255, null=True, blank=True)
@@ -89,6 +109,13 @@ class Filesystem(CleanSave, TimestampedModel):
 
     cache_set = ForeignKey(
         CacheSet, null=True, blank=True, related_name='filesystems')
+
+    # When a node is allocated all Filesystem objects assigned to that node
+    # with mountable filesystems will be duplicated with this field set to
+    # True. This allows a standard user to change this object as they want
+    # and format other free devices. Once the node is released these objects
+    # will be delete.
+    acquired = BooleanField(default=False)
 
     def get_node(self):
         """`Node` this filesystem belongs to."""
@@ -123,6 +150,10 @@ class Filesystem(CleanSave, TimestampedModel):
             return self.partition
         else:
             return self.block_device.actual_instance
+
+    def is_mountable(self):
+        """Return True if this is a mountable filesystem."""
+        return self.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
 
     def clean(self, *args, **kwargs):
         super(Filesystem, self).clean(*args, **kwargs)

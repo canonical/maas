@@ -45,6 +45,7 @@ from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
+from maasserver.utils.storage import get_active_filesystem
 
 
 MIN_BLOCK_DEVICE_SIZE = 2 * 1024 * 1024  # 2MiB
@@ -207,10 +208,7 @@ class BlockDevice(CleanSave, TimestampedModel):
     @property
     def filesystem(self):
         """Return the filesystem that is placed on this block device."""
-        filesystems = list(self.filesystem_set.all())
-        if len(filesystems) > 0:
-            return filesystems[0]
-        return None
+        return get_active_filesystem(self)
 
     def get_partitiontable(self):
         """Returns this device's partition table (or None, if none exists."""

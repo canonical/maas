@@ -23,6 +23,7 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
+from maasserver.models import partition as partition_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.partition import (
@@ -33,6 +34,7 @@ from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from mock import sentinel
 from testtools.matchers import Equals
 
 
@@ -268,20 +270,12 @@ class TestPartition(MAASServerTestCase):
         # Removal should do nothing
         self.assertIsNone(partition.remove_filesystem())
 
-    def test_filesystem_returns_filesystem(self):
-        """Checks that the get_filesystem method returns the filesystem that's
-        on the partition"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        fs = factory.make_Filesystem(partition=partition)
-        self.assertEqual(partition.filesystem.id, fs.id)
-
-    def test_filesystem_returns_none(self):
-        """Checks that the get_filesystem method returns none when there is no
-        filesystem on the partition"""
-        partition_table = factory.make_PartitionTable()
-        partition = partition_table.add_partition()
-        self.assertIsNone(partition.filesystem)
+    def test_filesystem_calls_get_active_filesystem_and_returns_result(self):
+        mock_get_active_filesystem = self.patch_autospec(
+            partition_module, "get_active_filesystem")
+        mock_get_active_filesystem.return_value = sentinel.filesystem
+        partition = factory.make_Partition()
+        self.assertEquals(sentinel.filesystem, partition.filesystem)
 
     def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
         node = factory.make_Node(bios_boot_method="uefi")

@@ -24,6 +24,23 @@ from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
 
 
+class TestFilesystemManager(MAASServerTestCase):
+    """Tests for the `FilesystemManager`."""
+
+    def test_filter_by_node(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        bd_for_partitions = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=bd_for_partitions)
+        partition = factory.make_Partition(partition_table=partition_table)
+        filesystem_on_bd = factory.make_Filesystem(block_device=block_device)
+        filesystem_on_partition = factory.make_Filesystem(partition=partition)
+        self.assertItemsEqual(
+            [filesystem_on_bd, filesystem_on_partition],
+            Filesystem.objects.filter_by_node(node))
+
+
 class TestFilesystem(MAASServerTestCase):
     """Tests for the `Filesystem` model."""
 

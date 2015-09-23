@@ -169,6 +169,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
             mount_point="/")
+        node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
 
@@ -339,6 +340,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             partition=partition_six, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="bcac8449-3a45-4586-bdfb-c21e6ba47902", label="srv-data",
             mount_point="/srv/data")
+        node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
 
@@ -401,6 +403,7 @@ class TestSimpleWithEmptyDiskLayout(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
             mount_point="/")
+        node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
 
@@ -685,5 +688,6 @@ class TestComplexDiskLayout(
             partition=raid_5_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="a8ad29a3-6083-45af-af8b-06ead59f108b", label="data",
             mount_point="/srv/data")
+        node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)

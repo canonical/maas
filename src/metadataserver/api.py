@@ -352,7 +352,9 @@ class StatusHandler(MetadataViewHandler):
                     # Recalculate tags.
                     populate_tags_for_single_node(Tag.objects.all(), node)
 
-                    # Setup the initial networking configuration for the node.
+                    # Setup the default storage layout and the initial
+                    # networking configuration for the node.
+                    node.set_default_storage_layout()
                     node.set_initial_networking_configuration()
                 elif result in ['FAIL', 'FAILURE']:
                     node.status = NODE_STATUS.FAILED_COMMISSIONING
@@ -497,9 +499,10 @@ class VersionIndexHandler(MetadataViewHandler):
             # Store the commissioning results.
             self._store_commissioning_results(node, request)
 
-            # Commissioning was successful setup the initial networking
-            # configuration for the node.
+            # Commissioning was successful setup the default storage layout
+            # and the initial networking configuration for the node.
             if status == SIGNAL_STATUS.OK:
+                node.set_default_storage_layout()
                 node.set_initial_networking_configuration()
 
             # XXX 2014-10-21 newell, bug=1382075

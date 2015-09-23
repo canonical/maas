@@ -1369,10 +1369,6 @@ class NodesHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        # Get and validate the storage_layout.
-        storage_layout, storage_layout_params = get_storage_layout_params(
-            request, extract_params=True)
-
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
@@ -1392,21 +1388,9 @@ class NodesHandler(OperationsHandler):
                         % constraints)
                 raise NodesNotAvailable(message)
             agent_name = request.data.get('agent_name', '')
-            try:
-                node.acquire(
-                    request.user, get_oauth_token(request),
-                    agent_name=agent_name,
-                    storage_layout=storage_layout,
-                    storage_layout_params=storage_layout_params,
-                    comment=comment)
-            except StorageLayoutMissingBootDiskError:
-                raise MAASAPIBadRequest(
-                    "Failed to acquire node; missing a boot disk (no storage "
-                    "layout can be applied).")
-            except StorageLayoutError as e:
-                raise MAASAPIBadRequest(
-                    "Failed to acquire node; failed to configure storage "
-                    "layout '%s': %s" % (storage_layout, e.message))
+            node.acquire(
+                request.user, get_oauth_token(request),
+                agent_name=agent_name, comment=comment)
             node.constraint_map = constraint_map.get(node.id, {})
             return node
 

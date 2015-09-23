@@ -207,7 +207,7 @@ class StorageLayoutBase(Form):
         """Configure the storage for the node."""
         if not self.is_valid():
             raise StorageLayoutFieldsError(self.errors)
-        self.node._clear_storage_configuration()
+        self.node._clear_full_storage_configuration()
         return self.configure_storage(allow_fallback)
 
     def configure_storage(self, allow_fallback):
