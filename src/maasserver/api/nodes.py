@@ -309,6 +309,7 @@ class NodeHandler(OperationsHandler):
         return Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
+    @admin_method
     def update(self, request, system_id):
         """Update a specific Node.
 
@@ -442,7 +443,7 @@ class NodeHandler(OperationsHandler):
         encoding instead.
 
         Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to stop the node.
+        Returns 403 if the user does not have permission to start the node.
         Returns 503 if the start-up attempted to allocate an IP address,
         and there were no IP addresses available on the relevant cluster
         interface.
@@ -702,7 +703,7 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         Returns 403 if the user does not have permission to mark the node
-        broken.
+        fixed.
         """
         comment = get_optional_param(request.POST, 'comment')
         node = Node.nodes.get_node_or_404(
@@ -844,8 +845,8 @@ class NodeHandler(OperationsHandler):
 
         Returns 400 if the node is currently not allocated.
         Returns 404 if the node could not be found.
-        Returns 403 if the user does not have permission to abort the
-        current operation.
+        Returns 403 if the user does not have permission to set the storage
+        layout.
         """
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)

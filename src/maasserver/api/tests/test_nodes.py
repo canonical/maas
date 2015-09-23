@@ -1847,6 +1847,7 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
     def test_PUT_updates_node_folds_status(self):
+        self.become_admin()
         node = factory.make_Node(
             owner=self.logged_in_user, status=self.status,
             architecture=make_usable_architecture(self))
@@ -1855,6 +1856,24 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(self.old_allocated_status, parsed_result['status'])
+
+    def test_PUT_update_forbidden_if_not_admin(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=self.status,
+            architecture=make_usable_architecture(self))
+
+        # should get FORBIDDEN because user isn't admin
+        response = self.client.put(
+            self.get_node_uri(node), {'hostname': factory.make_name('host')})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+        # confirm operation succeeds as admin
+        self.become_admin()
+        response = self.client.put(
+            self.get_node_uri(node), {'hostname': factory.make_name('host')})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
     def test_GET_list_allocated_exposes_substatus(self):
@@ -1882,6 +1901,7 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         self.assertEqual(self.status, parsed_result['substatus'])
 
     def test_PUT_updates_exposes_substatus(self):
+        self.become_admin()
         node = factory.make_Node(
             owner=self.logged_in_user, status=self.status,
             architecture=make_usable_architecture(self))

@@ -865,6 +865,7 @@ class TestNodeAPI(APITestCase):
         self.assertTrue(node.skip_networking)
 
     def test_PUT_updates_node(self):
+        self.become_admin()
         # The api allows the updating of a Node.
         node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
@@ -882,6 +883,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
     def test_PUT_omitted_hostname(self):
+        self.become_admin()
         hostname = factory.make_name('hostname')
         arch = make_usable_architecture(self)
         node = factory.make_Node(
@@ -893,6 +895,7 @@ class TestNodeAPI(APITestCase):
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
 
     def test_PUT_rejects_device(self):
+        self.become_admin()
         node = factory.make_Node(
             installable=False, owner=self.logged_in_user)
         response = self.client.put(self.get_node_uri(node))
@@ -900,6 +903,7 @@ class TestNodeAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_PUT_ignores_unknown_fields(self):
+        self.become_admin()
         node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
@@ -919,11 +923,10 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=original_power_type,
             architecture=make_usable_architecture(self))
-        self.client.put(
-            self.get_node_uri(node),
-            {'power_type': new_power_type}
-        )
+        response = self.client.put(
+            self.get_node_uri(node), {'power_type': new_power_type})
 
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             new_power_type, reload_object(node).power_type)
 
@@ -932,15 +935,15 @@ class TestNodeAPI(APITestCase):
         new_power_type = factory.pick_power_type(but_not=original_power_type)
         node = factory.make_Node(
             owner=self.logged_in_user, power_type=original_power_type)
-        self.client.put(
-            self.get_node_uri(node),
-            {'power_type': new_power_type}
-        )
+        response = self.client.put(
+            self.get_node_uri(node), {'power_type': new_power_type})
 
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(
             original_power_type, reload_object(node).power_type)
 
     def test_resource_uri_points_back_at_node(self):
+        self.become_admin()
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
         node = factory.make_Node(
@@ -950,6 +953,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             reverse('node_handler', args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
@@ -957,6 +961,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
+        self.become_admin()
         node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
@@ -969,19 +974,10 @@ class TestNodeAPI(APITestCase):
             {'hostname': ["DNS name contains an empty label."]},
             parsed_result)
 
-    def test_PUT_refuses_to_update_invisible_node(self):
-        # The request to update a single node is denied if the node isn't
-        # visible by the user.
-        other_node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-
-        response = self.client.put(self.get_node_uri(other_node))
-
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
     def test_PUT_refuses_to_update_nonexistent_node(self):
         # When updating a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
+        self.become_admin()
         url = reverse('node_handler', args=['invalid-uuid'])
         response = self.client.put(url)
 
@@ -1218,6 +1214,14 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(zone, node.zone)
 
+    def test_PUT_requires_admin(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
+        # PUT the node with no arguments - should get FORBIDDEN
+        response = self.client.put(self.get_node_uri(node), {})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
     def test_PUT_zone_change_requires_admin(self):
         new_zone = factory.make_Zone()
         node = factory.make_Node(
@@ -1229,14 +1233,13 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node),
             {'zone': new_zone.name})
 
-        # Awkwardly, the request succeeds because for non-admins, "zone" is
-        # an unknown parameter.  Unknown parameters are ignored.
-        self.assertEqual(httplib.OK, response.status_code)
-        # The node's physical zone, however, has not been updated.
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        # Confirm the node's physical zone has not been updated.
         node = reload_object(node)
         self.assertEqual(old_zone, node.zone)
 
     def test_PUT_sets_disable_ipv4(self):
+        self.become_admin()
         original_setting = factory.pick_bool()
         node = factory.make_Node(
             owner=self.logged_in_user,
@@ -1252,6 +1255,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(new_setting, node.disable_ipv4)
 
     def test_PUT_leaves_disable_ipv4_unchanged_by_default(self):
+        self.become_admin()
         original_setting = factory.pick_bool()
         node = factory.make_Node(
             owner=self.logged_in_user,
@@ -1267,6 +1271,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(original_setting, node.disable_ipv4)
 
     def test_PUT_updates_boot_type(self):
+        self.become_admin()
         node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self),
@@ -1282,6 +1287,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
 
     def test_PUT_updates_swap_size(self):
+        self.become_admin()
         node = factory.make_Node(owner=self.logged_in_user,
                                  architecture=make_usable_architecture(self))
         response = self.client.put(
@@ -1293,6 +1299,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(node.swap_size, parsed_result['swap_size'])
 
     def test_PUT_updates_swap_size_suffixes(self):
+        self.become_admin()
         node = factory.make_Node(owner=self.logged_in_user,
                                  architecture=make_usable_architecture(self))
 
@@ -1325,6 +1332,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(5000000000000, parsed_result['swap_size'])
 
     def test_PUT_updates_swap_size_invalid_suffix(self):
+        self.become_admin()
         node = factory.make_Node(owner=self.logged_in_user,
                                  architecture=make_usable_architecture(self))
         response = self.client.put(
