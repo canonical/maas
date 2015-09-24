@@ -49,7 +49,7 @@
             &.active {
                 background-image: url('../img/icons/accordion-close.svg');
 
-                & + .accordion__tab-content {
+                + .accordion__tab-content {
                     max-height: 3000px;
                     transition: max-height .5s ease-in;
                 }

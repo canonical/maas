@@ -332,6 +332,553 @@
                     </div>
                 </div>
             </form>
+
+            <!--
+
+            // Base networking table
+
+            // This table holds all information on all networking interfaces,
+            // VLAN's, alais and BOND's. Hovering on any row gives a user various
+            // options to configure an interface or create a new one.
+
+            <form action="">
+                <div class="twelve-col">
+                    <h2>Networking</h2>
+                    <div class="table">
+                        <header class="table__head">
+                            <div class="table__row">
+                                <div class="table__header table__column--3"></div>
+                                <div class="table__header table__column--15">
+                                    <a href="" class="active">
+                                        Name
+                                    </a>
+                                    <span class="divide"></span>
+                                    <a href="">
+                                        MAC
+                                    </a>
+                                </div>
+                                <div class="table__header table__column--9">Type</div>
+                                <div class="table__header table__column--14">Fabric</div>
+                                <div class="table__header table__column--14">VLAN</div>
+                                <div class="table__header table__column--18">Subnet</div>
+                                <div class="table__header table__column--27">IP Address</div>
+                            </div>
+                        </header>
+                        <main class="table-body">
+                            <div class="table__row">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="eth0" />
+                                    <label class="checkbox-label" for="eth0"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input" value="Eth0">
+                                </div>
+                                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
+                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="fabric" id="fabric">
+                                        <option value="fabric1">Fabric 1 (default)</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="vlan" id="vlan">
+                                        <option value="valn1">VLAN 1 (default)</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--18">
+                                    <select class="table__input" name="range" id="range">
+                                        <option value="auto">10.10.10.1/6 (managed)</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <ul class="no-bullets">
+                                        <li>
+                                            <select class="table__input" name="ip-address" id="ip-address">
+                                                <option value="auto">Auto assign</option>
+                                                <option value="manual">Manual</option>
+                                                <option value="DHCP">DHCP</option>
+                                                <option value="unconfigured">Unconfigured</option>
+                                            </select>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="table__data table__column--13">
+                                    <div class="table__controls align-right">
+                                        <a class="margin-right--ten">Add VLAN</a>
+                                        <a>Add alias</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="eth3" />
+                                    <label class="checkbox-label" for="eth3"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input" value="Eth3">
+                                </div>
+                                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
+                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--18">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--13">
+                                    <div class="table__controls align-right">
+                                        <a class="margin-right--ten">Add VLAN</a>
+                                        <a>Add alias</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="eth5" />
+                                    <label class="checkbox-label" for="eth5"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input" value="Eth5">
+                                </div>
+                                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
+                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--18">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--13">
+                                    <div class="table__controls align-right">
+                                        <a class="margin-right--ten">Add VLAN</a>
+                                        <a>Add alias</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="eth7" />
+                                    <label class="checkbox-label" for="eth7"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input" value="Eth7">
+                                </div>
+                                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
+                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--18">
+                                </div>
+                                <div class="table__data table__column--14">
+                                </div>
+                                <div class="table__data table__column--13">
+                                    <div class="table__controls align-right">
+                                        <a class="margin-right--ten">Add VLAN</a>
+                                        <a>Add alias</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                    <a class="link-cta-ubuntu secondary margin-right">Create Bond</a>
+                    <a class="link-cta-ubuntu secondary margin-right">Create Bridge</a>
+                </div>
+            </form>
+
+        -->
+
+            <!--
+
+            // Set manual IP in a row creates an input in the IP data cell. This
+            // Needs to be arranged in a list to keep both form items stacked.
+
+            <div class="table__row">
+                <div class="table__data table__column--3">
+                    <input class="checkbox" type="checkbox" id="eth6" />
+                    <label class="checkbox-label" for="eth6"></label>
+                </div>
+                <div class="table__data table__column--15">
+                    <input type="text" class="table__input" value="Eth6">
+                </div>
+                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
+                <div class="table__data table__column--9">Physical</div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="fabric" id="fabric">
+                        <option value="fabric1">Fabric 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="vlan" id="vlan">
+                        <option value="valn1">VLAN 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--18">
+                    <select class="table__input" name="range" id="range">
+                        <option value="auto">10.10.10.1/6 (managed)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <ul class="no-bullets">
+                        <li>
+                            <select class="table__input" name="ip-address" id="ip-address">
+                                <option value="auto">Auto assign</option>
+                                <option value="manual" selected>Manual</option>
+                                <option value="DHCP">DHCP</option>
+                                <option value="unconfigured">Unconfigured</option>
+                            </select>
+                        </li>
+                        <li class="margin-top--ten">
+                            <input type="text" class="table__input" value="127.0.0.1">
+                        </li>
+                    </ul>
+                </div>
+                <div class="table__data table__column--13">
+                    <div class="table__controls align-right">
+                        <a class="margin-right--ten">Add VLAN</a>
+                        <a>Add alias</a>
+                    </div>
+                </div>
+            </div>
+
+            -->
+
+            <!--
+
+            // Add Alias
+
+            // Once a user clicks on *Add alias* This dropdown appears with
+            // all the controls on creating a alias
+
+            <div class="table__row active">
+                <div class="table__data table__column--3">
+                    <input class="checkbox" type="checkbox" id="eth4" />
+                    <label class="checkbox-label" for="eth4"></label>
+                </div>
+                <div class="table__data table__column--15">
+                    <input type="text" class="table__input" value="Eth4">
+                </div>
+                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
+                <div class="table__data table__column--9">Physical</div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="fabric" id="fabric">
+                        <option value="fabric1">Fabric 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="vlan" id="vlan">
+                        <option value="valn1">VLAN 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--18">
+                    <select class="table__input" name="range" id="range">
+                        <option value="auto">10.10.10.1/6 (managed)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <ul class="no-bullets">
+                        <li>
+                            <select class="table__input" name="ip-address" id="ip-address">
+                                <option value="auto">Auto assign</option>
+                                <option value="manual">Manual</option>
+                                <option value="DHCP">DHCP</option>
+                                <option value="unconfigured">Unconfigured</option>
+                            </select>
+                        </li>
+                    </ul>
+                </div>
+                <div class="table__data table__column--13">
+                    <div class="table__controls align-right">
+                        <a class="margin-right--ten">Add VLAN</a>
+                        <a>Add alias</a>
+                    </div>
+                </div>
+                <div class="table__dropdown">
+                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten">
+                        <div class="table__data table__column--3">
+                        </div>
+                        <div class="table__data table__column--15">
+                            Eth4:1
+                        </div>
+                        <div class="table__data table__column--9">Alias</div>
+                        <div class="table__data table__column--14">
+                            Fabric 1
+                        </div>
+                        <div class="table__data table__column--14">
+                            VLAN 1 (default)
+                        </div>
+                        <div class="table__data table__column--18">
+                            <select class="table__input" name="range" id="range">
+                                <option value="auto">10.10.10.1/6 (managed)</option>
+                            </select>
+                        </div>
+                        <div class="table__data table__column--14">
+                            <select class="table__input" name="ip-address" id="ip-address">
+                                <option value="auto">Auto assign</option>
+                                <option value="manual">Manual</option>
+                                <option value="DHCP">DHCP</option>
+                                <option value="unconfigured">Unconfigured</option>
+                            </select>
+                        </div>
+                        <div class="table__data table_column--13"></div>
+                    </div>
+                    <div class="table__row table__dropdown-row">
+                        <div class="table__data left">
+                            <a href="" class="link-cta-ubuntu secondary margin-right">Add VLAN</a>
+                            <a href="" class="link-cta-ubuntu secondary">Add another alias</a>
+                        </div>
+                        <div class="table__data right">
+                              <a class="link-cta-ubuntu text-button">Cancel</a>
+                              <button class="cta-ubuntu">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            -->
+
+
+            <!--
+
+            // Add VLAN
+
+            // Once a user clicks on *Add VLAN* This dropdown appears with
+            // all the controls on creating a VLAN
+
+            <div class="table__row active">
+                <div class="table__data table__column--3">
+                    <input class="checkbox" type="checkbox" id="eth2" />
+                    <label class="checkbox-label" for="eth2"></label>
+                </div>
+                <div class="table__data table__column--15">
+                    <input type="text" class="table__input" value="Eth2">
+                </div>
+                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
+                <div class="table__data table__column--9">Physical</div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="fabric" id="fabric">
+                        <option value="fabric1">Fabric 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <select class="table__input" name="vlan" id="vlan">
+                        <option value="valn1">VLAN 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--18">
+                    <select class="table__input" name="range" id="range">
+                        <option value="auto">10.10.10.1/6 (managed)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--14">
+                    <ul class="no-bullets">
+                        <li>
+                            <select class="table__input" name="ip-address" id="ip-address">
+                                <option value="auto">Auto assign</option>
+                                <option value="manual">Manual</option>
+                                <option value="DHCP">DHCP</option>
+                                <option value="unconfigured">Unconfigured</option>
+                            </select>
+                        </li>
+                    </ul>
+                </div>
+                <div class="table__data table__column--13">
+                    <div class="table__controls align-right">
+                        <a class="margin-right--ten">Add VLAN</a>
+                        <a>Add alias</a>
+                    </div>
+                </div>
+                <div class="table__dropdown">
+                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten">
+                        <div class="table__data table__column--3">
+                        </div>
+                        <div class="table__data table__column--15">
+                            Eth2.1
+                        </div>
+                        <div class="table__data table__column--9">VLAN</div>
+                        <div class="table__data table__column--14">
+                            Fabric 1
+                        </div>
+                        <div class="table__data table__column--14">
+                            <select class="table__input" name="vlan" id="vlan">
+                                <option value="valn1">VLAN 1 (default)</option>
+                            </select>
+                        </div>
+                        <div class="table__data table__column--18">
+                            <select class="table__input" name="range" id="range">
+                                <option value="auto">10.10.10.1/6</option>
+                            </select>
+                        </div>
+                        <div class="table__data table__column--14">
+                            <select class="table__input" name="ip-address" id="ip-address">
+                                <option value="auto">Auto assign</option>
+                                <option value="manual">Manual</option>
+                                <option value="DHCP">DHCP</option>
+                                <option value="unconfigured">Unconfigured</option>
+                            </select>
+                        </div>
+                        <div class="table__data table_column--13"></div>
+                    </div>
+                    <div class="table__row table__dropdown-row">
+                        <div class="table__data left">
+                            <a href="" class="link-cta-ubuntu secondary margin-right">Add another VLAN</a>
+                            <a href="" class="link-cta-ubuntu secondary">Add alias</a>
+                        </div>
+                        <div class="table__data right">
+                              <a class="link-cta-ubuntu text-button">Cancel</a>
+                              <button class="cta-ubuntu">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            -->
+
+
+            <!--
+
+            // Create bond
+
+            // Once 2 or more interfaces have been selected a new row is to be
+            // created with this Bond row and configuration inputs.
+
+            <div class="table__row active">
+                <div class="table__data table__column--3">
+                </div>
+                <div class="table__data table__column--15">
+                    <input type="text" value="Bond0" class="table__input editible">
+                </div>
+                <div class="table__data table__column--15">Bond</div>
+                <div class="table__data table__column--67"></div>
+                <div class="table__dropdown">
+                    <div class="table__row table__dropdown-row">
+                      <div class="table__data table__column--3">
+                      </div>
+                      <div class="table__data table__column--15">
+                          <label for="type">Bond mode</label>
+                          <select name="bond-mode" id="bond-mode">
+                              <option value="broadcast">Broadcast</option>
+                          </select>
+                      </div>
+                      <div class="table__data table__column--15">
+                          <label for="rates">LACP rate(s)</label>
+                          <input type="text" value="15">
+                      </div>
+                      <div class="table__data table__column--15">
+                          <label for="mac">MAC address</label>
+                          <input type="text" value="00:00:00:00:00:00">
+                      </div>
+                      <div class="table__data table__column--52"></div>
+                    </div>
+                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                        <div class="table__header table__column--3"></div>
+                        <div class="table__header table__column--15">Name</div>
+                        <div class="table__header table__column--15">Type</div>
+                        <div class="table__header table__column--67">Primary</div>
+                    </div>
+                    <div class="table__row table__dropdown-row no-border">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth8</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                            <input type="radio" name="active" value="active">
+                        </div>
+                    </div>
+                    <div class="table__row table__dropdown-row no-border">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth9</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                            <input type="radio" name="active">
+                        </div>
+                    </div>
+                    <div class="table__row table__dropdown-row no-border">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth10</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                            <input type="radio" name="active">
+                        </div>
+                    </div>
+                    <div class="table__row table__dropdown-row">
+                        <div class="table__data right">
+                            <a href="" class="link-cta-ubuntu text-button">Cancel</a>
+                            <button class="cta-ubuntu">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            -->
+
+            <!--
+
+            // Show bond members
+
+            <div class="table__row active">
+                <div class="table__data table__column--3">
+                    <input class="checkbox" type="checkbox" id="eth0" />
+                    <label class="checkbox-label" for="eth0"></label>
+                </div>
+                <div class="table__data table__column--15">
+                    <input type="text" class="table__input" value="Bond0">
+                    <span class="table__label active">
+                        <a href="">Hide members</a>
+                    </span>
+                </div>
+                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
+                <div class="table__data table__column--15">Bond</div>
+                <div class="table__data table__column--15">
+                    <select class="table__input" name="fabric" id="fabric">
+                        <option value="fabric1">Fabric 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--15">
+                    <select class="table__input" name="vlan" id="vlan">
+                        <option value="valn1">VLAN 1 (default)</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--15">
+                    <select class="table__input" name="range" id="range">
+                        <option value="auto">10.10.10.1/6</option>
+                    </select>
+                </div>
+                <div class="table__data table__column--22">
+                    <div class="table__controls">
+                        <a class="">Add IP</a>
+                    </div>
+                </div>
+                <div class="table__dropdown--info">
+                    <div class="table__row">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth1</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                        </div>
+                    </div>
+                    <div class="table__row table__dropdown-row no-border">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth2</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                        </div>
+                    </div>
+                    <div class="table__row table__dropdown-row no-border">
+                        <div class="table__data no-padding-top table__column--3"></div>
+                        <div class="table__data no-padding-top table__column--15">Eth3</div>
+                        <div class="table__data no-padding-top table__column--15">Physical</div>
+                        <div class="table__data no-padding-top table__column--67">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            -->
         </div>
     </div>
     <div class="row">

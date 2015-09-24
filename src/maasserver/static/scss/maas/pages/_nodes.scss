@@ -325,6 +325,11 @@
       margin: -7px 0 -8px -14px;
       background-color: transparent;
       border-color: transparent;
+      background-position: -9999px -9999px;
+    }
+
+    .details__text {
+      line-height: 37px;
     }
 
     &:hover {
@@ -332,6 +337,7 @@
       .details__input {
         background-color: #FFF;
         border-color: #D2D2D2;
+        background-position: right 10px top 16px;
       }
 
       .details__controls {
@@ -353,6 +359,7 @@
           background-color: transparent;
           border-color: transparent;
           pointer-events: none;
+          background-position: -9999px -9999px;
         }
 
         .details__controls {
@@ -415,10 +422,6 @@
           &:before {
              border: 0;
           }
-        }
-
-        .details__text {
-          line-height: 37px;
         }
     }
 
