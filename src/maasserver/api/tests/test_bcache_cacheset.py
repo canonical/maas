@@ -19,7 +19,10 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
-from maasserver.enum import FILESYSTEM_GROUP_TYPE
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    NODE_STATUS,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -81,7 +84,8 @@ class TestBcacheCacheSetsAPI(APITestCase):
         self.assertItemsEqual(expected_names, result_names)
 
     def test_create(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_bcache_cache_sets_uri(node)
         response = self.client.post(uri, {
@@ -91,8 +95,8 @@ class TestBcacheCacheSetsAPI(APITestCase):
         parsed_device = json.loads(response.content)
         self.assertEqual(cache_device.id, parsed_device['cache_device']['id'])
 
-    def test_create_403_when_not_owner(self):
-        node = factory.make_Node()
+    def test_create_403_when_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_bcache_cache_sets_uri(node)
         response = self.client.post(uri, {
@@ -101,8 +105,20 @@ class TestBcacheCacheSetsAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_create_409_when_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        cache_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_bcache_cache_sets_uri(node)
+        response = self.client.post(uri, {
+            'cache_device': cache_device.id,
+        })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
     def test_create_with_missing_cache_fails(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_bcache_cache_sets_uri(node)
         response = self.client.post(uri, {})
         self.assertEqual(
@@ -159,7 +175,8 @@ class TestBcacheCacheSetAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_deletes_cache_set(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
         uri = get_bcache_cache_set_uri(cache_set)
         response = self.client.delete(uri)
@@ -167,15 +184,17 @@ class TestBcacheCacheSetAPI(APITestCase):
             httplib.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(cache_set))
 
-    def test_delete_403_when_not_owner(self):
-        cache_set = factory.make_CacheSet()
+    def test_delete_403_when_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        cache_set = factory.make_CacheSet(node=node)
         uri = get_bcache_cache_set_uri(cache_set)
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_404_when_invalid_id(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = reverse(
             'bcache_cache_set_handler',
             args=[node.system_id, random.randint(100, 1000)])
@@ -183,8 +202,18 @@ class TestBcacheCacheSetAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
+    def test_delete_409_when_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        cache_set = factory.make_CacheSet(node=node)
+        uri = get_bcache_cache_set_uri(cache_set)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
     def test_delete_400_when_cache_set_in_use(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
         factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
@@ -198,7 +227,8 @@ class TestBcacheCacheSetAPI(APITestCase):
             response.content)
 
     def test_update_change_cache_device(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
         new_device = factory.make_PhysicalBlockDevice(node)
         uri = get_bcache_cache_set_uri(cache_set)
@@ -209,15 +239,26 @@ class TestBcacheCacheSetAPI(APITestCase):
         parsed_device = json.loads(response.content)
         self.assertEqual(new_device.id, parsed_device['cache_device']['id'])
 
-    def test_update_403_when_not_owner(self):
-        cache_set = factory.make_CacheSet()
+    def test_update_403_when_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        cache_set = factory.make_CacheSet(node=node)
         uri = get_bcache_cache_set_uri(cache_set)
         response = self.client.put(uri, {})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_update_409_when_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        cache_set = factory.make_CacheSet(node=node)
+        uri = get_bcache_cache_set_uri(cache_set)
+        response = self.client.put(uri, {})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
     def test_update_400_when_invalid_id(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
         new_device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_Filesystem(block_device=new_device)

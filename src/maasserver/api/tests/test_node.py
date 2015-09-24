@@ -2003,20 +2003,24 @@ class TestSetStorageLayout(APITestCase):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
 
-    def test__400_when_node_not_allocated(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.DEPLOYING)
+    def test__403_when_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'set_storage_layout'})
         self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test__409_when_node_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'set_storage_layout'})
         self.assertEquals(
-            "Cannot change the storage layout on a node that is "
-            "not allocated.", response.content)
+            httplib.CONFLICT, response.status_code, response.content)
 
     def test__400_when_storage_layout_missing(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'set_storage_layout'})
         self.assertEquals(
@@ -2027,8 +2031,8 @@ class TestSetStorageLayout(APITestCase):
             }, json.loads(response.content))
 
     def test__400_when_invalid_optional_param(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         factory.make_PhysicalBlockDevice(node=node)
         response = self.client.post(
             self.get_node_uri(node), {
@@ -2045,8 +2049,8 @@ class TestSetStorageLayout(APITestCase):
             }, json.loads(response.content))
 
     def test__400_when_no_boot_disk(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'set_storage_layout',
@@ -2059,8 +2063,8 @@ class TestSetStorageLayout(APITestCase):
             response.content)
 
     def test__400_when_layout_error(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         mock_set_storage_layout = self.patch(Node, "set_storage_layout")
         error_msg = factory.make_name("error")
         mock_set_storage_layout.side_effect = StorageLayoutError(error_msg)
@@ -2076,8 +2080,8 @@ class TestSetStorageLayout(APITestCase):
             response.content)
 
     def test__400_when_layout_not_supported(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         factory.make_PhysicalBlockDevice(node=node)
         response = self.client.post(
             self.get_node_uri(node), {
@@ -2092,8 +2096,8 @@ class TestSetStorageLayout(APITestCase):
             response.content)
 
     def test__calls_set_storage_layout_on_node(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         mock_set_storage_layout = self.patch(Node, "set_storage_layout")
         response = self.client.post(
             self.get_node_uri(node), {

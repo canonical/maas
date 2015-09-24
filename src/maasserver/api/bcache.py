@@ -14,8 +14,14 @@ str = None
 __metaclass__ = type
 
 from maasserver.api.support import OperationsHandler
-from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+)
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    NodeStateViolation,
+)
 from maasserver.forms import (
     CreateBcacheForm,
     UpdateBcacheForm,
@@ -75,10 +81,13 @@ class BcachesHandler(OperationsHandler):
         backing) is not allowed.
 
         Returns 404 if the node is not found.
-
+        Returns 409 if the node is not Ready.
         """
         node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, request.user, NODE_PERMISSION.ADMIN)
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot create Bcache because node is not Ready.")
         form = CreateBcacheForm(node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -135,9 +144,14 @@ class BcacheHandler(OperationsHandler):
         """Delete bcache on node.
 
         Returns 404 if the node or bcache is not found.
+        Returns 409 if the node is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, bcache_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
+        node = bcache.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot delete Bcache because the node is not Ready.")
         bcache.delete()
         return rc.DELETED
 
@@ -155,9 +169,14 @@ class BcacheHandler(OperationsHandler):
         backing) is not allowed.
 
         Returns 404 if the node or the bcache is not found.
+        Returns 409 if the node is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, bcache_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
+        node = bcache.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot update Bcache because the node is not Ready.")
         form = UpdateBcacheForm(bcache, data=request.data)
         if form.is_valid():
             return form.save()

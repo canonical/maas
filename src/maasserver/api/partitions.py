@@ -75,7 +75,7 @@ def raise_error_for_invalid_state_on_allocated_operations(
         node, user, operation):
     if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
         raise NodeStateViolation(
-            "Cannot %s partition because it's node is not Ready "
+            "Cannot %s partition because the node is not Ready "
             "or Allocated." % operation)
     if node.status == NODE_STATUS.READY and not user.is_superuser:
         raise PermissionDenied(
@@ -178,7 +178,7 @@ class PartitionHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete block device because it's node is not Ready.")
+                "Cannot delete block device because the node is not Ready.")
         partition.delete()
         return rc.DELETED
 

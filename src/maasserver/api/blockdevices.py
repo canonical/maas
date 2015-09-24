@@ -73,7 +73,7 @@ def raise_error_for_invalid_state_on_allocated_operations(
         node, user, operation):
     if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
         raise NodeStateViolation(
-            "Cannot %s block device because it's node is not Ready "
+            "Cannot %s block device because the node is not Ready "
             "or Allocated." % operation)
     if node.status == NODE_STATUS.READY and not user.is_superuser:
         raise PermissionDenied(
@@ -215,7 +215,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete block device because it's node is not Ready.")
+                "Cannot delete block device because the node is not Ready.")
         device.delete()
         return rc.DELETED
 
@@ -247,7 +247,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because it's node is not Ready.")
+                "Cannot update block device because the node is not Ready.")
         if device.type == 'physical':
             form = UpdatePhysicalBlockDeviceForm(
                 instance=device, data=request.data)
@@ -277,7 +277,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because it's node is not Ready.")
+                "Cannot update block device because the node is not Ready.")
         device.add_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -297,7 +297,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because it's node is not Ready.")
+                "Cannot update block device because the node is not Ready.")
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -419,7 +419,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot set as boot disk because it's node is not Ready.")
+                "Cannot set as boot disk because the node is not Ready.")
         if not isinstance(device, PhysicalBlockDevice):
             raise MAASAPIBadRequest(
                 "Cannot set a %s block device as the boot disk." % device.type)

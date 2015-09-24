@@ -18,8 +18,14 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+)
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    NodeStateViolation,
+)
 from maasserver.forms import (
     CreateLogicalVolumeForm,
     CreateVolumeGroupForm,
@@ -78,9 +84,13 @@ class VolumeGroupsHandler(OperationsHandler):
         :param partitions: Partitions to add to the volume group.
 
         Returns 404 if the node is not found.
+        Returns 409 if the node is not Ready.
         """
         node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, request.user, NODE_PERMISSION.ADMIN)
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot create volume group because the node is not Ready.")
         form = CreateVolumeGroupForm(node, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -162,9 +172,14 @@ class VolumeGroupHandler(OperationsHandler):
         :param remove_partitions: Partitions to remove from the volume group.
 
         Returns 404 if the node or volume group is not found.
+        Returns 409 if the node is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+        node = volume_group.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot update volume group because the node is not Ready.")
         form = UpdateVolumeGroupForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -175,9 +190,14 @@ class VolumeGroupHandler(OperationsHandler):
         """Delete volume group on node.
 
         Returns 404 if the node or volume group is not found.
+        Returns 409 if the node is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+        node = volume_group.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot delete volume group because the node is not Ready.")
         volume_group.delete()
         return rc.DELETED
 
@@ -190,9 +210,14 @@ class VolumeGroupHandler(OperationsHandler):
         :param size: Size of the logical volume.
 
         Returns 404 if the node or volume group is not found.
+        Returns 409 if the node is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+        node = volume_group.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot create logical volume because the node is not Ready.")
         form = CreateLogicalVolumeForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -207,9 +232,14 @@ class VolumeGroupHandler(OperationsHandler):
 
         Returns 403 if no logical volume with id.
         Returns 404 if the node or volume group is not found.
+        Returns 409 if the node is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+        node = volume_group.get_node()
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot delete logical volume because the node is not Ready.")
         volume_id = get_mandatory_param(request.data, 'id')
         try:
             logical_volume = volume_group.virtual_devices.get(id=volume_id)

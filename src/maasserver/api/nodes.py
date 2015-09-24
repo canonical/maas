@@ -849,11 +849,11 @@ class NodeHandler(OperationsHandler):
         layout.
         """
         node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        if node.status != NODE_STATUS.ALLOCATED:
-            raise MAASAPIBadRequest(
-                "Cannot change the storage layout on a node that is "
-                "not allocated.")
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        if node.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Cannot change the storage layout on a node "
+                "that is not Ready.")
         storage_layout, _ = get_storage_layout_params(request, required=True)
         try:
             node.set_storage_layout(

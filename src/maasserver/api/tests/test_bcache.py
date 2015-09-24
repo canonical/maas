@@ -23,6 +23,7 @@ from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
+    NODE_STATUS,
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -83,9 +84,47 @@ class TestBcacheDevicesAPI(APITestCase):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
+    def test_create_403_if_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        backing_size = 10 * 1000 ** 4
+        cache_set = factory.make_CacheSet(node=node)
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        uri = get_bcache_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'bcache0',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+            'cache_set': cache_set.id,
+            'backing_device': backing_device.id,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_409_if_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        backing_size = 10 * 1000 ** 4
+        cache_set = factory.make_CacheSet(node=node)
+        backing_device = factory.make_PhysicalBlockDevice(
+            node=node, size=backing_size)
+        uuid = unicode(uuid4())
+        uri = get_bcache_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'bcache0',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+            'cache_set': cache_set.id,
+            'backing_device': backing_device.id,
+        })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
     def test_create(self):
         """Tests Bcache device creation."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         backing_size = 10 * 1000 ** 4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
@@ -107,7 +146,8 @@ class TestBcacheDevicesAPI(APITestCase):
 
     def test_create_with_missing_cache_set_fails(self):
         """Tests Bcache device creation without a cache set."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         backing_size = 10 * 1000 ** 4
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
@@ -129,7 +169,8 @@ class TestBcacheDevicesAPI(APITestCase):
 
     def test_create_with_missing_backing_fails(self):
         """Tests Bcache device creation without a backing device."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
         uuid = unicode(uuid4())
         uri = get_bcache_devices_uri(node)
@@ -203,7 +244,8 @@ class TestBcacheDeviceAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_deletes_bcache(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         uri = get_bcache_device_uri(bcache)
@@ -212,16 +254,18 @@ class TestBcacheDeviceAPI(APITestCase):
             httplib.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(bcache))
 
-    def test_delete_403_when_not_owner(self):
+    def test_delete_403_when_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, node=node)
         uri = get_bcache_device_uri(bcache)
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_404_when_not_bcache(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         not_bcache = factory.make_FilesystemGroup(
             node=node, group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE))
@@ -230,10 +274,21 @@ class TestBcacheDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
+    def test_delete_409_when_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        bcache = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, node=node)
+        uri = get_bcache_device_uri(bcache)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+
     def test_update_bcache(self):
         """Tests update bcache method by changing the name, UUID and cache
         mode of a bcache."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
@@ -258,7 +313,8 @@ class TestBcacheDeviceAPI(APITestCase):
     def test_change_bcache_backing(self):
         """Tests update bcache method by changing backing device to different
         block device."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
@@ -275,7 +331,8 @@ class TestBcacheDeviceAPI(APITestCase):
     def test_change_storages_to_partitions_bcache(self):
         """Tests update bcache method by changing backing device to a
         partition."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
@@ -293,7 +350,8 @@ class TestBcacheDeviceAPI(APITestCase):
 
     def test_invalid_change_fails(self):
         """Tests changing the backing of a bcache device to None fails."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bcache = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
@@ -308,3 +366,34 @@ class TestBcacheDeviceAPI(APITestCase):
         self.assertIn(
             'Select a valid choice.',
             parsed_content['backing_device'][0])
+
+    def test_update_403_if_not_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        uuid = unicode(uuid4())
+        response = self.client.put(uri, {
+            'name': 'new_name',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
+        })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_409_if_not_ready(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        bcache = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_mode=CACHE_MODE_TYPE.WRITEBACK)
+        uri = get_bcache_device_uri(bcache)
+        uuid = unicode(uuid4())
+        response = self.client.put(uri, {
+            'name': 'new_name',
+            'uuid': uuid,
+            'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
+        })
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
