@@ -31,6 +31,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
             release: null,
             hwe_kernel: null
         };
+        $scope.commissionOptions = {
+            enableSSH: false,
+            blockPoweroff: false,
+            skipNetworking: false,
+            skipStorage: false
+        };
         $scope.checkingPower = false;
         $scope.nic = {
             adding: false,
@@ -670,6 +676,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
                    ($scope.osSelection.hwe_kernel.indexOf('hwe-') >= 0)) {
                     extra.hwe_kernel = $scope.osSelection.hwe_kernel;
                 }
+            } else if($scope.actionOption.name === "commission") {
+                extra.enable_ssh = $scope.commissionOptions.enableSSH;
+                extra.block_poweroff = $scope.commissionOptions.blockPoweroff;
+                extra.skip_networking = (
+                    $scope.commissionOptions.skipNetworking);
+                extra.skip_storage = $scope.commissionOptions.skipStorage;
             }
 
             NodesManager.performAction(
@@ -681,6 +693,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.actionOption = null;
                     $scope.actionError = null;
                     $scope.osSelection.$reset();
+                    $scope.commissionOptions.enableSSH = false;
+                    $scope.commissionOptions.blockPoweroff = false;
+                    $scope.commissionOptions.skipNetworking = false;
+                    $scope.commissionOptions.skipStorage = false;
                 }, function(error) {
                     $scope.actionError = error;
                 });

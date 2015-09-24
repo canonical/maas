@@ -50,6 +50,20 @@
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <div class="page-header__feedback ng-hide" data-ng-hide="isActionError() || isSSHKeyError()">
                         <form class="form-inline">
+                            <span class="ng-hide" data-ng-show="actionOption.name === 'commission'">
+                                <input class="checkbox margin-right" id="enableSSH" type="checkbox"
+                                    data-ng-model="commissionOptions.enableSSH">
+                                <label class="checkbox-label" for="enableSSH">Enable SSH</label>
+                                <input class="checkbox margin-right" id="blockPoweroff" type="checkbox"
+                                    data-ng-model="commissionOptions.blockPoweroff">
+                                <label class="checkbox-label" for="blockPoweroff">Block poweroff</label>
+                                <input class="checkbox margin-right" id="skipNetworking" type="checkbox"
+                                    data-ng-model="commissionOptions.skipNetworking">
+                                <label class="checkbox-label" for="skipNetworking">Skip networking</label>
+                                <input class="checkbox" id="skipStorage" type="checkbox"
+                                    data-ng-model="commissionOptions.skipStorage">
+                                <label class="checkbox-label" for="skipStorage">Skip storage</label>
+                            </span>
                             <span class="ng-hide" data-ng-show="actionOption.name === 'deploy'">
                                 <label for="image">Choose your image</label>
                                 <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>

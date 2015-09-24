@@ -62,6 +62,12 @@ angular.module('MAAS').controller('NodesListController', [
             hwe_kernel: null
         };
         $scope.tabs.nodes.zoneSelection = null;
+        $scope.tabs.nodes.commissionOptions = {
+            enableSSH: false,
+            blockPoweroff: false,
+            skipNetworking: false,
+            skipStorage: false
+        };
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -172,6 +178,10 @@ angular.module('MAAS').controller('NodesListController', [
                         $scope.tabs[tab].osSelection.$reset)) {
                         $scope.tabs[tab].osSelection.$reset();
                     }
+                    $scope.tabs[tab].commissionOptions.enableSSH = false;
+                    $scope.tabs[tab].commissionOptions.blockPoweroff = false;
+                    $scope.tabs[tab].commissionOptions.skipNetworking = false;
+                    $scope.tabs[tab].commissionOptions.skipStorage = false;
                 }
             }
             if($scope.tabs[tab].actionOption && !isViewingSelected(tab)) {
@@ -436,8 +446,18 @@ angular.module('MAAS').controller('NodesListController', [
                 }
             } else if($scope.tabs[tab].actionOption.name === "set-zone" &&
                 angular.isNumber($scope.tabs[tab].zoneSelection.id)) {
-                // Set the zone parameter
+                // Set the zone parameter.
                 extra.zone_id = $scope.tabs[tab].zoneSelection.id;
+            } else if($scope.tabs[tab].actionOption.name === "commission") {
+                // Set the commission options.
+                extra.enable_ssh = (
+                    $scope.tabs[tab].commissionOptions.enableSSH);
+                extra.block_poweroff = (
+                    $scope.tabs[tab].commissionOptions.blockPoweroff);
+                extra.skip_networking = (
+                    $scope.tabs[tab].commissionOptions.skipNetworking);
+                extra.skip_storage = (
+                    $scope.tabs[tab].commissionOptions.skipStorage);
             }
 
             // Setup actionProgress.

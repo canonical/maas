@@ -241,7 +241,7 @@ class Commission(NodeAction):
 
     def execute(
             self, enable_ssh=False, block_poweroff=False,
-            skip_networking=False):
+            skip_networking=False, skip_storage=False):
         """See `NodeAction.execute`."""
         if self.node.power_state == POWER_STATE.ON:
             raise NodeActionError(
@@ -249,8 +249,11 @@ class Commission(NodeAction):
 
         try:
             self.node.start_commissioning(
-                self.user, enable_ssh=enable_ssh,
-                block_poweroff=block_poweroff, skip_networking=skip_networking)
+                self.user,
+                enable_ssh=enable_ssh,
+                block_poweroff=block_poweroff,
+                skip_networking=skip_networking,
+                skip_storage=skip_storage)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 

@@ -198,6 +198,12 @@ describe("NodeDetailsController", function() {
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.osSelection.osystem).toBeNull();
         expect($scope.osSelection.release).toBeNull();
+        expect($scope.commissionOptions).toEqual({
+            enableSSH: false,
+            blockPoweroff: false,
+            skipNetworking: false,
+            skipStorage: false
+        });
     });
 
     it("sets initial values for summary section", function() {
@@ -1003,6 +1009,28 @@ describe("NodeDetailsController", function() {
                 });
         });
 
+        it("calls performAction with commissionOptions", function() {
+            var controller = makeController();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "commission"
+            };
+            $scope.commissionOptions.enableSSH = true;
+            $scope.commissionOptions.blockPoweroff = true;
+            $scope.commissionOptions.skipNetworking = false;
+            $scope.commissionOptions.skipStorage = false;
+            $scope.actionGo();
+            expect(NodesManager.performAction).toHaveBeenCalledWith(
+                node, "commission", {
+                    enable_ssh: true,
+                    block_poweroff: true,
+                    skip_networking: false,
+                    skip_storage: false
+                });
+        });
+
         it("clears actionOption on resolve", function() {
             var controller = makeController();
             var defer = $q.defer();
@@ -1033,6 +1061,30 @@ describe("NodeDetailsController", function() {
             defer.resolve();
             $rootScope.$digest();
             expect($scope.osSelection.$reset).toHaveBeenCalled();
+        });
+
+        it("clears commissionOptions on resolve", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "commission"
+            };
+            $scope.commissionOptions.enableSSH = true;
+            $scope.commissionOptions.blockPoweroff = true;
+            $scope.commissionOptions.skipNetworking = true;
+            $scope.commissionOptions.skipStorage = true;
+            $scope.actionGo();
+            defer.resolve();
+            $rootScope.$digest();
+            expect($scope.commissionOptions).toEqual({
+                enableSSH: false,
+                blockPoweroff: false,
+                skipNetworking: false,
+                skipStorage: false
+            });
         });
 
         it("clears actionError on resolve", function() {

@@ -7575,12 +7575,6 @@
 - fields: {name: dnssec_validation, value: auto}
   model: maasserver.config
   pk: 1
-- fields: {name: rpc_shared_secret, value: 4b921e8e6278fceb2014e8d1cda72e79}
-  model: maasserver.config
-  pk: 2
-- fields: {name: upstream_dns, value: 192.168.1.1}
-  model: maasserver.config
-  pk: 3
 - fields: {created: ! '2015-09-18 15:24:06.204820', description: Node changed status,
     level: 20, name: NODE_CHANGED_STATUS, updated: ! '2015-09-18 15:24:06.204820'}
   model: maasserver.eventtype
@@ -8116,7 +8110,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'off'
     power_state_updated: 2015-09-18 15:37:04.671337
     power_type: ether_wake
@@ -8159,7 +8153,7 @@
     osystem: ubuntu
     owner: 4
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'on'
     power_state_updated: 2015-09-18 15:37:29.053548
     power_type: ether_wake
@@ -8202,7 +8196,7 @@
     osystem: ''
     owner: 3
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'on'
     power_state_updated: 2015-09-18 15:38:26.966339
     power_type: ether_wake
@@ -8245,7 +8239,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'off'
     power_state_updated: 2015-09-18 15:37:04.664269
     power_type: ether_wake
@@ -8288,7 +8282,7 @@
     osystem: ''
     owner: 4
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'off'
     power_state_updated: 2015-09-18 15:37:04.615654
     power_type: ether_wake
@@ -8331,7 +8325,7 @@
     osystem: ubuntu
     owner: 3
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'on'
     power_state_updated: 2015-09-18 15:36:41.608186
     power_type: ether_wake
@@ -8374,7 +8368,7 @@
     osystem: ''
     owner: null
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'off'
     power_state_updated: 2015-09-18 15:31:49.730353
     power_type: ether_wake
@@ -8417,7 +8411,7 @@
     osystem: ''
     owner: 3
     parent: null
-    power_parameters: '{u''mac_address'': u''}'
+    power_parameters: '{"mac_address": ""}'
     power_state: 'off'
     power_state_updated: 2015-09-18 15:37:04.672437
     power_type: ether_wake

@@ -266,10 +266,17 @@ describe("NodesListController", function() {
                 expect(tabScope.actionErrorCount).toBe(0);
                 expect(tabScope.zoneSelection).toBeNull();
 
-                // Only the nodes tab uses the osSelection field.
+                // Only the nodes tab uses the osSelection and
+                // commissionOptions fields.
                 if(tab === "nodes") {
                     expect(tabScope.osSelection.osystem).toBeNull();
                     expect(tabScope.osSelection.release).toBeNull();
+                    expect(tabScope.commissionOptions).toEqual({
+                        enableSSH: false,
+                        blockPoweroff: false,
+                        skipNetworking: false,
+                        skipStorage: false
+                    });
                 }
             });
 
@@ -1209,6 +1216,55 @@ describe("NodesListController", function() {
                 defer.resolve();
                 $scope.$digest();
                 expect($scope.tabs.nodes.osSelection.$reset).toHaveBeenCalled();
+            });
+
+            it("calls performAction with commissionOptions",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("nodes");
+                    var spy = spyOn(
+                        $scope.tabs.nodes.manager,
+                        "performAction").and.returnValue(
+                        $q.defer().promise);
+                    $scope.tabs.nodes.actionOption = { name: "commission" };
+                    $scope.tabs.nodes.selectedItems = [object];
+                    $scope.tabs.nodes.commissionOptions.enableSSH = true;
+                    $scope.tabs.nodes.commissionOptions.blockPoweroff = true;
+                    $scope.tabs.nodes.commissionOptions.skipNetworking = false;
+                    $scope.tabs.nodes.commissionOptions.skipStorage = false;
+                    $scope.actionGo("nodes");
+                    expect(spy).toHaveBeenCalledWith(
+                        object, "commission", {
+                            enable_ssh: true,
+                            block_poweroff: true,
+                            skip_networking: false,
+                            skip_storage: false
+                        });
+            });
+
+            it("clears commissionOptions when complete", function() {
+                var controller = makeController();
+                var defer = $q.defer();
+                spyOn(
+                    NodesManager,
+                    "performAction").and.returnValue(defer.promise);
+                var object = makeObject("nodes");
+                NodesManager._items.push(object);
+                NodesManager._selectedItems.push(object);
+                $scope.tabs.nodes.actionOption = { name: "commission" };
+                $scope.tabs.nodes.commissionOptions.enableSSH = true;
+                $scope.tabs.nodes.commissionOptions.blockPoweroff = true;
+                $scope.tabs.nodes.commissionOptions.skipNetworking = true;
+                $scope.tabs.nodes.commissionOptions.skipStorage = true;
+                $scope.actionGo("nodes");
+                defer.resolve();
+                $scope.$digest();
+                expect($scope.tabs.nodes.commissionOptions).toEqual({
+                    enableSSH: false,
+                    blockPoweroff: false,
+                    skipNetworking: false,
+                    skipStorage: false
+                });
             });
         });
     });
