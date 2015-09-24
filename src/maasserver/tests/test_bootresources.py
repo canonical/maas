@@ -86,7 +86,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from mock import (
     ANY,
-    MagicMock,
     Mock,
     sentinel,
 )
@@ -1087,6 +1086,9 @@ class TestImportImages(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestImportImages, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
+        # We're not testing cache_boot_sources() here, so patch it out to
+        # avoid inadvertently calling it and wondering why the test blocks.
+        self.patch_autospec(bootresources, 'cache_boot_sources')
 
     def patch_and_capture_env_for_download_all_boot_resources(self):
         class CaptureEnv:
@@ -1180,8 +1182,6 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
     def test__import_resources_calls_functions_with_correct_parameters(self):
-        cache_boot_sources = self.patch(
-            bootresources, 'cache_boot_sources')
         write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
         write_all_keyrings.return_value = [sentinel.source]
@@ -1199,7 +1199,8 @@ class TestImportImages(MAASTransactionServerTestCase):
         bootresources._import_resources(force=True)
 
         self.expectThat(
-            cache_boot_sources, MockCalledOnceWith())
+            bootresources.cache_boot_sources,
+            MockCalledOnceWith())
         self.expectThat(
             write_all_keyrings,
             MockCalledOnceWith(ANY, []))
@@ -1244,20 +1245,15 @@ class TestImportImages(MAASTransactionServerTestCase):
             (capture.env['http_proxy'], capture.env['http_proxy']))
 
     def test__import_resources_calls_import_boot_images_on_clusters(self):
-        nodegroup = MagicMock()
-        self.patch(bootresources, 'NodeGroup', nodegroup)
+        nodegroup_objects = bootresources.NodeGroup.objects
 
-        fake_image_descriptions = self.patch(
-            bootresources, 'download_all_image_descriptions')
-        descriptions = Mock()
-        descriptions.is_empty.return_value = False
-        fake_image_descriptions.return_value = descriptions
-        self.patch(bootresources, 'map_products')
-        self.patch(bootresources, 'download_all_boot_resources')
+        self.patch(bootresources, "_import_resources_with_lock")
+        self.patch(nodegroup_objects, "import_boot_images_on_enabled_clusters")
 
         bootresources._import_resources(force=True)
+
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_enabled_clusters,
+            nodegroup_objects.import_boot_images_on_enabled_clusters,
             MockCalledOnceWith())
 
 

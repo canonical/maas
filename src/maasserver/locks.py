@@ -33,9 +33,8 @@ security = DatabaseLock(2)
 # Lock used when starting up the event-loop.
 eventloop = DatabaseLock(3)
 
-# Lock used to only allow one instance of importing boot images to occur
-# at a time.
-import_images = DatabaseXactLock(4)
+# Lock around importing boot images, used exclusively.
+import_images = DatabaseLock(4)
 
 # Lock to prevent concurrent changes to DNS configuration.
 dns = DatabaseLock(6)

@@ -52,6 +52,7 @@ from twisted.internet.defer import inlineCallbacks
 maaslog = get_maas_logger("bootsources")
 
 
+@transactional
 def ensure_boot_source_definition():
     """Set default boot source if none is currently defined."""
     if not BootSource.objects.exists():
@@ -66,6 +67,7 @@ def ensure_boot_source_definition():
             arches=['amd64'], subarches=['*'], labels=['release'])
 
 
+@transactional
 def get_boot_sources():
     """Return list of boot sources for the region to import from."""
     return [
@@ -74,12 +76,10 @@ def get_boot_sources():
         ]
 
 
+@transactional
 def get_simplestreams_env():
-    """Return environment variables that should be used, when accessing
-    simplestreams."""
-    env = {
-        'GNUPGHOME': get_maas_user_gpghome(),
-        }
+    """Get environment that should be used with simplestreams."""
+    env = {'GNUPGHOME': get_maas_user_gpghome()}
     http_proxy = Config.objects.get_config('http_proxy')
     if http_proxy is not None:
         env['http_proxy'] = http_proxy
@@ -88,13 +88,12 @@ def get_simplestreams_env():
 
 
 def set_simplestreams_env():
-    """Set the environment variable simplestreams needs."""
+    """Set the environment that simplestreams needs."""
     # We simply set the env variables here as another simplestreams-based
-    # import might be running concurrently
-    # (bootresources._import_resources) and we don't want to use the
-    # environment_variables context manager that would reset the
-    # environment variables (they are global to the entire process)
-    # while the other import is still running.
+    # import might be running concurrently (bootresources._import_resources)
+    # and we don't want to use the environment_variables context manager that
+    # would reset the environment variables (they are global to the entire
+    # process) while the other import is still running.
     os.environ.update(get_simplestreams_env())
 
 

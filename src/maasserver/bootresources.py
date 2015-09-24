@@ -68,11 +68,14 @@ from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
     absolute_url_reverse,
+    synchronised,
 )
+from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import (
     get_one,
     in_transaction,
     transactional,
+    with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.import_images.download_descriptions import (
@@ -93,6 +96,7 @@ from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
     asynchronous,
+    FOREVER,
     synchronous,
 )
 from simplestreams import util as sutil
@@ -725,6 +729,7 @@ class BootResourceStore(ObjectStore):
             # Spawn a writer thread with a resource file and reader from
             # the queue of content to be saved.
             rid, reader = self._content_to_finalize.popitem()
+            # FIXME: Use deferToDatabase and the coiterator if possible.
             thread = threading.Thread(
                 target=self.write_content_thread,
                 args=(rid, reader))
@@ -899,31 +904,7 @@ def has_synced_resources():
         rtype=BOOT_RESOURCE_TYPE.SYNCED).exists()
 
 
-@transactional
-def hold_lock_thread(kill_event, run_event):
-    """Hold the import images database lock inside of this running thread.
-
-    This is needed because throughout the whole process multiple transactions
-    are used. The lock needs to be held and released in one transaction.
-
-    The `kill_event` should be set when the lock should be released. The
-    `run_event` will be set once the lock is held. No database operations
-    should occur until the `run_event` is set.
-    """
-    # Check that by the time this thread has started that the lock is
-    # not already held by another thread.
-    if locks.import_images.is_locked():
-        return
-
-    # Hold the lock until the kill_event is set.
-    with locks.import_images:
-        run_event.set()
-        kill_event.wait()
-
-
-# FIXME: This does network IO while holding two database connections and two
-# transactions. This is bad for concurrency.
-@synchronous
+@asynchronous(timeout=FOREVER)
 def _import_resources(force=False):
     """Import boot resources.
 
@@ -936,14 +917,40 @@ def _import_resources(force=False):
         exist. This is used because we want the user to start the first import
         action, not let it run automatically.
     """
-    assert not in_transaction(), (
-        "_import_resources() must not be called within a preexisting "
-        "transaction; it manages its own.")
+    # Sync boot resources into the region.
+    d = deferToDatabase(_import_resources_with_lock, force=force)
 
-    # If the lock is already held, then import is already running.
-    if locks.import_images.is_locked():
+    def cb_import(_):
+        # Sync the resources from the region into all the clusters.
+        # FIXME: Change this to be async all the way.
+        return deferToDatabase(
+            NodeGroup.objects.import_boot_images_on_enabled_clusters)
+
+    def eb_import(failure):
+        failure.trap(DatabaseLockNotHeld)
         maaslog.debug("Skipping import as another import is already running.")
-        return
+
+    return d.addCallbacks(cb_import, eb_import)
+
+
+@synchronous
+@with_connection
+@synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
+def _import_resources_with_lock(force=False):
+    """Import boot resources once the `import_images` lock is held.
+
+    This should *not* be called in a transaction; it will manage transactions
+    itself, and attempt to keep them short.
+
+    See `_import_resources` for details.
+
+    :raise DatabaseLockNotHeld: If the `import_images` lock cannot be acquired
+        at the beginning of this method. This happens quickly because the lock
+        is acquired using a TRY variant; see `dblocks`.
+    """
+    assert not in_transaction(), (
+        "_import_resources_with_lock() must not be called within a "
+        "preexisting transaction; it manages its own.")
 
     # Keep the descriptions cache up-to-date.
     cache_boot_sources()
@@ -953,57 +960,29 @@ def _import_resources(force=False):
     if not force and not has_synced_resources():
         return
 
-    # Event will be triggered when the lock thread should exit,
-    # causing the lock to be released.
-    kill_event = threading.Event()
+    # FIXME: This modifies the environment of the entire process, which is Not
+    # Cool. We should integrate with simplestreams in a more Pythonic manner.
+    set_simplestreams_env()
 
-    # Event will be triggered once the thread is running and the
-    # lock is now held.
-    run_event = threading.Event()
+    with tempdir('keyrings') as keyrings_path:
+        sources = get_boot_sources()
+        sources = write_all_keyrings(keyrings_path, sources)
+        maaslog.info(
+            "Started importing of boot images from %d source(s).",
+            len(sources))
 
-    # Start the thread to hold the lock.
-    lock_thread = threading.Thread(
-        target=hold_lock_thread,
-        args=(kill_event, run_event))
-    lock_thread.daemon = True
-    lock_thread.start()
+        image_descriptions = download_all_image_descriptions(sources)
+        if image_descriptions.is_empty():
+            maaslog.warn(
+                "Unable to import boot images, no image "
+                "descriptions avaliable.")
+            return
+        product_mapping = map_products(image_descriptions)
 
-    # Wait unti the thread says that the lock is held.
-    if not run_event.wait(15):
-        # Timeout occurred, kill the thread and exit.
-        kill_event.set()
-        lock_thread.join()
-        maaslog.debug(
-            "Unable to grab import lock, another import is already running.")
-        return
-
-    try:
-        set_simplestreams_env()
-        with tempdir('keyrings') as keyrings_path:
-            sources = get_boot_sources()
-            sources = write_all_keyrings(keyrings_path, sources)
-            maaslog.info(
-                "Started importing of boot images from %d source(s).",
-                len(sources))
-
-            image_descriptions = download_all_image_descriptions(sources)
-            if image_descriptions.is_empty():
-                maaslog.warn(
-                    "Unable to import boot images, no image "
-                    "descriptions avaliable.")
-                return
-            product_mapping = map_products(image_descriptions)
-
-            download_all_boot_resources(sources, product_mapping)
-            maaslog.info(
-                "Finished importing of boot images from %d source(s).",
-                len(sources))
-
-        # Tell the clusters to download the data from the region.
-        NodeGroup.objects.import_boot_images_on_enabled_clusters()
-    finally:
-        kill_event.set()
-        lock_thread.join()
+        download_all_boot_resources(sources, product_mapping)
+        maaslog.info(
+            "Finished importing of boot images from %d source(s).",
+            len(sources))
 
 
 def _import_resources_in_thread(force=False):
