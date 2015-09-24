@@ -81,6 +81,8 @@ class TestNetworksAPI(APITestCase):
             "description": subnet.name,
             "default_gateway": subnet.gateway_ip,
             "dns_servers": subnet.dns_servers,
+            "resource_uri": reverse(
+                'network_handler', args=["subnet-%d" % subnet.id]),
             }, returned_subnet)
 
     def test_GET_returns_empty_if_no_subnets(self):

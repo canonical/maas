@@ -19,6 +19,7 @@ __all__ = [
 
 import re
 
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
@@ -60,6 +61,8 @@ def render_network_json(subnet):
         "description": subnet.name,
         "default_gateway": subnet.gateway_ip,
         "dns_servers": subnet.dns_servers,
+        "resource_uri": reverse(
+            'network_handler', args=["subnet-%d" % subnet.id]),
     }
 
 

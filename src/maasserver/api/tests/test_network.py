@@ -64,6 +64,7 @@ class TestNetwork(APITestCase):
                 subnet.name,
                 subnet.gateway_ip,
                 subnet.dns_servers,
+                reverse('network_handler', args=["subnet-%d" % subnet.id]),
             ),
             (
                 parsed_result['name'],
@@ -73,6 +74,7 @@ class TestNetwork(APITestCase):
                 parsed_result['description'],
                 parsed_result['default_gateway'],
                 parsed_result['dns_servers'],
+                parsed_result['resource_uri'],
             ))
 
     def test_GET_returns_404_for_unknown_network(self):
