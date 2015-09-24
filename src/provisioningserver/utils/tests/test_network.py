@@ -47,6 +47,7 @@ from provisioningserver.utils.network import (
     inet_ntop,
     intersect_iprange,
     ip_range_within_network,
+    IPRangeStatistics,
     MAASIPRange,
     MAASIPSet,
     make_iprange,
@@ -691,3 +692,40 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u, Contains('fe80::99'))
         self.assertThat(u, Contains('fe80::ff'))
         self.assertThat(u, Contains('fe80:0:ffff:ffff:ffff:ffff:ffff:ffff'))
+
+    def test__calculates_full_range(self):
+        s = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_full_range('10.0.0.0/24')
+        for ip in range(1, 254):
+            self.assertThat(u, Contains("10.0.0.%d" % ip))
+        self.assertThat(u['10.0.0.1'].purpose, Contains('unused'))
+        self.assertThat(u['10.0.0.2'].purpose, Not(Contains('unused')))
+        self.assertThat(u['10.0.0.254'].purpose, Contains('unused'))
+
+
+class TestIPRangeStatistics(MAASTestCase):
+
+    def test__statistics_are_accurate(self):
+        s = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(250))
+        self.assertThat(json['largest_available'], Equals(246))
+        self.assertThat(json['num_unavailable'], Equals(4))
+        self.assertThat(json['usage'], Equals(float(4) / float(254)))
+        self.assertThat(json['usage_string'], Equals("2%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
+    def test__statistics_are_accurate_and_ranges_are_returned_if_desired(self):
+        s = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json(include_ranges=True)
+        self.assertThat(json['num_available'], Equals(250))
+        self.assertThat(json['largest_available'], Equals(246))
+        self.assertThat(json['num_unavailable'], Equals(4))
+        self.assertThat(json['usage'], Equals(float(4) / float(254)))
+        self.assertThat(json['usage_string'], Equals('2%'))
+        self.assertThat(json, Contains('ranges'))
+        self.assertThat(json['ranges'], Equals(stats.ranges.render_json()))

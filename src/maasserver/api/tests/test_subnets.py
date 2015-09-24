@@ -21,6 +21,7 @@ import random
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    NODE_STATUS,
     NODEGROUP_STATUS,
 )
 from maasserver.testing.api import (
@@ -30,7 +31,10 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.utils.network import inet_ntop
+from provisioningserver.utils.network import (
+    inet_ntop,
+    IPRangeStatistics,
+)
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -359,3 +363,130 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
                 "end": expected_last_address,
                 "num_addresses": second_range_size,
             }]))
+
+
+class TestSubnetStatisticsAPI(APITestCase):
+
+    def test__default_does_not_include_ranges(self):
+        subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'statistics',
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        full_iprange = subnet.get_iprange_usage()
+        statistics = IPRangeStatistics(full_iprange)
+        expected_result = statistics.render_json(include_ranges=False)
+        self.assertThat(result, Equals(expected_result))
+
+    def test__with_include_ranges(self):
+        subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'statistics',
+                'include_ranges': 'true'
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        full_iprange = subnet.get_iprange_usage()
+        statistics = IPRangeStatistics(full_iprange)
+        expected_result = statistics.render_json(include_ranges=True)
+        self.assertThat(result, Equals(expected_result))
+
+    def test__without_include_ranges(self):
+        subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'statistics',
+                'include_ranges': 'false'
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        full_iprange = subnet.get_iprange_usage()
+        statistics = IPRangeStatistics(full_iprange)
+        expected_result = statistics.render_json(include_ranges=False)
+        self.assertThat(result, Equals(expected_result))
+
+
+class TestSubnetIPAddressesAPI(APITestCase):
+
+    def test__default_parameters(self):
+        subnet = factory.make_Subnet()
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet, user=user)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, user=user,
+            interface=node.get_boot_interface())
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'ip_addresses',
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        expected_result = subnet.render_json_for_related_ips(
+            with_username=True, with_node_summary=True)
+        self.assertThat(result, Equals(expected_result))
+
+    def test__with_username_false(self):
+        subnet = factory.make_Subnet()
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet, user=user)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, user=user,
+            interface=node.get_boot_interface())
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'ip_addresses',
+                'with_username': 'false',
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        expected_result = subnet.render_json_for_related_ips(
+            with_username=False, with_node_summary=True)
+        self.assertThat(result, Equals(expected_result))
+
+    def test__with_node_summary_false(self):
+        subnet = factory.make_Subnet()
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet, user=user)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, user=user,
+            interface=node.get_boot_interface())
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'ip_addresses',
+                'with_node_summary': 'false',
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        result = json.loads(response.content)
+        expected_result = subnet.render_json_for_related_ips(
+            with_username=True, with_node_summary=False)
+        self.assertThat(result, Equals(expected_result))

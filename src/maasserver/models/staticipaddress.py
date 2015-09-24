@@ -764,6 +764,28 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     iface.vlan = subnet.vlan
                     iface.save()
 
+    def render_json(self, with_username=False, with_node_summary=False):
+        """Render a representation of this `StaticIPAddress` object suitable
+        for converting to JSON. Includes optional parameters wherever a join
+        would be implied by including a specific piece of information."""
+        data = {
+            "ip": self.ip,
+            "alloc_type": self.alloc_type,
+        }
+        if self.hostname:
+            data["hostname"] = self.hostname
+        if with_username and self.user is not None:
+            data["user"] = self.user.username
+        if with_node_summary:
+            node = self.get_node()
+            if node is not None:
+                data["node_summary"] = {
+                    "hostname": node.hostname,
+                    "system_id": node.system_id,
+                    "installable": node.installable,
+                }
+        return data
+
     def set_ip_address(self, ipaddr, iface=None):
         """Sets the IP address to the specified value, and also updates
         the subnet field.

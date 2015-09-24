@@ -21,6 +21,7 @@ __all__ = [
     "ZoneHandler",
     "FabricHandler",
     "SpaceHandler",
+    "SubnetHandler",
     "VLANHandler",
     ]
 
@@ -32,6 +33,7 @@ from maasserver.websockets.handlers.fabric import FabricHandler
 from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.node import NodeHandler
 from maasserver.websockets.handlers.space import SpaceHandler
+from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.tag import TagHandler
 from maasserver.websockets.handlers.user import UserHandler
 from maasserver.websockets.handlers.vlan import VLANHandler
@@ -45,6 +47,7 @@ ignore_unused(FabricHandler)
 ignore_unused(GeneralHandler)
 ignore_unused(NodeHandler)
 ignore_unused(SpaceHandler)
+ignore_unused(SubnetHandler)
 ignore_unused(TagHandler)
 ignore_unused(UserHandler)
 ignore_unused(VLANHandler)

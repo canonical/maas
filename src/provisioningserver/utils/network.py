@@ -126,11 +126,59 @@ def normalize_ipranges(ranges):
     return sorted(new_ranges)
 
 
+class IPRangeStatistics(object):
+    """Class to encapsulate statistics we want to display about a given
+    `MAASIPSet`, which must be a set returned from
+    `MAASIPSet.get_full_range()`. That is, the set must include a `MAASIPRange`
+    to cover every possible IP address present in the desired range."""
+    def __init__(self, full_maasipset):
+        self.ranges = full_maasipset
+        self.num_available = 0
+        self.num_unavailable = 0
+        self.largest_available = 0
+        for range in full_maasipset.ranges:
+            if 'unused' in range.purpose:
+                self.num_available += range.num_addresses
+                if range.num_addresses > self.largest_available:
+                    self.largest_available = range.num_addresses
+            else:
+                self.num_unavailable += range.num_addresses
+        self.total_addresses = self.num_available + self.num_unavailable
+
+    @property
+    def usage_percentage(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:float"""
+        return float(self.num_unavailable) / float(self.total_addresses)
+
+    @property
+    def usage_percentage_string(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:unicode"""
+        return "{0:.0%}".format(self.usage_percentage)
+
+    def render_json(self, include_ranges=False):
+        """Returns a representation of the statistics suitable for rendering
+        into JSON format."""
+        data = {
+            "num_available": self.num_available,
+            "largest_available": self.largest_available,
+            "num_unavailable": self.num_unavailable,
+            "total_addresses": self.total_addresses,
+            "usage": self.usage_percentage,
+            "usage_string": self.usage_percentage_string,
+        }
+        if include_ranges:
+            data["ranges"] = self.ranges.render_json()
+        return data
+
+
 class MAASIPSet(set):
 
-    def __init__(self, ranges):
+    def __init__(self, ranges, cidr=None):
         self.ranges = normalize_ipranges(ranges)
         self.ranges = _deduplicate_sorted_maasipranges(self.ranges)
+        self.cidr = cidr
         super(MAASIPSet, self).__init__(set(self.ranges))
 
     def find(self, search):
@@ -151,6 +199,12 @@ class MAASIPSet(set):
                 if item.first <= addr <= item.last:
                     return item
         return None
+
+    def render_json(self, *args, **kwargs):
+        return [
+            iprange.render_json(*args, **kwargs)
+            for iprange in self.ranges
+        ]
 
     def __getitem__(self, item):
         return self.find(item)
@@ -201,6 +255,10 @@ class MAASIPSet(set):
             unused_ranges.append(
                 make_iprange(candidate_start, candidate_end, "unused"))
         return MAASIPSet(unused_ranges)
+
+    def get_full_range(self, outer_range):
+        unused_ranges = self.get_unused_ranges(outer_range)
+        return MAASIPSet(self | unused_ranges, cidr=outer_range)
 
     def __repr__(self):
         item_repr = []

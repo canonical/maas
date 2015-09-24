@@ -613,18 +613,41 @@ class MakeProtocolFactoryMixin:
         self.addCleanup(lambda: protocol.connectionLost(""))
         return protocol, factory
 
+ALL_NOTIFIERS = (
+    "device",
+    "event",
+    "fabric",
+    "node",
+    "nodegroup",
+    "space",
+    "subnet",
+    "tag",
+    "user",
+    "vlan",
+    "zone",
+)
+
+ALL_HANDLERS = (
+    "cluster",
+    "device",
+    "event",
+    "fabric",
+    "general",
+    "node",
+    "space",
+    "subnet",
+    "tag",
+    "user",
+    "vlan",
+    "zone",
+)
+
 
 class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
 
     def test_loads_all_handlers(self):
         factory = self.make_factory()
-        self.assertItemsEqual([
-            "device", "general", "node",
-            "cluster", "user", "zone",
-            "event", "tag", "fabric",
-            "space", "vlan",
-            ],
-            factory.handlers.keys())
+        self.assertItemsEqual(ALL_HANDLERS, factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
         mock_import = self.patch_autospec(protocol_module, "import_module")
@@ -705,11 +728,8 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = self.make_factory()
-        self.assertItemsEqual([
-            "node", "device", "nodegroup", "user",
-            "zone", "event", "tag", "fabric", "space",
-            "vlan",
-            ], factory.listener.listeners.keys())
+        self.assertItemsEqual(
+            ALL_NOTIFIERS, factory.listener.listeners.keys())
 
     @transactional
     def make_user(self):

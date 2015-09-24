@@ -53,7 +53,12 @@ from netaddr import (
     IPAddress,
     IPRange,
 )
-from testtools.matchers import HasLength
+from testtools.matchers import (
+    Contains,
+    Equals,
+    HasLength,
+    Not,
+)
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
@@ -907,3 +912,53 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         self.expectThat(mappings, HasLength(len(ips)))
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup2)
         self.expectThat(mappings, HasLength(len(ips)))
+
+
+class TestRenderJSON(MAASServerTestCase):
+
+    def test__excludes_username_and_node_summary_by_default(self):
+        ip = factory.make_StaticIPAddress(
+            ip=factory.make_ipv4_address(),
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        json = ip.render_json()
+        self.expectThat(json, Not(Contains("user")))
+        self.expectThat(json, Not(Contains("node_summary")))
+
+    def test__includes_username_if_requested(self):
+        user = factory.make_User()
+        ip = factory.make_StaticIPAddress(
+            ip=factory.make_ipv4_address(), user=user,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        json = ip.render_json(with_username=True)
+        self.expectThat(json, Contains("user"))
+        self.expectThat(json, Not(Contains("node_summary")))
+        self.expectThat(json["user"], Equals(user.username))
+
+    def test__includes_node_summary_if_requested(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        ngi = node.get_boot_interface().get_cluster_interface()
+        ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_dynamic_range(ngi), user=user,
+            interface=node.get_boot_interface(),
+            hostname=factory.make_hostname())
+        json = ip.render_json(with_node_summary=True)
+        self.expectThat(json, Not(Contains("user")))
+        self.expectThat(json, Contains("node_summary"))
+
+    def test__data_is_accurate(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        ngi = node.get_boot_interface().get_cluster_interface()
+        ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_dynamic_range(ngi), user=user,
+            interface=node.get_boot_interface(),
+            hostname=factory.make_hostname())
+        json = ip.render_json(with_username=True, with_node_summary=True)
+        self.expectThat(json["hostname"], Equals(ip.hostname))
+        self.expectThat(json["user"], Equals(user.username))
+        self.assertThat(json, Contains("node_summary"))
+        node_summary = json["node_summary"]
+        self.expectThat(node_summary["hostname"], Equals(node.hostname))
+        self.expectThat(node_summary["system_id"], Equals(node.system_id))
+        self.expectThat(node_summary["installable"], Equals(node.installable))

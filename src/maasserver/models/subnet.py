@@ -300,20 +300,26 @@ class Subnet(CleanSave, TimestampedModel):
         # genuine. (we'd be allowing something we have observed as an in-use
         # address to potentially be claimed for something else, which could
         # be a conflict.)
+        # Note, the original implementation used .exclude() to filter,
+        # but we'll filter at runtime so that prefetch_related in the
+        # websocket works properly.
         return set(
             IPAddress(ip.ip)
-            for ip in self.staticipaddress_set.exclude(ip__isnull=True)
-            if ip.ip != '')
+            for ip in self.staticipaddress_set.all()
+            if ip.ip)
 
     def _get_ipranges_in_use_on_related_clusters(self):
         """Returns a `set` of IP ranges that may be used on this `Subnet`,
         based on querying all of its attached cluster interfaces."""
         # We could filter by 'management' here, but we might miss some in-use
         # IP addresses for enabled (but not actively managing) clusters.
-        cluster_interfaces = self.nodegroupinterface_set.filter(
-            nodegroup__status=NODEGROUP_STATUS.ENABLED)
         ranges = set()
-        for ngi in cluster_interfaces:
+        for ngi in self.nodegroupinterface_set.all():
+            # Since there won't be very many nodegroups, we'll use a
+            # runtime filter here rather than a database filter.
+            # This way, the websocket can prefetch_related.
+            if ngi.nodegroup.status != NODEGROUP_STATUS.ENABLED:
+                continue
             ngi_ranges = ngi.get_ipranges_in_use_on_ipnetwork(
                 self.get_ipnetwork(), include_static_range=False)
             ranges |= ngi_ranges
@@ -336,3 +342,25 @@ class Subnet(CleanSave, TimestampedModel):
         `Subnet`."""
         ranges = self.get_ipranges_in_use()
         return ranges.get_unused_ranges(self.get_ipnetwork())
+
+    def get_iprange_usage(self):
+        """Returns both the reserved and unreserved IP ranges in this Subnet.
+        (This prevents a potential race condition that could occur if an IP
+        address is allocated or deallocated between calls.)
+
+        :returns: A tuple indicating the (reserved, unreserved) ranges."""
+        reserved_ranges = self.get_ipranges_in_use()
+        return reserved_ranges.get_full_range(self.get_ipnetwork())
+
+    def render_json_for_related_ips(
+            self, with_username=True, with_node_summary=True):
+        """Render a representation of this subnet's related IP addresses,
+        suitable for converting to JSON. Optionally exclude user and node
+        information."""
+        return sorted([
+            ip.render_json(
+                with_username=with_username,
+                with_node_summary=with_node_summary)
+            for ip in self.staticipaddress_set.all()
+            if ip.ip
+            ], key=lambda json: IPAddress(json['ip']))

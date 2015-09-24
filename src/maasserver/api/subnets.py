@@ -13,16 +13,19 @@ str = None
 
 __metaclass__ = type
 
+from formencode.validators import StringBool
 from maasserver.api.support import (
     admin_method,
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_optional_param
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_subnet import SubnetForm
 from maasserver.models import Subnet
 from piston.utils import rc
+from provisioningserver.utils.network import IPRangeStatistics
 
 
 DISPLAYED_SUBNET_FIELDS = (
@@ -143,20 +146,68 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def reserved_ip_ranges(self, request, subnet_id):
-        """Lists IP ranges currently reserved in the subnet"""
+        """Lists IP ranges currently reserved in the subnet.
+
+        Returns 404 if the subnet is not found.
+        """
         subnet = Subnet.objects.get_subnet_or_404(
             subnet_id, request.user, NODE_PERMISSION.VIEW)
-        return [
-            iprange.render_json()
-            for iprange in subnet.get_ipranges_in_use().ranges
-            ]
+        return subnet.get_ipranges_in_use().render_json()
 
     @operation(idempotent=True)
     def unreserved_ip_ranges(self, request, subnet_id):
-        """Lists IP ranges currently unreserved in the subnet"""
+        """Lists IP ranges currently unreserved in the subnet.
+
+        Returns 404 if the subnet is not found.
+        """
         subnet = Subnet.objects.get_subnet_or_404(
             subnet_id, request.user, NODE_PERMISSION.VIEW)
-        return [
-            iprange.render_json(include_purpose=False)
-            for iprange in subnet.get_ipranges_not_in_use().ranges
-            ]
+        return subnet.get_ipranges_not_in_use().render_json(
+            include_purpose=False)
+
+    @operation(idempotent=True)
+    def statistics(self, request, subnet_id):
+        """
+        Returns statistics for the specified subnet, including:
+
+        num_available - the number of available IP addresses
+        largest_available - the largest number of contiguous free IP addresses
+        num_unavailable - the number of unavailable IP addresses
+        total_addresses - the sum of the available plus unavailable addresses
+        usage - the (floating point) usage percentage of this subnet
+        usage_string - the (formatted unicode) usage percentage of this subnet
+        ranges - the specific IP ranges present in ths subnet (if specified)
+
+        Optional arguments:
+        include_ranges: if True, includes detailed information
+        about the usage of this range.
+
+        Returns 404 if the subnet is not found.
+        """
+        subnet = Subnet.objects.get_subnet_or_404(
+            subnet_id, request.user, NODE_PERMISSION.VIEW)
+        include_ranges = get_optional_param(
+            request.GET, 'include_ranges', default=False, validator=StringBool)
+        full_iprange = subnet.get_iprange_usage()
+        statistics = IPRangeStatistics(full_iprange)
+        return statistics.render_json(include_ranges=include_ranges)
+
+    @operation(idempotent=True)
+    def ip_addresses(self, request, subnet_id):
+        """
+        Returns a summary of IP addresses assigned to this subnet.
+
+        Optional arguments:
+        with_username: (default=True) if False, suppresses the display
+        of usernames associated with each address.
+        with_node_summary: (default=True) if False, suppresses the display
+        of any node associated with each address.
+        """
+        subnet = Subnet.objects.get_subnet_or_404(
+            subnet_id, request.user, NODE_PERMISSION.VIEW)
+        with_username = get_optional_param(
+            request.GET, 'with_username', default=True, validator=StringBool)
+        with_node_summary = get_optional_param(
+            request.GET, 'with_node_summary', True, validator=StringBool)
+        return subnet.render_json_for_related_ips(
+            with_username=with_username, with_node_summary=with_node_summary)

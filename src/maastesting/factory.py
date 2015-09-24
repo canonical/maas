@@ -281,6 +281,11 @@ class Factory:
         last = ngi.get_dynamic_ip_range().last
         return unicode(IPAddress(random.randrange(first, last)))
 
+    def pick_ip_in_static_range(self, ngi):
+        first = ngi.get_static_ip_range().first
+        last = ngi.get_static_ip_range().last
+        return unicode(IPAddress(random.randrange(first, last)))
+
     def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:
             but_not = []

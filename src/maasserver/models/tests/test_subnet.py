@@ -43,6 +43,7 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    HasLength,
     MatchesStructure,
     Not,
 )
@@ -296,3 +297,89 @@ class SubnetIPRangeTest(MAASServerTestCase):
         s = subnet.get_ipranges_in_use()
         self.assertThat(s, Contains(static_range_low))
         self.assertThat(s, Not(Contains(static_range_high)))
+
+    def test__get_ipranges_not_in_use_includes_free_ips(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        net = subnet.get_ipnetwork()
+        cluster_ip = inet_ntop(net.first + 2)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 49)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        factory.make_StaticIPAddress(
+            ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        s = subnet.get_ipranges_not_in_use()
+        self.assertThat(s, Not(Contains(static_range_low)))
+        self.assertThat(s, Contains(static_range_high))
+
+    def test__get_iprange_usage_includes_used_and_unused_ips(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        net = subnet.get_ipnetwork()
+        cluster_ip = inet_ntop(net.first + 2)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 49)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        factory.make_StaticIPAddress(
+            ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        s = subnet.get_iprange_usage()
+        self.assertThat(s, Contains(static_range_low))
+        self.assertThat(s, Contains(static_range_high))
+
+
+class TestRenderJSONForRelatedIPs(MAASServerTestCase):
+
+    def test__sorts_by_ip_address(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        factory.make_StaticIPAddress(
+            ip='10.0.0.2', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            ip='10.0.0.154', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
+        json = subnet.render_json_for_related_ips()
+        self.expectThat(json[0]["ip"], Equals('10.0.0.1'))
+        self.expectThat(json[1]["ip"], Equals('10.0.0.2'))
+        self.expectThat(json[2]["ip"], Equals('10.0.0.154'))
+
+    def test__returns_expected_json(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        ip = factory.make_StaticIPAddress(
+            ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
+        json = subnet.render_json_for_related_ips(
+            with_username=True, with_node_summary=True)
+        self.assertThat(type(json), Equals(list))
+        self.assertThat(json[0], Equals(ip.render_json(
+            with_username=True, with_node_summary=True)))
+
+    def test__excludes_blank_addresses(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        factory.make_StaticIPAddress(
+            ip=None, alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            subnet=subnet)
+        json = subnet.render_json_for_related_ips()
+        self.expectThat(json[0]["ip"], Equals('10.0.0.1'))
+        self.expectThat(json, HasLength(1))

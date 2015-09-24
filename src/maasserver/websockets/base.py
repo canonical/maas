@@ -24,6 +24,7 @@ from operator import attrgetter
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
+from djorm_pgarray.fields import ArrayField
 from maasserver import concurrency
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
@@ -185,7 +186,7 @@ class Handler:
                 continue
 
             # Get the value from the field and set it in data. The value
-            # will pass throught the dehydrate method if present.
+            # will pass through the dehydrate method if present.
             field_obj = getattr(obj, field_name)
             dehydrate_method = getattr(
                 self, "dehydrate_%s" % field_name, None)
@@ -195,6 +196,8 @@ class Handler:
                 value = field._get_val_from_obj(obj)
                 if is_protected_type(value):
                     data[field_name] = value
+                elif isinstance(field, ArrayField):
+                    data[field_name] = field.to_python(value)
                 else:
                     data[field_name] = field.value_to_string(obj)
 
