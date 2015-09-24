@@ -3,6 +3,49 @@ Changelog
 =========
 
 
+1.9.0 (alpha2)
+==============
+
+Important announcements
+-----------------------
+
+** Installation by default configures /etc/network/interfaces **
+ Starting from MAAS 1.9.0 (alpha2), all deployments will result with
+ static network configurations. Users will be able to interact with the
+ API to further configure interfaces.
+
+Major New Features
+------------------
+
+** Advanced Node Network Configuration **
+** Spaces, Fabrics and FANS **
+
+Minor notable changes
+---------------------
+
+** Commissioning Actions **
+ MAAS now supports commissioning actions. These allow the user to specify
+ how commissioning should behave in certain escenarios. The commissioning
+ actions available are:
+
+  * Enable SSH during commissioning
+  * Keep machine ON after commissioning
+  * Keep network configuration after commissioning
+  * Keep storage configuration after commissioning
+
+** CentOS images can be imported automatically **
+ CentOS Image (CentOS 6 and 7) can now be imported automatically from the
+ MAAS Images page. These images are currently part of the daily streams.
+
+ In order to test this images, you need to use the daily image stream.
+ This can be changed in the `Settings` page under `Boot Images` to
+ `http://maas.ubuntu.com/images/ephemeral-v2/daily/`. Once changed, images
+ can be imported from the MAAS Images page.
+
+Known Problems & Workarounds
+----------------------------
+
+
 1.9.0 (alpha1)
 ==============
 
