@@ -42,7 +42,10 @@ from mock import (
     sentinel,
 )
 from provisioningserver import power
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power import (
+    DEFAULT_WAITING_POLICY,
+    PowerDriverRegistry,
+)
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.power import poweraction
 from provisioningserver.rpc import (
@@ -334,10 +337,10 @@ class TestPowerQueryExceptions(MAASTestCase):
                 else "perform_power_query"),
             "waits": (  # Pauses between retries.
                 [] if power_type in PowerDriverRegistry
-                else power.default_waiting_policy),
+                else DEFAULT_WAITING_POLICY),
             "calls": (  # No. of calls to the driver.
                 1 if power_type in PowerDriverRegistry
-                else len(power.default_waiting_policy)),
+                else len(DEFAULT_WAITING_POLICY)),
         })
         for power_type in power.QUERY_POWER_TYPES
     )

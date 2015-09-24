@@ -20,6 +20,7 @@ from datetime import timedelta
 
 from provisioningserver import power
 from provisioningserver.drivers.power import (
+    DEFAULT_WAITING_POLICY,
     get_error_message,
     PowerDriverRegistry,
 )
@@ -268,7 +269,7 @@ def change_power_state(
     yield power_change_starting(system_id, hostname, power_change)
     # Use increasing waiting times to work around race conditions
     # that could arise when power-cycling the node.
-    for waiting_time in power.default_waiting_policy:
+    for waiting_time in DEFAULT_WAITING_POLICY:
         if power.is_driver_available(power_type):
             # There's a Python-based driver for this power type.
             yield perform_power_driver_change(
@@ -302,5 +303,5 @@ def change_power_state(
 
     # Failure: the power state of the node hasn't changed: mark it as
     # broken.
-    message = "Timeout after %s tries" % len(power.default_waiting_policy)
+    message = "Timeout after %s tries" % len(DEFAULT_WAITING_POLICY)
     yield power_change_failure(system_id, hostname, power_change, message)

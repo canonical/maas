@@ -21,7 +21,10 @@ from functools import partial
 import sys
 
 from provisioningserver import power
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power import (
+    DEFAULT_WAITING_POLICY,
+    PowerDriverRegistry,
+)
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
@@ -135,7 +138,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         # Old-style power drivers need to be retried. Use increasing waiting
         # times to work around race conditions that could arise when power
         # querying the node.
-        for waiting_time in power.default_waiting_policy:
+        for waiting_time in DEFAULT_WAITING_POLICY:
             # Perform power query.
             try:
                 power_state = yield deferToThread(

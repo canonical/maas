@@ -39,6 +39,7 @@ from mock import (
 )
 from provisioningserver import power
 from provisioningserver.drivers.power import (
+    DEFAULT_WAITING_POLICY,
     get_error_message as get_driver_error_message,
     PowerDriverRegistry,
     PowerError,
@@ -347,8 +348,7 @@ class TestChangePowerState(MAASTestCase):
             system_id, hostname, power_type, power_change, context)
 
         # The node has been marked broken.
-        msg = "Timeout after %s tries" % len(
-            power.default_waiting_policy)
+        msg = "Timeout after %s tries" % len(DEFAULT_WAITING_POLICY)
         self.assertThat(
             markNodeBroken,
             MockCalledOnceWith(

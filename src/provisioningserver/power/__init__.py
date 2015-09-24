@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "default_waiting_policy",
     "is_driver_available",
     "power_action_registry",
     "power_state_update",
@@ -45,11 +44,6 @@ QUERY_POWER_TYPES = [
 
 # We could use a Registry here, but it seems kind of like overkill.
 power_action_registry = {}
-
-
-# A policy used when waiting between retries of power changes. Deprecated:
-# this relates to template-based power control only.
-default_waiting_policy = (1, 2, 2, 4, 6, 8, 12)
 
 
 def is_driver_available(power_type):

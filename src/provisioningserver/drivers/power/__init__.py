@@ -47,6 +47,9 @@ from twisted.internet.defer import (
 )
 from twisted.internet.threads import deferToThread
 
+# A policy used when waiting between retries of power changes.
+DEFAULT_WAITING_POLICY = (1, 2, 2, 4, 6, 8, 12)
+
 
 JSON_POWER_DRIVERS_SCHEMA = {
     'title': "Power drivers parameters set",
@@ -186,8 +189,7 @@ def get_error_message(err):
 class PowerDriver(PowerDriverBase):
     """Default power driver logic."""
 
-    # Checks 4 times, in a minute
-    wait_time = (5, 10, 20, 25)
+    wait_time = DEFAULT_WAITING_POLICY
 
     def __init__(self, clock=reactor):
         self.clock = reactor
