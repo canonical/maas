@@ -179,6 +179,19 @@ class TestPartition(MAASServerTestCase):
         self.assertEquals(
             partition.partition_table.get_node(), partition.get_node())
 
+    def test_get_used_size_returns_used_partition_size(self):
+        partition = factory.make_Partition()
+        if partition.filesystem is not None:
+            self.assertEquals(partition.get_used_size(), partition.size)
+        else:
+            self.assertEquals(partition.get_used_size(), 0)
+
+    def test_get_available_size_returns_available_size(self):
+        partition = factory.make_Partition()
+        self.assertEquals(
+            partition.get_available_size(),
+            partition.size - partition.get_used_size())
+
     def test_get_block_size_returns_partition_table_block_size(self):
         partition = factory.make_Partition()
         self.assertEquals(

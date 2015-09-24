@@ -227,6 +227,20 @@ class BlockDevice(CleanSave, TimestampedModel):
         if tag in self.tags:
             self.tags.remove(tag)
 
+    def get_used_size(self):
+        """Return the used size on the block device."""
+        filesystem = self.filesystem
+        if filesystem is not None:
+            return self.size
+        partitiontable = self.get_partitiontable()
+        if partitiontable is not None:
+            return partitiontable.get_used_size()
+        return 0
+
+    def get_available_size(self):
+        """Return the available size on the block device."""
+        return self.size - self.get_used_size()
+
     def __unicode__(self):
         return '{size} attached to {node}'.format(
             size=human_readable_bytes(self.size),

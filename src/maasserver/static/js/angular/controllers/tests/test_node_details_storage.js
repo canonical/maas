@@ -44,7 +44,10 @@ describe("NodeStorageController", function() {
         var controller = makeController();
         expect($scope.editing).toBe(false);
         expect($scope.column).toBe('model');
-        expect($scope.disks).toEqual([]);
+        expect($scope.has_disks).toBe(false);
+        expect($scope.filesystems).toEqual([]);
+        expect($scope.available).toEqual([]);
+        expect($scope.used).toEqual([]);
     });
 
     it("starts watching disks once nodeLoaded called", function() {
@@ -65,32 +68,170 @@ describe("NodeStorageController", function() {
     it("disks updated once nodeLoaded called", function() {
         var disks = [
             {
+                // Blank disk
                 id: 0,
+                name: makeName("name"),
                 model: makeName("model"),
-                tags: [makeName("tag")]
+                serial: makeName("serial"),
+                tags: [],
+                type: makeName("type"),
+                size: Math.pow(1024, 4),
+                size_gb: "1024 GB",
+                available_size: Math.pow(1024, 4),
+                available_size_human: "1024 GB",
+                partition_table_type: makeName("partition_table_type"),
+                filesystem: null,
+                partitions: null
             },
             {
+                // Disk with filesystem, no mount point
                 id: 1,
+                name: makeName("name"),
                 model: makeName("model"),
-                tags: [makeName("tag")]
+                serial: makeName("serial"),
+                tags: [],
+                type: makeName("type"),
+                size: Math.pow(1024, 4),
+                size_gb: "1024 GB",
+                available_size: 0,
+                available_size_human: "0 GB",
+                partition_table_type: makeName("partition_table_type"),
+                filesystem: {
+                    is_format_fstype: true,
+                    fstype: makeName("fstype"),
+                    mount_point: null
+                    },
+                partitions: null
+            },
+            {
+                // Disk with mounted filesystem
+                id: 2,
+                name: makeName("name"),
+                model: makeName("model"),
+                serial: makeName("serial"),
+                tags: [],
+                type: makeName("type"),
+                size: Math.pow(1024, 4),
+                size_gb: "1024 GB",
+                available_size: 0,
+                available_size_human: "0 GB",
+                partition_table_type: makeName("partition_table_type"),
+                filesystem: {
+                    is_format_fstype: true,
+                    fstype: makeName("fstype"),
+                    mount_point: makeName("mount_point")
+                    },
+                partitions: null
+            },
+            {
+                // Partitioned disk, one partition free one used
+                id: 3,
+                name: makeName("name"),
+                model: makeName("model"),
+                serial: makeName("serial"),
+                tags: [],
+                type: makeName("type"),
+                size: Math.pow(1024, 4),
+                size_gb: "1024 GB",
+                available_size: 0,
+                available_size_human: "0 GB",
+                partition_table_type: makeName("partition_table_type"),
+                filesystem: null,
+                partitions: [
+                    {
+                        name: makeName("partition_name"),
+                        size_gb: "512 GB",
+                        type: "partition",
+                        filesystem: null
+                    },
+                    {
+                        name: makeName("partition_name"),
+                        size_gb: "512 GB",
+                        type: "partition",
+                        filesystem: {
+                            is_format_fstype: true,
+                            fstype: makeName("fstype"),
+                            mount_point: makeName("mount_point")
+                        }
+                    }
+                ]
             }
         ];
         node.disks = disks;
 
-        var withFixesTags = angular.copy(disks);
-        angular.forEach(withFixesTags, function(disk) {
-            var tags = [];
-            angular.forEach(disk.tags, function(tag) {
-                tags.push({ text: tag });
-            });
-            disk.tags = tags;
-        });
-
+        var filesystems = [
+            {
+                name: disks[2].name,
+                size_gb: disks[2].size_gb,
+                fstype: disks[2].filesystem.fstype,
+                mount_point: disks[2].filesystem.mount_point
+            },
+            {
+                name: disks[3].partitions[1].name,
+                size_gb: disks[3].partitions[1].size_gb,
+                fstype: disks[3].partitions[1].filesystem.fstype,
+                mount_point: disks[3].partitions[1].filesystem.mount_point
+            }
+        ];
+        var available = [
+            {
+                name: disks[0].name,
+                available_size_human: disks[0].available_size_human,
+                type: disks[0].type,
+                model: disks[0].model,
+                serial: disks[0].serial,
+                tags: disks[0].tags
+            },
+            {
+                name: disks[1].name,
+                available_size_human: disks[1].available_size_human,
+                type: disks[1].type,
+                model: disks[1].model,
+                serial: disks[1].serial,
+                tags: disks[1].tags
+            },
+            {
+                name: disks[3].partitions[0].name,
+                available_size_human: disks[3].available_size_human,
+                type: disks[3].partitions[0].type,
+                model: "",
+                serial: "",
+                tags: []
+            }
+        ];
+        var used = [
+            {
+                name: disks[2].name,
+                type: disks[2].type,
+                model: disks[2].model,
+                serial: disks[2].serial,
+                tags: disks[2].tags,
+                used_for: disks[2].filesystem.fstype
+            },
+            {
+                name: disks[3].name,
+                type: disks[3].type,
+                model: disks[3].model,
+                serial: disks[3].serial,
+                tags: disks[3].tags,
+                used_for: disks[3].partition_table_type
+            },
+            {
+                name: disks[3].partitions[1].name,
+                type: "partition",
+                model: "",
+                serial: "",
+                tags: [],
+                used_for: disks[3].partitions[1].filesystem.fstype
+            }
+        ];
         var controller = makeController();
         $scope.nodeLoaded();
         $rootScope.$digest();
-        expect($scope.disks).toEqual(withFixesTags);
-        expect($scope.disks).not.toBe(disks);
+        expect($scope.has_disks).toEqual(true);
+        expect($scope.filesystems).toEqual(filesystems);
+        expect($scope.available).toEqual(available);
+        expect($scope.used).toEqual(used);
     });
 
     describe("edit", function() {
@@ -123,23 +264,32 @@ describe("NodeStorageController", function() {
 
         it("calls updateDisks", function() {
             var controller = makeController();
-            $scope.editing = true;
 
-            // Updates physicalDisks so we can check that updateStorage
+            // Updates disks so we can check that updateStorage
             // is called.
             node.disks = [
                 {
                     id: 0,
                     model: makeName("model"),
-                    tags: []
+                    tags: [],
+                    available_size: 0,
+                    filesystem: null,
+                    partitions: null
                 }
             ];
 
+            $scope.nodeLoaded();
+            $rootScope.$digest();
+            var filesystems = $scope.filesystems;
+            var available = $scope.available;
+            var used = $scope.used;
+            $scope.editing = true;
             $scope.cancel();
 
-            // Since updateStorage is private in the controller, check
-            // that the disks are updated.
-            expect($scope.disks).toEqual(node.disks);
+            // Verify cancel calls updateStorage but doesn't change any data
+            expect($scope.filesystems).toEqual(filesystems);
+            expect($scope.available).toEqual(available);
+            expect($scope.used).toEqual(used);
         });
     });
 

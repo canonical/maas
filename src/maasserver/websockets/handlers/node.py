@@ -21,6 +21,7 @@ from operator import itemgetter
 
 from lxml import etree
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
@@ -37,7 +38,10 @@ from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils.converters import XMLToYAML
+from maasserver.utils.converters import (
+    human_readable_bytes,
+    XMLToYAML,
+)
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -283,14 +287,20 @@ class NodeHandler(TimestampedModelHandler):
             partition_table_type = partition_table.table_type
         else:
             partition_table_type = ""
+        used_size = blockdevice.get_used_size()
+        available_size = blockdevice.size - used_size
         return {
             "id": blockdevice.id,
-            "name": blockdevice.name,
+            "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
             "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
             "block_size": blockdevice.block_size,
             "model": model,
             "serial": serial,
@@ -305,18 +315,25 @@ class NodeHandler(TimestampedModelHandler):
         """Return `PartitionTable` formatted for JSON encoding."""
         if partition_table is None:
             return None
-        return [
-            {
+        partitions = []
+        for partition in partition_table.partitions.all():
+            used_size = partition.get_used_size()
+            available_size = partition.size = used_size
+            partitions.append({
                 "filesystem": self.dehydrate_filesystem(
                     partition.filesystem),
+                "name": partition.get_name(),
                 "path": partition.path,
                 "type": partition.type,
                 "id": partition.id,
                 "size": partition.size,
                 "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
-            }
-            for partition in partition_table.partitions.all()
-        ]
+                "used_size": used_size,
+                "used_size_human": human_readable_bytes(used_size),
+                "available_size": available_size,
+                "available_size_human": human_readable_bytes(available_size),
+            })
+        return partitions
 
     def dehydrate_filesystem(self, filesystem):
         """Return `Filesystem` formatted for JSON encoding."""
@@ -326,6 +343,8 @@ class NodeHandler(TimestampedModelHandler):
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
             "fstype": filesystem.fstype,
+            "is_format_fstype": (
+                filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
             }
 
     def dehydrate_interface(self, interface, obj):

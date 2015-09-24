@@ -77,8 +77,8 @@ class PartitionTable(CleanSave, TimestampedModel):
         """Block size of partition table."""
         return self.block_device.block_size
 
-    def get_available_size(self, ignore_partitions=[]):
-        """Return the remaining size available for partitions."""
+    def get_used_size(self, ignore_partitions=[]):
+        """Return the used size of partitions on the table."""
         ignore_ids = [
             partition.id
             for partition in ignore_partitions
@@ -88,9 +88,15 @@ class PartitionTable(CleanSave, TimestampedModel):
             id__in=ignore_ids).aggregate(Sum('size'))['size__sum']
         if used_size is None:
             used_size = 0
-        used_size = round_size_to_nearest_block(
+        # The extra space taken by the partition table header is used space.
+        used_size += self.block_device.size - self.get_size()
+        return round_size_to_nearest_block(
             used_size, self.get_block_size())
-        return self.get_size() - used_size
+
+    def get_available_size(self, ignore_partitions=[]):
+        """Return the remaining size available for partitions."""
+        used_size = self.get_used_size(ignore_partitions=ignore_partitions)
+        return self.block_device.size - used_size
 
     def add_partition(self, size=None, bootable=False, uuid=None):
         """Adds a partition to this partition table, returns the added

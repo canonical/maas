@@ -154,6 +154,18 @@ class Partition(CleanSave, TimestampedModel):
         """`Node` this partition belongs to."""
         return self.partition_table.get_node()
 
+    def get_used_size(self):
+        """Return the used size for this partition."""
+        filesystem = self.filesystem
+        if filesystem is not None:
+            return self.size
+        else:
+            return 0
+
+    def get_available_size(self):
+        """Return the available size for this partition."""
+        return self.size - self.get_used_size()
+
     def get_block_size(self):
         """Block size of partition."""
         return self.partition_table.get_block_size()

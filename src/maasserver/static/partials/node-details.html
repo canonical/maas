@@ -337,116 +337,45 @@
     <div class="row">
         <div class="inner-wrapper" ng-controller="NodeStorageController">
             <form>
-                <div class="twelve-col">
-                    <h3 class="title">Storage</h3>
-                </div>
-                <div class="twelve-col">
-                    <h4 data-ng-hide="disks.length">
+                <div class="twelve-col" data-ng-hide="has_disks">
+                    <h4>
                         No storage information. Commissioning this node will gather the storage information.
                     </h4>
-                    <table class="table-listing ng-hide" data-ng-show="disks.length">
-                        <thead>
-                            <tr>
-                                <th class="t20">Name</th>
-                                <th class="t25">Path</th>
-                                <th class="t10">Size (GB)</th>
-                                <th class="table-listing__header" class="t25" colspan="2">
-                                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                                    <a class="table-listing__header-link" href="" data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">
-                                        Model
-                                    </a>
-                                    <span class="divide"></span>
-                                    <a class="table-listing__header-link" href="" data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">
-                                        Serial
-                                    </a>
-                                </th>
-                                <th class="t20">Tags</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="table-listing__row" data-ng-repeat="disk in disks">
-                                <td class="t20">{$ disk.name $}</td>
-                                <td class="t25">{$ disk.path $}</td>
-                                <td class="t10">{$ disk.size_gb $}</td>
-                                <td class="t25" colspan="2" data-ng-show="column === 'model'">{$ disk.model $}</td>
-                                <td class="t25 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ disk.serial $}</td>
-                                <td class="t20">
-                                    <span class="tag-link" data-ng-repeat="tag in disk.tags" data-ng-hide="editing">
-                                        <a href="#/nodes/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
-                                    </span>
-                                    <tags-input ng-model="disk.tags"
-                                        data-ng-show="editing" allowed-tags-pattern="[\w-]+">
-                                    </tags-input>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
-                <div class="controls" data-ng-show="disks.length && !editing">
-                    <a href="" class="link-cta-ubuntu secondary"
-                        data-ng-show="canEdit()"
-                        data-ng-click="edit()">Edit</a>
-                </div>
-                <div class="controls ng-hide" data-ng-show="editing">
-                    <a href="" class="link-cta-ubuntu clear"
-                        data-ng-click="cancel()">Cancel</a>
-                    <button class="cta-ubuntu"
-                        data-ng-click="save()">Save changes</button>
-                </div>
-
-
-                <!--
-
-                // XXX ltrager 2015-09-16 - Mock static storage, to be transformed into
-                //                          something more angular friendly
-
-                // Mounted systems.
-
-                // This is the table created for all mounted block devices in Storage.
-                // The repeating table row to contain all mounted devices.
-
                 <div class="twelve-col padding-bottom">
                     <h4>File System</h4>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--30">Size</div>
+                                <div class="table__header table__column--30">Size (GB)</div>
                                 <div class="table__header table__column--15">File system</div>
                                 <div class="table__header table__column--40">Mountpoint</div>
                             </div>
                         </header>
                         <main class="table__body">
-                            <div class="table__row">
-                                <div class="table__data table__column--15">sda1</div>
-                                <div class="table__data table__column--30">512 M</div>
-                                <div class="table__data table__column--15">fat32</div>
-                                <div class="table__data table__column--30">/uefi</div>
-                                <div class="table__data table__column--10">
-                                    <div class="table__controls">
-                                        <a href="#" class="icon delete">Delete</a>
-                                    </div>
+                            <div class="table__row" data-ng-hide="filesystems">
+                                <div class="table__header table__column--100">
+                                    No filesystems defined.
                                 </div>
                             </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--15">vg0-vgroot</div>
-                                <div class="table__data table__column--30">8.5 G</div>
-                                <div class="table__data table__column--15">fat32</div>
-                                <div class="table__data table__column--30">/uefi/root</div>
-                                <div class="table__data table__column--10">
-                                    <div class="table__controls">
-                                        <a href="#" class="icon delete">Delete</a>
+                            <div data-ng-repeat="filesystem in filesystems">
+                                <div class="table__row">
+                                    <div class="table__data table__column--15">{$ filesystem.name $}</div>
+                                    <div class="table__data table__column--30">{$ filesystem.size_gb $}</div>
+                                    <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
+                                    <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table__column--10">
+                                        <div class="table__controls ng-hide">
+                                            <a href="#" class="icon edit">Edit</a>
+                                            <a href="#" class="icon delete">Delete</a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </main>
                     </section>
                 </div>
-
-                // Available disks & Block devices
-
-                // This is a normal available disks table showing 4 available disks
-                // Bellow the whole table are the controls for creating a RAID, BCache and LVM
                 <div class="twelve-col padding-bottom">
                     <h4>Available disks and partitions</h4>
                     <section class="table margin-bottom">
@@ -457,220 +386,113 @@
                                     <label class="checkbox-label" for="check-all"></label>
                                 </div>
                                 <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--15">Size</div>
+                                <div class="table__header table__column--15">Space Available</div>
                                 <div class="table__header table__column--15">Device Type</div>
                                 <div class="table__header table__column--15">File system</div>
-                                <div class="table__header table__column--15">
-                                    <a>Model</a>
+                                <div class="table__header table__column--15" colspan="2">
+                                    <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a>Serial</a>
+                                    <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
                                 <div class="table__header table__column--15">Tags</div>
                                 <div class="table__header table__column--7"></div>
                             </div>
                         </header>
                         <main class="table__body">
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="sda" />
-                                    <label class="checkbox-label" for="sda"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="sda" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Physical</div>
-                                <div class="table__data table__column--15">
-                                    <a class="table__controls table__controls--secondary">Format</a>
-                                </div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">937368252</div>
-                                <div class="table__data table__column--15">rotary, storage, machine</div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon partition">Partition</a>
-                                    </div>
+                            <div class="table__row" data-ng-hide="available">
+                                <div class="table__header table__column--100">
+                                    No available disks or partitions.
                                 </div>
                             </div>
-                            <div class="table__row active">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="sdb" />
-                                    <label class="checkbox-label" for="sdb"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="sdb" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Physical</div>
-                                <div class="table__data table__column--15">
-                                    fat32 <a class="table__controls table__controls--secondary margin-left--ten">Mount</a>
-                                </div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">937368252</div>
-                                <div class="table__data table__column--15">
-                                    <div class="table__tags">rotary, storage, test, hp, machine<span class="table__controls table__controls--secondary">, <a>edit</a></span></div>
-                                </div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon partition">Partition</a>
-                                        <a class="icon delete">Delete</a>
+                            <div data-ng-repeat="item in available">
+                                <div class="table__row">
+                                    <div class="table__data table__column--3">
+                                        <input class="checkbox" type="checkbox" id="{$ item.name $}" />
+                                        <label class="checkbox-label" for="{$ item.name $}" ></label>
                                     </div>
-                                </div>
-                                <div class="table__dropdown">
-                                    <div class="table__row table__dropdown-row padding-bottom--ten">
-                                        <div class="table__data table__column--3"></div>
-                                        <div class="table__data table__column--15">
-                                            <label for="filesys">Filesystem</label>
-                                            <select name="filesys" id="filesys">
-                                                <option value="fat32">fat32</option>
-                                            </select>
+                                    <div class="table__data table__column--15">
+                                        <!--
+                                        <input type="text" value="{$ item.name $}" class="table__input">
+                                        -->
+                                        {$ item.name $}
+                                    </div>
+                                    <div class="table__data table__column--15">{$ item.available_size_human $}</div>
+                                    <div class="table__data table__column--15">{$ item.type $}</div>
+                                    <div class="table__data table__column--15">
+                                        <a class="table__controls table__controls--secondary ng-hide">Format</a>
+                                    </div>
+                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--15 ng-hide">{$ item.available_size $}</div>
+                                    <div class="table__data table__column--15">
+                                        <div data-ng-repeat="tag in item.tags" data-ng-hide="editing">
+                                            <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </div>
-                                        <div class="table__data table__column--30">
-                                            <label for="mountpoint">Mountpoint</label>
-                                            <input type="text" id="mountpoint">
+                                        <tags-input ng-model="item.tags" data-ng-show="editing" allow-tags-pattern="[\w-]+" />
+                                    </div>
+                                    <div class="table__data table__column--7">
+                                        <div class="table__controls ng-hide">
+                                            <a class="icon partition" ng-if="item.type == 'physical'">Partition</a>
+                                            <a class="icon delete" ng-if="item.type != 'physical'">Delete</a>
                                         </div>
-                                        <div class="table__data table__column--52">
-                                        </div>
-                                    </div>
-                                    <div class="table__row table__dropdown-row">
-                                        <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button">Cancel</a>
-                                              <button class="cta-ubuntu">Mount</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="sdb" />
-                                    <label class="checkbox-label" for="sdb"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="sdb" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Physical</div>
-                                <div class="table__data table__column--15">
-                                    <a class="table__controls table__controls--secondary">Format</a>
-                                </div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">937368252</div>
-                                <div class="table__data table__column--15">rotary, storage, machine</div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon partition">Partition</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="sdc" />
-                                    <label class="checkbox-label" for="sdc"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="sdc" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Physical</div>
-                                <div class="table__data table__column--15">
-                                    <a class="table__controls table__controls--secondary">Format</a>
-                                </div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">937368252</div>
-                                <div class="table__data table__column--15">rotary, storage, machine</div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon partition">Partition</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="sdd" />
-                                    <label class="checkbox-label" for="sdd"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="sdd" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Physical</div>
-                                <div class="table__data table__column--15">
-                                    <a class="table__controls table__controls--secondary">Format</a>
-                                </div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">937368252</div>
-                                <div class="table__data table__column--15">rotary, storage, machine</div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon partition">Partition</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="vg0-lv0" />
-                                    <label class="checkbox-label" for="vg0-lv0"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" value="vg0-lv0" class="table__input">
-                                </div>
-                                <div class="table__data table__column--15">8.5 G</div>
-                                <div class="table__data table__column--15">Logical volume</div>
-                                <div class="table__data table__column--15">
-                                    <a class="table__controls table__controls--secondary">Format</a>
-                                </div>
-                                <div class="table__data table__column--15"></div>
-                                <div class="table__data table__column--15 ng-hide"></div>
-                                <div class="table__data table__column--15">rotary, storage, machine</div>
-                                <div class="table__data table__column--7">
-                                    <div class="table__controls">
-                                        <a class="icon delete">Delete</a>
                                     </div>
                                 </div>
                             </div>
                         </main>
                     </section>
-                    <a class="link-cta-ubuntu secondary margin-right">Create RAID</a>
-                    <a class="link-cta-ubuntu secondary margin-right">Create BCache</a>
-                    <a class="link-cta-ubuntu secondary">Create LVM</a>
+                    <div class="ng-hide">
+                        <a class="link-cta-ubuntu secondary margin-right">Create RAID</a>
+                        <a class="link-cta-ubuntu secondary margin-right">Create BCache</a>
+                        <a class="link-cta-ubuntu secondary">Create LVM</a>
+                    </div>
+                    <div class="controls ng-hide" data-ng-show="available && !editing && false">
+                        <a href="" class="link-cta-ubuntu secondary" data-ng-show="canEdit()" data-ng-click="edit()">Edit Tags</a>
+                    </div>
+                    <div class="controls ng-hide" data-ng-show="available && editing">
+                        <a href="" class="link-cta-ubuntu clear" data-ng-click="cancel()">Cancel</a>
+                        <button class="cta-ubuntu" data-ng-click="save()">Save changes</button>
+                    </div>
                 </div>
-
-                // Used disks
-
-                // Once a disk has been used this table will contain that information
-                // and will be styled to look disabled
                 <div class="twelve-col padding-bottom">
-                    <h4>Used disks</h4>
+                    <h4>Used disks and partitions</h4>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
                                 <div class="table__header table__column--30">Name</div>
                                 <div class="table__header table__column--30">Device type</div>
-                                <div class="table__header table__column--15">
-                                    <a>Model</a>
+                                <div class="table__header table__column--15" colspan="2">
+                                    <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a>Serial</a>
+                                    <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__data t22">Used for</div>
+                                <div class="table__header table__column--22">Used for</div>
                             </div>
                         </header>
                         <main class="table-body">
-                            <div class="table__row details__used">
-                                <div class="table__data table__column--3"></div>
-                                <div class="table__data table__column--30">sda1</div>
-                                <div class="table__data table__column--30">Partition</div>
-                                <div class="table__data table__column--15">QEMU HARDDISK</div>
-                                <div class="table__data table__column--15 ng-hide">1234567890</div>
-                                <div class="table__data table__column--22">uefi</div>
+                            <div class="table__row" data-ng-hide="used">
+                                <div class="table__header table__column--100">
+                                    No disk or partition has been fully utilized.
+                                </div>
+                            </div>
+                            <div data-ng-repeat="item in used">
+                                <div class="table__row details__used">
+                                    <div class="table__data table__column--3"></div>
+                                    <div class="table__data table__column--30">{$ item.name $}</div>
+                                    <div class="table__data table__column--30">{$ item.type $}</div>
+                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--22">{$ item.used_for $}</div>
+                                </div>
                             </div>
                         </main>
                     </section>
                 </div>
 
-                <!-- -->
-
                 <!--
+
+                // XXX ltrager 2015-09-16 - Mock static storage, to be transformed into
+                //                          something more angular friendly
 
                 // Available disks & Block devices (CREATE PARTITION ROW)
 
