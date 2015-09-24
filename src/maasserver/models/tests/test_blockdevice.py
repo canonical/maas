@@ -314,12 +314,13 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertIsInstance(
             block_device.actual_instance, BlockDevice)
 
-    def test_filesystem_calls_get_active_filesystem_and_returns_result(self):
-        mock_get_active_filesystem = self.patch_autospec(
-            blockdevice_module, "get_active_filesystem")
-        mock_get_active_filesystem.return_value = sentinel.filesystem
+    def test_get_effective_filesystem(self):
+        mock_get_effective_filesystem = self.patch_autospec(
+            blockdevice_module, "get_effective_filesystem")
+        mock_get_effective_filesystem.return_value = sentinel.filesystem
         block_device = factory.make_BlockDevice()
-        self.assertEquals(sentinel.filesystem, block_device.filesystem)
+        self.assertEquals(
+            sentinel.filesystem, block_device.get_effective_filesystem())
 
     def test_display_size(self):
         sizes = (

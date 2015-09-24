@@ -1449,16 +1449,18 @@ class TestVolumeGroup(MAASServerTestCase):
         update_partitions = [new_partition] + partitions[1:]
         volume_group.update_block_devices_and_partitions(
             updated_block_devices, update_partitions)
-        self.assertIsNone(deleted_block_device.filesystem)
-        self.assertIsNone(deleted_partition.filesystem)
+        self.assertIsNone(deleted_block_device.get_effective_filesystem())
+        self.assertIsNone(deleted_partition.get_effective_filesystem())
         self.assertEquals(
             volume_group.id,
-            new_block_device.filesystem.filesystem_group.id)
+            new_block_device.get_effective_filesystem().filesystem_group.id)
         self.assertEquals(
-            volume_group.id, new_partition.filesystem.filesystem_group.id)
+            volume_group.id,
+            new_partition.get_effective_filesystem().filesystem_group.id)
         for device in block_devices[1:] + partitions[1:]:
             self.assertEquals(
-                volume_group.id, device.filesystem.filesystem_group.id)
+                volume_group.id,
+                device.get_effective_filesystem().filesystem_group.id)
 
     def test_create_logical_volume(self):
         volume_group = factory.make_VolumeGroup()
@@ -2072,9 +2074,11 @@ class TestBcache(MAASServerTestCase):
         # Verify the filesystems were properly created on the target devices
         self.assertEqual(backing_size, bcache.get_size())
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            backing_device.get_effective_filesystem().fstype)
         self.assertEqual(cache_set, bcache.cache_set)
-        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+        self.assertEqual(
+            bcache, backing_device.get_effective_filesystem().filesystem_group)
 
     def test_create_bcache_with_virtual_block_devices(self):
         """Checks creation of a Bcache with virtual block devices for caching
@@ -2105,11 +2109,14 @@ class TestBcache(MAASServerTestCase):
         # Verify the filesystems were properly created on the target devices
         self.assertEqual(10 * backing_size, bcache.get_size())
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_device.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_device.get_effective_filesystem().fstype)
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            backing_device.get_effective_filesystem().fstype)
         self.assertEqual(cache_set, bcache.cache_set)
-        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+        self.assertEqual(
+            bcache, backing_device.get_effective_filesystem().filesystem_group)
 
     def test_create_bcache_with_partitions(self):
         """Checks creation of a Bcache with partitions for caching and backing
@@ -2137,12 +2144,15 @@ class TestBcache(MAASServerTestCase):
         # Verify the filesystems were properly created on the target devices
         self.assertEqual(partition_size, bcache.get_size())
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_partition.get_effective_filesystem().fstype)
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_BACKING,
-            backing_partition.filesystem.fstype)
+            backing_partition.get_effective_filesystem().fstype)
         self.assertEqual(cache_set, bcache.cache_set)
-        self.assertEqual(bcache, backing_partition.filesystem.filesystem_group)
+        self.assertEqual(
+            bcache,
+            backing_partition.get_effective_filesystem().filesystem_group)
 
     def test_create_bcache_with_block_devices_and_partition(self):
         """Checks creation of a Bcache with a partition for caching and a
@@ -2167,11 +2177,14 @@ class TestBcache(MAASServerTestCase):
         # Verify the filesystems were properly created on the target devices
         self.assertEqual(backing_size, bcache.get_size())
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_partition.get_effective_filesystem().fstype)
         self.assertEqual(
-            FILESYSTEM_TYPE.BCACHE_BACKING, backing_device.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            backing_device.get_effective_filesystem().fstype)
         self.assertEqual(cache_set, bcache.cache_set)
-        self.assertEqual(bcache, backing_device.filesystem.filesystem_group)
+        self.assertEqual(
+            bcache, backing_device.get_effective_filesystem().filesystem_group)
 
     def test_delete_bcache(self):
         """Ensures deletion of a bcache also deletes bcache filesystems from
@@ -2188,6 +2201,6 @@ class TestBcache(MAASServerTestCase):
         bcache.delete()
 
         # Verify both filesystems were deleted.
-        self.assertIsNone(backing_device.filesystem)
+        self.assertIsNone(backing_device.get_effective_filesystem())
         # Verify the cache_set is not deleted.
         self.assertIsNotNone(reload_object(cache_set))

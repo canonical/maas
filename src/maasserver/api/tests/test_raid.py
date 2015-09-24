@@ -538,7 +538,7 @@ class TestRaidsAPI(APITestCase):
         })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
-        self.assertIsNone(bd.filesystem)
+        self.assertIsNone(bd.get_effective_filesystem())
 
     def test_create_raid_with_invalid_block_device_fails(self):
         self.become_admin()
@@ -602,7 +602,7 @@ class TestRaidsAPI(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
         for bd in bds:
-            self.assertIsNone(bd.filesystem)
+            self.assertIsNone(bd.get_effective_filesystem())
 
     def test_create_raid_with_block_device_from_other_node_fails(
             self):
@@ -628,7 +628,7 @@ class TestRaidsAPI(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code,
                          response.content)
         for bd in bds:
-            self.assertIsNone(bd.filesystem)
+            self.assertIsNone(bd.get_effective_filesystem())
 
     def test_create_raid_without_any_element_fails(
             self):
@@ -803,7 +803,8 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'physical' and
                 bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
-        self.assertEqual(FILESYSTEM_TYPE.RAID, device.filesystem.fstype)
+        self.assertEqual(
+            FILESYSTEM_TYPE.RAID, device.get_effective_filesystem().fstype)
 
     def test_remove_valid_blockdevice(self):
         self.become_admin()
@@ -826,7 +827,7 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'physical' and
                 bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
-        self.assertIsNone(device.filesystem)
+        self.assertIsNone(device.get_effective_filesystem())
 
     def test_add_valid_partition(self):
         self.become_admin()
@@ -872,7 +873,7 @@ class TestRaidAPI(APITestCase):
                 if bd['type'] == 'partition' and
                 bd['filesystem']['fstype'] == FILESYSTEM_TYPE.RAID
             ])
-        self.assertIsNone(partition.filesystem)
+        self.assertIsNone(partition.get_effective_filesystem())
 
     def test_add_valid_spare_device(self):
         self.become_admin()
@@ -970,7 +971,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(uri, {'add_block_devices': [device.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertIsNone(device.filesystem)
+        self.assertIsNone(device.get_effective_filesystem())
 
     def test_remove_invalid_blockdevice_fails(self):
         self.become_admin()
@@ -1019,7 +1020,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(uri, {'add_spare_devices': [device.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertIsNone(device.filesystem)
+        self.assertIsNone(device.get_effective_filesystem())
 
     def test_remove_invalid_spare_device_fails(self):
         self.become_admin()
@@ -1045,7 +1046,7 @@ class TestRaidAPI(APITestCase):
             uri, {'add_spare_partitions': [partition.id]})
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertIsNone(partition.filesystem)
+        self.assertIsNone(partition.get_effective_filesystem())
 
     def test_remove_invalid_spare_partition_fails(self):
         self.become_admin()

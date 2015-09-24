@@ -170,7 +170,7 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         cache_set = form.save()
         self.assertEquals(new_cache_device, cache_set.get_device())
-        self.assertIsNone(partition.filesystem)
+        self.assertIsNone(partition.get_effective_filesystem())
 
     def test_save_updates_the_cache_set_with_partition(self):
         node = factory.make_Node()
@@ -183,4 +183,4 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         cache_set = form.save()
         self.assertEquals(new_partition, cache_set.get_device())
-        self.assertIsNone(cache_device.filesystem)
+        self.assertIsNone(cache_device.get_effective_filesystem())

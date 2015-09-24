@@ -239,7 +239,9 @@ class TestCacheSet(MAASServerTestCase):
     def test_get_filesystem(self):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = factory.make_CacheSet(block_device=block_device)
-        self.assertEquals(block_device.filesystem, cache_set.get_filesystem())
+        self.assertEquals(
+            block_device.get_effective_filesystem(),
+            cache_set.get_filesystem())
 
     def test_get_device(self):
         block_device = factory.make_PhysicalBlockDevice()

@@ -130,7 +130,7 @@ class CurtinStorageGenerator:
         attached to the node.
         """
         for block_device in self.node.blockdevice_set.order_by('id'):
-            filesystem = block_device.filesystem
+            filesystem = block_device.get_effective_filesystem()
             if self._requires_format_operation(filesystem):
                 self.operations["format"].append(filesystem)
                 if filesystem.mount_point is not None:
@@ -139,7 +139,8 @@ class CurtinStorageGenerator:
                 partition_table = block_device.get_partitiontable()
                 if partition_table is not None:
                     for partition in partition_table.partitions.order_by('id'):
-                        partition_filesystem = partition.filesystem
+                        partition_filesystem = (
+                            partition.get_effective_filesystem())
                         if self._requires_format_operation(
                                 partition_filesystem):
                             self.operations["format"].append(

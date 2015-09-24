@@ -321,11 +321,13 @@ class TestVolumeGroupAPI(APITestCase):
         self.assertEquals(new_name, volume_group.name)
         self.assertEquals(new_uuid, volume_group.uuid)
         self.assertEquals(
-            volume_group.id, new_block_device.filesystem.filesystem_group.id)
+            volume_group.id,
+            new_block_device.get_effective_filesystem().filesystem_group.id)
         self.assertEquals(
-            volume_group.id, new_partition.filesystem.filesystem_group.id)
-        self.assertIsNone(delete_block_device.filesystem)
-        self.assertIsNone(delete_partition.filesystem)
+            volume_group.id,
+            new_partition.get_effective_filesystem().filesystem_group.id)
+        self.assertIsNone(delete_block_device.get_effective_filesystem())
+        self.assertIsNone(delete_partition.get_effective_filesystem())
 
     def test_delete_deletes_volume_group(self):
         self.become_admin()

@@ -2305,10 +2305,10 @@ class TestNode(MAASServerTestCase):
             reload_object(filesystem),
             "Original filesystem on should not have been deleted.")
         self.assertIsNot(
-            filesystem, block_device.filesystem,
+            filesystem, block_device.get_effective_filesystem(),
             "Filesystem on block device should now be a different object.")
         self.assertTrue(
-            block_device.filesystem.acquired,
+            block_device.get_effective_filesystem().acquired,
             "Filesystem on block device should have acquired set.")
 
     def test__create_acquired_filesystems_calls_clear(self):

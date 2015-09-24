@@ -179,12 +179,14 @@ class TestPartition(MAASServerTestCase):
         self.assertEquals(
             partition.partition_table.get_node(), partition.get_node())
 
-    def test_get_used_size_returns_used_partition_size(self):
+    def test_get_used_size_returns_used_zero_when_no(self):
         partition = factory.make_Partition()
-        if partition.filesystem is not None:
-            self.assertEquals(partition.get_used_size(), partition.size)
-        else:
-            self.assertEquals(partition.get_used_size(), 0)
+        self.assertEquals(partition.get_used_size(), 0)
+
+    def test_get_used_size_returns_partition_size_when_filesystem(self):
+        partition = factory.make_Partition()
+        factory.make_Filesystem(partition=partition)
+        self.assertEquals(partition.get_used_size(), partition.size)
 
     def test_get_available_size_returns_available_size(self):
         partition = factory.make_Partition()
@@ -249,12 +251,13 @@ class TestPartition(MAASServerTestCase):
         partition.save()
         self.assertEquals(prev_size, partition.size)
 
-    def test_filesystem_calls_get_active_filesystem_and_returns_result(self):
-        mock_get_active_filesystem = self.patch_autospec(
-            partition_module, "get_active_filesystem")
-        mock_get_active_filesystem.return_value = sentinel.filesystem
+    def test_get_effective_filesystem(self):
+        mock_get_effective_filesystem = self.patch_autospec(
+            partition_module, "get_effective_filesystem")
+        mock_get_effective_filesystem.return_value = sentinel.filesystem
         partition = factory.make_Partition()
-        self.assertEquals(sentinel.filesystem, partition.filesystem)
+        self.assertEquals(
+            sentinel.filesystem, partition.get_effective_filesystem())
 
     def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
         node = factory.make_Node(bios_boot_method="uefi")

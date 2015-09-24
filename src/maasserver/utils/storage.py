@@ -13,12 +13,12 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "get_active_filesystem"
+    "get_effective_filesystem"
 ]
 
 
-def get_active_filesystem(model):
-    """Return the active `Filesystem` for the `model`.
+def get_effective_filesystem(model):
+    """Return the effective `Filesystem` for the `model`.
 
     A `BlockDevice` or `Partition` can have up to two `Filesystem` one with
     `acquired` set to False and another set to `True`. When the `Node` for

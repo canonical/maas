@@ -3079,7 +3079,7 @@ class MountBlockDeviceForm(Form):
         cleaned_data = super(MountBlockDeviceForm, self).clean()
         if 'mount_point' not in cleaned_data:
             return cleaned_data
-        filesystem = self.block_device.filesystem
+        filesystem = self.block_device.get_effective_filesystem()
         if filesystem is None:
             raise ValidationError(
                 "Cannot mount an unformatted block device.")
@@ -3094,7 +3094,7 @@ class MountBlockDeviceForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        filesystem = self.block_device.filesystem
+        filesystem = self.block_device.get_effective_filesystem()
         filesystem.mount_point = self.cleaned_data['mount_point']
         filesystem.save()
         return self.block_device
@@ -3179,7 +3179,7 @@ class MountPartitionForm(Form):
         cleaned_data = super(MountPartitionForm, self).clean()
         if 'mount_point' not in cleaned_data:
             return cleaned_data
-        filesystem = self.partition.filesystem
+        filesystem = self.partition.get_effective_filesystem()
         if filesystem is None:
             raise ValidationError(
                 "Cannot mount an unformatted partition.")
@@ -3194,7 +3194,7 @@ class MountPartitionForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        filesystem = self.partition.filesystem
+        filesystem = self.partition.get_effective_filesystem()
         filesystem.mount_point = self.cleaned_data['mount_point']
         filesystem.save()
         return self.partition

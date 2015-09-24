@@ -20,9 +20,10 @@ from maasserver.enum import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.storage import get_effective_filesystem
 
 
-class TestGetActiveFilesystem(MAASServerTestCase):
+class TestGetEffectiveFilesystem(MAASServerTestCase):
 
     scenarios = (
         ("BlockDevice", {
@@ -37,7 +38,7 @@ class TestGetActiveFilesystem(MAASServerTestCase):
 
     def test__returns_None_when_no_filesystem(self):
         model = self.factory()
-        self.assertIsNone(model.filesystem)
+        self.assertIsNone(get_effective_filesystem(model))
 
     def test__returns_filesystem_if_node_not_in_acquired_state(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -45,7 +46,7 @@ class TestGetActiveFilesystem(MAASServerTestCase):
         filesystem = factory.make_Filesystem(**{
             self.filesystem_property: model,
             })
-        self.assertEquals(filesystem, model.filesystem)
+        self.assertEquals(filesystem, get_effective_filesystem(model))
 
     def test__returns_acquired_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -57,7 +58,7 @@ class TestGetActiveFilesystem(MAASServerTestCase):
             self.filesystem_property: model,
             "acquired": True,
             })
-        self.assertEquals(filesystem, model.filesystem)
+        self.assertEquals(filesystem, get_effective_filesystem(model))
 
     def test__returns_non_mountable_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -66,7 +67,7 @@ class TestGetActiveFilesystem(MAASServerTestCase):
             self.filesystem_property: model,
             "fstype": FILESYSTEM_TYPE.BCACHE_BACKING,
             })
-        self.assertEquals(filesystem, model.filesystem)
+        self.assertEquals(filesystem, get_effective_filesystem(model))
 
     def test__returns_none_when_allocated_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -75,4 +76,4 @@ class TestGetActiveFilesystem(MAASServerTestCase):
             self.filesystem_property: model,
             "fstype": FILESYSTEM_TYPE.EXT4,
             })
-        self.assertIsNone(model.filesystem)
+        self.assertIsNone(get_effective_filesystem(model))

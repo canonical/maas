@@ -165,7 +165,7 @@ class TestBcacheDevicesAPI(APITestCase):
         self.assertIn(
             'Bcache requires a cache_set.',
             parsed_content['__all__'])
-        self.assertIsNone(backing_device.filesystem)
+        self.assertIsNone(backing_device.get_effective_filesystem())
 
     def test_create_with_missing_backing_fails(self):
         """Tests Bcache device creation without a backing device."""

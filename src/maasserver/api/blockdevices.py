@@ -58,12 +58,7 @@ DISPLAYED_BLOCKDEVICE_FIELDS = (
     'size',
     'block_size',
     'tags',
-    ('filesystem', (
-        'fstype',
-        'label',
-        'uuid',
-        'mount_point',
-    )),
+    'filesystem',
     'partition_table_type',
     'partitions',
 )
@@ -174,6 +169,20 @@ class BlockDeviceHandler(OperationsHandler):
         block_device = block_device.actual_instance
         if isinstance(block_device, PhysicalBlockDevice):
             return block_device.serial
+        else:
+            return None
+
+    @classmethod
+    def filesystem(cls, block_device):
+        block_device = block_device.actual_instance
+        filesystem = block_device.get_effective_filesystem()
+        if filesystem is not None:
+            return {
+                'fstype': filesystem.fstype,
+                'label': filesystem.label,
+                'uuid': filesystem.uuid,
+                'mount_point': filesystem.mount_point,
+            }
         else:
             return None
 
@@ -341,7 +350,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat")
-        filesystem = device.filesystem
+        filesystem = device.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
         if filesystem.mount_point:
@@ -396,7 +405,7 @@ class BlockDeviceHandler(OperationsHandler):
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount")
-        filesystem = device.filesystem
+        filesystem = device.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Block device is not formatted.")
         if not filesystem.mount_point:

@@ -814,7 +814,7 @@ class RAID(FilesystemGroup):
             raise ValidationError(
                 "Device needs to be from the same node as the rest of the "
                 "array.")
-        elif device.filesystem is not None:
+        elif device.get_effective_filesystem() is not None:
             raise ValidationError(
                 "There is another filesystem on this device.")
         else:
@@ -830,7 +830,7 @@ class RAID(FilesystemGroup):
             raise ValidationError(
                 "Partition must be on a device from the same node as the rest "
                 "of the array.")
-        elif partition.filesystem is not None:
+        elif partition.get_effective_filesystem() is not None:
             raise ValidationError(
                 "There is another filesystem on this partition.")
         else:
@@ -844,23 +844,24 @@ class RAID(FilesystemGroup):
         Raises a ValidationError if the device is not part of the array or if
         the array becomes invalid with the deletion.
         """
-        if (device.filesystem is None or
-                device.filesystem.filesystem_group_id != self.id):
+        filesystem = device.get_effective_filesystem()
+        if (filesystem is None or
+                filesystem.filesystem_group_id != self.id):
             raise ValidationError("Device does not belong to this array.")
         else:
             # If validation passes, delete the filesystem.
-            self.filesystems.remove(device.filesystem)
+            self.filesystems.remove(filesystem)
 
         try:
             self.save()  # Force validation.
         except ValidationError:
             # If we had a ValidationError, we need to reattach the Filesystem
             # to the FilesystemGroup.
-            self.filesystems.add(device.filesystem)
+            self.filesystems.add(filesystem)
             raise
         else:
             # If validation passes, delete the filesystem.
-            device.filesystem.delete()
+            filesystem.delete()
 
         return self
 
@@ -870,22 +871,23 @@ class RAID(FilesystemGroup):
         Raises a ValidationError if the device is not part of the array or if
         the array becomes invalid with the deletion.
         """
-        if (partition.filesystem is None or
-                partition.filesystem.filesystem_group_id != self.id):
+        filesystem = partition.get_effective_filesystem()
+        if (filesystem is None or
+                filesystem.filesystem_group_id != self.id):
             raise ValidationError("Partition does not belong to this array.")
-        elif partition.filesystem is not None:
-            self.filesystems.remove(partition.filesystem)
+        elif filesystem is not None:
+            self.filesystems.remove(filesystem)
 
         try:
             self.save()  # Force validation.
         except ValidationError:
             # If we had a ValidationError, we need to reattach the Filesystem
             # to the FilesystemGroup.
-            self.filesystems.add(partition.filesystem)
+            self.filesystems.add(filesystem)
             raise
         else:
             # If validation passes, delete the filesystem.
-            partition.filesystem.delete()
+            filesystem.delete()
 
         return self
 

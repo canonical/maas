@@ -436,7 +436,7 @@ class LayoutHelpersMixin:
             round_size_by_blocks(EFI_PARTITION_SIZE, boot_disk.block_size),
             partition.size)
         self.assertThat(
-            partition.filesystem, MatchesStructure.byEquality(
+            partition.get_effective_filesystem(), MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.FAT32,
                 label="efi",
                 mount_point="/boot/efi",
@@ -477,7 +477,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -509,7 +510,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -543,7 +545,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 boot_size, boot_disk.block_size),
             boot_partition.size)
         self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
+            boot_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="boot",
                 mount_point="/boot",
@@ -559,7 +562,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -592,7 +596,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             round_size_by_blocks(root_size, boot_disk.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -629,7 +634,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 boot_size, boot_disk.block_size),
             boot_partition.size)
         self.assertThat(
-            boot_partition.filesystem, MatchesStructure.byEquality(
+            boot_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="boot",
                 mount_point="/boot",
@@ -642,7 +648,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             round_size_by_blocks(root_size, boot_disk.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -683,7 +690,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             round_size_by_blocks(root_size, root_device.block_size),
             root_partition.size)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -875,7 +883,8 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(volume_group.get_size(), logical_volume.size)
         self.assertEquals(layout.DEFAULT_LV_NAME, logical_volume.name)
         self.assertThat(
-            logical_volume.filesystem, MatchesStructure.byEquality(
+            logical_volume.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -910,7 +919,8 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(volume_group.get_size(), logical_volume.size)
         self.assertEquals(lv_name, logical_volume.name)
         self.assertThat(
-            logical_volume.filesystem, MatchesStructure.byEquality(
+            logical_volume.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -944,7 +954,8 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(lv_size, logical_volume.size)
         self.assertEquals(layout.DEFAULT_LV_NAME, logical_volume.name)
         self.assertThat(
-            logical_volume.filesystem, MatchesStructure.byEquality(
+            logical_volume.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -1277,7 +1288,8 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertThat(
-            root_partition.filesystem, MatchesStructure.byEquality(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -1297,7 +1309,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         boot_partition = partitions[1]
         self.assertEquals(1 * 1024 ** 3, boot_partition.size)
         self.assertThat(
-            boot_partition.filesystem,
+            boot_partition.get_effective_filesystem(),
             MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="boot",
@@ -1319,19 +1331,24 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         cache_partition = cache_partition_table.partitions.order_by(
             'id').all()[0]
         self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            root_partition.get_effective_filesystem().fstype)
         self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_CACHE, cache_partition.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_partition.get_effective_filesystem().fstype)
+        root_filesystem = root_partition.get_effective_filesystem()
         self.assertEquals(
             FILESYSTEM_GROUP_TYPE.BCACHE,
-            root_partition.filesystem.filesystem_group.group_type)
+            root_filesystem.filesystem_group.group_type)
+        cache_filesystem = cache_partition.get_effective_filesystem()
         self.assertEquals(
-            root_partition.filesystem.filesystem_group,
-            cache_partition.filesystem.cache_set.filesystemgroup_set.first())
-        bcache = root_partition.filesystem.filesystem_group
+            root_filesystem.filesystem_group,
+            cache_filesystem.cache_set.filesystemgroup_set.first())
+        bcache = root_partition.get_effective_filesystem().filesystem_group
         self.assertIsNotNone(bcache)
         self.assertThat(
-            bcache.virtual_device.filesystem, MatchesStructure.byEquality(
+            bcache.virtual_device.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -1352,17 +1369,23 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[2]
         self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
-        self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            root_partition.get_effective_filesystem().fstype)
+        self.assertEquals(
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            ssd.get_effective_filesystem().fstype)
+        root_filesystem = root_partition.get_effective_filesystem()
         self.assertEquals(
             FILESYSTEM_GROUP_TYPE.BCACHE,
-            root_partition.filesystem.filesystem_group.group_type)
+            root_filesystem.filesystem_group.group_type)
+        ssd_filesystem = ssd.get_effective_filesystem()
         self.assertEquals(
-            root_partition.filesystem.filesystem_group,
-            ssd.filesystem.cache_set.filesystemgroup_set.first())
-        bcache = root_partition.filesystem.filesystem_group
+            root_partition.get_effective_filesystem().filesystem_group,
+            ssd_filesystem.cache_set.filesystemgroup_set.first())
+        bcache = root_partition.get_effective_filesystem().filesystem_group
         self.assertThat(
-            bcache.virtual_device.filesystem, MatchesStructure.byEquality(
+            bcache.virtual_device.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",
@@ -1385,18 +1408,24 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[2]
         self.assertEquals(
-            FILESYSTEM_TYPE.BCACHE_BACKING, root_partition.filesystem.fstype)
-        self.assertEquals(FILESYSTEM_TYPE.BCACHE_CACHE, ssd.filesystem.fstype)
+            FILESYSTEM_TYPE.BCACHE_BACKING,
+            root_partition.get_effective_filesystem().fstype)
+        self.assertEquals(
+            FILESYSTEM_TYPE.BCACHE_CACHE,
+            ssd.get_effective_filesystem().fstype)
+        root_filesystem = root_partition.get_effective_filesystem()
         self.assertEquals(
             FILESYSTEM_GROUP_TYPE.BCACHE,
-            root_partition.filesystem.filesystem_group.group_type)
+            root_filesystem.filesystem_group.group_type)
+        ssd_filesystem = ssd.get_effective_filesystem()
         self.assertEquals(
-            root_partition.filesystem.filesystem_group,
-            ssd.filesystem.cache_set.filesystemgroup_set.first())
-        bcache = root_partition.filesystem.filesystem_group
+            root_partition.get_effective_filesystem().filesystem_group,
+            ssd_filesystem.cache_set.filesystemgroup_set.first())
+        bcache = root_partition.get_effective_filesystem().filesystem_group
         self.assertEquals(cache_mode, bcache.cache_mode)
         self.assertThat(
-            bcache.virtual_device.filesystem, MatchesStructure.byEquality(
+            bcache.virtual_device.get_effective_filesystem(),
+            MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",
                 mount_point="/",

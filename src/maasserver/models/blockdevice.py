@@ -45,7 +45,7 @@ from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
-from maasserver.utils.storage import get_active_filesystem
+from maasserver.utils.storage import get_effective_filesystem
 
 
 MIN_BLOCK_DEVICE_SIZE = 2 * 1024 * 1024  # 2MiB
@@ -205,10 +205,9 @@ class BlockDevice(CleanSave, TimestampedModel):
                 pass
         return self
 
-    @property
-    def filesystem(self):
+    def get_effective_filesystem(self):
         """Return the filesystem that is placed on this block device."""
-        return get_active_filesystem(self)
+        return get_effective_filesystem(self)
 
     def get_partitiontable(self):
         """Returns this device's partition table (or None, if none exists."""
@@ -229,7 +228,7 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     def get_used_size(self):
         """Return the used size on the block device."""
-        filesystem = self.filesystem
+        filesystem = self.get_effective_filesystem()
         if filesystem is not None:
             return self.size
         partitiontable = self.get_partitiontable()
@@ -252,8 +251,9 @@ class BlockDevice(CleanSave, TimestampedModel):
         If this block device is part of a filesystem group then it cannot be
         deleted.
         """
-        if self.filesystem is not None:
-            filesystem_group = self.filesystem.filesystem_group
+        filesystem = self.get_effective_filesystem()
+        if filesystem is not None:
+            filesystem_group = filesystem.filesystem_group
             if filesystem_group is not None:
                 raise ValidationError(
                     "Cannot delete block device because its part of "

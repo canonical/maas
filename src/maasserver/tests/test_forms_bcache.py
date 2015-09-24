@@ -112,7 +112,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         self.assertEqual(uuid, bcache.uuid)
         self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(
-            backing_device.filesystem,
+            backing_device.get_effective_filesystem(),
             bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
         self.assertEqual(backing_size, bcache.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.BCACHE, bcache.group_type)
@@ -141,7 +141,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         self.assertEqual(uuid, bcache.uuid)
         self.assertEqual(cache_set, bcache.cache_set)
         self.assertEqual(
-            backing_partition.filesystem,
+            backing_partition.get_effective_filesystem(),
             bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
         self.assertEqual(FILESYSTEM_GROUP_TYPE.BCACHE, bcache.group_type)
 

@@ -543,7 +543,7 @@ class TestBlockDeviceAPI(APITestCase):
             'mount_point': None,
             }, parsed_device['filesystem'])
         block_device = reload_object(block_device)
-        self.assertIsNotNone(block_device.filesystem)
+        self.assertIsNotNone(block_device.get_effective_filesystem())
 
     def test_format_formats_block_device_as_user(self):
         node = factory.make_Node(
@@ -563,7 +563,7 @@ class TestBlockDeviceAPI(APITestCase):
             'mount_point': None,
             }, parsed_device['filesystem'])
         block_device = reload_object(block_device)
-        self.assertIsNotNone(block_device.filesystem)
+        self.assertIsNotNone(block_device.get_effective_filesystem())
 
     def test_unformat_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
@@ -649,11 +649,9 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertFalse(
-            "filesystem" in parsed_device,
-            "Filesystem field should not be in the resulting device.")
+        self.assertIsNone(parsed_device["filesystem"])
         block_device = reload_object(block_device)
-        self.assertIsNone(block_device.filesystem)
+        self.assertIsNone(block_device.get_effective_filesystem())
 
     def test_unformat_deletes_filesystem_as_user(self):
         node = factory.make_Node(
@@ -667,11 +665,9 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
-        self.assertFalse(
-            "filesystem" in parsed_device,
-            "Filesystem field should not be in the resulting device.")
+        self.assertIsNone(parsed_device["filesystem"])
         block_device = reload_object(block_device)
-        self.assertIsNone(block_device.filesystem)
+        self.assertIsNone(block_device.get_effective_filesystem())
 
     def test_mount_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(

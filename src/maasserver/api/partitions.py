@@ -49,12 +49,7 @@ DISPLAYED_PARTITION_FIELDS = (
     'type',
     'size',
     'bootable',
-    ('filesystem', (
-        'fstype',
-        'label',
-        'uuid',
-        'mount_point',
-    )),
+    'filesystem',
 )
 
 
@@ -136,6 +131,19 @@ class PartitionHandler(OperationsHandler):
     create = replace = update = None
     model = Partition
     fields = DISPLAYED_PARTITION_FIELDS
+
+    @classmethod
+    def filesystem(cls, partition):
+        filesystem = partition.get_effective_filesystem()
+        if filesystem is not None:
+            return {
+                'fstype': filesystem.fstype,
+                'label': filesystem.label,
+                'uuid': filesystem.uuid,
+                'mount_point': filesystem.mount_point,
+            }
+        else:
+            return None
 
     @classmethod
     def resource_uri(cls, partition=None):
@@ -221,7 +229,7 @@ class PartitionHandler(OperationsHandler):
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat")
-        filesystem = partition.filesystem
+        filesystem = partition.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
         if filesystem.mount_point:
@@ -281,7 +289,7 @@ class PartitionHandler(OperationsHandler):
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount")
-        filesystem = partition.filesystem
+        filesystem = partition.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
         if not filesystem.mount_point:

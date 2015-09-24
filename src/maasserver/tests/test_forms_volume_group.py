@@ -319,7 +319,8 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
         self.assertEquals(
-            volume_group.id, block_device.filesystem.filesystem_group.id)
+            volume_group.id,
+            block_device.get_effective_filesystem().filesystem_group.id)
 
     def test_adds_block_device_by_name(self):
         node = factory.make_Node()
@@ -332,7 +333,8 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
         self.assertEquals(
-            volume_group.id, block_device.filesystem.filesystem_group.id)
+            volume_group.id,
+            block_device.get_effective_filesystem().filesystem_group.id)
 
     def test_removes_block_device(self):
         node = factory.make_Node()
@@ -347,7 +349,7 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
-        self.assertIsNone(block_device.filesystem)
+        self.assertIsNone(block_device.get_effective_filesystem())
 
     def test_removes_block_device_by_name(self):
         node = factory.make_Node()
@@ -362,7 +364,7 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
-        self.assertIsNone(block_device.filesystem)
+        self.assertIsNone(block_device.get_effective_filesystem())
 
     def test_adds_partition(self):
         node = factory.make_Node()
@@ -378,7 +380,8 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
         self.assertEquals(
-            volume_group.id, partition.filesystem.filesystem_group.id)
+            volume_group.id,
+            partition.get_effective_filesystem().filesystem_group.id)
 
     def test_adds_partition_by_name(self):
         node = factory.make_Node()
@@ -394,7 +397,8 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
         self.assertEquals(
-            volume_group.id, partition.filesystem.filesystem_group.id)
+            volume_group.id,
+            partition.get_effective_filesystem().filesystem_group.id)
 
     def test_removes_partition(self):
         node = factory.make_Node()
@@ -412,7 +416,7 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
-        self.assertIsNone(partition.filesystem)
+        self.assertIsNone(partition.get_effective_filesystem())
 
     def test_removes_partition_by_name(self):
         node = factory.make_Node()
@@ -430,7 +434,7 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         form = UpdateVolumeGroupForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         volume_group = form.save()
-        self.assertIsNone(partition.filesystem)
+        self.assertIsNone(partition.get_effective_filesystem())
 
 
 class TestCreateLogicalVolumeForm(MAASServerTestCase):

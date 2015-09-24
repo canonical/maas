@@ -37,7 +37,7 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     round_size_to_nearest_block,
 )
-from maasserver.utils.storage import get_active_filesystem
+from maasserver.utils.storage import get_effective_filesystem
 
 
 MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
@@ -139,10 +139,9 @@ class Partition(CleanSave, TimestampedModel):
         """Return the type."""
         return "partition"
 
-    @property
-    def filesystem(self):
+    def get_effective_filesystem(self):
         """Return the filesystem that is placed on this partition."""
-        return get_active_filesystem(self)
+        return get_effective_filesystem(self)
 
     def get_name(self):
         """Return the name of the partition."""
@@ -156,7 +155,7 @@ class Partition(CleanSave, TimestampedModel):
 
     def get_used_size(self):
         """Return the used size for this partition."""
-        filesystem = self.filesystem
+        filesystem = self.get_effective_filesystem()
         if filesystem is not None:
             return self.size
         else:
@@ -246,8 +245,9 @@ class Partition(CleanSave, TimestampedModel):
         If this partition is part of a filesystem group then it cannot be
         deleted.
         """
-        if self.filesystem is not None:
-            filesystem_group = self.filesystem.filesystem_group
+        filesystem = self.get_effective_filesystem()
+        if filesystem is not None:
+            filesystem_group = filesystem.filesystem_group
             if filesystem_group is not None:
                 raise ValidationError(
                     "Cannot delete partition because its part of "

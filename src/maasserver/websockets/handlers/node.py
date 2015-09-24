@@ -306,7 +306,7 @@ class NodeHandler(TimestampedModelHandler):
             "serial": serial,
             "partition_table_type": partition_table_type,
             "filesystem": self.dehydrate_filesystem(
-                blockdevice.filesystem),
+                blockdevice.get_effective_filesystem()),
             "partitions": self.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
         }
@@ -321,7 +321,7 @@ class NodeHandler(TimestampedModelHandler):
             available_size = partition.size = used_size
             partitions.append({
                 "filesystem": self.dehydrate_filesystem(
-                    partition.filesystem),
+                    partition.get_effective_filesystem()),
                 "name": partition.get_name(),
                 "path": partition.path,
                 "type": partition.type,
