@@ -579,9 +579,11 @@ class Node(CleanSave, TimestampedModel):
     #  1. Import the SSH Key during commissioning.
     #  2. Block the automatic power off during commissioning.
     #  3. Skip reconfiguring networking when a node is commissioned.
+    #  4. Skip reconfiguring storage when a node is commissioned.
     enable_ssh = BooleanField(default=False)
     block_poweroff = BooleanField(default=False)
     skip_networking = BooleanField(default=False)
+    skip_storage = BooleanField(default=False)
 
     # Note that the ordering of the managers is meaningul.  More precisely, the
     # first manager defined is important: see
@@ -942,7 +944,7 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def start_commissioning(
             self, user, enable_ssh=False, block_poweroff=False,
-            skip_networking=False):
+            skip_networking=False, skip_storage=False):
         """Install OS and self-test a new node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -961,12 +963,18 @@ class Node(CleanSave, TimestampedModel):
         self.enable_ssh = enable_ssh
         self.block_poweroff = block_poweroff
         self.skip_networking = skip_networking
+        self.skip_storage = skip_storage
 
         # Generate the specific user data for commissioning this node.
         commissioning_user_data = generate_user_data(node=self)
 
         # Clear any existing commissioning results.
         NodeResult.objects.clear_results(self)
+
+        # Clear the current storage configuration if networking is not being
+        # skipped during commissioning.
+        if not self.skip_storage:
+            self._clear_full_storage_configuration()
 
         # Clear the current network configuration if networking is not being
         # skipped during commissioning.
@@ -1831,6 +1839,9 @@ class Node(CleanSave, TimestampedModel):
         storage layout. This is done after commissioning because only then
         will the node actually have some `PhysicalBlockDevice`'s.
         """
+        # Do nothing if networking should be skipped.
+        if self.skip_storage:
+            return
         storage_layout = Config.objects.get_config("default_storage_layout")
         try:
             self.set_storage_layout(storage_layout)

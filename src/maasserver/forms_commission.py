@@ -28,6 +28,7 @@ class CommissionForm(forms.Form):
     enable_ssh = forms.BooleanField(required=False, initial=False)
     block_poweroff = forms.BooleanField(required=False, initial=False)
     skip_networking = forms.BooleanField(required=False, initial=False)
+    skip_storage = forms.BooleanField(required=False, initial=False)
 
     def __init__(self, *args, **kwargs):
         self.instance = kwargs.pop("instance")
@@ -55,7 +56,8 @@ class CommissionForm(forms.Form):
         enable_ssh = self.cleaned_data.get("enable_ssh", False)
         block_poweroff = self.cleaned_data.get("block_poweroff", False)
         skip_networking = self.cleaned_data.get("skip_networking", False)
+        skip_storage = self.cleaned_data.get("skip_storage", False)
         self.instance.start_commissioning(
             self.user, enable_ssh=enable_ssh, block_poweroff=block_poweroff,
-            skip_networking=skip_networking)
+            skip_networking=skip_networking, skip_storage=skip_storage)
         return self.instance

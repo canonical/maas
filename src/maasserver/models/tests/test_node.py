@@ -653,6 +653,13 @@ class TestNode(MAASServerTestCase):
         self.assertThat(register_event, MockCalledOnceWith(
             user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, None))
 
+    def test_set_default_storage_layout_does_nothing_if_skip_storage(self):
+        node = factory.make_Node(skip_storage=True)
+        mock_set_storage_layout = self.patch(node, "set_storage_layout")
+        node.set_default_storage_layout()
+        self.assertThat(
+            mock_set_storage_layout, MockNotCalled())
+
     def test_set_default_storage_layout_uses_default(self):
         node = factory.make_Node()
         default_layout = Config.objects.get_config("default_storage_layout")
@@ -1437,15 +1444,17 @@ class TestNode(MAASServerTestCase):
         enable_ssh = factory.pick_bool()
         block_poweroff = factory.pick_bool()
         skip_networking = factory.pick_bool()
+        skip_storage = factory.pick_bool()
         node.start_commissioning(
             admin, enable_ssh=enable_ssh, block_poweroff=block_poweroff,
-            skip_networking=skip_networking)
+            skip_networking=skip_networking, skip_storage=skip_storage)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         expected_attrs = {
             'enable_ssh': enable_ssh,
             'block_poweroff': block_poweroff,
             'skip_networking': skip_networking,
+            'skip_storage': skip_storage,
         }
         self.assertAttributes(node, expected_attrs)
 
@@ -1472,6 +1481,28 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.noderesult_set.all())
+
+    def test_start_commissioning_clears_storage_configuration(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
+        clear_storage = self.patch_autospec(
+            node, '_clear_full_storage_configuration')
+        admin = factory.make_admin()
+        node.start_commissioning(admin, skip_storage=False)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertThat(clear_storage, MockCalledOnceWith())
+
+    def test_start_commissioning_doesnt_clear_storage_configuration(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
+        clear_storage = self.patch_autospec(
+            node, '_clear_full_storage_configuration')
+        admin = factory.make_admin()
+        node.start_commissioning(admin, skip_storage=True)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertThat(clear_storage, MockNotCalled())
 
     def test_start_commissioning_calls__clear_networking_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)

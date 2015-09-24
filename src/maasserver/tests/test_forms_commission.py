@@ -67,6 +67,7 @@ class TestCommissionForm(MAASServerTestCase):
             "enable_ssh": True,
             "block_poweroff": True,
             "skip_networking": True,
+            "skip_storage": True,
             })
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
@@ -75,4 +76,4 @@ class TestCommissionForm(MAASServerTestCase):
             mock_start_commissioning,
             MockCalledOnceWith(
                 user, enable_ssh=True, block_poweroff=True,
-                skip_networking=True))
+                skip_networking=True, skip_storage=True))

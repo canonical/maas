@@ -530,6 +530,9 @@ class NodeHandler(OperationsHandler):
         :param skip_networking: Whether to skip re-configuring the networking
             on the node after the commissioning has completed.
         :type skip_networking: bool ('0' for False, '1' for True)
+        :param skip_storage: Whether to skip re-configuring the storage
+            on the node after the commissioning has completed.
+        :type skip_storage: bool ('0' for False, '1' for True)
 
         A node in the 'ready', 'declared' or 'failed test' state may
         initiate a commissioning cycle where it is checked out and tested

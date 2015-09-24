@@ -154,6 +154,7 @@ class DeviceHandler(TimestampedModelHandler):
             "block_poweroff",
             "enable_ssh",
             "skip_networking",
+            "skip_storage",
             ]
         list_fields = [
             "system_id",

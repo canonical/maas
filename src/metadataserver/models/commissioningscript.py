@@ -579,6 +579,11 @@ def update_node_physical_block_devices(node, output, exit_status):
     assert isinstance(output, bytes)
     if exit_status != 0:
         return
+
+    # Skip storage configuration if set by the user.
+    if node.skip_storage:
+        return
+
     try:
         blockdevs = json.loads(output)
     except ValueError as e:

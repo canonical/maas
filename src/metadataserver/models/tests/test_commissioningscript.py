@@ -988,6 +988,12 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         update_node_physical_block_devices(node, b"garbage", exit_status=1)
         self.assertIsNotNone(reload_object(block_device))
 
+    def test__does_nothing_if_skip_storage(self):
+        node = factory.make_Node(skip_storage=True)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        update_node_physical_block_devices(node, b"garbage", exit_status=0)
+        self.assertIsNotNone(reload_object(block_device))
+
     def test__removes_previous_physical_block_devices(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
