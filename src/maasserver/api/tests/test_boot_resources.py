@@ -19,7 +19,6 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
-from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
     boot_resource_set_to_dict,
@@ -43,7 +42,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
-from mock import MagicMock
 from testtools.matchers import ContainsAll
 
 
@@ -363,8 +361,8 @@ class TestBootResourcesAPI(APITestCase):
     def test_POST_calls_import_boot_images_on_all_clusters(self):
         self.become_admin()
 
-        nodegroup = MagicMock()
-        self.patch(boot_resources, 'NodeGroup', nodegroup)
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images, "ClustersImporter")
 
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
@@ -378,7 +376,7 @@ class TestBootResourcesAPI(APITestCase):
             reverse('boot_resources_handler'), params)
         self.assertEqual(httplib.CREATED, response.status_code)
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_enabled_clusters,
+            boot_images.ClustersImporter.schedule,
             MockCalledOnceWith())
 
     def test_import_requires_admin(self):
@@ -530,8 +528,9 @@ class TestBootResourceFileUploadAPI(APITestCase):
 
     def test_PUT_on_complete_calls_clusters_to_import_boot_images(self):
         self.become_admin()
-        nodegroup = MagicMock()
-        self.patch(boot_resources, 'NodeGroup', nodegroup)
+
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images, "ClustersImporter")
 
         rfile, content = self.make_empty_resource_file()
         response = self.client.put(
@@ -539,7 +538,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         self.assertThat(
-            nodegroup.objects.import_boot_images_on_enabled_clusters,
+            boot_images.ClustersImporter.schedule,
             MockCalledOnceWith())
 
     def test_PUT_with_multiple_requests_and_large_content(self):

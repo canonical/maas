@@ -1244,16 +1244,14 @@ class TestImportImages(MAASTransactionServerTestCase):
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['http_proxy']))
 
-    def test__import_resources_calls_import_boot_images_on_clusters(self):
-        nodegroup_objects = bootresources.NodeGroup.objects
-
-        self.patch(bootresources, "_import_resources_with_lock")
-        self.patch(nodegroup_objects, "import_boot_images_on_enabled_clusters")
+    def test__import_resources_schedules_import_to_clusters(self):
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images.ClustersImporter, "run")
 
         bootresources._import_resources(force=True)
 
         self.assertThat(
-            nodegroup_objects.import_boot_images_on_enabled_clusters,
+            boot_images.ClustersImporter.run,
             MockCalledOnceWith())
 
 

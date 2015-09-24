@@ -51,6 +51,7 @@ from maasserver.forms import (
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_probed_details
+from maasserver.utils.orm import post_commit_do
 
 
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
@@ -107,7 +108,10 @@ class NodeGroupsHandler(OperationsHandler):
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """Import the boot images on all the accepted cluster controllers."""
-        NodeGroup.objects.import_boot_images_on_enabled_clusters()
+        # Avoid circular import.
+        from maasserver.clusterrpc.boot_images import ClustersImporter
+
+        post_commit_do(ClustersImporter.schedule)
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
             status=httplib.OK)
@@ -226,8 +230,11 @@ class NodeGroupHandler(OperationsHandler):
 
         Returns 404 if the nodegroup (cluster) is not found.
         """
+        # Avoid circular import.
+        from maasserver.clusterrpc.boot_images import ClustersImporter
+
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        nodegroup.import_boot_images()
+        post_commit_do(ClustersImporter.schedule, nodegroup.uuid)
         return HttpResponse(
             "Import of boot images started on cluster %r" % nodegroup.uuid,
             status=httplib.OK)

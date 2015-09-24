@@ -48,8 +48,8 @@ from maasserver.forms import (
 from maasserver.models import (
     BootResource,
     BootResourceFile,
-    NodeGroup,
 )
+from maasserver.utils.orm import post_commit_do
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
@@ -211,7 +211,9 @@ class BootResourcesHandler(OperationsHandler):
         # If an upload contained the full file, then we can have the clusters
         # sync a new resource.
         if file_content is not None:
-            NodeGroup.objects.import_boot_images_on_enabled_clusters()
+            # Avoid circular import.
+            from maasserver.clusterrpc.boot_images import ClustersImporter
+            post_commit_do(ClustersImporter.schedule)
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -310,7 +312,9 @@ class BootResourceFileUploadHandler(OperationsHandler):
             if not rfile.largefile.valid:
                 raise MAASAPIBadRequest(
                     "Saved content does not match given SHA256 value.")
-            NodeGroup.objects.import_boot_images_on_enabled_clusters()
+            # Avoid circular import.
+            from maasserver.clusterrpc.boot_images import ClustersImporter
+            post_commit_do(ClustersImporter.schedule)
         return rc.ALL_OK
 
     @classmethod

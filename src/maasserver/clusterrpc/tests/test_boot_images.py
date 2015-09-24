@@ -15,7 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 import os
+import random
 
+from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.clusterrpc import boot_images as boot_images_module
 from maasserver.clusterrpc.boot_images import (
     get_all_available_boot_images,
@@ -30,6 +32,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODEGROUP_STATUS,
 )
+from maasserver.models.config import Config
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
@@ -44,8 +47,12 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
 )
+from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from mock import (
+    ANY,
     call,
     MagicMock,
 )
@@ -59,16 +66,30 @@ from provisioningserver.rpc import (
     clusterservice,
 )
 from provisioningserver.rpc.cluster import (
+    ImportBootImages,
     ListBootImages,
     ListBootImagesV2,
 )
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from twisted.internet.defer import succeed
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+)
+from twisted.internet.defer import (
+    DeferredLock,
+    fail,
+    maybeDeferred,
+    succeed,
+)
+from twisted.internet.task import Clock
 from twisted.protocols.amp import UnhandledCommand
+from twisted.python.failure import Failure
 
 
 def make_image_dir(image_params, tftp_root):
@@ -402,3 +423,206 @@ class TestGetBootImagesFor(MAASServerTestCase):
                 param['architecture'],
                 subarch,
                 param['release']))
+
+
+from mock import sentinel
+from maasserver.clusterrpc.boot_images import ClustersImporter
+from testtools.matchers import MatchesStructure, Is, Equals
+from urlparse import urlparse
+
+
+class TestClustersImporter(MAASTestCase):
+    """Tests for `ClustersImporter`."""
+
+    def test__init_with_single_UUIDs(self):
+        uuid = factory.make_UUID()
+        sources = [sentinel.source]
+        proxy = factory.make_simple_http_url()
+
+        importer = ClustersImporter(uuid, sources, proxy)
+
+        self.assertThat(importer, MatchesStructure(
+            uuids=Equals((uuid, )), sources=Is(sources),
+            proxy=Equals(urlparse(proxy)),
+        ))
+
+    def test__init_with_multiple_UUIDs(self):
+        uuids = [factory.make_UUID() for _ in xrange(3)]
+        sources = [sentinel.source]
+        proxy = factory.make_simple_http_url()
+
+        importer = ClustersImporter(uuids, sources, proxy)
+
+        self.assertThat(importer, MatchesStructure(
+            uuids=Equals(tuple(uuids)), sources=Is(sources),
+            proxy=Equals(urlparse(proxy)),
+        ))
+
+    def test__init_also_accepts_already_parsed_proxy(self):
+        proxy = urlparse(factory.make_simple_http_url())
+        importer = ClustersImporter(sentinel.uuid, [sentinel.source], proxy)
+        self.assertThat(importer, MatchesStructure(proxy=Is(proxy)))
+
+    def test__init_also_accepts_no_proxy(self):
+        importer = ClustersImporter(sentinel.uuid, [sentinel.source])
+        self.assertThat(importer, MatchesStructure(proxy=Is(None)))
+
+    def test__schedule_arranges_for_later_run(self):
+        # Avoid deferring to the database.
+        self.patch(boot_images_module, "deferToDatabase", maybeDeferred)
+        # Avoid actually initiating a run.
+        self.patch_autospec(ClustersImporter, "run")
+
+        uuids = [factory.make_UUID() for _ in xrange(3)]
+        sources = [sentinel.source]
+        proxy = factory.make_simple_http_url()
+
+        conc = random.randint(1, 9)
+        delay = random.randint(1, 9)
+
+        clock = Clock()
+        delayed_call = ClustersImporter.schedule(
+            uuids=uuids, sources=sources, proxy=proxy, delay=delay,
+            concurrency=conc, clock=clock)
+
+        # The call is scheduled for `delay` seconds from now.
+        self.assertThat(delayed_call, MatchesStructure(time=Equals(delay)))
+        self.assertThat(ClustersImporter.run, MockNotCalled())
+        clock.advance(delay)
+        self.assertThat(ClustersImporter.run, MockCalledOnceWith(ANY, conc))
+
+        # The UUIDs, sources, and proxy were all passed through.
+        [importer, _] = ClustersImporter.run.call_args[0]
+        self.assertThat(importer, MatchesStructure(
+            uuids=Equals(tuple(uuids)), sources=Is(sources),
+            proxy=Equals(urlparse(proxy)),
+        ))
+
+    def test__run_will_not_error_instead_it_logs(self):
+        call = self.patch(ClustersImporter, "__call__")
+        call.return_value = fail(ZeroDivisionError)
+
+        with TwistedLoggerFixture() as logger:
+            ClustersImporter([], []).run().wait(5)
+
+        self.assertThat(call, MockCalledOnceWith(ANY))
+        self.assertDocTestMatches(
+            """\
+            General failure syncing boot resources.
+            Traceback (most recent call last):
+            ...
+            """,
+            logger.output)
+
+
+class TestClustersImporterNew(MAASServerTestCase):
+    """Tests for the `ClustersImporter.new` function."""
+
+    def test__new_obtains_uuids_if_not_given(self):
+        importer = ClustersImporter.new(sources=[], proxy=None)
+        self.assertThat(importer, MatchesStructure(uuids=Equals(())))
+
+    def test__new_obtains_uuids_for_accepted_clusters_if_not_given(self):
+        cluster_accepted = factory.make_NodeGroup()
+        cluster_accepted.accept()
+        cluster_rejected = factory.make_NodeGroup()
+        cluster_rejected.reject()
+
+        importer = ClustersImporter.new(sources=[], proxy=None)
+
+        self.assertThat(importer, MatchesStructure(
+            uuids=Equals((cluster_accepted.uuid, ))))
+
+    def test__new_obtains_sources_if_not_given(self):
+        importer = ClustersImporter.new(uuids=[], proxy=None)
+        self.assertThat(importer, MatchesStructure(
+            sources=Equals([get_simplestream_endpoint()])))
+
+    def test__new_obtains_proxy_if_not_given(self):
+        proxy = factory.make_simple_http_url()
+        Config.objects.set_config("http_proxy", proxy)
+        importer = ClustersImporter.new(uuids=[], sources=[])
+        self.assertThat(importer, MatchesStructure(
+            proxy=Equals(urlparse(proxy))))
+
+
+class TestClustersImporterInAction(MAASServerTestCase):
+    """Live tests for `ClustersImporter`."""
+
+    def setUp(self):
+        super(TestClustersImporterInAction, self).setUp()
+        # Limit the region's event loop to only the "rpc" service.
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        # Now start the region's event loop.
+        self.useFixture(RunningEventLoopFixture())
+        # This fixture allows us to simulate mock clusters.
+        self.rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def test__calling_importer_issues_rpc_calls_to_clusters(self):
+        # Some clusters that we'll ask to import resources.
+        nodegroup_1 = factory.make_NodeGroup()
+        nodegroup_1.accept()
+        nodegroup_2 = factory.make_NodeGroup()
+        nodegroup_2.accept()
+
+        # Connect only cluster #1.
+        cluster_1 = self.rpc.makeCluster(nodegroup_1, ImportBootImages)
+        cluster_1.ImportBootImages.return_value = succeed({})
+
+        # Do the import.
+        importer = ClustersImporter.new([nodegroup_1.uuid, nodegroup_2.uuid])
+        results = importer(lock=DeferredLock()).wait(5)
+
+        # The results are a list (it's from a DeferredList).
+        self.assertThat(results, MatchesListwise((
+            # Success when calling nodegroup_1.
+            Equals((True, {})),
+            # Failure when calling nodegroup_2: no connection.
+            MatchesListwise((
+                Is(False), MatchesAll(
+                    IsInstance(Failure), MatchesStructure(
+                        value=IsInstance(NoConnectionsAvailable)),
+                ),
+            )),
+        )))
+
+    def test__run_calls_importer_and_reports_results(self):
+        # Some clusters that we'll ask to import resources.
+        nodegroup_1 = factory.make_NodeGroup(uuid="cluster-1")
+        nodegroup_1.accept()
+        nodegroup_2 = factory.make_NodeGroup(uuid="cluster-2")
+        nodegroup_2.accept()
+        nodegroup_3 = factory.make_NodeGroup(uuid="cluster-3")
+        nodegroup_3.accept()
+
+        # Cluster #1 will work fine.
+        cluster_1 = self.rpc.makeCluster(nodegroup_1, ImportBootImages)
+        cluster_1.ImportBootImages.return_value = succeed({})
+
+        # Cluster #2 will break.
+        cluster_2 = self.rpc.makeCluster(nodegroup_2, ImportBootImages)
+        cluster_2.ImportBootImages.return_value = fail(ZeroDivisionError)
+
+        # Cluster #3 is not connected.
+
+        # Do the import with reporting.
+        importer = ClustersImporter.new(
+            [nodegroup_1.uuid, nodegroup_2.uuid, nodegroup_3.uuid])
+
+        with TwistedLoggerFixture() as logger:
+            importer.run().wait(5)
+
+        self.assertDocTestMatches(
+            """\
+            ...
+            ---
+            Cluster (cluster-1) has imported boot resources.
+            ---
+            Cluster (cluster-2) failed to import boot resources.
+            Traceback (most recent call last):
+            ...
+            ---
+            Cluster (cluster-3) did not import boot resources; it is not
+            connected to the region at this time.
+            """,
+            logger.output)

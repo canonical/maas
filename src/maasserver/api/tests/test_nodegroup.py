@@ -18,18 +18,15 @@ import httplib
 import json
 import random
 from textwrap import dedent
-from urlparse import urlparse
 
 import bson
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
-from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
 )
 from maasserver.models import (
-    Config,
     DownloadProgress,
     NodeGroup,
     nodegroup as nodegroup_module,
@@ -55,7 +52,6 @@ from metadataserver.models import (
     commissioningscript,
     NodeResult,
 )
-from mock import Mock
 from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
     AddVirsh,
@@ -63,7 +59,6 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
-    ImportBootImages,
 )
 from testtools.matchers import (
     AllMatch,
@@ -240,32 +235,19 @@ class TestNodeGroupAPI(APITestCase):
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_import_boot_images_for_all_accepted_clusters(self):
-        # Patch out the is_connected method of NodeGroup so as to avoid
-        # extra calls to getClient()
-        self.patch(nodegroup_module.NodeGroup, 'is_connected')
+    def test_import_boot_images_schedules_import_to_clusters(self):
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images, "ClustersImporter")
+
         self.become_admin()
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        accepted_nodegroups = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-        ]
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        expected_uuids = [
-            nodegroup.uuid
-            for nodegroup in accepted_nodegroups
-            ]
-        called_uuids = [
-            client_call[0][0]
-            for client_call in mock_getClientFor.call_args_list
-            ]
-        self.assertItemsEqual(expected_uuids, called_uuids)
+        self.assertThat(
+            boot_images.ClustersImporter.schedule,
+            MockCalledOnceWith())
 
     def test_import_boot_images_denied_if_not_admin(self):
         user = factory.make_User()
@@ -656,13 +638,10 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
-    def test_nodegroup_import_boot_images_calls_ImportBootImages(self):
-        proxy = 'http://%s.example.com' % factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
-        sources = [get_simplestream_endpoint()]
-        fake_client = Mock()
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        mock_getClientFor.return_value = fake_client
+    def test_nodegroup_import_boot_images_schedules_import_to_cluster(self):
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images, "ClustersImporter")
+
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
         admin = factory.make_admin()
@@ -674,10 +653,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
         self.assertThat(
-            fake_client,
-            MockCalledOnceWith(
-                ImportBootImages, sources=sources,
-                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
+            boot_images.ClustersImporter.schedule,
+            MockCalledOnceWith(nodegroup.uuid))
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_NodeGroup()

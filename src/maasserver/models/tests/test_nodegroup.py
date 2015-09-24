@@ -15,13 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 from random import randint
-from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 import django.dispatch
-from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATE,
     NODEGROUP_STATUS,
@@ -29,7 +27,6 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
-    Config,
     NodeGroup,
     nodegroup as nodegroup_module,
 )
@@ -42,10 +39,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
     call,
@@ -60,7 +54,6 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
-    ImportBootImages,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
@@ -183,25 +176,6 @@ class TestNodeGroupManager(MAASServerTestCase):
             old_status, factory.pick_enum(NODEGROUP_STATUS))
         self.assertEqual(
             [call(nodegroup)], recorder.call_args_list)
-
-    def test_import_boot_images_on_accepted_clusters_calls_getClientFor(self):
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        accepted_nodegroups = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-        ]
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED)
-        NodeGroup.objects.import_boot_images_on_enabled_clusters()
-        expected_uuids = [
-            nodegroup.uuid
-            for nodegroup in accepted_nodegroups
-            ]
-        called_uuids = [
-            client_call[0][0]
-            for client_call in mock_getClientFor.call_args_list
-            ]
-        self.assertItemsEqual(expected_uuids, called_uuids)
 
     def test_all_accepted_only_includes_accepted_nodegroups(self):
         nodegroups = {
@@ -429,56 +403,6 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup1.ensure_dhcp_key()
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
-
-    def test_import_boot_images_calls_getClientFor_with_uuid(self):
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.import_boot_images()
-        self.assertThat(
-            mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=1))
-
-    def test_import_boot_images_calls_client_with_resource_endpoint(self):
-        proxy = 'http://%s.example.com' % factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
-        sources = [get_simplestream_endpoint()]
-        fake_client = Mock()
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        mock_getClientFor.return_value = fake_client
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.import_boot_images()
-        self.assertThat(
-            fake_client,
-            MockCalledOnceWith(
-                ImportBootImages, sources=sources,
-                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
-
-    def test_import_boot_images_does_nothing_if_no_connection_to_cluster(self):
-        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        mock_getClientFor.side_effect = NoConnectionsAvailable()
-        mock_get_simplestreams_endpoint = self.patch(
-            nodegroup_module, 'get_simplestream_endpoint')
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.import_boot_images()
-        self.assertThat(mock_get_simplestreams_endpoint, MockNotCalled())
-
-    def test_import_boot_images_end_to_end(self):
-        proxy = 'http://%s.example.com' % factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(nodegroup, ImportBootImages)
-        protocol.ImportBootImages.return_value = defer.succeed({})
-
-        nodegroup.import_boot_images().wait(10)
-
-        self.assertThat(
-            protocol.ImportBootImages,
-            MockCalledOnceWith(
-                ANY, sources=[get_simplestream_endpoint()],
-                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
 
     def test_is_connected_returns_true_if_connection(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')

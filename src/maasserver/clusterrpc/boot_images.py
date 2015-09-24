@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ClustersImporter",
     "get_all_available_boot_images",
     "get_boot_images",
     "get_boot_images_for",
@@ -21,21 +22,43 @@ __all__ = [
     "is_import_boot_images_running_for",
 ]
 
+from collections import Sequence
 from functools import partial
-from itertools import imap
+from itertools import (
+    imap,
+    izip,
+)
+from urlparse import (
+    ParseResult,
+    urlparse,
+)
 
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
 )
 from maasserver.utils import async
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.rpc.cluster import (
+    ImportBootImages,
     IsImportBootImagesRunning,
     ListBootImages,
     ListBootImagesV2,
 )
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.utils import flatten
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    synchronous,
+)
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    DeferredList,
+    DeferredSemaphore,
+)
 from twisted.protocols.amp import UnhandledCommand
+from twisted.python import log
 from twisted.python.failure import Failure
 
 
@@ -194,3 +217,133 @@ def get_boot_images_for(
             if resource is not None:
                 matching_images.append(image)
     return matching_images
+
+
+undefined = object()
+
+
+class ClustersImporter:
+    """Utility to help import boot resources from the region to clusters."""
+
+    @staticmethod
+    def _get_uuids():
+        # Avoid circular import.
+        from maasserver.enum import NODEGROUP_STATUS
+        from maasserver.models import NodeGroup
+
+        enabled = NODEGROUP_STATUS.ENABLED
+        clusters = NodeGroup.objects.filter(status=enabled)
+        uuids = clusters.values_list("uuid", flat=True)
+        return list(uuids)
+
+    @staticmethod
+    def _get_sources():
+        # Avoid circular import.
+        from maasserver.bootresources import get_simplestream_endpoint
+
+        endpoint = get_simplestream_endpoint()
+        return [endpoint]
+
+    @staticmethod
+    def _get_proxy():
+        # Avoid circular import.
+        from maasserver.models.config import Config
+
+        proxy = Config.objects.get_config("http_proxy")
+        return proxy
+
+    @classmethod
+    @transactional
+    def new(cls, uuids=undefined, sources=undefined, proxy=undefined):
+        """Create a new importer.
+
+        Obtain values for `uuids`, `sources` and `proxy` if they're not
+        provided. This MUST be called in a database thread.
+
+        :return: :class:`ClustersImporter`
+        """
+        return cls(
+            cls._get_uuids() if uuids is undefined else uuids,
+            cls._get_sources() if sources is undefined else sources,
+            cls._get_proxy() if proxy is undefined else proxy,
+        )
+
+    @classmethod
+    def schedule(
+            cls, uuids=undefined, sources=undefined, proxy=undefined,
+            concurrency=1, delay=0, clock=reactor):
+        """Schedule cluster imports to happen."""
+
+        def do_import():
+            d = deferToDatabase(ClustersImporter.new, uuids, sources, proxy)
+            d.addCallback(lambda importer: importer.run(concurrency))
+            return d
+
+        return clock.callLater(delay, do_import)
+
+    def __init__(self, uuids, sources, proxy=None):
+        """Create a new importer.
+
+        :param uuids: A sequence of cluster UUIDs.
+        :param sources: A sequence of endpoints; see `ImportBootImages`.
+        :param proxy: The HTTP/HTTPS proxy to use, or `None`
+        :type proxy: :class:`urlparse.ParseResult` or string
+        """
+        super(ClustersImporter, self).__init__()
+        self.uuids = tuple(flatten(uuids))
+        if isinstance(sources, Sequence):
+            self.sources = sources
+        else:
+            raise TypeError("expected sequence, got: %r" % (sources,))
+        if proxy is None or isinstance(proxy, ParseResult):
+            self.proxy = proxy
+        else:
+            self.proxy = urlparse(proxy)
+
+    @asynchronous
+    def __call__(self, lock):
+        """Ask the clusters to download the region's boot resources.
+
+        :param lock: A concurrency primitive to limit the number of clusters
+            importing at one time.
+        """
+        def sync_cluster(uuid, sources, proxy):
+            d = getClientFor(uuid, timeout=1)
+            d.addCallback(lambda client: client(
+                ImportBootImages, sources=sources,
+                http_proxy=proxy, https_proxy=proxy))
+            return d
+
+        return DeferredList(
+            (lock.run(sync_cluster, uuid, self.sources, self.proxy)
+             for uuid in self.uuids),
+            consumeErrors=True)
+
+    @asynchronous
+    def run(self, concurrency=1):
+        """Ask the clusters to download the region's boot resources.
+
+        Report the results via the log.
+
+        :param concurrency: Limit the number of clusters importing at one
+            time to no more than `concurrency`.
+        """
+        lock = DeferredSemaphore(concurrency)
+
+        def report(results):
+            message_success = "Cluster (%s) has imported boot resources."
+            message_failure = "Cluster (%s) failed to import boot resources."
+            message_disconn = (
+                "Cluster (%s) did not import boot resources; it is not "
+                "connected to the region at this time."
+            )
+            for uuid, (success, result) in izip(self.uuids, results):
+                if success:
+                    log.msg(message_success % uuid)
+                elif result.check(NoConnectionsAvailable):
+                    log.msg(message_disconn % uuid)
+                else:
+                    log.err(result, message_failure % uuid)
+
+        return self(lock).addCallback(report).addErrback(
+            log.err, "General failure syncing boot resources.")

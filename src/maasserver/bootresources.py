@@ -62,7 +62,6 @@ from maasserver.models import (
     BootResourceSet,
     Config,
     LargeFile,
-    NodeGroup,
 )
 from maasserver.rpc import getAllClients
 from maasserver.utils import (
@@ -917,14 +916,16 @@ def _import_resources(force=False):
         exist. This is used because we want the user to start the first import
         action, not let it run automatically.
     """
+    # Avoid circular import.
+    from maasserver.clusterrpc.boot_images import ClustersImporter
+
     # Sync boot resources into the region.
     d = deferToDatabase(_import_resources_with_lock, force=force)
 
     def cb_import(_):
-        # Sync the resources from the region into all the clusters.
-        # FIXME: Change this to be async all the way.
-        return deferToDatabase(
-            NodeGroup.objects.import_boot_images_on_enabled_clusters)
+        d = deferToDatabase(ClustersImporter.new)
+        d.addCallback(lambda importer: importer.run())
+        return d
 
     def eb_import(failure):
         failure.trap(DatabaseLockNotHeld)

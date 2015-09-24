@@ -17,8 +17,6 @@ __all__ = [
     'NODEGROUP_CLUSTER_NAME_TEMPLATE',
     ]
 
-from urlparse import urlparse
-
 from apiclient.creds import convert_tuple_to_string
 from crochet import TimeoutError
 from django.db.models import (
@@ -56,7 +54,6 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
-    ImportBootImages,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from south.modelsinspector import add_introspection_rules
@@ -120,13 +117,6 @@ class NodeGroupManager(Manager):
             nodegroup.status = new_status
             nodegroup.save()
         return nodegroups_count
-
-    def import_boot_images_on_enabled_clusters(self):
-        """Import the boot images on all the accepted cluster controllers."""
-        accepted_nodegroups = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ENABLED)
-        for nodegroup in accepted_nodegroups:
-            nodegroup.import_boot_images()
 
     def all_accepted(self):
         """Return the set of all accepted node-groups."""
@@ -341,29 +331,6 @@ class NodeGroup(TimestampedModel):
     def work_queue(self):
         """The name of the queue for tasks specific to this nodegroup."""
         return self.uuid
-
-    def import_boot_images(self):
-        """Import the pxe files on this cluster controller.
-
-        This will cause the cluster to connect to the region to download
-        the images that are exposed there.
-        """
-        # Avoid circular imports
-        from maasserver.models import Config
-        from maasserver.bootresources import get_simplestream_endpoint
-        try:
-            client = getClientFor(self.uuid, timeout=1)
-        except NoConnectionsAvailable:
-            # No connection to the cluster so the import cannot start. If
-            # the cluster is down, it will do an import on start up.
-            return
-        sources = [get_simplestream_endpoint()]
-        http_proxy = Config.objects.get_config("http_proxy")
-        if http_proxy is not None:
-            http_proxy = urlparse(http_proxy)
-        return client(
-            ImportBootImages, sources=sources,
-            http_proxy=http_proxy, https_proxy=http_proxy)
 
     def add_seamicro15k(self, user, mac, username, password,
                         power_control=None, accept_all=False):
