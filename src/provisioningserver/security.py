@@ -70,7 +70,7 @@ def get_shared_secret_from_filesystem():
     """
     secret_path = get_shared_secret_filesystem_path()
     ensure_dir(dirname(secret_path))
-    with FileLock(secret_path):
+    with FileLock(secret_path).wait(10):
         # Load secret from the filesystem, if it exists.
         try:
             secret_hex = read_text_file(secret_path)
@@ -95,7 +95,7 @@ def set_shared_secret_on_filesystem(secret):
     secret_path = get_shared_secret_filesystem_path()
     ensure_dir(dirname(secret_path))
     secret_hex = to_hex(secret)
-    with FileLock(secret_path):
+    with FileLock(secret_path).wait(10):
         # Ensure that the file has sensible permissions.
         with open(secret_path, "ab") as secret_f:
             fchmod(secret_f.fileno(), 0o640)
