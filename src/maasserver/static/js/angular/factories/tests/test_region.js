@@ -356,6 +356,19 @@ describe("RegionConnection", function() {
             angular.element.and.callThrough();
         });
 
+        it("doesnt include ':' when no port given", function() {
+            if(angular.isString($window.location.port) &&
+                $window.location.port.length > 0) {
+                expect(RegionConnection._buildUrl()).toBe(
+                    "ws://" + $window.location.hostname + ":" +
+                    $window.location.port + $window.location.pathname + "/ws");
+            } else {
+                expect(RegionConnection._buildUrl()).toBe(
+                    "ws://" + $window.location.hostname +
+                    $window.location.pathname + "/ws");
+            }
+        });
+
         it("includes csrftoken if cookie defined", function() {
             csrftoken = makeName('csrftoken');
             // No need to organize a cleanup: cookies are reset before each

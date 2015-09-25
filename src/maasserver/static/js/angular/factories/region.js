@@ -188,7 +188,12 @@ angular.module('MAAS').factory(
                 path += '/';
             }
 
-            url = proto + "://" + host + ":" + port + path + "ws";
+            // Build the URL. Include the :port only if it has a value.
+            url = proto + "://" + host;
+            if(angular.isString(port) && port.length > 0){
+                url += ":" + port;
+            }
+            url += path + "ws";
 
             // Include the csrftoken in the URL if it's defined.
             csrftoken = $cookies.csrftoken;
