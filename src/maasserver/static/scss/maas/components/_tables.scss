@@ -198,8 +198,7 @@ table {
 
   @for $i from 1 through $table-columns {
     .table__column--#{$i} {
-      max-width: ($max-width / 100) * $i;
-      width: 100%;
+      width: percentage($i / 100);
     }
   }
 }
