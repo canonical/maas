@@ -114,6 +114,12 @@ from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
 
+try:
+    from simplestreams.checksum_util import checksummer
+except ImportError:
+    from simplestreams.util import checksummer
+
+
 maaslog = get_maas_logger("bootresources")
 
 # Used by maasserver.middleware.AccessMiddleware to allow
@@ -669,7 +675,7 @@ class BootResourceStore(ObjectStore):
         """Writes the data from the given reader, into the object storage
         for the given `BootResourceFile`."""
         ident = self.get_resource_file_log_identifier(rfile)
-        cksummer = sutil.checksummer(
+        cksummer = checksummer(
             {'sha256': rfile.largefile.sha256})
         maaslog.debug("Finalizing boot image %s.", ident)
 
