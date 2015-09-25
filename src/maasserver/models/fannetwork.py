@@ -100,6 +100,7 @@ class FanNetwork(CleanSave, TimestampedModel):
         blank=True, unique=False, editable=True, null=True)
 
     host_reserve = PositiveIntegerField(
+        default=1,
         blank=True, unique=False, editable=True, null=True)
 
     bridge = CharField(
@@ -116,6 +117,10 @@ class FanNetwork(CleanSave, TimestampedModel):
             self.name, self.underlay, self.overlay)
 
     def clean_overlay(self):
+        if self.overlay is None or self.overlay == '':
+            return
+        if self.underlay is None or self.underlay == '':
+            return
         overlay_prefix = IPNetwork(self.overlay).prefixlen
         underlay_prefix = IPNetwork(self.underlay).prefixlen
         slice_bits = underlay_prefix - overlay_prefix
@@ -132,6 +137,10 @@ class FanNetwork(CleanSave, TimestampedModel):
                 {'overlay': ['Overlay network contains underlay network.']})
 
     def clean_host_reserve(self):
+        if self.overlay is None or self.overlay == '':
+            return
+        if self.underlay is None or self.underlay == '':
+            return
         overlay_prefix = IPNetwork(self.overlay).prefixlen
         underlay_prefix = IPNetwork(self.underlay).prefixlen
         slice_bits = underlay_prefix - overlay_prefix

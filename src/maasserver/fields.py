@@ -586,7 +586,7 @@ class IPv4CIDRField(CIDRField):
     """IPv4-only CIDR"""
 
     def to_python(self, value):
-        if value is None:
+        if value is None or value == '':
             return None
         else:
             try:
