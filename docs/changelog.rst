@@ -9,21 +9,62 @@ Changelog
 Important announcements
 -----------------------
 
-** Installation by default configures /etc/network/interfaces **
- Starting from MAAS 1.9.0 (alpha2), all deployments will result with
- static network configurations. Users will be able to interact with the
- API to further configure interfaces.
+**Installation by default configures /etc/network/interfaces**
+ Starting from MAAS 1.9.0 (alpha2), all Ubuntu deployments will result
+ with static network configurations. Users will be able to interact
+ with the  API to further configure interfaces.
+
+**Introduction to Fabrics, Spaces and Subnets introduces new Network API**
+ With the introduction of the concepts of Fabrics, Spaces and Subnets starting
+ from MAAS 1.9.0 (alpha2), MAAS also introduces new API's for:
+
+  * fabrics
+  * spaces
+  * subnets
+  * vlans
+  * fan-networks
+
+ MAAS 1.9.0 will continue to provide backwards compatibility with the old
+ network API for reading purposes, but moving forward, users are required to
+ use the new API to manipulate fabrics, spaces and subnets.
 
 Major New Features
 ------------------
 
-** Advanced Node Network Configuration **
-** Spaces, Fabrics and FANS **
+**Advanced Node Network Configuration**
+ Starting from MAAS 1.9.0 (alpha2), MAAS can now do the Node's Network
+ configuration. Doing such configuration will result in having
+ `/etc/network/interfaces` writen.
+
+ Advanced configuration includes:
+
+  * Assign subnets, fabrics, and IP to interfaces.
+  * Create VLAN interfaces.
+  * Create bond interfaces.
+  * Change interface names.
+
+**Fabrics, Spaces, Subnets and Fan networks**
+ Starting from MAAS 1.9.0 (alpha2), MAAS now supports the concept of
+ Fabrics, Spaces, Subnets and FANS.
+
+ These new concepts replaces the old `Network` concepts from MAAS'
+ earlier versions. For more information, see :ref:`networking`.
+
+ For more information about the API, see :ref:`api`.
+
+**Curtin & cloud-init status updates**
+ Starting from MAAS 1.9.0 (alpha2), curtin and cloud-init will now send
+ messages to MAAS providing information regarding various of the actions
+ taken. This information will be displayed in MAAS in the `Node Event Log`.
+
+ Note that this information is only available when using MAAS 1.9.0 and
+ the latest version fo curtin. For cloud-init messages this information
+ is only available when deploying Wily.
 
 Minor notable changes
 ---------------------
 
-** Commissioning Actions **
+**Commissioning Actions**
  MAAS now supports commissioning actions. These allow the user to specify
  how commissioning should behave in certain escenarios. The commissioning
  actions available are:
@@ -33,7 +74,7 @@ Minor notable changes
   * Keep network configuration after commissioning
   * Keep storage configuration after commissioning
 
-** CentOS images can be imported automatically **
+**CentOS images can be imported automatically**
  CentOS Image (CentOS 6 and 7) can now be imported automatically from the
  MAAS Images page. These images are currently part of the daily streams.
 
@@ -44,6 +85,41 @@ Minor notable changes
 
 Known Problems & Workarounds
 ----------------------------
+
+**CentOS fails to deploy with LVM Storage layout**
+ CentOS fails to deploy when deploying with an LVM storage layout.
+ Provided that LVM is the default storage layout, every CentOS deployment
+ will fail, unless this layout is changed to 'Flat' storage.
+
+ To work around the problem, the default storage layout can be changed from
+ `LVM` to `Flat` in MAAS' Networks page, under `Storage Layout` section.
+
+ See bug `1499558`_ for more information.
+
+.. _1499558:
+  https://launchpad.net/bugs/1499558
+
+
+**Juju 1.24+ bootstrap failure - Changing MAAS configured /etc/network/interfaces**
+ Juju 1.24+, by default, assumes that it can manage the MAAS deployed node's
+ network configuration. Juju changes /etc/network/interfaces and disables
+ bringing up eth0 on boot, to create a bridge to support LXC. However,
+ provided that MAAS / curtin now write the node's network configuration,
+ Juju is unable to successfully finish the creation of the bridge, but in
+ the process, it disables auto bring up of eth0.
+
+ The machine will deploy successfully, however, after a reboot eth0 will
+ never be brought back up due to the changes made by Juju. This will prevent
+ Juju from SSH'ing into the machine and finishing the boostrap.
+
+ To prevent this from happening, `disable-network-management: true` needs
+ to be used. Note that this will prevent the deployment of LXC containers
+ as they have to DHCP.
+
+ See bug `1494476`_ for more information.
+
+.. _1494476:
+  https://launchpad.net/bugs/1494476
 
 
 1.9.0 (alpha1)
