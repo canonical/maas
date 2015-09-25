@@ -17,7 +17,10 @@ __all__ = []
 import random
 from textwrap import dedent
 
-from maasserver.dns.zonegenerator import get_dns_server_address
+from maasserver.dns.zonegenerator import (
+    get_dns_search_paths,
+    get_dns_server_address,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -206,8 +209,12 @@ class AssertNetworkConfigMixin:
         return ret
 
     def collectDNSConfig(self, node):
-        return "- type: nameserver\n  address: %s" % (
+        config = "- type: nameserver\n  address: %s\n  search:\n" % (
             get_dns_server_address(nodegroup=node.nodegroup))
+        dns_searches = sorted(get_dns_search_paths())
+        for dns_name in dns_searches:
+            config += "   - %s\n" % dns_name
+        return config
 
 
 class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):

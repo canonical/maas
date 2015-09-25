@@ -21,6 +21,7 @@ from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
     DNSException,
+    get_dns_search_paths,
     get_dns_server_address,
     get_hostname_ip_mapping,
     lazydict,
@@ -37,6 +38,7 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     interface as interface_module,
+    NodeGroup,
 )
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -130,6 +132,26 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         self.expectThat(ip, Equals(result))
         self.expectThat(resolver, MockAnyCall(hostname, 4))
         self.expectThat(resolver, MockAnyCall(hostname, 6))
+
+
+class TestGetDNSSearchPaths(MAASServerTestCase):
+
+    def test__returns_all_nodegroup_names(self):
+        nodegroup_master = NodeGroup.objects.ensure_master()
+        dns_search_names = [
+            factory.make_name("dns")
+            for _ in range(3)
+        ]
+        for name in dns_search_names:
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED, name=name)
+        # Create some with empty names.
+        for _ in range(3):
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED, name="")
+        # Create some not enabled.
+        for _ in range(3):
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.DISABLED, name="")
+        self.assertItemsEqual(
+            [nodegroup_master.name] + dns_search_names, get_dns_search_paths())
 
 
 class TestWarnLoopback(MAASServerTestCase):

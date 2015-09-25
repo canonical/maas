@@ -15,7 +15,10 @@ __metaclass__ = type
 __all__ = [
     ]
 
-from maasserver.dns.zonegenerator import get_dns_server_address
+from maasserver.dns.zonegenerator import (
+    get_dns_search_paths,
+    get_dns_server_address,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -57,7 +60,8 @@ class CurtinNetworkGenerator:
 
         self.network_config.append({
             "type": "nameserver",
-            "address": get_dns_server_address(nodegroup=self.node.nodegroup)
+            "address": get_dns_server_address(nodegroup=self.node.nodegroup),
+            "search": sorted(get_dns_search_paths()),
         })
 
         network_config = {

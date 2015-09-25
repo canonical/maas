@@ -25,6 +25,7 @@ from itertools import (
 import socket
 
 from maasserver import logger
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
 from maasserver.models.nodegroup import NodeGroup
@@ -127,6 +128,16 @@ def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
 
     warn_loopback(ip)
     return ip
+
+
+def get_dns_search_paths():
+    """Return all the search paths for the DNS server."""
+    return set(
+        name
+        for name in NodeGroup.objects.filter(
+            status=NODEGROUP_STATUS.ENABLED).values_list("name", flat=True)
+        if name
+    )
 
 
 class ZoneGenerator:
