@@ -82,19 +82,23 @@ tags-input {
 
   }
 
-  .suggestion-list {
-    background: #FFF;
-    padding: 10px 8px;
-    border: 1px solid #D2D2D2;
-    border-top: 0;
-    border-radius: 0 0 2px 2px;
-    display: none;
+  .autocomplete {
+    float: left;
+    width: 100%;
+    
+    .suggestion-list {
+      background: #FFF;
+      padding: 10px 8px;
+      border: 1px solid #D2D2D2;
+      border-top: 0;
+      border-radius: 0 0 2px 2px;
 
-    li {
+      li {
 
-      &:hover {
-        background: #EEE;
-        cursor: pointer;
+        &:hover {
+          background: #EEE;
+          cursor: pointer;
+        }
       }
     }
   }
