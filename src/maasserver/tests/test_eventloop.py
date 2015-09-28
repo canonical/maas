@@ -27,6 +27,7 @@ from maasserver import (
 from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.utils import dbtasks
 from maasserver.utils.orm import (
     DisabledDatabaseConnection,
     transactional,
@@ -137,6 +138,14 @@ class TestRegionEventLoop(MAASTestCase):
 
 
 class TestFactories(MAASTestCase):
+
+    def test_make_DatabaseTaskService(self):
+        service = eventloop.make_DatabaseTaskService()
+        self.assertThat(service, IsInstance(dbtasks.DatabaseTasksService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_DatabaseTaskService,
+            {factory for _, factory in eventloop.loop.factories})
 
     def test_make_RegionService(self):
         service = eventloop.make_RegionService()

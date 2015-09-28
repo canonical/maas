@@ -75,6 +75,11 @@ reactor.addSystemEventTrigger(
     "before", "startup", disable_all_database_connections)
 
 
+def make_DatabaseTaskService():
+    from maasserver.utils import dbtasks
+    return dbtasks.DatabaseTasksService()
+
+
 def make_RegionService():
     # Import here to avoid a circular import.
     from maasserver.rpc import regionservice
@@ -153,6 +158,7 @@ class RegionEventLoop:
     """
 
     factories = (
+        ("database-tasks", make_DatabaseTaskService),
         ("rpc", make_RegionService),
         ("rpc-advertise", make_RegionAdvertisingService),
         ("nonce-cleanup", make_NonceCleanupService),

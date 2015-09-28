@@ -98,9 +98,6 @@ class TestRegionServiceMaker(MAASTestCase):
 
     @asynchronous(timeout=5)
     def test_makeService(self):
-        """
-        Only the site service is created when no options are given.
-        """
         options = Options()
         service_maker = RegionServiceMaker("Harry", "Hill")
         # Disable _configureThreads() as it's too invasive right now.
@@ -108,6 +105,7 @@ class TestRegionServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
+            "database-tasks",
             "import-resources",
             "import-resources-progress",
             "nonce-cleanup",
