@@ -18,6 +18,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "DatabaseTaskAlreadyRunning",
     "DatabaseTasksService",
 ]
 
@@ -33,6 +34,10 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import cooperate
 from twisted.python import log
+
+
+class DatabaseTaskAlreadyRunning(Exception):
+    """The database task is running and can no longer be cancelled."""
 
 
 class DatabaseTasksService(Service, object):
@@ -72,9 +77,17 @@ class DatabaseTasksService(Service, object):
 
         :raise QueueOverflow: If the queue of tasks is full.
         :return: :class:`Deferred`, which fires with the result of the running
-            the task in a database thread.
+            the task in a database thread. This can be cancelled while the
+            database task is still enqueued, but will refuse to cancel once
+            the task is running, instead raising `DatabaseTaskAlreadyRunning`.
         """
-        done = Deferred()
+        def cancel(done):
+            if task in self.queue.pending:
+                self.queue.pending.remove(task)
+            else:
+                raise DatabaseTaskAlreadyRunning()
+
+        done = Deferred(cancel)
 
         def task():
             d = deferToDatabase(func, *args, **kwargs)

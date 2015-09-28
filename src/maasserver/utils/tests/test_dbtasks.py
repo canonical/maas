@@ -17,8 +17,12 @@ __all__ = []
 import random
 import threading
 
+from crochet import wait_for_reactor
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.dbtasks import DatabaseTasksService
+from maasserver.utils.dbtasks import (
+    DatabaseTaskAlreadyRunning,
+    DatabaseTasksService,
+)
 from maasserver.utils.orm import transactional
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -34,8 +38,11 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     DeferredQueue,
+    inlineCallbacks,
     QueueOverflow,
 )
 
@@ -166,6 +173,41 @@ class TestDatabaseTaskService(MAASTestCase):
         self.assertThat(
             queue, MatchesStructure.byEquality(
                 waiting=[], pending=[]))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__deferred_task_can_be_cancelled_when_enqueued(self):
+        things = []  # This will NOT be populated by tasks.
+
+        service = DatabaseTasksService()
+        yield service.startService()
+        try:
+            event = threading.Event()
+            service.deferTask(event.wait)
+            service.deferTask(things.append, 1).cancel()
+        finally:
+            event.set()
+            yield service.stopService()
+
+        self.assertThat(things, Equals([]))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__deferred_task_cannot_be_cancelled_when_running(self):
+        # DatabaseTaskAlreadyRunning is raised when attempting to cancel a
+        # database task that's already running.
+        service = DatabaseTasksService()
+        yield service.startService()
+        try:
+            ready = Deferred()
+            d = service.deferTask(reactor.callFromThread, ready.callback, None)
+            # Wait for the task to begin running.
+            yield ready
+            # We have the reactor thread. Even if the task completes its
+            # status will not be updated until the reactor's next iteration.
+            self.assertRaises(DatabaseTaskAlreadyRunning, d.cancel)
+        finally:
+            yield service.stopService()
 
     def test__failure_in_deferred_task_does_not_crash_service(self):
         things = []  # This will be populated by tasks.
