@@ -22,6 +22,7 @@ __all__ = [
     'IsUnfiredDeferred',
     'LessThanOrEqual',
     'MockAnyCall',
+    'MockCalledOnce',
     'MockCalledOnceWith',
     'MockCalledWith',
     'MockCallsMatch',
@@ -160,6 +161,27 @@ class MockCalledOnceWith(MockCalledWith):
             return Mismatch(*e.args)
 
         return None
+
+
+class MockCalledOnce(Matcher):
+    """Matches if the matchee `Mock` was called once, with any arguments.
+
+    The mock library does not have an equivalent.
+    """
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def match(self, mock):
+        mismatch = IsCallableMock().match(mock)
+        if mismatch is not None:
+            return mismatch
+        elif mock.call_count == 1:
+            return None
+        else:
+            return Mismatch(
+                "Expected to be called once. Called %d times."
+                % mock.call_count)
 
 
 class MockAnyCall(MockCalledWith):

@@ -25,6 +25,7 @@ from maastesting.matchers import (
     IsUnfiredDeferred,
     LessThanOrEqual,
     MockAnyCall,
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
@@ -143,6 +144,41 @@ class TestMockCalledOnceWith(MAASTestCase, MockTestMixin):
         matcher = MockCalledOnceWith(1, a=2)
         self.assertEqual(
             "MockCalledOnceWith(args=(1,), kwargs={'a': 2})",
+            matcher.__str__())
+
+
+class TestMockCalledOnce(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_when_matches(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCalledOnce()
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_multiple_calls(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCalledOnce()
+        result = matcher.match(mock)
+        self.assertMismatch(
+            result, "Expected to be called once. Called 2 times.")
+
+    def test_returns_mismatch_when_zero_calls(self):
+        mock = Mock()
+
+        matcher = MockCalledOnce()
+        result = matcher.match(mock)
+        self.assertMismatch(
+            result, "Expected to be called once. Called 0 times.")
+
+    def test_str(self):
+        matcher = MockCalledOnce()
+        self.assertEqual(
+            "MockCalledOnce",
             matcher.__str__())
 
 
