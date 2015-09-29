@@ -1,7 +1,7 @@
 <header class="page-header margin-bottom" data-maas-sticky-header>
     <div class="inner-wrapper">
         <h1 class="page-header__title eight-col">
-            <ng-pluralize data-ng-hide="loading" count="fabrics.length"
+            <ng-pluralize data-ng-hide="loading" count="subnets.length"
                           when="{'one': '{$ subnets.length $} subnet in ', 'other': '{$ subnets.length $} subnets in '}"></ng-pluralize>
             {$ $parent.site $} MAAS
             <span class="page-header__title--identicator" id="bulk-actions">
@@ -46,10 +46,10 @@
                     <header class="table__head">
                         <div class="table__row">
                             <div class="table__header table__column--20">Name</div>
-                            <div class="table__header table__column--15">VLAN-ID</div>
+                            <div class="table__header table__column--15">VID</div>
                             <div class="table__header table__column--10">Nodes</div>
                             <div class="table__header table__column--20">Subnet name</div>
-                            <div class="table__header table__column--35">IP range</div>
+                            <div class="table__header table__column--35">CIDR</div>
                         </div>
                     </header>
                     <main class="table-body">
@@ -95,7 +95,7 @@
                 <dt class="two-col">Subnets</dt>
                     <dd class="four-col last-col">{$ space.subnet_ids.length $}</dd>
             </dl>
-            <div class="twelve-col" data-ng-show="space.subnet_ids.length > 0">
+            <div class="twelve-col">
                 <table>
                     <thead>
                         <tr>
@@ -104,6 +104,9 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr data-ng-show="space.subnet_ids.length == 0">
+                            <td colspan="2">There are currently no subnets in this space.</td>
+                        </tr>
                         <tr data-ng-repeat="subnet in subnets | filterBySpace:space">
                             <!-- XXX mpontillo 2015-09-28
                             link to subnet details page -->
