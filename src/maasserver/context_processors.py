@@ -84,6 +84,7 @@ def static_resources(context):
             'js/angular/controllers/node_details_storage.js',
             'js/angular/controllers/node_result.js',
             'js/angular/controllers/node_events.js',
+            'js/angular/controllers/subnets_list.js',
         ],
         'JS_LIST': [
             'js/image.js',

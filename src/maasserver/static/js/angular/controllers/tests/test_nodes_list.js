@@ -37,8 +37,8 @@ describe("NodesListController", function() {
     // Load the NodesManager, DevicesManager, GeneralManager,
     // NodesManager, RegionConnection, SearchService and mock the
     // websocket connection.
-    var NodesManager, DevicesManager, GeneralManager, RegionConnection;
-    var ManagerHelperService, SearchService, webSocket;
+    var NodesManager, DevicesManager, GeneralManager;
+    var ManagerHelperService, SearchService;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
         DevicesManager = $injector.get("DevicesManager");
@@ -48,7 +48,12 @@ describe("NodesListController", function() {
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
+    }));
 
+    // Mock the websocket connection to the region
+    var RegionConnection, webSocket;
+    beforeEach(inject(function($injector) {
+        RegionConnection = $injector.get("RegionConnection");
         // Mock buildSocket so an actual connection is not made.
         webSocket = new MockWebSocket();
         spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);

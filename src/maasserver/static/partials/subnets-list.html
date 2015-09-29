@@ -1,0 +1,118 @@
+<header class="page-header margin-bottom" data-maas-sticky-header>
+    <div class="inner-wrapper">
+        <h1 class="page-header__title eight-col">
+            <ng-pluralize data-ng-hide="loading" count="fabrics.length"
+                          when="{'one': '{$ subnets.length $} subnet in ', 'other': '{$ subnets.length $} subnets in '}"></ng-pluralize>
+            {$ $parent.site $} MAAS
+            <span class="page-header__title--identicator" id="bulk-actions">
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <a href=""
+                   data-ng-hide="loading"
+                   data-ng-class="{ active: currentpage === 'fabrics' }"
+                   data-ng-click="toggleTab('fabrics')">{$ fabrics.length $} <ng-pluralize
+                        count="fabrics.length"
+                        when="{'one': 'Fabric', 'other': 'Fabrics'}"></ng-pluralize></a>
+                <span class="divide" data-ng-hide="loading"></span>
+                <a href=""
+                   data-ng-hide="loading"
+                   data-ng-class="{ active: currentpage === 'spaces' }"
+                   data-ng-click="toggleTab('spaces')">{$ spaces.length $} <ng-pluralize
+                        count="spaces.length"
+                        when="{'one': 'Space', 'other': 'Spaces'}"></ng-pluralize></a>
+                <span class="power-status--power" data-ng-show="loading">
+                    <span class="loader"></span>
+                    Loading...
+                </span>
+            </span>
+        </h1>
+    </div>
+</header>
+<div data-ng-show="currentpage === 'fabrics' && !loading">
+    <section class="row" data-ng-repeat="fabric in fabrics">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <h2>{$ fabric.name $}</h2>
+            </div>
+            <dl class="six-col">
+                <!-- XXX mpontillo 2015-09-28
+                     Need description, links to managed clusters -->
+                <dt class="two-col">Nodes</dt>
+                    <dd class="four-col last-col">{$ fabric.nodes_count $}</dd>
+                <dt class="two-col">VLANs</dt>
+                    <dd class="four-col last-col">{$ fabric.vlan_ids.length $}</dd>
+            </dl>
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--20">Name</div>
+                            <div class="table__header table__column--15">VLAN-ID</div>
+                            <div class="table__header table__column--10">Nodes</div>
+                            <div class="table__header table__column--20">Subnet name</div>
+                            <div class="table__header table__column--35">IP range</div>
+                        </div>
+                    </header>
+                    <main class="table-body">
+                        <div class="table__row"
+                             data-ng-repeat="vlan in vlans | filterByFabric:fabric">
+                            <div class="table__data table__column--20">{$ vlan.name $}</div>
+                            <div class="table__data table__column--15">{$ vlan.vid $}</div>
+                            <!-- XXX mpontillo 2015-09-28
+                            link to nodes page with these nodes selected -->
+                            <div class="table__data table__column--10">{$ vlan.nodes_count $}</div>
+                            <div class="table__data table__column--20">
+                                <ul class="no-bullets">
+                                <!-- XXX mpontillo 2015-09-28
+                                link to subnet details page -->
+                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">{$ subnet.name $}</li>
+                                </ul>
+                            </div>
+                            <div class="table__data table__column--35">
+                                <ul class="no-bullets">
+                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">{$ subnet.cidr $}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<div data-ng-show="currentpage === 'spaces' && !loading"">
+    <section class="row" data-ng-repeat="space in spaces">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <h2>{$ space.name $}</h2>
+            </div>
+            <dl class="six-col last-col">
+                <dt class="two-col">Nodes</dt>
+                <!-- XXX mpontillo 2015-09-28
+                     Need description, links to managed clusters -->
+                    <!-- XXX mpontillo 2015-09-28
+                    link to nodes page with these nodes selected -->
+                    <dd class="four-col last-col">{$ space.nodes_count $}</dd>
+                <dt class="two-col">Subnets</dt>
+                    <dd class="four-col last-col">{$ space.subnet_ids.length $}</dd>
+            </dl>
+            <div class="twelve-col" data-ng-show="space.subnet_ids.length > 0">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>IP range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-ng-repeat="subnet in subnets | filterBySpace:space">
+                            <!-- XXX mpontillo 2015-09-28
+                            link to subnet details page -->
+                            <td>{$ subnet.name $}</td>
+                            <td>{$ subnet.cidr $}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>

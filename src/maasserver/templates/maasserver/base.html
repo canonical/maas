@@ -38,7 +38,7 @@
             <nav role="navigation" class="nav-primary nav-right" id="canonlist">
                 <div class="logo">
                     <a class="logo-ubuntu" href="{% url 'index' %}">
-                        <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
+                        <img width="110" height="10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
                     </a>
                 </div>
                 <ul id="main-nav" class="nav">
@@ -56,6 +56,9 @@
                     </li>
                     <li>
                         <a class="{% block nav-active-zone-list %}{% endblock %}" href="{% url 'zone-list' %}">Zones</a>
+                    </li>
+                    <li>
+                        <a class="{% block nav-active-subnet-list %}{% endblock %}" href="{% url 'index' %}#/subnets">Subnets</a>
                     </li>
                     {% if user.is_superuser %}
                     <li>

@@ -1,0 +1,108 @@
+/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Unit tests for SubentsListController.
+ */
+
+describe("SubentsListController", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Grab the needed angular pieces.
+    var $controller, $rootScope, $scope, $q, $routeParams;
+    beforeEach(inject(function($injector) {
+        $controller = $injector.get("$controller");
+        $rootScope = $injector.get("$rootScope");
+        $scope = $rootScope.$new();
+        $q = $injector.get("$q");
+        $routeParams = {};
+    }));
+
+    // Load the NodesManager, DevicesManager,
+    // NodesManager, RegionConnection, SearchService.
+    var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
+    var ManagerHelperService, RegionConnection;
+    beforeEach(inject(function($injector) {
+        SubnetsManager = $injector.get("SubnetsManager");
+        FabricsManager = $injector.get("FabricsManager");
+        SpacesManager = $injector.get("SpacesManager");
+        VLANsManager = $injector.get("VLANsManager");
+        ManagerHelperService = $injector.get("ManagerHelperService");
+    }));
+
+    // Makes the NodesListController
+    function makeController(loadManagersDefer, defaultConnectDefer) {
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+        if(angular.isObject(loadManagersDefer)) {
+            loadManagers.and.returnValue(loadManagersDefer.promise);
+        } else {
+            loadManagers.and.returnValue($q.defer().promise);
+        }
+
+        // Create the controller.
+        var controller = $controller("SubnetsListController", {
+            $scope: $scope,
+            $rootScope: $rootScope,
+            $routeParams: $routeParams,
+            SubnetsManager: SubnetsManager,
+            FabricsManager: FabricsManager,
+            SpacesManager: SpacesManager,
+            VLANsManager: VLANsManager,
+            ManagerHelperService: ManagerHelperService
+        });
+
+        return controller;
+    }
+
+    it("sets title and page on $rootScope", function() {
+        var controller = makeController();
+        expect($rootScope.title).toBe("Fabrics");
+        expect($rootScope.page).toBe("subnets");
+    });
+
+    it("sets initial values on $scope", function() {
+        // tab-independant variables.
+        var controller = makeController();
+        expect($scope.subnets).toBe(SubnetsManager.getItems());
+        expect($scope.fabrics).toBe(FabricsManager.getItems());
+        expect($scope.spaces).toBe(SpacesManager.getItems());
+        expect($scope.vlans).toBe(VLANsManager.getItems());
+        expect($scope.loading).toBe(true);
+    });
+
+    it("calls loadManagers with SubnetsManager, FabricsManager, " +
+        "SpacesManager, VLANsManager",
+        function() {
+            var controller = makeController();
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                [SubnetsManager, FabricsManager, SpacesManager, VLANsManager]);
+        });
+
+    it("sets loading to false with loadManagers resolves", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        expect($scope.loading).toBe(false);
+    });
+
+    describe("toggleTab", function() {
+
+        it("sets $rootScope.title", function() {
+            var controller = makeController();
+            $scope.toggleTab('spaces');
+            expect($rootScope.title).toBe($scope.tabs.spaces.pagetitle);
+            $scope.toggleTab('fabrics');
+            expect($rootScope.title).toBe($scope.tabs.fabrics.pagetitle);
+        });
+
+        it("sets currentpage", function() {
+            var controller = makeController();
+            $scope.toggleTab('spaces');
+            expect($scope.currentpage).toBe('spaces');
+            $scope.toggleTab('fabrics');
+            expect($scope.currentpage).toBe('fabrics');
+        });
+    });
+});
