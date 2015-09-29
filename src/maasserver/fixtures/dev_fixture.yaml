@@ -7803,7 +7803,7 @@
     type: physical
     updated: 2015-09-18 15:25:13.362344
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 1
 - fields:
     created: 2015-09-18 15:22:45.193145
@@ -7819,7 +7819,7 @@
     type: physical
     updated: 2015-09-18 15:26:10.052148
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 2
 - fields:
     created: 2015-09-18 15:22:45.193145
@@ -7835,7 +7835,7 @@
     type: physical
     updated: 2015-09-18 15:25:10.209980
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 3
 - fields:
     created: 2015-09-18 15:22:45.193145
@@ -7851,7 +7851,7 @@
     type: physical
     updated: 2015-09-18 15:26:10.052148
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 4
 - fields:
     created: 2015-09-18 15:22:45.784235
@@ -7867,7 +7867,7 @@
     type: physical
     updated: 2015-09-18 15:25:06.603391
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 5
 - fields:
     created: 2015-09-18 15:22:46.352407
@@ -7883,7 +7883,7 @@
     type: physical
     updated: 2015-09-18 15:25:08.832801
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 6
 - fields:
     created: 2015-09-18 15:22:46.926070
@@ -7899,7 +7899,7 @@
     type: physical
     updated: 2015-09-18 15:25:10.329360
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 7
 - fields:
     created: 2015-09-18 15:22:47.542484
@@ -7915,7 +7915,7 @@
     type: physical
     updated: 2015-09-18 15:25:08.368004
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 8
 - fields:
     created: 2015-09-18 15:22:48.133143
@@ -7931,7 +7931,7 @@
     type: physical
     updated: 2015-09-18 15:25:07.518690
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 9
 - fields:
     created: 2015-09-18 15:22:48.753151
@@ -7947,7 +7947,7 @@
     type: physical
     updated: 2015-09-18 15:25:10.120590
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 10
 - fields:
     created: 2015-09-18 15:31:45.016083
@@ -7963,7 +7963,7 @@
     type: physical
     updated: 2015-09-18 15:31:45.016083
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 11
 - fields:
     created: 2015-09-18 15:32:14.855907
@@ -7979,7 +7979,7 @@
     type: physical
     updated: 2015-09-18 15:32:14.855907
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 12
 - fields:
     created: 2015-09-18 15:32:34.180288
@@ -7995,7 +7995,7 @@
     type: physical
     updated: 2015-09-18 15:32:34.180288
     vlan: 0
-  model: maasserver.physicalinterface
+  model: maasserver.interface
   pk: 13
 - fields: {block_device: 5, created: ! '2015-09-18 15:33:21.359401', table_type: MBR,
     updated: ! '2015-09-18 15:33:21.359401'}

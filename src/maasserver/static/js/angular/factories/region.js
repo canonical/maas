@@ -158,6 +158,7 @@ angular.module('MAAS').factory(
             this.websocket = null;
         };
 
+        // Return the protocol used for the websocket connection.
         RegionConnection.prototype._getProtocol = function() {
             return $window.location.protocol;
         };

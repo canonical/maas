@@ -331,7 +331,6 @@ describe("RegionConnection", function() {
 
         it("uses wss connection if https protocol", function() {
             spyOn(RegionConnection, "_getProtocol").and.returnValue("https:");
-            $window.location.protocol = 'https:';
             expect(RegionConnection._buildUrl()).toBe(
                 "wss://" + $window.location.hostname + ":" +
                 $window.location.port + $window.location.pathname + "/ws");

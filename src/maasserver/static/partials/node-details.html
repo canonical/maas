@@ -288,7 +288,14 @@
         </div>
     </div>
     <div class="row">
-        <div class="inner-wrapper">
+        <div class="inner-wrapper" ng-controller="NodeNetworkingController">
+
+            <div class="twelve-col" data-ng-hide="loaded">
+                <h3 class="title">Networking</h3>
+                <div class="twelve-col">Loading...</div>
+            </div>
+
+            <!--
             <form>
                 <div class="twelve-col">
                     <h3 class="title">Network</h3>
@@ -341,6 +348,8 @@
                 </div>
             </form>
 
+            -->
+
             <!--
 
             // Base networking table
@@ -349,19 +358,24 @@
             // VLAN's, alais and BOND's. Hovering on any row gives a user various
             // options to configure an interface or create a new one.
 
-            <form action="">
+            -->
+
+            <form class="ng-hide" data-ng-show="loaded">
                 <div class="twelve-col">
-                    <h2>Networking</h2>
+                    <h3 class="title">Networking</h3>
                     <div class="table">
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
                                 <div class="table__header table__column--15">
-                                    <a href="" class="active">
+                                    <a class="active"
+                                        data-ng-class="{ active: column == 'name' }"
+                                        data-ng-click="column = 'name'">
                                         Name
                                     </a>
                                     <span class="divide"></span>
-                                    <a href="">
+                                    <a data-ng-class="{ active: column == 'mac' }"
+                                        data-ng-click="column = 'mac'">
                                         MAC
                                     </a>
                                 </div>
@@ -373,133 +387,118 @@
                             </div>
                         </header>
                         <main class="table-body">
-                            <div class="table__row">
+                            <div class="table__row" data-ng-repeat="interface in interfaces | orderBy:'name'">
                                 <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="eth0" />
-                                    <label class="checkbox-label" for="eth0"></label>
+                                    <!--
+                                    TODO: Use when editing is done.
+                                    <input class="checkbox" type="checkbox" id="{$ interface.id $}" />
+                                    <label class="checkbox-label" for="{$ interface.id $}"></label>
+                                    -->
                                 </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" class="table__input" value="Eth0">
+                                <div class="table__data table__column--15" data-ng-show="column == 'name'">
+                                    {$ interface.name $}
+                                    <!--
+                                    TODO: Use when editing is done.
+                                    <input type="text" class="table__input" data-ng-model="interface.name">
+                                    -->
+                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                        <a data-ng-click="toggleMembers(interface)">
+                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                        </a>
+                                    </span>
                                 </div>
-                                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
-                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
+                                    {$ interface.mac_address $}
+                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                        <a data-ng-click="toggleMembers(interface)">
+                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
                                 <div class="table__data table__column--14">
+                                    {$ getFabric(interface).name $}
+                                    <!--
+                                    TODO: Use when editing is done.
                                     <select class="table__input" name="fabric" id="fabric">
                                         <option value="fabric1">Fabric 1 (default)</option>
                                     </select>
+                                    -->
                                 </div>
                                 <div class="table__data table__column--14">
+                                    {$ getVLAN(interface).name $}
+                                    <!--
+                                    TODO: Use when editing is done.
                                     <select class="table__input" name="vlan" id="vlan">
                                         <option value="valn1">VLAN 1 (default)</option>
                                     </select>
+                                    -->
                                 </div>
                                 <div class="table__data table__column--18">
+                                    {$ getSubnetName(interface) $}
+                                    <!--
+                                    TODO: Use when editing is done.
                                     <select class="table__input" name="range" id="range">
                                         <option value="auto">10.10.10.1/6 (managed)</option>
                                     </select>
+                                    -->
                                 </div>
                                 <div class="table__data table__column--14">
                                     <ul class="no-bullets">
                                         <li>
+                                            {$ getLinkModeText(interface) $}
+                                            <!--
+                                            TODO: Use when editing is done.
                                             <select class="table__input" name="ip-address" id="ip-address">
                                                 <option value="auto">Auto assign</option>
-                                                <option value="manual">Manual</option>
+                                                <option value="manual" selected>Manual</option>
                                                 <option value="DHCP">DHCP</option>
                                                 <option value="unconfigured">Unconfigured</option>
                                             </select>
+                                            -->
+                                        </li>
+                                        <li class="margin-top--ten" data-ng-show="interface.ip_address">
+                                            {$ interface.ip_address $}
+                                            <!--
+                                            TODO: Use when editing is done.
+                                            <input type="text" class="table__input" value="127.0.0.1">
+                                            -->
                                         </li>
                                     </ul>
                                 </div>
                                 <div class="table__data table__column--13">
+                                    <!--
+                                    TODO: Use when editing is done.
                                     <div class="table__controls align-right">
                                         <a class="margin-right--ten">Add VLAN</a>
                                         <a>Add alias</a>
                                     </div>
+                                    -->
                                 </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="eth3" />
-                                    <label class="checkbox-label" for="eth3"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" class="table__input" value="Eth3">
-                                </div>
-                                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
-                                <div class="table__data table__column--9">Physical</div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--18">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--13">
-                                    <div class="table__controls align-right">
-                                        <a class="margin-right--ten">Add VLAN</a>
-                                        <a>Add alias</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="eth5" />
-                                    <label class="checkbox-label" for="eth5"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" class="table__input" value="Eth5">
-                                </div>
-                                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
-                                <div class="table__data table__column--9">Physical</div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--18">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--13">
-                                    <div class="table__controls align-right">
-                                        <a class="margin-right--ten">Add VLAN</a>
-                                        <a>Add alias</a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="table__row">
-                                <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="eth7" />
-                                    <label class="checkbox-label" for="eth7"></label>
-                                </div>
-                                <div class="table__data table__column--15">
-                                    <input type="text" class="table__input" value="Eth7">
-                                </div>
-                                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
-                                <div class="table__data table__column--9">Physical</div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--18">
-                                </div>
-                                <div class="table__data table__column--14">
-                                </div>
-                                <div class="table__data table__column--13">
-                                    <div class="table__controls align-right">
-                                        <a class="margin-right--ten">Add VLAN</a>
-                                        <a>Add alias</a>
+                                <div class="table__dropdown--info ng-hide" data-ng-show="isShowingMembers(interface)">
+                                    <div class="table__row" data-ng-repeat="member in interface.members">
+                                        <div class="table__data no-padding-top table__column--3"></div>
+                                        <div class="table__data no-padding-top table__column--15"
+                                            data-ng-show="column == 'name'">{$ member.name $}</div>
+                                        <div class="table__data no-padding-top table__column--15 ng-hide"
+                                            data-ng-show="column == 'mac'">{$ member.mac_address $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(member) $}</div>
+                                        <div class="table__data no-padding-top table__column--67">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </main>
                     </div>
+                    <!--
+                    TODO: Use when editing is done.
                     <a class="link-cta-ubuntu secondary margin-right">Create Bond</a>
                     <a class="link-cta-ubuntu secondary margin-right">Create Bridge</a>
+                    -->
                 </div>
             </form>
-
-        -->
 
             <!--
 
