@@ -1,0 +1,40 @@
+/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Unit tests for filterByVLAN.
+ */
+
+describe("filterByVLAN", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filterByVLAN.
+    var filterByVLAN;
+    beforeEach(inject(function($filter) {
+        filterByVLAN = $filter("filterByVLAN");
+    }));
+
+    it("only returns subnets with vlan id", function() {
+        var i, subnet, vlan_id = 1, other_vlan_id = 2;
+        var subnet_vlans = [], other_subnet_vlans = [], all_subnets = [];
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                vlan: vlan_id
+            };
+            subnet_vlans.push(subnet);
+            all_subnets.push(subnet);
+        }
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                vlan: other_vlan_id
+            };
+            other_subnet_vlans.push(subnet);
+            all_subnets.push(subnet);
+        }
+        var vlan = {
+            id: vlan_id
+        };
+        expect(filterByVLAN(all_subnets, vlan)).toEqual(subnet_vlans);
+    });
+});
