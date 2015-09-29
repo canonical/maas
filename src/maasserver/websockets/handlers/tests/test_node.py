@@ -31,9 +31,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import interface as interface_module
 from maasserver.models.config import Config
-from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
-from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -75,12 +73,12 @@ from maastesting.twisted import (
     always_succeed_with,
 )
 from metadataserver.enum import RESULT_TYPE
-from metadataserver.models import NodeResult
 from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
 from mock import sentinel
+from netaddr import IPAddress
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -93,200 +91,46 @@ from twisted.internet.defer import CancelledError
 
 class TestNodeHandler(MAASServerTestCase):
 
-    def dehydrate_blockdevice(self, blockdevice):
-        # model and serial are currently only avalible on physical block
-        # devices
-        if isinstance(blockdevice, PhysicalBlockDevice):
-            model = blockdevice.model
-            serial = blockdevice.serial
-        else:
-            serial = model = ""
-        partition_table = blockdevice.get_partitiontable()
-        if partition_table is not None:
-            partition_table_type = partition_table.table_type
-        else:
-            partition_table_type = ""
-        used_size = blockdevice.get_used_size()
-        available_size = blockdevice.size - used_size
-        return {
-            "id": blockdevice.id,
-            "name": blockdevice.get_name(),
-            "tags": blockdevice.tags,
-            "type": blockdevice.type,
-            "path": blockdevice.path,
-            "size": blockdevice.size,
-            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
-            "used_size": used_size,
-            "used_size_human": human_readable_bytes(used_size),
-            "available_size": available_size,
-            "available_size_human": human_readable_bytes(available_size),
-            "block_size": blockdevice.block_size,
-            "model": model,
-            "serial": serial,
-            "partition_table_type": partition_table_type,
-            "filesystem": self.dehydrate_filesystem(
-                blockdevice.get_effective_filesystem()),
-            "partitions": self.dehydrate_partitions(
-                blockdevice.get_partitiontable()),
-        }
-
-    def dehydrate_partitions(self, partition_table):
-        if partition_table is None:
-            return None
-        partitions = []
-        for partition in partition_table.partitions.all():
-            used_size = partition.get_used_size()
-            available_size = partition.size = used_size
-            partitions.append({
-                "filesystem": self.dehydrate_filesystem(
-                    partition.get_effective_filesystem()),
-                "name": partition.get_name(),
-                "path": partition.path,
-                "type": partition.type,
-                "id": partition.id,
-                "size": partition.size,
-                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
-                "used_size": used_size,
-                "used_size_human": human_readable_bytes(used_size),
-                "available_size": available_size,
-                "available_size_human": human_readable_bytes(available_size),
-            })
-        return partitions
-
-    def dehydrate_filesystem(self, filesystem):
-        if filesystem is None:
-            return None
-        return {
-            "label": filesystem.label,
-            "mount_point": filesystem.mount_point,
-            "fstype": filesystem.fstype,
-            "is_format_fstype": (
-                filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
-            }
-
-    def dehydrate_event(self, event):
-        return {
-            "id": event.id,
-            "type": {
-                "id": event.type.id,
-                "name": event.type.name,
-                "description": event.type.description,
-                "level": dehydrate_event_type_level(event.type.level),
-            },
-            "description": event.description,
-            "created": dehydrate_datetime(event.created),
-        }
-
-    def dehydrate_node_result(self, result):
-        return {
-            "id": result.id,
-            "result": result.script_result,
-            "name": result.name,
-            "data": result.data,
-            "line_count": len(result.data.splitlines()),
-            "created": dehydrate_datetime(result.created),
-        }
-
-    def dehydrate_interface(self, interface, node):
-        ip_addresses = []
-        subnets = set()
-        for ip_address in interface.ip_addresses.all():
-            if ip_address.subnet is not None:
-                subnets.add(ip_address.subnet)
-            if ip_address.ip:
-                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    ip_addresses.append({
-                        "type": "static",
-                        "alloc_type": ip_address.alloc_type,
-                        "ip_address": "%s" % ip_address.ip,
-                    })
-                else:
-                    ip_addresses.append({
-                        "type": "dynamic",
-                        "ip_address": "%s" % ip_address.ip,
-                    })
-        networks = [
-            {
-                "id": subnet.id,
-                "name": subnet.name,
-                "cidr": "%s" % subnet.get_ipnetwork(),
-                "vlan": subnet.vlan.vid,
-            }
-            for subnet in subnets
-        ]
-        return {
-            "id": interface.id,
-            "is_pxe": interface == node.boot_interface,
-            "mac_address": "%s" % interface.mac_address,
-            "ip_addresses": ip_addresses,
-            "networks": networks,
-        }
-
-    def dehydrate_interfaces(self, node):
-        return sorted([
-            self.dehydrate_interface(mac_address, node)
-            for mac_address in node.interface_set.all().order_by('id')
-        ], key=itemgetter('is_pxe'), reverse=True)
-
-    def get_all_storage_tags(self, blockdevices):
-        tags = set()
-        for blockdevice in blockdevices:
-            tags = tags.union(blockdevice.tags)
-        return list(tags)
-
     def dehydrate_node(
-            self, node, user, for_list=False, include_summary=False):
+            self, node, handler, for_list=False, include_summary=False):
         boot_interface = node.get_boot_interface()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         blockdevices = [
             blockdevice.actual_instance
             for blockdevice in node.blockdevice_set.all()
             ]
-        physical_blockdevices = [
-            blockdevice for blockdevice in blockdevices
-            if isinstance(blockdevice, PhysicalBlockDevice)
-            ]
-        power_parameters = (
-            None if node.power_parameters == "" else node.power_parameters)
-        events = (
-            Event.objects.filter(node=node)
-            .exclude(type__level=logging.DEBUG)
-            .select_related("type")
-            .order_by('-id')[:50])
         driver = get_third_party_driver(node)
         data = {
-            "actions": compile_node_actions(node, user).keys(),
+            "actions": compile_node_actions(node, handler.user).keys(),
             "architecture": node.architecture,
             "boot_type": node.boot_type,
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
-            "commissioning_results": [
-                self.dehydrate_node_result(result)
-                for result in NodeResult.objects.filter(
-                    node=node, result_type=RESULT_TYPE.COMMISSIONING)
-            ],
+            "commissioning_results": handler.dehydrate_node_results(
+                node, RESULT_TYPE.COMMISSIONING),
             "cpu_count": node.cpu_count,
             "created": dehydrate_datetime(node.created),
             "devices": sorted([
                 {
                     "fqdn": device.fqdn,
-                    "interfaces": self.dehydrate_interfaces(device),
+                    "interfaces": [
+                        handler.dehydrate_interface(interface, device)
+                        for interface in device.interface_set.all().order_by(
+                            'id')
+                    ],
                 }
                 for device in node.children.all().order_by('id')
             ], key=itemgetter('fqdn')),
             "disable_ipv4": node.disable_ipv4,
-            "physical_disk_count": len(physical_blockdevices),
+            "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": [
-                self.dehydrate_blockdevice(blockdevice)
+                handler.dehydrate_blockdevice(blockdevice)
                 for blockdevice in blockdevices
             ],
             "distro_series": node.get_distro_series(),
             "error": node.error,
             "error_description": node.error_description,
-            "events": [
-                self.dehydrate_event(event)
-                for event in events
-            ],
+            "events": handler.dehydrate_events(node),
             "extra_macs": [
                 "%s" % mac_address
                 for mac_address in node.get_extra_macs()
@@ -295,40 +139,33 @@ class TestNodeHandler(MAASServerTestCase):
             "hwe_kernel": node.hwe_kernel,
             "hostname": node.hostname,
             "id": node.id,
-            "installation_results": [
-                self.dehydrate_node_result(result)
-                for result in NodeResult.objects.filter(
-                    node=node, result_type=RESULT_TYPE.INSTALLATION)
+            "installation_results": handler.dehydrate_node_results(
+                node, RESULT_TYPE.INSTALLATION),
+            "interfaces": [
+                handler.dehydrate_interface(interface, node)
+                for interface in node.interface_set.all().order_by('name')
             ],
-            "interfaces": self.dehydrate_interfaces(node),
             "license_key": node.license_key,
             "memory": node.display_memory(),
             "min_hwe_kernel": node.min_hwe_kernel,
-            "nodegroup": {
-                "id": node.nodegroup.id,
-                "uuid": node.nodegroup.uuid,
-                "name": node.nodegroup.name,
-                "cluster_name": node.nodegroup.cluster_name,
-            },
+            "nodegroup": handler.dehydrate_nodegroup(node.nodegroup),
             "osystem": node.get_osystem(),
-            "owner": "" if node.owner is None else node.owner.username,
-            "power_parameters": power_parameters,
+            "owner": handler.dehydrate_owner(node.owner),
+            "power_parameters": handler.dehydrate_power_parameters(
+                node.power_parameters),
             "power_state": node.power_state,
             "power_type": node.power_type,
             "pxe_mac": (
                 "" if boot_interface is None else
                 "%s" % boot_interface.mac_address),
             "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
-            "routers": [
-                "%s" % router
-                for router in node.routers
-            ],
+            "routers": handler.dehydrate_routers(node.routers),
             "status": node.display_status(),
             "storage": "%3.1f" % (sum([
                 blockdevice.size
-                for blockdevice in physical_blockdevices
+                for blockdevice in node.physicalblockdevice_set.all()
             ]) / (1000 ** 3)),
-            "storage_tags": self.get_all_storage_tags(blockdevices),
+            "storage_tags": handler.get_all_storage_tags(blockdevices),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
@@ -340,10 +177,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "comment": driver["comment"] if "comment" in driver else "",
             },
             "updated": dehydrate_datetime(node.updated),
-            "zone": {
-                "id": node.zone.id,
-                "name": node.zone.name,
-            },
+            "zone": handler.dehydrate_zone(node.zone),
         }
         if for_list:
             allowed_fields = NodeHandler.Meta.list_fields + [
@@ -363,14 +197,7 @@ class TestNodeHandler(MAASServerTestCase):
                 if key not in allowed_fields:
                     del data[key]
         if include_summary:
-            probed_details = merge_details_cleanly(
-                get_single_probed_details(node.system_id))
-            data['summary_xml'] = etree.tostring(
-                probed_details, encoding=unicode, pretty_print=True)
-            data['summary_yaml'] = XMLToYAML(
-                etree.tostring(
-                    probed_details, encoding=unicode,
-                    pretty_print=True)).convert()
+            data = handler.dehydrate_summary_output(node, data)
         return data
 
     def make_nodes(self, nodegroup, number):
@@ -383,6 +210,336 @@ class TestNodeHandler(MAASServerTestCase):
             for _ in range(3):
                 factory.make_Node(
                     installable=False, parent=node, interface=True)
+
+    def test_dehydrate_owner_empty_when_None(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertEquals("", handler.dehydrate_owner(None))
+
+    def test_dehydrate_owner_username(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertEquals(owner.username, handler.dehydrate_owner(owner))
+
+    def test_dehydrate_zone(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        zone = factory.make_Zone()
+        self.assertEquals({
+            "id": zone.id,
+            "name": zone.name,
+            }, handler.dehydrate_zone(zone))
+
+    def test_dehydrate_nodegroup_returns_None_when_None(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertIsNone(handler.dehydrate_nodegroup(None))
+
+    def test_dehydrate_nodegroup(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        self.assertEquals({
+            "id": node.nodegroup.id,
+            "uuid": node.nodegroup.uuid,
+            "name": node.nodegroup.name,
+            "cluster_name": node.nodegroup.cluster_name,
+            }, handler.dehydrate_nodegroup(node.nodegroup))
+
+    def test_dehydrate_routers_returns_empty_list_when_None(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertEquals([], handler.dehydrate_routers(None))
+
+    def test_dehydrate_routers_returns_list_of_strings(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        routers = [
+            IPAddress(factory.make_ipv4_address())
+            for _ in range(3)
+        ]
+        expected = [
+            "%s" % router
+            for router in routers
+        ]
+        self.assertEquals(expected, handler.dehydrate_routers(routers))
+
+    def test_dehydrate_power_parameters_returns_None_when_empty(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertIsNone(handler.dehydrate_power_parameters(''))
+
+    def test_dehydrate_power_parameters_returns_params(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        params = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        self.assertEquals(params, handler.dehydrate_power_parameters(params))
+
+    def test_dehydrate_device(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        device = factory.make_Node(installable=False, parent=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertEquals({
+            "fqdn": device.fqdn,
+            "interfaces": [handler.dehydrate_interface(interface, device)],
+            }, handler.dehydrate_device(device))
+
+    def test_dehydrate_block_device_with_PhysicalBlockDevice_with_ptable(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        blockdevice = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=blockdevice)
+        used_size = blockdevice.get_used_size()
+        available_size = blockdevice.size - used_size
+        self.assertEquals({
+            "id": blockdevice.id,
+            "name": blockdevice.get_name(),
+            "tags": blockdevice.tags,
+            "type": blockdevice.type,
+            "path": blockdevice.path,
+            "size": blockdevice.size,
+            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
+            "block_size": blockdevice.block_size,
+            "model": blockdevice.model,
+            "serial": blockdevice.serial,
+            "partition_table_type": partition_table.table_type,
+            "filesystem": handler.dehydrate_filesystem(
+                blockdevice.get_effective_filesystem()),
+            "partitions": handler.dehydrate_partitions(
+                blockdevice.get_partitiontable()),
+            }, handler.dehydrate_blockdevice(blockdevice))
+
+    def test_dehydrate_block_device_with_PhysicalBlockDevice_wo_ptable(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        blockdevice = factory.make_PhysicalBlockDevice(node=node)
+        used_size = blockdevice.get_used_size()
+        available_size = blockdevice.size - used_size
+        self.assertEquals({
+            "id": blockdevice.id,
+            "name": blockdevice.get_name(),
+            "tags": blockdevice.tags,
+            "type": blockdevice.type,
+            "path": blockdevice.path,
+            "size": blockdevice.size,
+            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
+            "block_size": blockdevice.block_size,
+            "model": blockdevice.model,
+            "serial": blockdevice.serial,
+            "partition_table_type": "",
+            "filesystem": handler.dehydrate_filesystem(
+                blockdevice.get_effective_filesystem()),
+            "partitions": handler.dehydrate_partitions(
+                blockdevice.get_partitiontable()),
+            }, handler.dehydrate_blockdevice(blockdevice))
+
+    def test_dehydrate_block_device_with_VirtualBlockDevice(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        blockdevice = factory.make_VirtualBlockDevice(node=node)
+        used_size = blockdevice.get_used_size()
+        available_size = blockdevice.size - used_size
+        self.assertEquals({
+            "id": blockdevice.id,
+            "name": blockdevice.get_name(),
+            "tags": blockdevice.tags,
+            "type": blockdevice.type,
+            "path": blockdevice.path,
+            "size": blockdevice.size,
+            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
+            "block_size": blockdevice.block_size,
+            "model": "",
+            "serial": "",
+            "partition_table_type": "",
+            "filesystem": handler.dehydrate_filesystem(
+                blockdevice.get_effective_filesystem()),
+            "partitions": handler.dehydrate_partitions(
+                blockdevice.get_partitiontable()),
+            }, handler.dehydrate_blockdevice(blockdevice))
+
+    def test_dehydrate_partitions_returns_None(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertIsNone(handler.dehydrate_partitions(None))
+
+    def test_dehydrate_partitions_returns_list_of_partitions(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        blockdevice = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=blockdevice)
+        partitions = [
+            factory.make_Partition(partition_table=partition_table)
+            for _ in range(3)
+        ]
+        expected = []
+        for partition in partitions:
+            used_size = partition.get_used_size()
+            available_size = partition.size = used_size
+            expected.append({
+                "filesystem": handler.dehydrate_filesystem(
+                    partition.get_effective_filesystem()),
+                "name": partition.get_name(),
+                "path": partition.path,
+                "type": partition.type,
+                "id": partition.id,
+                "size": partition.size,
+                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
+                "used_size": used_size,
+                "used_size_human": human_readable_bytes(used_size),
+                "available_size": available_size,
+                "available_size_human": human_readable_bytes(available_size),
+            })
+        self.assertEquals(
+            expected, handler.dehydrate_partitions(partition_table))
+
+    def test_dehydrate_filesystem_returns_None(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        self.assertIsNone(handler.dehydrate_filesystem(None))
+
+    def test_dehydrate_filesystem(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner, {})
+        filesystem = factory.make_Filesystem()
+        self.assertEquals({
+            "label": filesystem.label,
+            "mount_point": filesystem.mount_point,
+            "fstype": filesystem.fstype,
+            "is_format_fstype": (
+                filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
+            }, handler.dehydrate_filesystem(filesystem))
+
+    def test_dehydrate_interface(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=interface)
+        expected_links = interface.get_links()
+        for link in expected_links:
+            link["subnet_id"] = link.pop("subnet").id
+        self.assertEquals({
+            "id": interface.id,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "enabled": interface.is_enabled(),
+            "is_boot": interface == node.boot_interface,
+            "mac_address": "%s" % interface.mac_address,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": expected_links,
+            }, handler.dehydrate_interface(interface, node))
+
+    def test_dehydrate_summary_output_returns_None(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        observed = handler.dehydrate_summary_output(node, {})
+        self.assertEquals({
+            "summary_xml": None,
+            "summary_yaml": None,
+            }, observed)
+
+    def test_dehydrate_summary_output_returns_data(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        factory.make_NodeResult_for_commissioning(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        observed = handler.dehydrate_summary_output(node, {})
+        probed_details = merge_details_cleanly(
+            get_single_probed_details(node.system_id))
+        self.assertEquals({
+            "summary_xml": etree.tostring(
+                probed_details, encoding=unicode, pretty_print=True),
+            "summary_yaml": XMLToYAML(
+                etree.tostring(
+                    probed_details, encoding=unicode,
+                    pretty_print=True)).convert(),
+            }, observed)
+
+    def test_dehydrate_node_results(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        result = factory.make_NodeResult_for_commissioning(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        self.assertEquals([{
+            "id": result.id,
+            "result": result.script_result,
+            "name": result.name,
+            "data": result.data,
+            "line_count": 1,
+            "created": dehydrate_datetime(result.created),
+            }],
+            handler.dehydrate_node_results(node, RESULT_TYPE.COMMISSIONING))
+
+    def test_dehydrate_events_only_includes_lastest_50(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        event_type = factory.make_EventType(level=logging.INFO)
+        events = [
+            factory.make_Event(node=node, type=event_type)
+            for _ in range(100)
+        ]
+        expected = [
+            {
+                "id": event.id,
+                "type": {
+                    "id": event_type.id,
+                    "name": event_type.name,
+                    "description": event_type.description,
+                    "level": dehydrate_event_type_level(event_type.level),
+                },
+                "description": event.description,
+                "created": dehydrate_datetime(event.created),
+            }
+            for event in list(reversed(events))[:50]
+        ]
+        self.assertEquals(expected, handler.dehydrate_events(node))
+
+    def test_dehydrate_events_doesnt_include_debug(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        event_type = factory.make_EventType(level=logging.DEBUG)
+        for _ in range(5):
+            factory.make_Event(node=node, type=event_type)
+        self.assertEquals([], handler.dehydrate_events(node))
 
     def test_get(self):
         user = factory.make_User()
@@ -405,13 +562,30 @@ class TestNodeHandler(MAASServerTestCase):
             node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
             data=data.encode("utf-8"))
 
-        # LINK_UP interface with no subnet.
+        # Bond interface with a VLAN on top. With the bond set to STATIC
+        # and the VLAN set to AUTO.
+        bond_subnet = factory.make_Subnet()
+        vlan_subnet = factory.make_Subnet()
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        nic1_ip = factory.make_StaticIPAddress(
+        nic2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[nic1, nic2])
+        vlan = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(bond_subnet.get_ipnetwork()),
+            subnet=bond_subnet, interface=bond)
+        factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="",
-            subnet=None, interface=nic1)
-        nic1_ip.subnet = None
-        nic1_ip.save()
+            subnet=vlan_subnet, interface=vlan)
+
+        # LINK_UP interface with no subnet.
+        nic3 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic3_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=None, interface=nic3)
+        nic3_ip.subnet = None
+        nic3_ip.save()
 
         # Make some devices.
         for _ in range(3):
@@ -425,7 +599,7 @@ class TestNodeHandler(MAASServerTestCase):
         node.save()
 
         self.assertEquals(
-            self.dehydrate_node(node, user, include_summary=True),
+            self.dehydrate_node(node, handler, include_summary=True),
             handler.get({"system_id": node.system_id}))
 
     def test_list(self):
@@ -434,7 +608,7 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_PhysicalBlockDevice(node)
         self.assertItemsEqual(
-            [self.dehydrate_node(node, user, for_list=True)],
+            [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
 
     def test_list_ignores_devices(self):
@@ -444,7 +618,7 @@ class TestNodeHandler(MAASServerTestCase):
         factory.make_Node(owner=owner, installable=False)
         node = factory.make_Node(owner=owner)
         self.assertItemsEqual(
-            [self.dehydrate_node(node, owner, for_list=True)],
+            [self.dehydrate_node(node, handler, for_list=True)],
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_nodes(self):
@@ -480,8 +654,8 @@ class TestNodeHandler(MAASServerTestCase):
             owner=other_user, status=NODE_STATUS.ALLOCATED)
         handler = NodeHandler(user, {})
         self.assertItemsEqual([
-            self.dehydrate_node(node, user, for_list=True),
-            self.dehydrate_node(ownered_node, user, for_list=True),
+            self.dehydrate_node(node, handler, for_list=True),
+            self.dehydrate_node(ownered_node, handler, for_list=True),
         ], handler.list({}))
 
     def test_get_object_returns_node_if_super_user(self):
@@ -658,7 +832,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         node = factory.make_Node(interface=True)
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         arch = factory.make_name("arch")
         node_data["architecture"] = arch
         with ExpectedException(
@@ -672,7 +846,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         node = factory.make_Node(interface=True)
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         new_nodegroup = factory.make_NodeGroup()
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
@@ -710,7 +884,7 @@ class TestNodeHandler(MAASServerTestCase):
             factory.make_Tag(definition='').name
             for _ in range(3)
             ]
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         node_data["tags"] = tags
         updated_node = handler.update(node_data)
         self.assertItemsEqual(tags, updated_node["tags"])
@@ -726,7 +900,7 @@ class TestNodeHandler(MAASServerTestCase):
             tag.node_set.add(node)
             tag.save()
             tags.append(tag.name)
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         removed_tag = tags.pop()
         node_data["tags"].remove(removed_tag)
         updated_node = handler.update(node_data)
@@ -738,7 +912,7 @@ class TestNodeHandler(MAASServerTestCase):
         architecture = make_usable_architecture(self)
         node = factory.make_Node(interface=True, architecture=architecture)
         tag_name = factory.make_name("tag")
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         node_data["tags"].append(tag_name)
         updated_node = handler.update(node_data)
         self.assertItemsEqual([tag_name], updated_node["tags"])
@@ -749,7 +923,7 @@ class TestNodeHandler(MAASServerTestCase):
         architecture = make_usable_architecture(self)
         node = factory.make_Node(interface=True, architecture=architecture)
         tag = factory.make_Tag()
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         node_data["tags"].append(tag.name)
         self.assertRaises(HandlerError, handler.update, node_data)
 
@@ -763,7 +937,7 @@ class TestNodeHandler(MAASServerTestCase):
             factory.make_name("tag")
             for _ in range(3)
             ]
-        node_data = self.dehydrate_node(node, user)
+        node_data = self.dehydrate_node(node, handler)
         node_data["disks"][0]["tags"] = blockdevice_tags
         updated_node = handler.update(node_data)
         self.assertItemsEqual(

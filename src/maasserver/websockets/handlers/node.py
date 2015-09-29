@@ -22,7 +22,6 @@ from operator import itemgetter
 from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
-    IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
 from maasserver.exceptions import NodeActionError
@@ -221,12 +220,10 @@ class NodeHandler(TimestampedModelHandler):
             data["hwe_kernel"] = obj.hwe_kernel
 
             # Network
-            interfaces = [
+            data["interfaces"] = [
                 self.dehydrate_interface(interface, obj)
-                for interface in obj.interface_set.all().order_by('id')
+                for interface in obj.interface_set.all().order_by('name')
             ]
-            data["interfaces"] = sorted(
-                interfaces, key=itemgetter("is_pxe"), reverse=True)
 
             # Devices
             devices = [
@@ -349,41 +346,31 @@ class NodeHandler(TimestampedModelHandler):
 
     def dehydrate_interface(self, interface, obj):
         """Dehydrate a `interface` into a interface definition."""
-        # Statically assigned ip addresses.
-        ip_addresses = []
-        subnets = set()
-        for ip_address in interface.ip_addresses.all():
-            if ip_address.subnet is not None:
-                subnets.add(ip_address.subnet)
-            if ip_address.ip:
-                if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    ip_addresses.append({
-                        "type": "static",
-                        "alloc_type": ip_address.alloc_type,
-                        "ip_address": "%s" % ip_address.ip,
-                    })
-                else:
-                    ip_addresses.append({
-                        "type": "dynamic",
-                        "ip_address": "%s" % ip_address.ip,
-                    })
-
-        # Connected networks.
-        networks = [
-            {
-                "id": subnet.id,
-                "name": subnet.name,
-                "cidr": "%s" % subnet.get_ipnetwork(),
-                "vlan": subnet.vlan.vid,
-            }
-            for subnet in subnets
-        ]
+        links = interface.get_links()
+        for link in links:
+            # Replace the subnet object with the subnet_id. The client will
+            # use this information to pull the subnet information from the
+            # websocket.
+            subnet = link.pop("subnet", None)
+            if subnet is not None:
+                link["subnet_id"] = subnet.id
         return {
             "id": interface.id,
-            "is_pxe": interface == obj.boot_interface,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "enabled": interface.is_enabled(),
+            "is_boot": interface == obj.boot_interface,
             "mac_address": "%s" % interface.mac_address,
-            "ip_addresses": ip_addresses,
-            "networks": networks,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": links,
         }
 
     def dehydrate_summary_output(self, obj, data):
