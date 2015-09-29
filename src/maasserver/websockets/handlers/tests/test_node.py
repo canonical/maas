@@ -20,6 +20,7 @@ import random
 import re
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -992,6 +993,37 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(osystem["name"]))
         self.expectThat(
             node.distro_series, Equals(osystem["releases"][0]["name"]))
+
+    def test_update_interface(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_name = factory.make_name("name")
+        new_vlan = factory.make_VLAN()
+        handler.update_interface({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "name": new_name,
+            "vlan": new_vlan.id,
+            })
+        interface = reload_object(interface)
+        self.assertEquals(new_name, interface.name)
+        self.assertEquals(new_vlan, interface.vlan)
+
+    def test_update_interface_raises_ValidationError(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_name = factory.make_name("name")
+        with ExpectedException(ValidationError):
+            handler.update_interface({
+                "system_id": node.system_id,
+                "interface_id": interface.id,
+                "name": new_name,
+                "vlan": random.randint(1000, 5000),
+                })
 
 
 class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):

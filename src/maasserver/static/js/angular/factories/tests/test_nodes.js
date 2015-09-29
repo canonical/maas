@@ -134,4 +134,47 @@ describe("NodesManager", function() {
                 });
             });
     });
+
+    describe("updateInterface", function() {
+
+        it("calls node.update_interface with system_id and interface_id",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("updated"));
+                NodesManager.updateInterface(node, interface_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.update_interface");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        done();
+                    });
+            });
+
+        it("calls node.update_interface with params",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                var params = {
+                    name: makeName("eth0")
+                };
+                webSocket.returnData.push(makeFakeResponse("updated"));
+                NodesManager.updateInterface(node, interface_id, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.update_interface");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        expect(sentObject.params.name).toBe(params.name);
+                        done();
+                    });
+            });
+    });
 });

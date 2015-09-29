@@ -71,6 +71,7 @@ def static_resources(context):
             'js/angular/directives/contenteditable.js',
             'js/angular/directives/sticky_header.js',
             'js/angular/directives/placeholder.js',
+            'js/angular/directives/enter_blur.js',
             'js/angular/filters/nodes.js',
             'js/angular/filters/by_fabric.js',
             'js/angular/filters/by_vlan.js',

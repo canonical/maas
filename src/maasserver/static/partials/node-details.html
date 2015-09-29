@@ -289,77 +289,10 @@
     </div>
     <div class="row">
         <div class="inner-wrapper" ng-controller="NodeNetworkingController">
-
             <div class="twelve-col" data-ng-hide="loaded">
                 <h3 class="title">Networking</h3>
                 <div class="twelve-col">Loading...</div>
             </div>
-
-            <!--
-            <form>
-                <div class="twelve-col">
-                    <h3 class="title">Network</h3>
-                    <table class="table-listing no-margin-bottom">
-                        <thead>
-                            <tr class="table-listing__row table-listing-row">
-                                <th class="t30">MAC</th>
-                                <th class="t35">IP</th>
-                                <th class="t35">Network</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="table-listing__row table-listing-row"
-                                data-ng-repeat="interface in node.interfaces">
-                                <td class="t30">
-                                    {$ interface.mac_address $}
-                                    <span class="ng-hide" data-ng-show="interface.is_pxe">(PXE)</span>
-                                </td>
-                                <td class="t35">{$ getIPAddressText(interface) $}</td>
-                                <td class="t35">{$ getNetworkText(interface) $}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <a class="link-cta-ubuntu secondary left" data-ng-click="nic.adding = true"
-                   data-ng-show="!nic.adding && isSuperUser()">Add Interface</a>
-                <div class="ng-hide twelve-col" data-ng-show="nic.adding">
-                    <h4>Add Interface</h4>
-                    <div class="six-col">
-                        <div class="inline five-col" data-ng-class="{ error: nic.error }">
-                            <label for="new_mac_address" class="two-col ng-binding">MAC Address</label>
-                            <input
-                                type="text" name="new_mac_address"
-                                class="three-col last-col"
-                                data-ng-class="{ invalid: nic.error }"
-                                data-ng-model="nic.mac"
-                                data-ng-change="nicMACChanged()">
-                            <span class="three-col push-four last-col right error-message"
-                                data-ng-show="nic.errormsg">{$ nic.errormsg $}</span>
-                        </div>
-                    </div>
-                    <div class="six-col last-col">
-                        <div class="right">
-                            <a href="" class="link-cta-ubuntu clear"
-                               data-ng-click="cancelAddInterface()">Cancel</a>
-                            <button class="cta-ubuntu"
-                                    data-ng-click="saveAddInterface()">Add</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-
-            -->
-
-            <!--
-
-            // Base networking table
-
-            // This table holds all information on all networking interfaces,
-            // VLAN's, alais and BOND's. Hovering on any row gives a user various
-            // options to configure an interface or create a new one.
-
-            -->
-
             <form class="ng-hide" data-ng-show="loaded">
                 <div class="twelve-col">
                     <h3 class="title">Networking</h3>
@@ -387,7 +320,8 @@
                             </div>
                         </header>
                         <main class="table-body">
-                            <div class="table__row" data-ng-repeat="interface in interfaces | orderBy:'name'">
+                            <div class="table__row"
+                                data-ng-repeat="interface in interfaces">
                                 <div class="table__data table__column--3">
                                     <!--
                                     TODO: Use when editing is done.
@@ -396,11 +330,14 @@
                                     -->
                                 </div>
                                 <div class="table__data table__column--15" data-ng-show="column == 'name'">
-                                    {$ interface.name $}
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <input type="text" class="table__input" data-ng-model="interface.name">
-                                    -->
+                                    <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
+                                    <input type="text" class="table__input"
+                                        data-ng-show="interface.type != 'alias'"
+                                        data-ng-model="interface.name"
+                                        data-maas-enter-blur
+                                        data-ng-focus="setFocusInterface(interface)"
+                                        data-ng-blur="clearFocusInterface(interface)"
+                                        data-ng-class="{ invalid: isInterfaceNameInvalid(interface) }">
                                     <span class="table__label active ng-hide" data-ng-show="interface.members">
                                         <a data-ng-click="toggleMembers(interface)">
                                             <span data-ng-hide="isShowingMembers(interface)">Show members</span>
@@ -419,22 +356,18 @@
                                 </div>
                                 <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
                                 <div class="table__data table__column--14">
-                                    {$ getFabric(interface).name $}
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <select class="table__input" name="fabric" id="fabric">
-                                        <option value="fabric1">Fabric 1 (default)</option>
+                                    <select class="table__input" name="fabric" id="fabric"
+                                        data-ng-model="interface.fabric"
+                                        data-ng-change="fabricChanged(interface)"
+                                        data-ng-options="fabric as fabric.name for fabric in fabrics">
                                     </select>
-                                    -->
                                 </div>
                                 <div class="table__data table__column--14">
-                                    {$ getVLAN(interface).name $}
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <select class="table__input" name="vlan" id="vlan">
-                                        <option value="valn1">VLAN 1 (default)</option>
+                                    <select class="table__input" name="vlan" id="vlan"
+                                        data-ng-model="interface.vlan"
+                                        data-ng-change="saveInterface(interface)"
+                                        data-ng-options="vlan as vlan.name for vlan in vlans | filterByFabric:interface.fabric">
                                     </select>
-                                    -->
                                 </div>
                                 <div class="table__data table__column--18">
                                     {$ getSubnetName(interface) $}

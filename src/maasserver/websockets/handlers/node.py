@@ -19,6 +19,7 @@ __all__ = [
 import logging
 from operator import itemgetter
 
+from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -26,9 +27,11 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms_interface import InterfaceForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.config import Config
 from maasserver.models.event import Event
+from maasserver.models.interface import Interface
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
@@ -100,6 +103,7 @@ class NodeHandler(TimestampedModelHandler):
             'action',
             'set_active',
             'check_power',
+            'update_interface',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -566,6 +570,7 @@ class NodeHandler(TimestampedModelHandler):
             tag_obj.save()
 
     def update_disk_tags(self, disks):
+        """Update all the tags on all disks."""
         # Loop through each disk and update the tags array list.
         for disk in disks:
             disk_obj = BlockDevice.objects.get(id=disk["id"])
@@ -583,6 +588,17 @@ class NodeHandler(TimestampedModelHandler):
                 "%s action is not available for this node." % action_name)
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
+
+    def update_interface(self, params):
+        """Update the interface."""
+        node = self.get_object(params)
+        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface_form = InterfaceForm.get_interface_form(interface.type)
+        form = interface_form(instance=interface, data=params)
+        if form.is_valid():
+            form.save()
+        else:
+            raise ValidationError(form.errors)
 
     @asynchronous
     @inlineCallbacks

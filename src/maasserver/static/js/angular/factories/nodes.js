@@ -78,5 +78,17 @@ angular.module('MAAS').factory(
                 });
         };
 
+        // Update the interface for the node.
+        NodesManager.prototype.updateInterface = function(
+            node, interface_id, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                params.interface_id = interface_id;
+                return RegionConnection.callMethod(
+                    "node.update_interface", params);
+            };
+
         return new NodesManager();
     }]);
