@@ -37,7 +37,10 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     round_size_to_nearest_block,
 )
-from maasserver.utils.storage import get_effective_filesystem
+from maasserver.utils.storage import (
+    get_effective_filesystem,
+    used_for,
+)
 
 
 MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
@@ -164,6 +167,11 @@ class Partition(CleanSave, TimestampedModel):
     def get_available_size(self):
         """Return the available size for this partition."""
         return self.size - self.get_used_size()
+
+    @property
+    def used_for(self):
+        """Return what the block device is being used for."""
+        return used_for(self)
 
     def get_block_size(self):
         """Block size of partition."""

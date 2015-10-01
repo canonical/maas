@@ -13,8 +13,11 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "get_effective_filesystem"
+    "get_effective_filesystem",
+    "used_for"
 ]
+
+from maasserver.enum import FILESYSTEM_TYPE
 
 
 def get_effective_filesystem(model):
@@ -53,3 +56,46 @@ def get_effective_filesystem(model):
             if not filesystem.acquired:
                 return filesystem
         return None
+
+
+def used_for(model):
+    """Return what the block device or partition is being used for."
+
+    :param model: Model to get active `Filesystem` or `PartitionTable` from.
+    :type model: Either `BlockDevice` or `Partition`.
+    :returns: What the block device or partition is being used for.
+    :rtype: `str`
+    """
+    # Avoid circular imports
+    from maasserver.models import BlockDevice
+    filesystem = get_effective_filesystem(model)
+    if filesystem is not None:
+        if filesystem.mount_point:
+            return ("%s formatted filesystem mounted at %s" %
+                    (filesystem.fstype, filesystem.mount_point))
+        elif filesystem.fstype == FILESYSTEM_TYPE.LVM_PV:
+            return "LVM volume for %s" % filesystem.filesystem_group.name
+        elif filesystem.fstype == FILESYSTEM_TYPE.RAID:
+            return ("Active %s device for %s" %
+                    (filesystem.filesystem_group.group_type,
+                     filesystem.filesystem_group.name))
+        elif filesystem.fstype == FILESYSTEM_TYPE.RAID_SPARE:
+            return ("Spare %s device for %s" %
+                    (filesystem.filesystem_group.group_type,
+                     filesystem.filesystem_group.name))
+        elif filesystem.fstype == FILESYSTEM_TYPE.BCACHE_CACHE:
+            return "Cache device for %s" % filesystem.cache_set.get_name()
+        elif filesystem.fstype == FILESYSTEM_TYPE.BCACHE_BACKING:
+            return "Backing device for %s" % filesystem.filesystem_group.name
+        else:
+            return ("Unmounted %s formatted filesystem" % filesystem.fstype)
+    elif isinstance(model, BlockDevice):
+        partition_table = model.get_partitiontable()
+        if partition_table is not None:
+            partitions = partition_table.partitions.count()
+            if partitions > 1:
+                message = "%s partitioned with %d partitions"
+            else:
+                message = "%s partitioned with %d partition"
+            return message % (partition_table.table_type, partitions)
+    return "Unused"

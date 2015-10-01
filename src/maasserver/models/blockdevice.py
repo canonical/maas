@@ -45,7 +45,10 @@ from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import psql_array
-from maasserver.utils.storage import get_effective_filesystem
+from maasserver.utils.storage import (
+    get_effective_filesystem,
+    used_for,
+)
 
 
 MIN_BLOCK_DEVICE_SIZE = 2 * 1024 * 1024  # 2MiB
@@ -226,7 +229,8 @@ class BlockDevice(CleanSave, TimestampedModel):
         if tag in self.tags:
             self.tags.remove(tag)
 
-    def get_used_size(self):
+    @property
+    def used_size(self):
         """Return the used size on the block device."""
         filesystem = self.get_effective_filesystem()
         if filesystem is not None:
@@ -236,9 +240,15 @@ class BlockDevice(CleanSave, TimestampedModel):
             return partitiontable.get_used_size()
         return 0
 
-    def get_available_size(self):
+    @property
+    def available_size(self):
         """Return the available size on the block device."""
-        return self.size - self.get_used_size()
+        return self.size - self.used_size
+
+    @property
+    def used_for(self):
+        """Return what the block device is being used for."""
+        return used_for(self)
 
     def __unicode__(self):
         return '{size} attached to {node}'.format(

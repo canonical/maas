@@ -297,8 +297,6 @@ class TestNodeHandler(MAASServerTestCase):
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
-        used_size = blockdevice.get_used_size()
-        available_size = blockdevice.size - used_size
         self.assertEquals({
             "id": blockdevice.id,
             "name": blockdevice.get_name(),
@@ -306,15 +304,17 @@ class TestNodeHandler(MAASServerTestCase):
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
-            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
-            "used_size": used_size,
-            "used_size_human": human_readable_bytes(used_size),
-            "available_size": available_size,
-            "available_size_human": human_readable_bytes(available_size),
+            "size_human": human_readable_bytes(blockdevice.size),
+            "used_size": blockdevice.used_size,
+            "used_size_human": human_readable_bytes(blockdevice.used_size),
+            "available_size": blockdevice.available_size,
+            "available_size_human": human_readable_bytes(
+                blockdevice.available_size),
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
             "partition_table_type": partition_table.table_type,
+            "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
@@ -326,8 +326,6 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
-        used_size = blockdevice.get_used_size()
-        available_size = blockdevice.size - used_size
         self.assertEquals({
             "id": blockdevice.id,
             "name": blockdevice.get_name(),
@@ -335,15 +333,17 @@ class TestNodeHandler(MAASServerTestCase):
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
-            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
-            "used_size": used_size,
-            "used_size_human": human_readable_bytes(used_size),
-            "available_size": available_size,
-            "available_size_human": human_readable_bytes(available_size),
+            "size_human": human_readable_bytes(blockdevice.size),
+            "used_size": blockdevice.used_size,
+            "used_size_human": human_readable_bytes(blockdevice.used_size),
+            "available_size": blockdevice.available_size,
+            "available_size_human": human_readable_bytes(
+                blockdevice.available_size),
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
             "partition_table_type": "",
+            "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
@@ -355,8 +355,6 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_VirtualBlockDevice(node=node)
-        used_size = blockdevice.get_used_size()
-        available_size = blockdevice.size - used_size
         self.assertEquals({
             "id": blockdevice.id,
             "name": blockdevice.get_name(),
@@ -364,15 +362,17 @@ class TestNodeHandler(MAASServerTestCase):
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
-            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
-            "used_size": used_size,
-            "used_size_human": human_readable_bytes(used_size),
-            "available_size": available_size,
-            "available_size_human": human_readable_bytes(available_size),
+            "size_human": human_readable_bytes(blockdevice.size),
+            "used_size": blockdevice.used_size,
+            "used_size_human": human_readable_bytes(blockdevice.used_size),
+            "available_size": blockdevice.available_size,
+            "available_size_human": human_readable_bytes(
+                blockdevice.available_size),
             "block_size": blockdevice.block_size,
             "model": "",
             "serial": "",
             "partition_table_type": "",
+            "used_for": blockdevice.used_for,
             "filesystem": handler.dehydrate_filesystem(
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
@@ -396,8 +396,6 @@ class TestNodeHandler(MAASServerTestCase):
         ]
         expected = []
         for partition in partitions:
-            used_size = partition.get_used_size()
-            available_size = partition.size = used_size
             expected.append({
                 "filesystem": handler.dehydrate_filesystem(
                     partition.get_effective_filesystem()),
@@ -406,11 +404,8 @@ class TestNodeHandler(MAASServerTestCase):
                 "type": partition.type,
                 "id": partition.id,
                 "size": partition.size,
-                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
-                "used_size": used_size,
-                "used_size_human": human_readable_bytes(used_size),
-                "available_size": available_size,
-                "available_size_human": human_readable_bytes(available_size),
+                "size_human": human_readable_bytes(partition.size),
+                "used_for": partition.used_for,
             })
         self.assertEquals(
             expected, handler.dehydrate_partitions(partition_table))

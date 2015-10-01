@@ -50,6 +50,7 @@ DISPLAYED_PARTITION_FIELDS = (
     'size',
     'bootable',
     'filesystem',
+    'used_for',
 )
 
 

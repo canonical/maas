@@ -76,10 +76,11 @@ describe("NodeStorageController", function() {
                 tags: [],
                 type: makeName("type"),
                 size: Math.pow(1024, 4),
-                size_gb: "1024 GB",
+                size_human: "1024 GB",
                 available_size: Math.pow(1024, 4),
                 available_size_human: "1024 GB",
                 partition_table_type: makeName("partition_table_type"),
+                used_for: "Unused",
                 filesystem: null,
                 partitions: null
             },
@@ -92,13 +93,14 @@ describe("NodeStorageController", function() {
                 tags: [],
                 type: makeName("type"),
                 size: Math.pow(1024, 4),
-                size_gb: "1024 GB",
+                size_human: "1024 GB",
                 available_size: 0,
                 available_size_human: "0 GB",
                 partition_table_type: makeName("partition_table_type"),
+                used_for: "Unmounted ext4 formatted filesystem.",
                 filesystem: {
                     is_format_fstype: true,
-                    fstype: makeName("fstype"),
+                    fstype: "ext4",
                     mount_point: null
                     },
                 partitions: null
@@ -112,14 +114,15 @@ describe("NodeStorageController", function() {
                 tags: [],
                 type: makeName("type"),
                 size: Math.pow(1024, 4),
-                size_gb: "1024 GB",
+                size_human: "1024 GB",
                 available_size: 0,
                 available_size_human: "0 GB",
                 partition_table_type: makeName("partition_table_type"),
+                used_for: "ext4 formatted filesystem mounted at /.",
                 filesystem: {
                     is_format_fstype: true,
-                    fstype: makeName("fstype"),
-                    mount_point: makeName("mount_point")
+                    fstype: "ext4",
+                    mount_point: "/"
                     },
                 partitions: null
             },
@@ -132,27 +135,29 @@ describe("NodeStorageController", function() {
                 tags: [],
                 type: makeName("type"),
                 size: Math.pow(1024, 4),
-                size_gb: "1024 GB",
+                size_human: "1024 GB",
                 available_size: 0,
                 available_size_human: "0 GB",
-                partition_table_type: makeName("partition_table_type"),
+                partition_table_type: "GPT",
                 filesystem: null,
                 partitions: [
                     {
                         name: makeName("partition_name"),
-                        size_gb: "512 GB",
+                        size_human: "512 GB",
                         type: "partition",
-                        filesystem: null
+                        filesystem: null,
+                        used_for: "Unused"
                     },
                     {
                         name: makeName("partition_name"),
-                        size_gb: "512 GB",
+                        size_human: "512 GB",
                         type: "partition",
                         filesystem: {
                             is_format_fstype: true,
-                            fstype: makeName("fstype"),
-                            mount_point: makeName("mount_point")
-                        }
+                            fstype: "ext4",
+                            mount_point: "/mnt"
+                        },
+                        used_for: "ext4 formatted filesystem mounted at /mnt."
                     }
                 ]
             }
@@ -162,13 +167,13 @@ describe("NodeStorageController", function() {
         var filesystems = [
             {
                 name: disks[2].name,
-                size_gb: disks[2].size_gb,
+                size_human: disks[2].size_human,
                 fstype: disks[2].filesystem.fstype,
                 mount_point: disks[2].filesystem.mount_point
             },
             {
                 name: disks[3].partitions[1].name,
-                size_gb: disks[3].partitions[1].size_gb,
+                size_human: disks[3].partitions[1].size_human,
                 fstype: disks[3].partitions[1].filesystem.fstype,
                 mount_point: disks[3].partitions[1].filesystem.mount_point
             }
@@ -176,7 +181,7 @@ describe("NodeStorageController", function() {
         var available = [
             {
                 name: disks[0].name,
-                available_size_human: disks[0].available_size_human,
+                size_human: disks[0].size_human,
                 type: disks[0].type,
                 model: disks[0].model,
                 serial: disks[0].serial,
@@ -184,7 +189,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[1].name,
-                available_size_human: disks[1].available_size_human,
+                size_human: disks[1].available_size_human,
                 type: disks[1].type,
                 model: disks[1].model,
                 serial: disks[1].serial,
@@ -192,7 +197,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[3].partitions[0].name,
-                available_size_human: disks[3].available_size_human,
+                size_human: disks[3].size_human,
                 type: disks[3].partitions[0].type,
                 model: "",
                 serial: "",
@@ -206,7 +211,7 @@ describe("NodeStorageController", function() {
                 model: disks[2].model,
                 serial: disks[2].serial,
                 tags: disks[2].tags,
-                used_for: disks[2].filesystem.fstype
+                used_for: disks[2].used_for
             },
             {
                 name: disks[3].name,
@@ -214,7 +219,7 @@ describe("NodeStorageController", function() {
                 model: disks[3].model,
                 serial: disks[3].serial,
                 tags: disks[3].tags,
-                used_for: disks[3].partition_table_type
+                used_for: disks[3].used_for
             },
             {
                 name: disks[3].partitions[1].name,
@@ -222,7 +227,7 @@ describe("NodeStorageController", function() {
                 model: "",
                 serial: "",
                 tags: [],
-                used_for: disks[3].partitions[1].filesystem.fstype
+                used_for: disks[3].partitions[1].used_for
             }
         ];
         var controller = makeController();

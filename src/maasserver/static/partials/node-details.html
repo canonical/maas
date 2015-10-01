@@ -835,7 +835,7 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--30">Size (GB)</div>
+                                <div class="table__header table__column--30">Size</div>
                                 <div class="table__header table__column--15">File system</div>
                                 <div class="table__header table__column--40">Mountpoint</div>
                             </div>
@@ -849,7 +849,7 @@
                             <div data-ng-repeat="filesystem in filesystems">
                                 <div class="table__row">
                                     <div class="table__data table__column--15">{$ filesystem.name $}</div>
-                                    <div class="table__data table__column--30">{$ filesystem.size_gb $}</div>
+                                    <div class="table__data table__column--30">{$ filesystem.size_human $}</div>
                                     <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table__column--10">
@@ -903,7 +903,7 @@
                                         -->
                                         {$ item.name $}
                                     </div>
-                                    <div class="table__data table__column--15">{$ item.available_size_human $}</div>
+                                    <div class="table__data table__column--15">{$ item.size_human $}</div>
                                     <div class="table__data table__column--15">{$ item.type $}</div>
                                     <div class="table__data table__column--15">
                                         <a class="table__controls table__controls--secondary ng-hide">Format</a>

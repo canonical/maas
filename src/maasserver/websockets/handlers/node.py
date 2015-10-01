@@ -288,8 +288,6 @@ class NodeHandler(TimestampedModelHandler):
             partition_table_type = partition_table.table_type
         else:
             partition_table_type = ""
-        used_size = blockdevice.get_used_size()
-        available_size = blockdevice.size - used_size
         return {
             "id": blockdevice.id,
             "name": blockdevice.get_name(),
@@ -297,15 +295,18 @@ class NodeHandler(TimestampedModelHandler):
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
-            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
-            "used_size": used_size,
-            "used_size_human": human_readable_bytes(used_size),
-            "available_size": available_size,
-            "available_size_human": human_readable_bytes(available_size),
+            "size_human": human_readable_bytes(blockdevice.size),
+            "used_size": blockdevice.used_size,
+            "used_size_human": human_readable_bytes(
+                blockdevice.used_size),
+            "available_size": blockdevice.available_size,
+            "available_size_human": human_readable_bytes(
+                blockdevice.available_size),
             "block_size": blockdevice.block_size,
             "model": model,
             "serial": serial,
             "partition_table_type": partition_table_type,
+            "used_for": blockdevice.used_for,
             "filesystem": self.dehydrate_filesystem(
                 blockdevice.get_effective_filesystem()),
             "partitions": self.dehydrate_partitions(
@@ -318,8 +319,6 @@ class NodeHandler(TimestampedModelHandler):
             return None
         partitions = []
         for partition in partition_table.partitions.all():
-            used_size = partition.get_used_size()
-            available_size = partition.size = used_size
             partitions.append({
                 "filesystem": self.dehydrate_filesystem(
                     partition.get_effective_filesystem()),
@@ -328,11 +327,8 @@ class NodeHandler(TimestampedModelHandler):
                 "type": partition.type,
                 "id": partition.id,
                 "size": partition.size,
-                "size_gb": "%3.1f" % (partition.size / (1000 ** 3)),
-                "used_size": used_size,
-                "used_size_human": human_readable_bytes(used_size),
-                "available_size": available_size,
-                "available_size_human": human_readable_bytes(available_size),
+                "size_human": human_readable_bytes(partition.size),
+                "used_for": partition.used_for,
             })
         return partitions
 

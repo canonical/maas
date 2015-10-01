@@ -61,7 +61,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 if(hasMountedFilesystem(disk)) {
                     filesystems.push({
                         "name": disk.name,
-                        "size_gb": disk.size_gb,
+                        "size_human": disk.size_human,
                         "fstype": disk.filesystem.fstype,
                         "mount_point": disk.filesystem.mount_point
                     });
@@ -70,7 +70,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     if(hasMountedFilesystem(partition)) {
                         filesystems.push({
                             "name": partition.name,
-                            "size_gb": partition.size_gb,
+                            "size_human": partition.size_human,
                             "fstype": partition.filesystem.fstype,
                             "mount_point": partition.filesystem.mount_point
                         });
@@ -87,7 +87,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 if(!isInUse(disk)) {
                     available.push({
                         "name": disk.name,
-                        "available_size_human": disk.available_size_human,
+                        "size_human": disk.available_size_human,
                         "type": disk.type,
                         "model": disk.model,
                         "serial": disk.serial,
@@ -98,7 +98,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     if(!isInUse(partition)) {
                         available.push({
                             "name": partition.name,
-                            "available_size_human": disk.available_size_human,
+                            "size_human": disk.size_human,
                             "type": "partition",
                             "model": "",
                             "serial": "",
@@ -115,19 +115,13 @@ angular.module('MAAS').controller('NodeStorageController', [
             var used = [];
             angular.forEach($scope.node.disks, function(disk) {
                 if(isInUse(disk)) {
-                    var used_for = "";
-                    if(disk.filesystem !== null) {
-                        used_for = disk.filesystem.fstype;
-                    }else{
-                        used_for = disk.partition_table_type;
-                    }
                     used.push({
                         "name": disk.name,
                         "type": disk.type,
                         "model": disk.model,
                         "serial": disk.serial,
                         "tags": getTags(disk),
-                        "used_for": used_for
+                        "used_for": disk.used_for
                     });
                 }
                 angular.forEach(disk.partitions, function(partition) {
@@ -138,7 +132,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "model": "",
                             "serial": "",
                             "tags": [],
-                            "used_for": partition.filesystem.fstype
+                            "used_for": partition.used_for
                         });
                     }
                 });

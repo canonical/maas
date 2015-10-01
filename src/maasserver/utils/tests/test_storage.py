@@ -15,12 +15,17 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.enum import (
+    FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
+    FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     NODE_STATUS,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.storage import get_effective_filesystem
+from maasserver.utils.storage import (
+    get_effective_filesystem,
+    used_for,
+)
 
 
 class TestGetEffectiveFilesystem(MAASServerTestCase):
@@ -77,3 +82,80 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
             "fstype": FILESYSTEM_TYPE.EXT4,
             })
         self.assertIsNone(get_effective_filesystem(model))
+
+
+class TestUsedFor(MAASServerTestCase):
+    def test__unused(self):
+        block_device = factory.make_BlockDevice()
+        self.assertEquals(used_for(block_device), "Unused")
+
+    def test__fs_formatted(self):
+        block_device = factory.make_BlockDevice()
+        fs = factory.make_Filesystem(block_device=block_device)
+        self.assertEqual(
+            "Unmounted %s formatted filesystem" % fs.fstype,
+            used_for(block_device))
+
+    def test__fs_formatted_and_mounted(self):
+        block_device = factory.make_BlockDevice()
+        fs = factory.make_Filesystem(
+            block_device=block_device,
+            mount_point="/mnt")
+        self.assertEqual(
+            ("%s formatted filesystem mounted at %s" %
+             (fs.fstype, fs.mount_point)), used_for(block_device))
+
+    def test__partitioned(self):
+        block_device = factory.make_BlockDevice()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partitions = partition_table.partitions.count()
+        if partitions > 1:
+            expected_message = "%s partitioned with %d partitions"
+        else:
+            expected_message = "%s partitioned with %d partition"
+        self.assertEqual(
+            expected_message % (partition_table.table_type, partitions),
+            used_for(block_device))
+
+    def test__lvm(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        self.assertEqual(
+            ("LVM volume for %s" % filesystem_group.name),
+            used_for(filesystem_group.filesystems.first().block_device))
+
+    def test__raid_active(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_choice(FILESYSTEM_GROUP_RAID_TYPE_CHOICES))
+        self.assertEqual(
+            ("Active %s device for %s" %
+             (filesystem_group.group_type, filesystem_group.name)),
+            used_for(filesystem_group.filesystems.first().block_device))
+
+    def test__raid_spare(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=factory.pick_choice(FILESYSTEM_GROUP_RAID_TYPE_CHOICES))
+        slave_block_device = factory.make_PhysicalBlockDevice()
+        factory.make_Filesystem(
+            block_device=slave_block_device,
+            fstype=FILESYSTEM_TYPE.RAID_SPARE,
+            filesystem_group=filesystem_group)
+        self.assertEqual(
+            ("Spare %s device for %s" %
+             (filesystem_group.group_type, filesystem_group.name)),
+            used_for(slave_block_device))
+
+    def test__bcache(self):
+        cacheset = factory.make_CacheSet()
+        blockdevice = cacheset.get_device()
+        self.assertEqual(
+            ("Cache device for %s" % cacheset.name),
+            used_for(blockdevice))
+
+    def test__bcache_backing(self):
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        self.assertEqual(
+            ("Backing device for %s" % filesystem_group.name),
+            used_for(filesystem_group.filesystems.first().block_device))
