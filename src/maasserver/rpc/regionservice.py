@@ -19,6 +19,7 @@ __all__ = [
 
 from collections import defaultdict
 from contextlib import closing
+from datetime import datetime
 from os import urandom
 import random
 from socket import AF_INET
@@ -87,6 +88,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
     returnValue,
+    succeed,
 )
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
@@ -266,10 +268,13 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
-        d = deferToDatabase(
-            events.send_event, system_id, type_name, description)
-        d.addCallback(lambda args: {})
-        return d
+        timestamp = datetime.now()
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        dbtasks.addTask(
+            events.send_event, system_id, type_name,
+            description, timestamp)
+        # Don't wait for the record to be written.
+        return succeed({})
 
     @region.SendEventMACAddress.responder
     def send_event_mac_address(self, mac_address, type_name, description):
@@ -278,10 +283,13 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
         """
-        d = deferToDatabase(
-            events.send_event_mac_address, mac_address, type_name, description)
-        d.addCallback(lambda args: {})
-        return d
+        timestamp = datetime.now()
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        dbtasks.addTask(
+            events.send_event_mac_address, mac_address,
+            type_name, description, timestamp)
+        # Don't wait for the record to be written.
+        return succeed({})
 
     @region.ReportForeignDHCPServer.responder
     def report_foreign_dhcp_server(self, cluster_uuid, interface_name,

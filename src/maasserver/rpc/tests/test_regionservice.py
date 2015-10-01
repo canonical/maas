@@ -16,12 +16,17 @@ __all__ = []
 
 from collections import defaultdict
 from contextlib import closing
+from datetime import (
+    datetime,
+    timedelta,
+)
 from hashlib import sha256
 from hmac import HMAC
 from itertools import product
 from operator import attrgetter
 import os.path
 import random
+from random import randint
 import threading
 from urlparse import urlparse
 
@@ -108,7 +113,6 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.exceptions import (
     CannotRegisterCluster,
     NoSuchCluster,
-    NoSuchEventType,
     NoSuchNode,
 )
 from provisioningserver.rpc.interfaces import IConnection
@@ -803,6 +807,10 @@ class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
 
 class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
 
+    def setUp(self):
+        super(TestRegionProtocol_SendEvent, self).setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks"))
+
     def test_send_event_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(SendEvent.commandName)
@@ -838,45 +846,84 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         system_id = yield deferToDatabase(self.create_node)
 
         event_description = factory.make_name('description')
-        response = yield call_responder(
-            Region(), SendEvent,
-            {
-                b'system_id': system_id,
-                b'type_name': name,
-                b'description': event_description,
-            }
-        )
+
+        yield eventloop.start()
+        try:
+            response = yield call_responder(
+                Region(), SendEvent, {
+                    b'system_id': system_id,
+                    b'type_name': name,
+                    b'description': event_description,
+                })
+        finally:
+            yield eventloop.reset()
 
         self.assertEqual({}, response)
         event = yield deferToDatabase(self.get_event, system_id, name)
-        self.assertEquals(
-            (system_id, event_description, name),
-            (event.node.system_id, event.description, event.type.name)
-        )
+        self.expectThat(event.node.system_id, Equals(system_id))
+        self.expectThat(event.description, Equals(event_description))
+        self.expectThat(event.type.name, Equals(name))
 
     @wait_for_reactor
-    def test_create_node_raises_if_unknown_type(self):
+    @inlineCallbacks
+    def test_send_event_stores_event_with_timestamp_received(self):
+        # Use a random time in the recent past and coerce the responder to use
+        # it as the time-stamp for the event. We'll check this later on.
+        timestamp = datetime.now() - timedelta(seconds=randint(99, 99999))
+        self.patch(regionservice, "datetime").now.return_value = timestamp
+
+        event_type = factory.make_name('type_name')
+        yield deferToDatabase(self.create_event_type, event_type, "", 0)
+        system_id = yield deferToDatabase(self.create_node)
+
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEvent, {
+                    b'system_id': system_id, b'type_name': event_type,
+                    b'description': factory.make_name('description'),
+                })
+        finally:
+            yield eventloop.reset()
+
+        event = yield deferToDatabase(self.get_event, system_id, event_type)
+        self.expectThat(event.created, Equals(timestamp))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_send_event_does_not_fail_if_unknown_type(self):
         name = factory.make_name('type_name')
         system_id = factory.make_name('system_id')
         description = factory.make_name('description')
 
-        d = call_responder(
-            Region(), SendEvent,
-            {
-                b'system_id': system_id,
-                b'type_name': name,
-                b'description': description,
-            })
+        logger = self.useFixture(TwistedLoggerFixture())
 
-        def check(error):
-            self.assertIsInstance(error, Failure)
-            self.assertIsInstance(error.value, NoSuchEventType)
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEvent, {
+                    b'system_id': system_id,
+                    b'type_name': name,
+                    b'description': description,
+                })
+        finally:
+            yield eventloop.reset()
 
-        return d.addErrback(check)
+        # The log records the issue. FIXME: Why reject logs if the type is not
+        # registered? Seems like the region should record all logs and figure
+        # out how to present them.
+        self.assertDocTestMatches(
+            """\
+            Unhandled failure in database task.
+            Traceback (most recent call last):
+            ...
+            provisioningserver.rpc.exceptions.NoSuchEventType:
+            ...
+            """, logger.output)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_create_node_logs_if_unknown_node(self):
+    def test_send_event_logs_if_unknown_node(self):
         maaslog = self.patch(events_module, 'maaslog')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
@@ -885,24 +932,29 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
 
         system_id = factory.make_name('system_id')
         event_description = factory.make_name('event-description')
-        d = call_responder(
-            Region(), SendEvent,
-            {
-                b'system_id': system_id,
-                b'type_name': name,
-                b'description': event_description,
-            })
 
-        def check(result):
-            self.assertThat(
-                maaslog.debug, MockCalledOnceWith(
-                    "Event '%s: %s' sent for non-existent node '%s'.",
-                    name, event_description, system_id))
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEvent, {
+                    b'system_id': system_id,
+                    b'type_name': name,
+                    b'description': event_description,
+                })
+        finally:
+            yield eventloop.reset()
 
-        yield d.addCallback(check)
+        self.assertThat(
+            maaslog.debug, MockCalledOnceWith(
+                "Event '%s: %s' sent for non-existent node '%s'.",
+                name, event_description, system_id))
 
 
 class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
+
+    def setUp(self):
+        super(TestRegionProtocol_SendEventMACAddress, self).setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks"))
 
     def test_send_event_mac_address_is_registered(self):
         protocol = Region()
@@ -942,72 +994,110 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         level = random.randint(0, 100)
         yield deferToDatabase(self.create_event_type, name, description, level)
         interface = yield deferToDatabase(self.make_interface)
-        mac_address = interface.mac_address.get_raw()
-
+        mac_address = interface.mac_address
         event_description = factory.make_name('description')
-        response = yield call_responder(
-            Region(), SendEventMACAddress,
-            {
-                b'mac_address': mac_address,
-                b'type_name': name,
-                b'description': event_description,
-            }
-        )
+
+        yield eventloop.start()
+        try:
+            response = yield call_responder(
+                Region(), SendEventMACAddress, {
+                    b'mac_address': mac_address.get_raw(),
+                    b'type_name': name,
+                    b'description': event_description,
+                })
+        finally:
+            yield eventloop.reset()
 
         self.assertEqual({}, response)
         event = yield deferToDatabase(self.get_event, mac_address, name)
-        self.assertEquals(
-            (interface.node.system_id, event_description, name),
-            (event.node.system_id, event.description, event.type.name)
-        )
+        self.expectThat(event.node.system_id, Equals(interface.node.system_id))
+        self.expectThat(event.description, Equals(event_description))
+        self.expectThat(event.type.name, Equals(name))
 
     @wait_for_reactor
-    def test_create_node_raises_if_unknown_type(self):
+    @inlineCallbacks
+    def test_send_event_mac_address_stores_event_with_timestamp_received(self):
+        # Use a random time in the recent past and coerce the responder to use
+        # it as the time-stamp for the event. We'll check this later on.
+        timestamp = datetime.now() - timedelta(seconds=randint(99, 99999))
+        self.patch(regionservice, "datetime").now.return_value = timestamp
+
+        event_type = factory.make_name('type_name')
+        yield deferToDatabase(self.create_event_type, event_type, "", 0)
+        interface = yield deferToDatabase(self.make_interface)
+        mac_address = interface.mac_address.get_raw()
+
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEventMACAddress, {
+                    b'mac_address': mac_address, b'type_name': event_type,
+                    b'description': factory.make_name('description'),
+                })
+        finally:
+            yield eventloop.reset()
+
+        event = yield deferToDatabase(self.get_event, mac_address, event_type)
+        self.expectThat(event.created, Equals(timestamp))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_send_event_mac_address_does_not_fail_if_unknown_type(self):
         name = factory.make_name('type_name')
         mac_address = factory.make_mac_address()
         description = factory.make_name('description')
 
-        d = call_responder(
-            Region(), SendEventMACAddress,
-            {
-                b'mac_address': mac_address,
-                b'type_name': name,
-                b'description': description,
-            })
+        logger = self.useFixture(TwistedLoggerFixture())
 
-        def check(error):
-            self.assertIsInstance(error, Failure)
-            self.assertIsInstance(error.value, NoSuchEventType)
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEventMACAddress, {
+                    b'mac_address': mac_address,
+                    b'type_name': name,
+                    b'description': description,
+                })
+        finally:
+            yield eventloop.reset()
 
-        return d.addErrback(check)
+        # The log records the issue. FIXME: Why reject logs if the type is not
+        # registered? Seems like the region should record all logs and figure
+        # out how to present them.
+        self.assertDocTestMatches(
+            """\
+            Unhandled failure in database task.
+            Traceback (most recent call last):
+            ...
+            provisioningserver.rpc.exceptions.NoSuchEventType:
+            ...
+            """, logger.output)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_create_node_raises_if_unknown_node(self):
+    def test_send_event_mac_address_logs_if_unknown_node(self):
         maaslog = self.patch(events_module, 'maaslog')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
         yield deferToDatabase(self.create_event_type, name, description, level)
-
         mac_address = factory.make_mac_address()
         event_description = factory.make_name('event-description')
-        d = call_responder(
-            Region(), SendEventMACAddress,
-            {
-                b'mac_address': mac_address,
-                b'type_name': name,
-                b'description': event_description,
-            })
 
-        def check(result):
-            self.assertThat(
-                maaslog.debug, MockCalledOnceWith(
-                    "Event '%s: %s' sent for non-existent node with MAC "
-                    "address '%s'.",
-                    name, event_description, mac_address))
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), SendEventMACAddress, {
+                    b'mac_address': mac_address,
+                    b'type_name': name,
+                    b'description': event_description,
+                })
+        finally:
+            yield eventloop.reset()
 
-        yield d.addCallback(check)
+        self.assertThat(
+            maaslog.debug, MockCalledOnceWith(
+                "Event '%s: %s' sent for non-existent node with MAC address "
+                "'%s'.", name, event_description, mac_address))
 
 
 class TestRegionServer(MAASServerTestCase):

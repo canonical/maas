@@ -46,7 +46,7 @@ def register_event_type(name, description, level):
 
 @synchronous
 @transactional
-def send_event(system_id, type_name, description=''):
+def send_event(system_id, type_name, description, timestamp):
     """Send an event.
 
     for :py:class:`~provisioningserver.rpc.region.SendEvent`.
@@ -60,22 +60,21 @@ def send_event(system_id, type_name, description=''):
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
         # The node doesn't exist, but we don't raise an exception - it's
-        # entirely possible the cluster has started sending events for a
-        # node that we don't know about yet.
-        # This is most likely to happen when a new node is trying to
-        # enlist.
+        # entirely possible the cluster has started sending events for a node
+        # that we don't know about yet. This is most likely to happen when a
+        # new node is trying to enlist.
         maaslog.debug(
             "Event '%s: %s' sent for non-existent node '%s'.",
             type_name, description, system_id)
-        return
-
-    Event.objects.create(
-        node=node, type=event_type, description=description)
+    else:
+        Event.objects.create(
+            node=node, type=event_type, description=description,
+            created=timestamp)
 
 
 @synchronous
 @transactional
-def send_event_mac_address(mac_address, type_name, description=''):
+def send_event_mac_address(mac_address, type_name, description, timestamp):
     """Send an event.
 
     for :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
@@ -86,19 +85,17 @@ def send_event_mac_address(mac_address, type_name, description=''):
         raise NoSuchEventType.from_name(type_name)
 
     try:
-        node = Interface.objects.get(
-            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_address).node
+        interface = Interface.objects.get(
+            type=INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
     except Interface.DoesNotExist:
         # The node doesn't exist, but we don't raise an exception - it's
-        # entirely possible the cluster has started sending events for a
-        # node that we don't know about yet.
-        # This is most likely to happen when a new node is trying to
-        # enlist.
+        # entirely possible the cluster has started sending events for a node
+        # that we don't know about yet. This is most likely to happen when a
+        # new node is trying to enlist.
         maaslog.debug(
             "Event '%s: %s' sent for non-existent node with MAC "
-            "address '%s'.",
-            type_name, description, mac_address)
-        return
-
-    Event.objects.create(
-        node=node, type=event_type, description=description)
+            "address '%s'.", type_name, description, mac_address)
+    else:
+        Event.objects.create(
+            node=interface.node, type=event_type, description=description,
+            created=timestamp)
