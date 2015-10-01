@@ -853,9 +853,8 @@
                                     <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table__column--10">
-                                        <div class="table__controls ng-hide">
-                                            <a href="#" class="icon edit">Edit</a>
-                                            <a href="#" class="icon delete">Delete</a>
+                                        <div class="table__controls">
+                                            <a class="icon delete" data-ng-click="unmountFilesystem(node.system_id, filesystem.block_id, filesystem.partition_id)">Delete</a>
                                         </div>
                                     </div>
                                 </div>

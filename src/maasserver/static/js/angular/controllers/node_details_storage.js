@@ -5,7 +5,7 @@
  */
 
 angular.module('MAAS').controller('NodeStorageController', [
-    '$scope', function($scope) {
+    '$scope', 'NodesManager', function($scope, NodesManager) {
         var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
 
         $scope.editing = false;
@@ -63,7 +63,9 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "name": disk.name,
                         "size_human": disk.size_human,
                         "fstype": disk.filesystem.fstype,
-                        "mount_point": disk.filesystem.mount_point
+                        "mount_point": disk.filesystem.mount_point,
+                        "block_id": disk.id,
+                        "partition_id": null
                     });
                 }
                 angular.forEach(disk.partitions, function(partition) {
@@ -72,7 +74,9 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "name": partition.name,
                             "size_human": partition.size_human,
                             "fstype": partition.filesystem.fstype,
-                            "mount_point": partition.filesystem.mount_point
+                            "mount_point": partition.filesystem.mount_point,
+                            "block_id": disk.id,
+                            "partition_id": partition.id
                         });
                     }
                 });
@@ -196,5 +200,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             $scope.$parent.updateNode(node);
             updateDisks();
+        };
+
+        $scope.unmountFilesystem = function(system_id, block_id, partition_id) {
+            NodesManager.unmountFilesystem(system_id, block_id, partition_id);
         };
     }]);

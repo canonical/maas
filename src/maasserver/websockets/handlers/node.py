@@ -35,6 +35,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.partition import Partition
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
@@ -104,6 +105,7 @@ class NodeHandler(TimestampedModelHandler):
             'set_active',
             'check_power',
             'update_interface',
+            'unmountFilesystem',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -542,6 +544,18 @@ class NodeHandler(TimestampedModelHandler):
         self.update_disk_tags(params['disks'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
+
+    def unmountFilesystem(self, params):
+        node = self.get_object(params)
+        if params.get('partition_id') is not None:
+            obj = Partition.objects.get(
+                id=params['partition_id'], block_device__node=node)
+        else:
+            obj = BlockDevice.objects.get(id=params['block_id'], node=node)
+        fs = obj.get_effective_filesystem()
+        if fs is not None:
+            fs.mount_point = None
+            fs.save()
 
     def update_tags(self, node_obj, tags):
         # Loop through the nodes current tags. If the tag exists in `tags` then

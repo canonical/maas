@@ -142,6 +142,7 @@ describe("NodeStorageController", function() {
                 filesystem: null,
                 partitions: [
                     {
+                        id: 0,
                         name: makeName("partition_name"),
                         size_human: "512 GB",
                         type: "partition",
@@ -149,6 +150,7 @@ describe("NodeStorageController", function() {
                         used_for: "Unused"
                     },
                     {
+                        id: 1,
                         name: makeName("partition_name"),
                         size_human: "512 GB",
                         type: "partition",
@@ -169,13 +171,17 @@ describe("NodeStorageController", function() {
                 name: disks[2].name,
                 size_human: disks[2].size_human,
                 fstype: disks[2].filesystem.fstype,
-                mount_point: disks[2].filesystem.mount_point
+                mount_point: disks[2].filesystem.mount_point,
+                block_id: disks[2].id,
+                partition_id: null
             },
             {
                 name: disks[3].partitions[1].name,
                 size_human: disks[3].partitions[1].size_human,
                 fstype: disks[3].partitions[1].filesystem.fstype,
-                mount_point: disks[3].partitions[1].filesystem.mount_point
+                mount_point: disks[3].partitions[1].filesystem.mount_point,
+                block_id: disks[3].id,
+                partition_id: disks[3].partitions[1].id
             }
         ];
         var available = [

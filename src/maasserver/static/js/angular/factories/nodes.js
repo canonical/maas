@@ -90,5 +90,18 @@ angular.module('MAAS').factory(
                     "node.update_interface", params);
             };
 
+        // Send the update information to the region.
+        NodesManager.prototype.unmountFilesystem = function(
+            system_id, block_id, partition_id) {
+                var self = this;
+                var method = this._handler + ".unmountFilesystem";
+                var params = {
+                    system_id: system_id,
+                    block_id: block_id,
+                    partition_id: partition_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
         return new NodesManager();
     }]);

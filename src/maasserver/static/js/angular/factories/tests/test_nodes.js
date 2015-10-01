@@ -177,4 +177,34 @@ describe("NodesManager", function() {
                     });
             });
     });
+
+    describe("unmountFilesystem", function() {
+
+        it("calls node.unmountFilesystem", function(done) {
+            var fakeNode = makeNode();
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.unmountFilesystem(
+                    makeName("block_id"), null).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.unmountFilesystem");
+                done();
+            });
+        });
+
+        it("calls node.unmountFilesystem with params", function(done) {
+            var fakeNode = makeNode();
+            var block_id = makeName("block_id");
+            var partition_id = makeName("partition_id");
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.unmountFilesystem(
+                    fakeNode.system_id, block_id, partition_id).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(block_id);
+                expect(sentObject.params.partition_id).toBe(partition_id);
+                done();
+            });
+        });
+    });
 });

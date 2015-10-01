@@ -913,6 +913,20 @@ class TestNodeHandler(MAASServerTestCase):
         updated_node = handler.update(node_data)
         self.assertItemsEqual([tag_name], updated_node["tags"])
 
+    def test_unmountFilesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        handler.unmountFilesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id
+            })
+        self.assertEquals(
+            None, block_device.get_effective_filesystem().mount_point)
+
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
