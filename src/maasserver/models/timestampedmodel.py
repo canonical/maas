@@ -49,8 +49,22 @@ class TimestampedModel(Model):
     updated = DateTimeField(editable=False)
 
     def save(self, *args, **kwargs):
-        current_time = now()
+        """Set `created` and `updated` before saving.
+
+        If the record is new (its ``id`` is `None`) then `created` is set to
+        the current time if it has not already been set. Then `updated` is set
+        to the same as `created`.
+
+        If the record already exists, `updated` is set to the current time.
+        """
         if self.id is None:
-            self.created = current_time
-        self.updated = current_time
+            # New record; set created if not set.
+            if self.created is None:
+                self.created = now()
+            # Set updated to same as created.
+            self.updated = self.created
+        else:
+            # Existing record; set updated always.
+            self.updated = now()
+
         return super(TimestampedModel, self).save(*args, **kwargs)

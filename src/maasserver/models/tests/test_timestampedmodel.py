@@ -14,7 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+)
+from random import randint
 
 from django.db import transaction
 from maasserver.models.timestampedmodel import now
@@ -24,6 +28,11 @@ from maastesting.djangotestcase import (
     DjangoTransactionTestCase,
     TestModelMixin,
 )
+
+
+def make_time_in_the_recent_past():
+    many_seconds_ago = timedelta(seconds=randint(1, 999999))
+    return datetime.now() - many_seconds_ago
 
 
 class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
@@ -52,6 +61,27 @@ class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
         old_created = obj.created
         obj.save()
         self.assertEqual(old_created, obj.created)
+
+    def test_on_first_save_created_not_clobbered(self):
+        created = make_time_in_the_recent_past()
+        obj = TimestampedModelTestModel(created=created)
+        obj.save()
+        self.assertEquals(created, obj.created)
+
+    def test_on_first_save_created_and_updated_same_if_created_set(self):
+        created = make_time_in_the_recent_past()
+        obj = TimestampedModelTestModel(created=created)
+        obj.save()
+        self.assertEqual(created, obj.created)
+        self.assertEqual(created, obj.updated)
+
+    def test_on_first_save_updated_set_same_as_created_even_if_set(self):
+        created = make_time_in_the_recent_past()
+        updated = make_time_in_the_recent_past()
+        obj = TimestampedModelTestModel(created=created, updated=updated)
+        obj.save()
+        self.assertEquals(created, obj.created)
+        self.assertEquals(created, obj.updated)
 
 
 class TimestampedModelTransactionalTest(
