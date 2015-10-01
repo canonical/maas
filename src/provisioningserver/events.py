@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = [
     'EVENT_DETAILS',
     'EVENT_TYPES',
+    'send_event_node',
+    'send_event_node_mac_address',
     ]
 
 from collections import namedtuple
@@ -36,8 +38,16 @@ from provisioningserver.rpc.region import (
     SendEvent,
     SendEventMACAddress,
 )
-from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import inlineCallbacks
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    DeferredValue,
+)
+from twisted.internet.defer import (
+    maybeDeferred,
+    succeed,
+)
+from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("events")
@@ -196,48 +206,166 @@ EVENT_DETAILS = {
 }
 
 
+class NodeEventHub:
+    """Singleton for sending node events to the region.
+
+    This automatically ensures that the event type is registered before
+    sending logs to the region.
+    """
+
+    def __init__(self):
+        super(NodeEventHub, self).__init__()
+        self._types_registering = dict()
+        self._types_registered = set()
+
+    @asynchronous
+    def registerEventType(self, event_type):
+        """Ensure that `event_type` is known to the region.
+
+        This populates the cache used by `ensureEventTypeRegistered` but does
+        not consult it; it always attempts to contact the region.
+
+        :return: :class:`Deferred`
+        """
+        details = EVENT_DETAILS[event_type]
+
+        def register(client):
+            return client(
+                RegisterEventType, name=event_type, level=details.level,
+                description=details.description)
+
+        d = maybeDeferred(getRegionClient).addCallback(register)
+        # Whatever happens, we are now done registering.
+        d.addBoth(callOut, self._types_registering.pop, event_type)
+        # On success, record that the event type has been registered. On
+        # failure, ensure that the set of registered event types does NOT
+        # contain the event type.
+        d.addCallbacks(
+            callback=callOut, callbackArgs=(
+                self._types_registered.add, event_type),
+            errback=callOut, errbackArgs=(
+                self._types_registered.discard, event_type))
+        # Capture the result into a DeferredValue.
+        result = DeferredValue()
+        result.capture(d)
+        # Keep track of it so that concurrent requests don't duplicate work.
+        self._types_registering[event_type] = result
+        return result.get()
+
+    @asynchronous
+    def ensureEventTypeRegistered(self, event_type):
+        """Ensure that `event_type` is known to the region.
+
+        This method keeps track of event types that it has already registered,
+        and so can return in the affirmative without needing to contact the
+        region.
+
+        :return: :class:`Deferred`
+        """
+        if event_type in self._types_registered:
+            return succeed(None)
+        elif event_type in self._types_registering:
+            return self._types_registering[event_type].get()
+        else:
+            return self.registerEventType(event_type)
+
+    def _checkEventTypeRegistered(self, failure, event_type):
+        """Check if the event type is NOT registered after all.
+
+        Maybe someone has monkeyed about with the region database and removed
+        the event type? In any case, if we see `NoSuchEventType` coming back
+        from a `SendEvent` or `SendEventMACAddress` call we discard the event
+        type from the set of registered types. Subsequent logging calls will
+        cause this class to attempt to register the event type again.
+
+        As of MAAS 1.9 the region will no longer signal `NoSuchEventType` or
+        `NoSuchNode` errors because database activity is not performed before
+        returning. This method thus exists for compatibility with pre-1.9
+        region controllers only.
+
+        All failures, including `NoSuchEventType`, are passed through.
+        """
+        if failure.check(NoSuchEventType):
+            self._types_registered.discard(event_type)
+        return failure
+
+    @asynchronous
+    def logByID(self, event_type, system_id, description=""):
+        """Send the given node event to the region.
+
+        The node is specified by its ID.
+
+        :param event_type: The type of the event.
+        :type event_type: unicode
+        :param system_id: The system ID of the node.
+        :type system_id: unicode
+        :param description: An optional description of the event.
+        :type description: unicode
+        """
+        def send(_):
+            client = getRegionClient()
+            return client(
+                SendEvent, system_id=system_id, type_name=event_type,
+                description=description)
+
+        d = self.ensureEventTypeRegistered(event_type).addCallback(send)
+        d.addErrback(self._checkEventTypeRegistered, event_type)
+        return d
+
+    @asynchronous
+    def logByMAC(self, event_type, mac_address, description=""):
+        """Send the given node event to the region.
+
+        The node is specified by its MAC address.
+
+        :param event_type: The type of the event.
+        :type event_type: unicode
+        :param mac_address: The MAC address of the node.
+        :type mac_address: unicode
+        :param description: An optional description of the event.
+        :type description: unicode
+        """
+        def send(_):
+            client = getRegionClient()
+            return client(
+                SendEventMACAddress, mac_address=mac_address,
+                type_name=event_type, description=description)
+
+        d = self.ensureEventTypeRegistered(event_type).addCallback(send)
+        d.addErrback(self._checkEventTypeRegistered, event_type)
+
+        # Suppress NoSuchNode. This happens during enlistment because the
+        # region does not yet know of the node; it's quite normal. Logging
+        # tracebacks telling us about it is not useful. Perhaps the region
+        # should store these logs anyway. Then, if and when the node is
+        # enlisted, logs prior to enlistment can be seen.
+        d.addErrback(Failure.trap, NoSuchNode)
+
+        return d
+
+
+# Singleton.
+nodeEventHub = NodeEventHub()
+
+
 @asynchronous
-@inlineCallbacks
 def send_event_node(event_type, system_id, hostname, description=''):
     """Send the given node event to the region.
-
-    Also register the event type if it's not registered yet.
 
     :param event_type: The type of the event.
     :type event_type: unicode
     :param system_id: The system ID of the node of the event.
     :type system_id: unicode
-    :param hostname: The hostname of the node of the event.
-    :type hostname: unicode
+    :param hostname: Ignored!
     :param description: An optional description of the event.
     :type description: unicode
     """
-    client = getRegionClient()
-    try:
-        yield client(
-            SendEvent, system_id=system_id, type_name=event_type,
-            description=description)
-    except NoSuchEventType:
-        # The event type doesn't exist, register it and re-send the event.
-        event_detail = EVENT_DETAILS[event_type]
-        yield client(
-            RegisterEventType, name=event_type,
-            description=event_detail.description, level=event_detail.level
-        )
-        yield client(
-            SendEvent, system_id=system_id, type_name=event_type,
-            description=description)
-    maaslog.debug(
-        "Node event %s sent for node: %s (%s)",
-        event_type, hostname, system_id)
+    return nodeEventHub.logByID(event_type, system_id, description)
 
 
 @asynchronous
-@inlineCallbacks
 def send_event_node_mac_address(event_type, mac_address, description=''):
     """Send the given node event to the region for the given mac address.
-
-    Also register the event type if it's not registered yet.
 
     :param event_type: The type of the event.
     :type event_type: unicode
@@ -246,30 +374,4 @@ def send_event_node_mac_address(event_type, mac_address, description=''):
     :param description: An optional description of the event.
     :type description: unicode
     """
-    client = getRegionClient()
-    try:
-        yield client(
-            SendEventMACAddress, mac_address=mac_address, type_name=event_type,
-            description=description)
-    except NoSuchEventType:
-        # The event type doesn't exist, register it and re-send the event.
-        event_detail = EVENT_DETAILS[event_type]
-        yield client(
-            RegisterEventType, name=event_type,
-            description=event_detail.description, level=event_detail.level
-        )
-        try:
-            yield client(
-                SendEventMACAddress, mac_address=mac_address,
-                type_name=event_type, description=description)
-        except NoSuchNode:
-            # Enlistment will raise NoSuchNode,
-            # potentially too much noise for maaslog
-            pass
-    except NoSuchNode:
-        # Enlistment will raise NoSuchNode,
-        # potentially too much noise for maaslog
-        pass
-    maaslog.debug(
-        "Node event %s sent for MAC address: %s",
-        event_type, mac_address)
+    return nodeEventHub.logByMAC(event_type, mac_address, description)

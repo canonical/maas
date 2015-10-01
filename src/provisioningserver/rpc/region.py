@@ -298,6 +298,9 @@ class SendEvent(amp.Command):
     ]
     response = []
     errors = {
+        # In practice, neither NoSuchNode nor NoSuchEventType will be returned
+        # by the region controller as of MAAS 1.9 because the region no longer
+        # waits for the database work to complete.
         NoSuchNode: b"NoSuchNode",
         NoSuchEventType: b"NoSuchEventType"
     }
@@ -316,6 +319,9 @@ class SendEventMACAddress(amp.Command):
     ]
     response = []
     errors = {
+        # In practice, neither NoSuchNode nor NoSuchEventType will be returned
+        # by the region controller as of MAAS 1.9 because the region no longer
+        # waits for the database work to complete.
         NoSuchNode: b"NoSuchNode",
         NoSuchEventType: b"NoSuchEventType"
     }

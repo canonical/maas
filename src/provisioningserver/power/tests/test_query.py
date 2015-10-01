@@ -53,6 +53,7 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
+from provisioningserver.testing.events import EventTypesAllRegistered
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
@@ -97,6 +98,10 @@ def do_not_pause(test):
 
 class TestPowerHelpers(MAASTestCase):
 
+    def setUp(self):
+        super(TestPowerHelpers, self).setUp()
+        self.useFixture(EventTypesAllRegistered())
+
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
@@ -128,6 +133,7 @@ class TestPowerQuery(MAASTestCase):
 
     def setUp(self):
         super(TestPowerQuery, self).setUp()
+        self.useFixture(EventTypesAllRegistered())
         self.patch(power.query, "deferToThread", maybeDeferred)
 
     def patch_rpc_methods(self, return_value={}, side_effect=None):

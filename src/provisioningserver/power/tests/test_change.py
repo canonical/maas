@@ -54,6 +54,7 @@ from provisioningserver.rpc.testing import (
     MockClusterToRegionRPCFixture,
     MockLiveClusterToRegionRPCFixture,
 )
+from provisioningserver.testing.events import EventTypesAllRegistered
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -97,6 +98,10 @@ def do_not_pause(test):
 
 
 class TestPowerHelpers(MAASTestCase):
+
+    def setUp(self):
+        super(TestPowerHelpers, self).setUp()
+        self.useFixture(EventTypesAllRegistered())
 
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
@@ -174,6 +179,7 @@ class TestChangePowerState(MAASTestCase):
 
     def setUp(self):
         super(TestChangePowerState, self).setUp()
+        self.useFixture(EventTypesAllRegistered())
         do_not_pause(self)
 
     @inlineCallbacks
@@ -547,6 +553,7 @@ class TestMaybeChangePowerState(MAASTestCase):
     def setUp(self):
         super(TestMaybeChangePowerState, self).setUp()
         self.patch(power, 'power_action_registry', {})
+        self.useFixture(EventTypesAllRegistered())
         do_not_pause(self)
 
     def patch_methods_using_rpc(self):
