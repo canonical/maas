@@ -48,8 +48,7 @@
                             <div class="table__header table__column--20">Name</div>
                             <div class="table__header table__column--15">VID</div>
                             <div class="table__header table__column--10">Nodes</div>
-                            <div class="table__header table__column--20">Subnet name</div>
-                            <div class="table__header table__column--35">CIDR</div>
+                            <div class="table__header table__column--55">Subnet</div>
                         </div>
                     </header>
                     <main class="table-body">
@@ -60,16 +59,18 @@
                             <!-- XXX mpontillo 2015-09-28
                             link to nodes page with these nodes selected -->
                             <div class="table__data table__column--10">{$ vlan.nodes_count $}</div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table__column--55">
                                 <ul class="no-bullets">
                                 <!-- XXX mpontillo 2015-09-28
                                 link to subnet details page -->
-                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">{$ subnet.name $}</li>
-                                </ul>
-                            </div>
-                            <div class="table__data table__column--35">
-                                <ul class="no-bullets">
-                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">{$ subnet.cidr $}</li>
+                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">
+                                        <a href="#/subnet/{$ subnet.id $}">
+                                            {$ subnet.cidr $}
+                                        </a>
+                                        <span data-ng-if="subnet.name && subnet.cidr != subnet.name">
+                                            ({$ subnet.name $})
+                                        </span>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -111,7 +112,7 @@
                             <!-- XXX mpontillo 2015-09-28
                             link to subnet details page -->
                             <td>{$ subnet.name $}</td>
-                            <td>{$ subnet.cidr $}</td>
+                            <td><a href="#/subnet/{$ subnet.id $}">{$ subnet.cidr $}</a></td>
                         </tr>
                     </tbody>
                 </table>

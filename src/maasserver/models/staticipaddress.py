@@ -784,6 +784,12 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     "system_id": node.system_id,
                     "installable": node.installable,
                 }
+                if (with_username and
+                        self.alloc_type != IPADDRESS_TYPE.DISCOVERED):
+                    # If a user owns this node, overwrite any username we found
+                    # earlier. A node's owner takes precedence.
+                    if node.owner and node.owner.username:
+                        data["user"] = node.owner.username
         return data
 
     def set_ip_address(self, ipaddr, iface=None):

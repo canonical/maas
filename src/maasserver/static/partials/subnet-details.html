@@ -1,0 +1,80 @@
+<div data-ng-if="loaded">
+    <header class="page-header margin-bottom" data-maas-sticky-header>
+        <div class="inner-wrapper">
+            <h1 class="page-header__title twelvel-col">
+                {$ subnet.cidr $}
+                <span class="page-header__title--identicator">
+                    <span class="power-status" data-ng-if="subnet.name && subnet.cidr != subnet.name">
+                        {$ subnet.name $}
+                    </span>
+                </span>
+            </h1>
+        </div>
+    </header>
+    <section class="row">
+        <div class="inner-wrapper">
+           <dl class="six-col">
+                <div data-ng-if="subnet.dns_servers.length">
+                    <dt class="two-col">
+                        DNS <ng-pluralize count="subnet.dns_servers.length"
+                          when="{'one': 'Server', 'other': 'Servers'}"></ng-pluralize>
+                    </dt>
+                    <dd class="four-col last-col" >
+                        <span data-ng-repeat="server in subnet.dns_servers">
+                            {$ server $}{$ $last ? '' : ', ' $}
+                        </span>
+                    </dd>
+                </div>
+                <dt class="two-col">Default Gateway</dt>
+                <dd class="four-col last-col">{$ subnet.gateway_ip $}</dd>
+                <!-- XXX mpontillo 2015-09-29
+                    Missing: Fabric name, VID (optional name), clusters (with links)
+                --->
+            </dl>
+            <dl class="six-col last-col">
+                <!--
+                XXX mpontillo 2015-09-29
+                Missing: description, management, allocation ranges
+                TBD: Move to new format.
+                -->
+                <dt class="two-col">Utilisation</dt>
+                <dd class="four-col last-col">{$ subnet.statistics.usage_string $} used ({$ subnet.statistics.num_unavailable $}/{$ subnet.statistics.total_addresses $})</dd>
+                <dt class="two-col">Largest available range</dt>
+                <dd class="four-col last-col">
+                    {$ subnet.statistics.largest_available $}
+                    <ng-pluralize count="subnet.statistics.largest_available"
+                                  when="{'one': 'address', 'other': 'addresses'}"></ng-pluralize>
+                </dd>
+            </dl>
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--15">IP Address</div>
+                            <div class="table__header table__column--15">Owner</div>
+                            <div class="table__header table__column--20">Usage</div>
+                            <div class="table__header table__column--15">Usage type</div>
+                            <div class="table__header table__column--35">Allocation type</div>
+                        </div>
+                    </header>
+                    <section class="table__body">
+                        <div class="table__row" data-ng-repeat="ip in subnet.ip_addresses">
+                            <div class="table__data table__column--15">{$ ip.ip $}</div>
+                            <div class="table__data table__column--15">{$ ip.user $}</div>
+                            <div class="table__data table__column--20"><a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.installable">{$ ip.node_summary.hostname $}</a><span data-ng-if="!ip.node_summary.installable">{$ ip.node_summary.hostname $}</span></div>
+                            <div class="table__data table__column--15">{$ ip.node_summary.installable ? "Node" : "Device" $}</div>
+                            <div class="table__data table__column--35" data-ng-switch="ip.alloc_type">
+                                <span data-ng-switch-when="0">Automatic</span>
+                                <span data-ng-switch-when="1">Sticky</span>
+                                <span data-ng-switch-when="4">User reserved</span>
+                                <span data-ng-switch-when="5">DHCP</span>
+                                <span data-ng-switch-when="6">Observed</span>
+                                <span data-ng-switch-default>Unknown</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </section>
+    </div>
