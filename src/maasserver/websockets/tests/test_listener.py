@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
+import errno
 import random
 
 from crochet import wait_for_reactor
@@ -51,6 +52,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_all_triggers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets import listener as listener_module
 from maasserver.websockets.listener import (
     PostgresListener,
     PostgresListenerNotifyError,
@@ -59,6 +61,7 @@ from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
+    MockNotCalled,
 )
 from metadataserver.models import NodeResult
 from mock import (
@@ -67,8 +70,23 @@ from mock import (
 )
 from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    Is,
+    IsInstance,
+    Not,
+)
+from twisted.internet import (
+    error,
+    reactor,
+)
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    inlineCallbacks,
+)
+from twisted.python.failure import Failure
 
 
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
@@ -112,40 +130,110 @@ class TestPostgresListener(MAASServerTestCase):
     def test__tryConnection_logs_error(self):
         listener = PostgresListener()
 
-        exc = factory.make_exception()
-        self.patch(listener, "startConnection").side_effect = exc
+        exception_type = factory.make_exception_type()
+        exception_message = factory.make_name("message")
+
+        startConnection = self.patch(listener, "startConnection")
+        startConnection.side_effect = exception_type(exception_message)
         mock_logMsg = self.patch(listener, "logMsg")
-        self.patch(reactor, "callLater")
-        yield listener.tryConnection()
+
+        with ExpectedException(exception_type):
+            yield listener.tryConnection()
+
         self.assertThat(
             mock_logMsg,
             MockCalledOnceWith(
-                format="Unable to connect to database: %(error)r",
-                error=exc.message))
+                format="Unable to connect to database: %(error)s",
+                error=exception_message))
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryConnection_will_retry_in_3_seconds(self):
+    def test__tryConnection_will_retry_in_3_seconds_if_autoReconnect_set(self):
+        listener = PostgresListener()
+        listener.autoReconnect = True
+
+        startConnection = self.patch(listener, "startConnection")
+        startConnection.side_effect = factory.make_exception()
+        deferLater = self.patch(listener_module, "deferLater")
+        deferLater.return_value = sentinel.retry
+
+        result = yield listener.tryConnection()
+
+        self.assertThat(result, Is(sentinel.retry))
+        self.assertThat(deferLater, MockCalledWith(reactor, 3, ANY))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__tryConnection_will_not_retry_if_autoReconnect_not_set(self):
+        listener = PostgresListener()
+        listener.autoReconnect = False
+
+        exception_type = factory.make_exception_type()
+        exception_message = factory.make_name("message")
+
+        startConnection = self.patch(listener, "startConnection")
+        startConnection.side_effect = exception_type(exception_message)
+        deferLater = self.patch(listener_module, "deferLater")
+        deferLater.return_value = sentinel.retry
+
+        with ExpectedException(exception_type):
+            yield listener.tryConnection()
+
+        self.assertThat(deferLater, MockNotCalled())
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__stopping_cancels_start(self):
         listener = PostgresListener()
 
-        self.patch(
-            listener, "startConnection").side_effect = factory.make_exception()
-        mock_callLater = self.patch(reactor, "callLater")
-        yield listener.tryConnection()
-        self.assertThat(
-            mock_callLater,
-            MockCalledWith(3, listener.tryConnection))
+        # Start then stop immediately, without waiting for start to complete.
+        starting = listener.start()
+        starting_spy = DeferredValue()
+        starting_spy.observe(starting)
+        stopping = listener.stop()
+
+        # Both `starting` and `stopping` have callbacks yet to fire.
+        self.assertThat(starting.callbacks, Not(Equals([])))
+        self.assertThat(stopping.callbacks, Not(Equals([])))
+
+        # Wait for the listener to stop.
+        yield stopping
+
+        # Neither `starting` nor `stopping` have callbacks. This is because
+        # `stopping` chained itself onto the end of `starting`.
+        self.assertThat(starting.callbacks, Equals([]))
+        self.assertThat(stopping.callbacks, Equals([]))
+
+        # Confirmation that `starting` was cancelled.
+        with ExpectedException(CancelledError):
+            yield starting_spy.get()
+
+    @wait_for_reactor
+    def test__multiple_starts_return_same_Deferred(self):
+        listener = PostgresListener()
+        self.assertThat(listener.start(), Is(listener.start()))
+        return listener.stop()
+
+    @wait_for_reactor
+    def test__multiple_stops_return_same_Deferred(self):
+        listener = PostgresListener()
+        self.assertThat(listener.stop(), Is(listener.stop()))
+        return listener.stop()
 
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_calls_registerChannels_after_startConnection(self):
         listener = PostgresListener()
 
+        exception_type = factory.make_exception_type()
+
         self.patch(listener, "startConnection")
         mock_registerChannels = self.patch(listener, "registerChannels")
-        mock_registerChannels.side_effect = factory.make_exception()
-        self.patch(reactor, "callLater")
-        yield listener.tryConnection()
+        mock_registerChannels.side_effect = exception_type
+
+        with ExpectedException(exception_type):
+            yield listener.tryConnection()
+
         self.assertThat(
             mock_registerChannels,
             MockCalledOnceWith())
@@ -155,13 +243,30 @@ class TestPostgresListener(MAASServerTestCase):
     def test__tryConnection_adds_self_to_reactor(self):
         listener = PostgresListener()
 
-        self.patch(listener, "startConnection")
-        self.patch(listener, "registerChannels")
-        mock_addReader = self.patch(reactor, "addReader")
+        # Spy on calls to reactor.addReader.
+        self.patch(reactor, "addReader").side_effect = reactor.addReader
+
         yield listener.tryConnection()
-        self.assertThat(
-            mock_addReader,
-            MockCalledOnceWith(listener))
+        try:
+            self.assertThat(
+                reactor.addReader,
+                MockCalledOnceWith(listener))
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__tryConnection_closes_connection_on_failure(self):
+        listener = PostgresListener()
+
+        exc_type = factory.make_exception_type()
+        startReading = self.patch(listener, "startReading")
+        startReading.side_effect = exc_type("no reason")
+
+        with ExpectedException(exc_type):
+            yield listener.tryConnection()
+
+        self.assertThat(listener.connection, Is(None))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -173,9 +278,31 @@ class TestPostgresListener(MAASServerTestCase):
         try:
             self.assertThat(
                 mock_logMsg,
-                MockCalledOnceWith("Listening for notificaton from database."))
+                MockCalledOnceWith("Listening for database notifications."))
         finally:
             yield listener.stop()
+
+    @wait_for_reactor
+    def test__connectionLost_logs_reason(self):
+        listener = PostgresListener()
+        self.patch(listener, "logErr")
+
+        failure = Failure(factory.make_exception())
+
+        listener.connectionLost(failure)
+
+        self.assertThat(
+            listener.logErr, MockCalledOnceWith(
+                failure, "Connection lost."))
+
+    @wait_for_reactor
+    def test__connectionLost_does_not_log_reason_when_lost_cleanly(self):
+        listener = PostgresListener()
+        self.patch(listener, "logErr")
+
+        listener.connectionLost(Failure(error.ConnectionDone()))
+
+        self.assertThat(listener.logErr, MockNotCalled())
 
     def test_register_adds_channel_and_handler(self):
         listener = PostgresListener()
@@ -196,6 +323,8 @@ class TestPostgresListener(MAASServerTestCase):
             PostgresListenerNotifyError,
             listener.convertChannel, "node_unknown")
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test__doRead_removes_self_from_reactor_on_error(self):
         listener = PostgresListener()
 
@@ -204,13 +333,24 @@ class TestPostgresListener(MAASServerTestCase):
 
         self.patch(reactor, "removeReader")
         self.patch(listener, "connectionLost")
-        listener.doRead()
-        self.assertThat(
-            reactor.removeReader,
-            MockCalledOnceWith(listener))
-        self.assertThat(
-            listener.connectionLost,
-            MockCalledOnceWith(ANY))
+
+        failure = listener.doRead()
+
+        # No failure is returned; see the comment in PostgresListener.doRead()
+        # that explains why we don't do that.
+        self.assertThat(failure, Is(None))
+
+        # The listener has begun disconnecting.
+        self.assertThat(listener.disconnecting, IsInstance(Deferred))
+        # Wait for disconnection to complete.
+        yield listener.disconnecting
+        # The listener has removed itself from the reactor.
+        self.assertThat(reactor.removeReader, MockCalledOnceWith(listener))
+        # connectionLost() has been called with a simple ConnectionLost.
+        self.assertThat(listener.connectionLost, MockCalledOnceWith(ANY))
+        [failure] = listener.connectionLost.call_args[0]
+        self.assertThat(failure, IsInstance(Failure))
+        self.assertThat(failure.value, IsInstance(error.ConnectionLost))
 
     def test__doRead_adds_notifies_to_notifications(self):
         listener = PostgresListener()
@@ -231,6 +371,39 @@ class TestPostgresListener(MAASServerTestCase):
         listener.doRead()
         self.assertItemsEqual(
             listener.notifications, set(notifications))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__listener_ignores_ENOENT_when_removing_itself_from_reactor(self):
+        listener = PostgresListener()
+
+        self.patch(reactor, "addReader")
+        self.patch(reactor, "removeReader")
+
+        # removeReader() is going to have a nasty accident.
+        enoent = IOError("ENOENT")
+        enoent.errno = errno.ENOENT
+        reactor.removeReader.side_effect = enoent
+
+        # The listener starts and stops without issue.
+        yield listener.start()
+        yield listener.stop()
+
+        # addReader() and removeReader() were both called.
+        self.assertThat(reactor.addReader, MockCalledOnceWith(listener))
+        self.assertThat(reactor.removeReader, MockCalledOnceWith(listener))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__listener_waits_for_notifier_to_complete(self):
+        listener = PostgresListener()
+
+        yield listener.start()
+        try:
+            self.assertTrue(listener.notifier.running)
+        finally:
+            yield listener.stop()
+            self.assertFalse(listener.notifier.running)
 
 
 class TransactionalHelpersMixin:

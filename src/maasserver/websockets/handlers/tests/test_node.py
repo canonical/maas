@@ -18,6 +18,7 @@ import logging
 from operator import itemgetter
 import random
 import re
+from unittest import skip
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -384,6 +385,7 @@ class TestNodeHandler(MAASServerTestCase):
         handler = NodeHandler(owner, {})
         self.assertIsNone(handler.dehydrate_partitions(None))
 
+    @skip("XXX: GavinPanella 2015-10-01 bug=1501753: Fails spuriously")
     def test_dehydrate_partitions_returns_list_of_partitions(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)

@@ -242,7 +242,7 @@ class TestWebApplicationService(MAASTestCase):
             logger.output, DocTestMatches("""\
             Site starting on ...
             ---
-            Listening for notificaton from database.
+            Listening for database notifications.
             """))
 
         with TwistedLoggerFixture() as logger:
@@ -251,6 +251,8 @@ class TestWebApplicationService(MAASTestCase):
         self.expectThat(
             logger.output, DocTestMatches("""\
             (TCP Port ... Closed)
+            ---
+            Connection closed.
             """))
 
         self.assertFalse(service.running)

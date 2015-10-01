@@ -17,13 +17,15 @@ __all__ = [
 
 from collections import defaultdict
 from contextlib import closing
+from errno import ENOENT
 
 from django.db import connections
 from django.db.utils import load_backend
-from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.enum import map_enum
-from provisioningserver.utils.twisted import synchronous
-from psycopg2 import OperationalError
+from provisioningserver.utils.twisted import (
+    callOut,
+    synchronous,
+)
 from twisted.internet import (
     defer,
     error,
@@ -31,10 +33,15 @@ from twisted.internet import (
     reactor,
     task,
 )
-from twisted.python import (
-    failure,
-    log,
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    succeed,
 )
+from twisted.internet.task import deferLater
+from twisted.internet.threads import deferToThread
+from twisted.python import log
+from twisted.python.failure import Failure
 from zope.interface import implements
 
 
@@ -60,6 +67,13 @@ class PostgresListener:
     its own connection. This class runs inside of the reactor. Any long running
     action that occurrs based on a notification should defer its action to a
     thread to not block the reactor.
+
+    :ivar connection: A database connection within one of Django's wrapper.
+    :ivar connectionFileno: The fileno of the underlying database connection.
+    :ivar connecting: a :class:`Deferred` while connecting, `None` at all
+        other times.
+    :ivar disconnecting: a :class:`Deferred` while disconnecting, `None`
+        at all other times.
     """
 
     implements(interfaces.IReadDescriptor)
@@ -74,8 +88,11 @@ class PostgresListener:
         self.listeners = defaultdict(list)
         self.autoReconnect = False
         self.connection = None
+        self.connectionFileno = None
         self.notifications = set()
         self.notifier = task.LoopingCall(self.handleNotifies)
+        self.connecting = None
+        self.disconnecting = None
 
     def start(self):
         """Start the listener."""
@@ -85,9 +102,7 @@ class PostgresListener:
     def stop(self):
         """Stop the listener."""
         self.autoReconnect = False
-        reactor.removeReader(self)
-        self.cancelHandleNotify()
-        return deferToDatabase(self.stopConnection)
+        return self.loseConnection()
 
     def connected(self):
         """Return True if connected."""
@@ -111,42 +126,30 @@ class PostgresListener:
         kwargs['system'] = self.logPrefix()
         log.err(*args, **kwargs)
 
-    def fileno(self):
-        """Return the fileno of the connection.
-
-        If the connection is not open, return `None`.
-        """
-        # The connection is often in an unexpected state here -- for
-        # unexplained reasons -- so be careful when unpealing layers.
-        connection_wrapper = self.connection
-        if connection_wrapper is None:
-            return None
-        else:
-            connection = connection_wrapper.connection
-            if connection is None:
-                return None
-            elif connection.closed:
-                return None
-            else:
-                return connection.fileno()
-
     def doRead(self):
         """Poll the connection and process any notifications."""
         try:
             self.connection.connection.poll()
-        except OperationalError:
-            # If the connection goes down then this exception is raised. It
-            # contains no pgcode or pgerror to identify the reason, so best
-            # assumtion is that the connection has been lost.
-            reactor.removeReader(self)
-            self.cancelHandleNotify()
-            self.connectionLost(failure.Failure(error.ConnectionClosed()))
+        except:
+            # If the connection goes down then `OperationalError` is raised.
+            # It contains no pgcode or pgerror to identify the reason so no
+            # special consideration can be made for it. Hence all errors are
+            # treated the same, and we assume that the connection is broken.
+            #
+            # We do NOT return a failure, which would signal to the reactor
+            # that the connection is broken in some way, because the reactor
+            # will end up removing this instance from its list of selectables
+            # but not from its list of readable fds, or something like that.
+            # The point is that the reactor's accounting gets muddled. Things
+            # work correctly if we manage the disconnection ourselves.
+            #
+            self.loseConnection(Failure(error.ConnectionLost()))
         else:
-            # Add each notify to to the notifications set. This helps
-            # removes duplicate notifications as one entity in the database
-            # can send multiple notifies as it can be updated quickly.
-            # Accumulate the notifications and the listener passes them on to
-            # be handled in batches.
+            # Add each notify to to the notifications set. This removes
+            # duplicate notifications when one entity in the database is
+            # updated multiple times in a short interval. Accumulating
+            # notifications and allowing the listener to pick them up in
+            # batches is imperfect but good enough, and simple.
             notifies = self.connection.connection.notifies
             if len(notifies) != 0:
                 for notify in notifies:
@@ -155,15 +158,27 @@ class PostgresListener:
                 # that we don't process them a second time.
                 del notifies[:]
 
-    def connectionLost(self, reason):
-        """Reconnect when the connection is lost."""
-        if not self.autoReconnect:
-            # Do nothing. No need to reconnect to the database.
-            return
+    def fileno(self):
+        """Return the fileno of the connection."""
+        return self.connectionFileno
 
-        # Try to reconnect to the database.
-        self.connection = None
-        self.tryConnection()
+    def startReading(self):
+        """Add this listener to the reactor."""
+        self.connectionFileno = self.connection.connection.fileno()
+        reactor.addReader(self)
+
+    def stopReading(self):
+        """Remove this listener from the reactor."""
+        try:
+            reactor.removeReader(self)
+        except IOError as error:
+            # ENOENT here means that the fd has already been unregistered
+            # from the underlying poller. It is as yet unclear how we get
+            # into this state, so for now we ignore it. See epoll_ctl(2).
+            if error.errno != ENOENT:
+                raise
+        finally:
+            self.connectionFileno = None
 
     def register(self, channel, handler):
         """Register listening for notifications from a channel.
@@ -204,23 +219,78 @@ class PostgresListener:
 
     def tryConnection(self):
         """Keep retrying to make the connection."""
+        if self.connecting is None:
+            if self.disconnecting is not None:
+                raise RuntimeError(
+                    "Cannot attempt to make new connection before "
+                    "pending disconnection has finished.")
 
-        def failureToConnect(failure):
-            msgFormat = "Unable to connect to database: %(error)r"
-            self.logMsg(format=msgFormat, error=failure.getErrorMessage())
-            # XXX: Consider using `return deferLater(...)` here, so that
-            # callers don't lose a handle on what's happening.
+            def cb_connect(_):
+                self.logMsg("Listening for database notifications.")
+
+            def eb_connect(failure):
+                msgFormat = "Unable to connect to database: %(error)s"
+                self.logMsg(format=msgFormat, error=failure.getErrorMessage())
+                if failure.check(CancelledError):
+                    return failure
+                elif self.autoReconnect:
+                    return deferLater(reactor, 3, connect)
+                else:
+                    return failure
+
+            def connect(interval=self.HANDLE_NOTIFY_DELAY):
+                d = deferToThread(self.startConnection)
+                d.addCallback(callOut, deferToThread, self.registerChannels)
+                d.addCallback(callOut, self.startReading)
+                d.addCallback(callOut, self.runHandleNotify, interval)
+                # On failure ensure that the database connection is stopped.
+                d.addErrback(callOut, deferToThread, self.stopConnection)
+                d.addCallbacks(cb_connect, eb_connect)
+                return d
+
+            def done():
+                self.connecting = None
+
+            self.connecting = connect().addBoth(callOut, done)
+
+        return self.connecting
+
+    def loseConnection(self, reason=Failure(error.ConnectionDone())):
+        """Request that the connection be dropped."""
+        if self.disconnecting is None:
+            d = self.disconnecting = Deferred()
+            d.addBoth(callOut, self.stopReading)
+            d.addBoth(callOut, self.cancelHandleNotify)
+            d.addBoth(callOut, deferToThread, self.stopConnection)
+            d.addBoth(callOut, self.connectionLost, reason)
+
+            def done():
+                self.disconnecting = None
+
+            d.addBoth(callOut, done)
+
+            if self.connecting is None:
+                # Already/never connected: begin shutdown now.
+                self.disconnecting.callback(None)
+            else:
+                # Still connecting: cancel before disconnect.
+                self.connecting.addErrback(Failure.trap, CancelledError)
+                self.connecting.chainDeferred(self.disconnecting)
+                self.connecting.cancel()
+
+        return self.disconnecting
+
+    def connectionLost(self, reason):
+        """Reconnect when the connection is lost."""
+        self.connection = None
+        if reason.check(error.ConnectionDone):
+            self.logMsg("Connection closed.")
+        elif reason.check(error.ConnectionLost):
+            self.logMsg("Connection lost.")
+        else:
+            self.logErr(reason, "Connection lost.")
+        if self.autoReconnect:
             reactor.callLater(3, self.tryConnection)
-
-        d = deferToDatabase(self.startConnection)
-        d.addCallback(lambda _: deferToDatabase(self.registerChannels))
-        d.addCallback(lambda _: reactor.addReader(self))
-        d.addCallback(
-            lambda _: self.runHandleNotify(delay=self.HANDLE_NOTIFY_DELAY))
-        d.addCallback(
-            lambda _: self.logMsg("Listening for notificaton from database."))
-        d.addErrback(failureToConnect)
-        return d
 
     def registerChannels(self):
         """Register the all the channels."""
@@ -255,7 +325,11 @@ class PostgresListener:
     def cancelHandleNotify(self):
         """Cancel the deferred `handleNotify` call."""
         if self.notifier.running:
+            done = self.notifier.deferred
             self.notifier.stop()
+            return done
+        else:
+            return succeed(None)
 
     def handleNotifies(self, clock=reactor):
         """Process all notify message in the notifications set."""
@@ -271,13 +345,15 @@ class PostgresListener:
         channel, payload = notification
         try:
             channel, action = self.convertChannel(channel)
-        except PostgresListenerNotifyError as e:
+        except PostgresListenerNotifyError:
             # Log the error and continue processing the remaining
             # notifications.
-            self.logErr(e)
+            self.logErr()
         else:
             defers = []
             handlers = self.listeners[channel]
+            # XXX: There could be an arbitrary number of listeners. Should we
+            # limit concurrency here? Perhaps even do one at a time.
             for handler in handlers:
                 d = defer.maybeDeferred(handler, action, payload)
                 d.addErrback(self.logErr)
