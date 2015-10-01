@@ -24,10 +24,25 @@ from provisioningserver.drivers.power.apc import (
     APCPowerDriver,
     extract_apc_parameters,
 )
+from provisioningserver.utils.shell import has_command_available
 from testtools.matchers import Equals
 
 
 class TestAPCPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = apc_module.APCPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(["snmp"], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = apc_module.APCPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name('system_id')

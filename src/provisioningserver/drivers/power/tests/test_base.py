@@ -253,6 +253,9 @@ class FakePowerDriver(PowerDriver):
             self.wait_time = wait_time
         super(FakePowerDriver, self).__init__(clock)
 
+    def detect_missing_packages(self):
+        raise NotImplementedError
+
     def power_on(self, system_id, **kwargs):
         raise NotImplementedError
 

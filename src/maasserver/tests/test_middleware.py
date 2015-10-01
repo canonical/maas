@@ -355,7 +355,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         error_message = (
-            "No connections availble for cluster %s" %
+            "No connections available for cluster %s" %
             factory.make_name('cluster'))
         error = NoConnectionsAvailable(error_message)
         response = middleware.process_exception(request, error)

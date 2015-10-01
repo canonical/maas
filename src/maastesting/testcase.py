@@ -258,7 +258,7 @@ class MAASTestCase(
         """
         # If 'attribute' is None, assume 'obj' is a 'fully-qualified' object,
         # and assume that its __module__ is what we want to patch. For more
-        # complex use cases, the two-paramerter 'patch' will still need to
+        # complex use cases, the two-parameter 'patch' will still need to
         # be used.
         if attribute is None:
             attribute = obj.__name__

@@ -35,6 +35,10 @@ class UCSMPowerDriver(PowerDriver):
     description = "Cisco UCS Power Driver."
     settings = []
 
+    def detect_missing_packages(self):
+        # uses urllib2 http client - nothing to look for!
+        return []
+
     def power_on(self, system_id, **kwargs):
         """Power on UCSM node."""
         url, username, password, uuid = extract_ucsm_parameters(kwargs)

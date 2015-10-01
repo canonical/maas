@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from provisioningserver.drivers.hardware import vmware
 from provisioningserver.drivers.hardware.vmware import (
     power_control_vmware,
     power_query_vmware,
@@ -37,6 +38,11 @@ class VMwarePowerDriver(PowerDriver):
     name = 'vmware'
     description = "VMware Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        if not vmware.try_pyvmomi_import():
+            return ["python-pyvmomi"]
+        return []
 
     def power_on(self, system_id, **kwargs):
         """Power on VMware node."""

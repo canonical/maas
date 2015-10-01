@@ -35,6 +35,10 @@ class MSCMPowerDriver(PowerDriver):
     description = "Moonshot HP iLO Chassis Manager Power Driver."
     settings = []
 
+    def detect_missing_packages(self):
+        # uses pure-python paramiko ssh client - nothing to look for!
+        return []
+
     def power_on(self, system_id, **kwargs):
         """Power on MSCM node."""
         host, username, password, node_id = extract_mscm_parameters(kwargs)

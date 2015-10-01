@@ -101,3 +101,7 @@ def power_state_apc(ip, outlet):
     elif power_state == APCState.ON:
         return 'on'
     raise APCException('Unknown power state: %r' % power_state)
+
+
+def required_package():
+    return ['snmpset', 'snmp']

@@ -267,6 +267,15 @@
                 <div class="twelve-col">
                     <h3 class="title">Power</h3>
                 </div>
+                <div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
+                    <ul class="flash-messages">
+                        <li class="flash-messages__item error">
+                            To control power with this power type, install the
+                            '<span ng-repeat="error in getPowerError()">{$ error $}{$$last ? '' : ', '$}</span>'
+                            package(s) on cluster '{$ node.nodegroup.name $}'
+                        </li>
+                    </ul> 
+                </div>
                 <fieldset class="six-col"
                     data-ng-disabled="!power.editing"
                     data-maas-power-parameters="power.types"

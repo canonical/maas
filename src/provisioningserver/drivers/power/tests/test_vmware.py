@@ -17,6 +17,7 @@ __all__ = []
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.hardware.vmware import try_pyvmomi_import
 from provisioningserver.drivers.power import vmware as vmware_module
 from provisioningserver.drivers.power.vmware import (
     extract_vmware_parameters,
@@ -26,6 +27,20 @@ from testtools.matchers import Equals
 
 
 class TestVMwarePowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(try_pyvmomi_import)
+        mock.return_value = False
+        driver = vmware_module.VMwarePowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(["python-pyvmomi"], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(try_pyvmomi_import)
+        mock.return_value = True
+        driver = vmware_module.VMwarePowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name('system_id')

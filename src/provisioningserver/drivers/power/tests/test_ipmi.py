@@ -36,7 +36,10 @@ from provisioningserver.drivers.power.ipmi import (
     IPMI_CONFIG,
     IPMIPowerDriver,
 )
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.shell import (
+    ExternalProcessError,
+    has_command_available,
+)
 from testtools.matchers import (
     Contains,
     Equals,
@@ -88,6 +91,20 @@ def make_ipmipower_command(
 
 
 class TestIPMIPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = ipmi_module.IPMIPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(['freeipmi-tools'], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = ipmi_module.IPMIPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def test__finds_power_address_from_mac_address(self):
         (power_address, power_user, power_pass, power_driver, power_off_mode,

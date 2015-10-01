@@ -22,10 +22,25 @@ from provisioningserver.drivers.power.virsh import (
     extract_virsh_parameters,
     VirshPowerDriver,
 )
+from provisioningserver.utils.shell import has_command_available
 from testtools.matchers import Equals
 
 
 class TestVirshPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = virsh_module.VirshPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(['libvirt-bin'], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = virsh_module.VirshPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name('system_id')

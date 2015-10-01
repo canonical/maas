@@ -27,11 +27,28 @@ from provisioningserver.drivers.power.seamicro import (
     extract_seamicro_parameters,
     SeaMicroPowerDriver,
 )
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.shell import (
+    ExternalProcessError,
+    has_command_available,
+)
 from testtools.matchers import Equals
 
 
 class TestSeaMicroPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = seamicro_module.SeaMicroPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(['ipmitool'], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = seamicro_module.SeaMicroPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def make_parameters(self):
         ip = factory.make_name('power_address')

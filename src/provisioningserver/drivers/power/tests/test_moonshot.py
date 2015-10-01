@@ -23,7 +23,10 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
 )
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.shell import (
+    ExternalProcessError,
+    has_command_available,
+)
 from testtools.matchers import Equals
 
 
@@ -47,6 +50,20 @@ def make_ipmitool_command(
 
 
 class TestMoonshotIPMIPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = moonshot_module.MoonshotIPMIPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(['freeipmi-tools'], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = moonshot_module.MoonshotIPMIPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def test__issue_ipmitool_command_issues_power_on(self):
         params = make_parameters()

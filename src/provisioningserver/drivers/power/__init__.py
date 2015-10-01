@@ -195,6 +195,12 @@ class PowerDriver(PowerDriverBase):
         self.clock = reactor
 
     @abstractmethod
+    def detect_missing_packages(self):
+        """Implement this method for the actual implementation
+        of the check for the driver's missing support packages.
+        """
+
+    @abstractmethod
     def power_on(self, system_id, **kwargs):
         """Implement this method for the actual implementation
         of the power on command.
@@ -313,7 +319,11 @@ class PowerDriverRegistry(Registry):
         return schemas
 
 
+from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
+from provisioningserver.drivers.power.dli import DLIPowerDriver
+from provisioningserver.drivers.power.ether_wake import EtherWakePowerDriver
+from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
@@ -324,7 +334,7 @@ from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
-builtin_power_drivers = [
+registered_power_drivers = [
     APCPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
@@ -336,5 +346,16 @@ builtin_power_drivers = [
     VirshPowerDriver(),
     VMwarePowerDriver(),
 ]
-for driver in builtin_power_drivers:
+for driver in registered_power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
+
+unregistered_power_drivers = [
+    AMTPowerDriver(),
+    DLIPowerDriver(),
+    EtherWakePowerDriver(),
+    FenceCDUPowerDriver(),
+]
+power_drivers_by_name = {
+    d.name: d for d in
+    registered_power_drivers + unregistered_power_drivers
+}

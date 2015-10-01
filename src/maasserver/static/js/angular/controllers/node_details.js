@@ -903,6 +903,24 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
+        // Check to see if the power type has any missing system packages.
+        $scope.hasPowerError = function() {
+            if(angular.isObject($scope.power.type)) {
+                return $scope.power.type.missing_packages.length > 0;
+            } else {
+                return false;
+            }
+        };
+
+        // Returns an array of missing system packages.
+        $scope.getPowerError = function() {
+            if(angular.isObject($scope.power.type)) {
+                return $scope.power.type.missing_packages;
+            } else {
+                return false;
+            }
+        };
+
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             NodesManager,

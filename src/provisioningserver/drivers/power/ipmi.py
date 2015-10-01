@@ -26,6 +26,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.shell import (
     call_and_check,
@@ -50,6 +51,11 @@ class IPMIPowerDriver(PowerDriver):
     name = 'ipmi'
     description = "IPMI Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        if not shell.has_command_available('ipmipower'):
+            return ['freeipmi-tools']
+        return []
 
     def get_c_environment(self):
         env = os.environ.copy()

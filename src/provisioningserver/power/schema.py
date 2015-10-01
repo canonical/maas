@@ -96,6 +96,12 @@ JSON_POWER_TYPE_SCHEMA = {
             'description': {
                 'type': 'string',
             },
+            'missing_packages': {
+                'type': 'array',
+                'items': {
+                    'type': 'string',
+                },
+            },
             'fields': {
                 'type': 'array',
                 'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,

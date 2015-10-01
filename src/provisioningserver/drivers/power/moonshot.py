@@ -20,6 +20,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -31,6 +32,11 @@ class MoonshotIPMIPowerDriver(PowerDriver):
     name = 'moonshot'
     description = "Moonshot IPMI Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        if not shell.has_command_available('ipmipower'):
+            return ['freeipmi-tools']
+        return []
 
     def _issue_ipmitool_command(
             self, power_change, power_hwaddress=None, power_address=None,

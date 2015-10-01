@@ -86,7 +86,8 @@ def make_form_field(json_field):
     return form_field
 
 
-def add_power_type_parameters(name, description, fields, parameters_set):
+def add_power_type_parameters(
+        name, description, fields, missing_packages, parameters_set):
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
@@ -113,7 +114,8 @@ def add_power_type_parameters(name, description, fields, parameters_set):
     }
     validate(fields, field_set_schema)
     parameters_set.append(
-        {'name': name, 'description': description, 'fields': fields})
+        {'name': name, 'description': description, 'fields': fields,
+         'missing_packages': missing_packages})
 
 
 def get_power_type_parameters_from_json(json_power_type_parameters):
@@ -195,5 +197,7 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
             name = power_type['name']
             fields = power_type['fields']
             description = power_type['description']
-            add_power_type_parameters(name, description, fields, merged_types)
+            missing_packages = power_type['missing_packages']
+            add_power_type_parameters(
+                name, description, fields, missing_packages, merged_types)
     return sorted(merged_types, key=itemgetter("description"))

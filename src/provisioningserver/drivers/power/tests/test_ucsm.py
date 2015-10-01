@@ -27,6 +27,12 @@ from testtools.matchers import Equals
 
 class TestUCSMPowerDriver(MAASTestCase):
 
+    def test_missing_packages(self):
+        # there's nothing to check for, just confirm it returns []
+        driver = ucsm_module.UCSMPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
+
     def make_parameters(self):
         system_id = factory.make_name('system_id')
         url = factory.make_name('power_address')

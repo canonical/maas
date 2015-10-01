@@ -45,7 +45,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.twisted import always_succeed_with
-from provisioningserver.drivers import PowerTypeRegistry
+from provisioningserver.drivers import gen_power_types
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.cluster import (
     DescribePowerTypes,
@@ -76,7 +76,7 @@ class TestCreateNode(MAASServerTestCase):
 
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         protocol = fixture.makeCluster(cluster, DescribePowerTypes)
-        self.power_types = [item for name, item in PowerTypeRegistry]
+        self.power_types = list(gen_power_types())
         protocol.DescribePowerTypes.side_effect = always_succeed_with(
             {'power_types': self.power_types})
         return protocol

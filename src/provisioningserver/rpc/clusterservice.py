@@ -29,7 +29,7 @@ from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import (
     ArchitectureRegistry,
-    PowerTypeRegistry,
+    gen_power_types,
 )
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.msftocs import (
@@ -193,7 +193,7 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
         return {
-            'power_types': [item for name, item in PowerTypeRegistry],
+            'power_types': list(gen_power_types()),
         }
 
     @cluster.ListSupportedArchitectures.responder

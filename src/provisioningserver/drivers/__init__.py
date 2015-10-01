@@ -133,6 +133,15 @@ def validate_settings(setting_fields):
     validate(setting_fields, JSON_SETTING_SCHEMA)
 
 
+def gen_power_types():
+    from provisioningserver.drivers.power import power_drivers_by_name
+    for power_type in JSON_POWER_TYPE_PARAMETERS:
+        driver = power_drivers_by_name.get(power_type['name'])
+        if driver is not None:
+            power_type['missing_packages'] = driver.detect_missing_packages()
+        yield power_type
+
+
 class Architecture:
 
     def __init__(self, name, description, pxealiases=None,
@@ -232,10 +241,6 @@ class BootResourceRegistry(Registry):
     """Registry for boot resource classes."""
 
 
-class PowerTypeRegistry(Registry):
-    """Registry for power type classes."""
-
-
 builtin_architectures = [
     Architecture(name="i386/generic", description="i386"),
     Architecture(name="amd64/generic", description="amd64"),
@@ -268,8 +273,3 @@ builtin_architectures = [
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch.name, arch)
-
-
-builtin_power_types = JSON_POWER_TYPE_PARAMETERS
-for power_type in builtin_power_types:
-    PowerTypeRegistry.register_item(power_type['name'], power_type)

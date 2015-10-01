@@ -31,7 +31,6 @@ from provisioningserver.drivers import (
     BootResourceRegistry,
     JSON_SETTING_SCHEMA,
     make_setting_field,
-    PowerTypeRegistry,
     SETTING_PARAMETER_FIELD_SCHEMA,
     validate_settings,
 )
@@ -153,9 +152,37 @@ class TestRegistries(MAASTestCase):
         self.assertEqual(
             None, ArchitectureRegistry.get_by_pxealias("stinkywinky"))
 
-    def test_power_type_registry(self):
-        self.assertItemsEqual([], PowerTypeRegistry)
-        PowerTypeRegistry.register_item("resource", sentinel.resource)
-        self.assertIn(
-            sentinel.resource,
-            (item for name, item in PowerTypeRegistry))
+    def test_gen_power_types(self):
+
+        from provisioningserver.drivers import power
+        from provisioningserver.power import schema
+
+        class TestGenPowerTypesPowerDriver(power.PowerDriver):
+            name = 'test_gen_power_types'
+            description = "test_gen_power_types Power Driver."
+            settings = []
+
+            def detect_missing_packages(self):
+                # these packages are forever missing
+                return ['fake-package-one', 'fake-package-two']
+
+            def power_on(self, system_id, **kwargs):
+                raise NotImplementedError
+
+            def power_off(self, system_id, **kwargs):
+                raise NotImplementedError
+
+            def power_query(self, system_id, **kwargs):
+                raise NotImplementedError
+
+        # add my fake driver
+        driver = TestGenPowerTypesPowerDriver()
+        power.power_drivers_by_name[driver.name] = driver
+        schema.JSON_POWER_TYPE_PARAMETERS += [{'name': "test_gen_power_types"}]
+
+        # make sure fake packages are reported missing
+        power_types = list(drivers.gen_power_types())
+        self.assertEqual(15, len(power_types))
+        self.assertItemsEqual(
+            ['fake-package-one', 'fake-package-two'],
+            power_types[-1].get('missing_packages'))

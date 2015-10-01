@@ -23,6 +23,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -43,6 +44,11 @@ class SeaMicroPowerDriver(PowerDriver):
     name = 'sm15k'
     description = "SeaMicro Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        if not shell.has_command_available('ipmitool'):
+            return ['ipmitool']
+        return []
 
     def _power_control_seamicro15k_ipmi(
             self, ip, username, password, server_id, power_change):

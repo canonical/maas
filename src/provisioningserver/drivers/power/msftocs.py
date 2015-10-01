@@ -36,6 +36,10 @@ class MicrosoftOCSPowerDriver(PowerDriver):
     description = "MicrosoftOCS Power Driver."
     settings = []
 
+    def detect_missing_packages(self):
+        # uses urllib2 http client - nothing to look for!
+        return []
+
     def power_on(self, system_id, **kwargs):
         """Power on MicrosoftOCS node."""
         power_change = 'on'

@@ -19,6 +19,11 @@ from provisioningserver.drivers.hardware.virsh import (
     power_state_virsh,
 )
 from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.utils import shell
+
+
+REQUIRED_PACKAGES = [["virsh", "libvirt-bin"],
+                     ["virt-login-shell", "libvirt-bin"]]
 
 
 def extract_virsh_parameters(params):
@@ -33,6 +38,13 @@ class VirshPowerDriver(PowerDriver):
     name = 'virsh'
     description = "Virsh Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        missing_packages = set()
+        for binary, package in REQUIRED_PACKAGES:
+            if not shell.has_command_available(binary):
+                missing_packages.add(package)
+        return list(missing_packages)
 
     def power_on(self, system_id, **kwargs):
         """Power on Virsh node."""

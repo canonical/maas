@@ -22,10 +22,25 @@ from provisioningserver.drivers.power.hmc import (
     extract_hmc_parameters,
     HMCPowerDriver,
 )
+from provisioningserver.utils.shell import has_command_available
 from testtools.matchers import Equals
 
 
 class TestHMCPowerDriver(MAASTestCase):
+
+    def test_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = False
+        driver = hmc_module.HMCPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual(['HMC Management Software'], missing)
+
+    def test_no_missing_packages(self):
+        mock = self.patch(has_command_available)
+        mock.return_value = True
+        driver = hmc_module.HMCPowerDriver()
+        missing = driver.detect_missing_packages()
+        self.assertItemsEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name('system_id')

@@ -17,8 +17,10 @@ __all__ = []
 from provisioningserver.drivers.hardware.apc import (
     power_control_apc,
     power_state_apc,
+    required_package,
 )
 from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.utils import shell
 
 
 def extract_apc_parameters(params):
@@ -33,6 +35,12 @@ class APCPowerDriver(PowerDriver):
     name = 'apc'
     description = "APC Power Driver."
     settings = []
+
+    def detect_missing_packages(self):
+        binary, package = required_package()
+        if not shell.has_command_available(binary):
+            return [package]
+        return []
 
     def power_on(self, system_id, **kwargs):
         """Power on Apc outlet."""

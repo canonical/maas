@@ -253,6 +253,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
         }]
         add_power_type_parameters(
             name='blah', description='baz', fields=[self.make_field()],
+            missing_packages=[],
             parameters_set=existing_parameters)
         self.assertEqual(
             [{'name': 'blah', 'description': 'baz', 'fields': {}}],
@@ -261,24 +262,28 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
     def test_adds_new_power_type_parameters(self):
         existing_parameters = []
         fields = [self.make_field()]
+        missing_packages = ['package1', 'package2']
         add_power_type_parameters(
             name='blah', description='baz', fields=fields,
+            missing_packages=missing_packages,
             parameters_set=existing_parameters)
         self.assertEqual(
-            [{'name': 'blah', 'description': 'baz', 'fields': fields}],
+            [{'name': 'blah', 'description': 'baz', 'fields': fields,
+              'missing_packages': missing_packages}],
             existing_parameters)
 
     def test_validates_new_parameters(self):
         self.assertRaises(
             jsonschema.ValidationError, add_power_type_parameters,
             name='blah', description='baz', fields=[{}],
-            parameters_set=[])
+            missing_packages=[], parameters_set=[])
 
     def test_subsequent_parameters_set_is_valid(self):
         parameters_set = []
         fields = [self.make_field()]
         add_power_type_parameters(
             name='blah', description='baz', fields=fields,
+            missing_packages=[],
             parameters_set=parameters_set)
         jsonschema.validate(
             parameters_set, JSON_POWER_TYPE_SCHEMA)
