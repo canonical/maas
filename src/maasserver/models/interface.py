@@ -601,7 +601,8 @@ class Interface(CleanSave, TimestampedModel):
         return ip_address
 
     def _link_subnet_static(
-            self, subnet, ip_address=None, alloc_type=None, user=None):
+            self, subnet, ip_address=None, alloc_type=None, user=None,
+            swap_static_ip=None):
         """Link interface to subnet using STATIC."""
         valid_alloc_types = [
             IPADDRESS_TYPE.STICKY,
@@ -617,12 +618,8 @@ class Interface(CleanSave, TimestampedModel):
             user = None
 
         ngi = None
-        has_allocations = False
         if subnet is not None:
             ngi = subnet.get_managed_cluster_interface()
-            if ngi is not None:
-                has_allocations = self._has_static_allocation_on_cluster(
-                    ngi.nodegroup, get_subnet_family(subnet))
 
         if ip_address:
             ip_address = IPAddress(ip_address)
@@ -664,10 +661,20 @@ class Interface(CleanSave, TimestampedModel):
                 None, None, alloc_type=alloc_type, subnet=subnet, user=user)
             self.ip_addresses.add(static_ip)
 
+        # Swap the ID's that way it keeps the same ID as the swap object.
+        if swap_static_ip is not None:
+            static_ip.id, swap_static_ip.id = swap_static_ip.id, static_ip.id
+            swap_static_ip.delete()
+            static_ip.save()
+
         # Need to update the hostmaps on the cluster, if this subnet
         # has a managed interface.
-        if ngi is not None and not has_allocations:
-            self._update_host_maps(ngi.nodegroup, static_ip)
+        if ngi is not None:
+            allocated_ip = (
+                self._get_first_static_allocation_for_cluster(
+                    ngi.nodegroup, get_subnet_family(subnet)))
+            if allocated_ip is None or allocated_ip.id == static_ip.id:
+                self._update_host_maps(ngi.nodegroup, static_ip)
 
         # Was successful at creating the STATIC link. Remove the DHCP and
         # LINK_UP link if it exists.
@@ -756,7 +763,8 @@ class Interface(CleanSave, TimestampedModel):
                 subnet = None
             self.link_subnet(INTERFACE_LINK_TYPE.LINK_UP, subnet)
 
-    def _unlink_static_ip(self, static_ip, update_cluster=True):
+    def _unlink_static_ip(
+            self, static_ip, update_cluster=True, swap_alloc_type=None):
         """Unlink the STATIC IP address from the interface."""
         registered_on_cluster = False
         ngi = None
@@ -771,14 +779,23 @@ class Interface(CleanSave, TimestampedModel):
                 # Need to remove the hostmap on the cluster before it can
                 # be deleted.
                 self._remove_host_maps(ngi.nodegroup, static_ip)
-        static_ip.delete()
+
+        # If the allocation type is only changing then we don't need to delete
+        # the IP address it needs to be updated.
+        ip_version = IPAddress(static_ip.ip).version
+        if swap_alloc_type is not None:
+            static_ip.alloc_type = swap_alloc_type
+            static_ip.ip = None
+            static_ip.save()
+        else:
+            static_ip.delete()
 
         # If this IP address was registered on the cluster and now has been
         # deleted we need to register the next assigned IP address to the
         # cluster hostmap.
         if registered_on_cluster and ngi is not None and update_cluster:
             new_hostmap_ip = self._get_first_static_allocation_for_cluster(
-                ngi.nodegroup, IPAddress(static_ip.ip).version)
+                ngi.nodegroup, ip_version)
             if new_hostmap_ip is not None:
                 self._update_host_maps(ngi.nodegroup, new_hostmap_ip)
 
@@ -787,6 +804,7 @@ class Interface(CleanSave, TimestampedModel):
             self._update_dns_zones([ngi.nodegroup])
         else:
             self._update_dns_zones()
+        return static_ip
 
     def unlink_ip_address(
             self, ip_address, update_cluster=True, clearing_config=False):
@@ -814,6 +832,112 @@ class Interface(CleanSave, TimestampedModel):
         """Remove the `IPAddress` link on interface by its ID."""
         ip_address = self.ip_addresses.get(id=link_id)
         self.unlink_ip_address(ip_address)
+
+    def _swap_subnet(self, static_ip, subnet, ip_address=None):
+        """Swap the subnet for the `static_ip`."""
+        # Check that requested `ip_address` is available.
+        if ip_address is not None:
+            already_used = get_one(
+                StaticIPAddress.objects.filter(ip=ip_address))
+            if already_used is not None:
+                raise StaticIPAddressUnavailable(
+                    "IP address is already in use.")
+
+        # Remove the hostmap on the new subnet.
+        new_subnet_ngi = subnet.get_managed_cluster_interface()
+        if new_subnet_ngi is not None:
+            static_ip_on_new_subnet = (
+                self._get_first_static_allocation_for_cluster(
+                    new_subnet_ngi.nodegroup, get_subnet_family(subnet)))
+            if (static_ip_on_new_subnet is not None and
+                    static_ip_on_new_subnet.id > static_ip.id):
+                # The updated static_id should be registered over the other
+                # IP address registered on the new subnet.
+                self._remove_host_maps(
+                    new_subnet_ngi.nodegroup, static_ip_on_new_subnet)
+
+        # If the subnets are different then remove the hostmap from the old
+        # subnet as well.
+        if static_ip.subnet is not None and static_ip.subnet != subnet:
+            old_subnet_ngi = static_ip.subnet.get_managed_cluster_interface()
+            registered_on_cluster = False
+            if old_subnet_ngi is not None:
+                registered_on_cluster = (
+                    self._is_first_static_allocation_on_cluster(
+                        static_ip, old_subnet_ngi.nodegroup))
+                if registered_on_cluster:
+                    self._remove_host_maps(old_subnet_ngi.nodegroup, static_ip)
+
+            # Clear the subnet before checking which is the next hostmap.
+            static_ip.subnet = None
+            static_ip.save()
+
+            # Register the new STATIC IP address for the old subnet.
+            if registered_on_cluster and old_subnet_ngi is not None:
+                new_hostmap_ip = self._get_first_static_allocation_for_cluster(
+                    old_subnet_ngi.nodegroup, IPAddress(static_ip.ip).version)
+                if new_hostmap_ip is not None:
+                    self._update_host_maps(
+                        old_subnet_ngi.nodegroup, new_hostmap_ip)
+
+            # Update the DNS configuration for the old subnet if needed.
+            if old_subnet_ngi is not None:
+                self._update_dns_zones([old_subnet_ngi.nodegroup])
+
+        # If the IP addresses are on the same subnet but the IP's are
+        # different then we need to remove the hostmap.
+        if (static_ip.subnet == subnet and
+                new_subnet_ngi is not None and
+                static_ip.ip != ip_address):
+            self._remove_host_maps(
+                new_subnet_ngi.nodegroup, static_ip)
+
+        # Link to the new subnet, which will also update the hostmap.
+        return self._link_subnet_static(
+            subnet, ip_address=ip_address, swap_static_ip=static_ip)
+
+    def update_ip_address(
+            self, static_ip, mode, subnet, ip_address=None):
+        """Update an already existing link on interface to be the new data."""
+        if mode == INTERFACE_LINK_TYPE.AUTO:
+            new_alloc_type = IPADDRESS_TYPE.AUTO
+        elif mode == INTERFACE_LINK_TYPE.DHCP:
+            new_alloc_type = IPADDRESS_TYPE.DHCP
+        elif mode in [INTERFACE_LINK_TYPE.LINK_UP, INTERFACE_LINK_TYPE.STATIC]:
+            new_alloc_type = IPADDRESS_TYPE.STICKY
+
+        current_mode = static_ip.get_interface_link_type()
+        if current_mode == INTERFACE_LINK_TYPE.STATIC:
+            if mode == INTERFACE_LINK_TYPE.STATIC:
+                if (static_ip.subnet == subnet and (
+                        ip_address is None or static_ip.ip == ip_address)):
+                    # Same subnet and IP address nothing to do.
+                    return static_ip
+                # Update the subent and IP address for the static assignment.
+                return self._swap_subnet(
+                    static_ip, subnet, ip_address=ip_address)
+            else:
+                # Not staying in the same mode so we can just remove the
+                # static IP and change its alloc_type from STICKY.
+                static_ip = self._unlink_static_ip(
+                    static_ip, swap_alloc_type=new_alloc_type)
+        elif mode == INTERFACE_LINK_TYPE.STATIC:
+            # Linking to the subnet statically were the original was not a
+            # static link. Swap the objects so the object keeps the same ID.
+            return self._link_subnet_static(
+                subnet, ip_address=ip_address,
+                swap_static_ip=static_ip)
+        static_ip.alloc_type = new_alloc_type
+        static_ip.ip = None
+        static_ip.subnet = subnet
+        static_ip.save()
+        return static_ip
+
+    def update_link_by_id(self, link_id, mode, subnet, ip_address=None):
+        """Update the `IPAddress` link on interface by its ID."""
+        static_ip = self.ip_addresses.get(id=link_id)
+        return self.update_ip_address(
+            static_ip, mode, subnet, ip_address=ip_address)
 
     def clear_all_links(self, clearing_config=False):
         """Remove all the `IPAddress` link on the interface."""

@@ -6,10 +6,10 @@
 
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
-    'NodesManager', 'ManagerHelperService',
+    'NodesManager', 'ManagerHelperService', 'ValidationService',
     function(
         $scope, FabricsManager, VLANsManager, SubnetsManager, NodesManager,
-        ManagerHelperService) {
+        ManagerHelperService, ValidationService) {
 
         // Different interface types.
         var INTERFACE_TYPE = {
@@ -36,7 +36,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             "auto": "Auto assign",
             "static": "Static assign",
             "dhcp": "DHCP",
-            "link_up": "Unconfigured"
+            "link_up": "No IP"
         };
 
         // Set the initial values for this scope.
@@ -46,6 +46,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.column = 'name';
         $scope.fabrics = FabricsManager.getItems();
         $scope.vlans = VLANsManager.getItems();
+        $scope.subnets = SubnetsManager.getItems();
         $scope.interfaces = [];
         $scope.interfaceLinksMap = {};
         $scope.originalInterfaces = {};
@@ -119,7 +120,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     // disabled or has no links (which means the interface
                     // is in LINK_UP mode).
                     nic.link_id = -1;
-                    nic.subnet_id = null;
+                    nic.subnet = null;
                     nic.mode = LINK_MODE.LINK_UP;
                     nic.ip_address = "";
                     interfaces.push(nic);
@@ -128,9 +129,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     angular.forEach(nic.links, function(link) {
                         var nic_copy = angular.copy(nic);
                         nic_copy.link_id = link.id;
-                        nic_copy.subnet_id = link.subnet_id;
+                        nic_copy.subnet = SubnetsManager.getItemFromList(
+                            link.subnet_id);
                         nic_copy.mode = link.mode;
                         nic_copy.ip_address = link.ip_address;
+                        if(angular.isUndefined(nic_copy.ip_address)) {
+                            nic_copy.ip_address = "";
+                        }
                         // We don't want to deep copy the VLAN and fabric
                         // object so we set those back to the original.
                         nic_copy.vlan = nic.vlan;
@@ -176,6 +181,23 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         }
 
+        // Return the original link object for the given interface.
+        function mapNICToOriginalLink(nic) {
+            var originalInteface = $scope.originalInterfaces[nic.id];
+            if(angular.isObject(originalInteface)) {
+                var i, link = null;
+                for(i = 0; i < originalInteface.links.length; i++) {
+                    link = originalInteface.links[i];
+                    if(link.id === nic.link_id) {
+                        break;
+                    }
+                }
+                return link;
+            } else {
+                return null;
+            }
+        }
+
         // Called by $parent when the node has been loaded.
         $scope.nodeLoaded = function() {
             $scope.$watch("node.interfaces", updateInterfaces);
@@ -203,22 +225,25 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Get the subnet for the interface.
-        $scope.getSubnet = function(nic) {
-            return SubnetsManager.getItemFromList(nic.subnet_id);
+        // Get the text to display in the VLAN dropdown.
+        $scope.getVLANText = function(vlan) {
+            if(angular.isString(vlan.name) && vlan.name.length > 0) {
+                return vlan.vid + " (" + vlan.name + ")";
+            } else {
+                return vlan.vid;
+            }
         };
 
-        // Get the name of the subnet for this interface.
-        $scope.getSubnetName = function(nic) {
-            if(angular.isNumber(nic.subnet_id)) {
-                var subnet = $scope.getSubnet(nic);
-                if(angular.isObject(subnet)) {
-                    return subnet.name;
-                } else {
-                    return "Unknown";
-                }
-            } else {
+        // Get the text to display in the subnet dropdown.
+        $scope.getSubnetText = function(subnet) {
+            if(!angular.isObject(subnet)) {
                 return "Unconfigured";
+            } else if(angular.isString(subnet.name) &&
+                subnet.name.length > 0 &&
+                subnet.cidr !== subnet.name) {
+                return subnet.cidr + " (" + subnet.name + ")";
+            } else {
+                return subnet.cidr;
             }
         };
 
@@ -240,10 +265,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Save the following interface on the node. This will only save if
         // the interface has changed.
         $scope.saveInterface = function(nic) {
-            // If the name or vlan has changed then we need to update
-            // the interface.
             var originalInteface = $scope.originalInterfaces[nic.id];
-            if(originalInteface.name !== nic.name ||
+            if($scope.isInterfaceNameInvalid(nic)) {
+                nic.name = originalInteface.name;
+            } else if(originalInteface.name !== nic.name ||
                 originalInteface.vlan_id !== nic.vlan.id) {
                 var params = {
                     "name": nic.name,
@@ -255,6 +280,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                         // we need to expose this as a better message to the
                         // user.
                         console.log(error);
+
+                        // Update the interfaces so it is back to the way it
+                        // was before the user changed it.
+                        updateInterfaces();
                     });
             }
         };
@@ -268,10 +297,16 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // if it has changed.
         $scope.clearFocusInterface = function(nic) {
             if(angular.isUndefined(nic)) {
-                $scope.saveInterface($scope.focusInterface);
+                if($scope.focusInterface.type !== INTERFACE_TYPE.ALIAS) {
+                    $scope.saveInterface($scope.focusInterface);
+                }
+                $scope.saveInterfaceIPAddress($scope.focusInterface);
                 $scope.focusInterface = null;
             } else if($scope.focusInterface === nic) {
-                $scope.saveInterface($scope.focusInterface);
+                if($scope.focusInterface.type !== INTERFACE_TYPE.ALIAS) {
+                    $scope.saveInterface($scope.focusInterface);
+                }
+                $scope.saveInterfaceIPAddress($scope.focusInterface);
                 $scope.focusInterface = null;
             }
         };
@@ -298,6 +333,122 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             // fabric. The first VLAN for the fabric is the default.
             nic.vlan = VLANsManager.getItemFromList(nic.fabric.vlan_ids[0]);
             $scope.saveInterface(nic);
+        };
+
+        // Return True if the link mode select should be disabled.
+        $scope.isLinkModeDisabled = function(nic) {
+            // This is only disabled when a subnet has not been selected.
+            return !angular.isObject(nic.subnet);
+        };
+
+        // Get the available link modes for an interface.
+        $scope.getLinkModes = function(nic) {
+            modes = [];
+            if(!angular.isObject(nic.subnet)) {
+                // No subnet is configure so the only allowed mode
+                // is 'link_up'.
+                modes.push({
+                    "mode": LINK_MODE.LINK_UP,
+                    "text": LINK_MODE_TEXTS[LINK_MODE.LINK_UP]
+                });
+            } else {
+                angular.forEach(LINK_MODE_TEXTS, function(text, mode) {
+                    // Don't add LINK_UP  or DHCP if more than one link exists.
+                    if(nic.links.length > 1 && (
+                        mode === LINK_MODE.LINK_UP ||
+                        mode === LINK_MODE.DHCP)) {
+                        return;
+                    }
+                    modes.push({
+                        "mode": mode,
+                        "text": text
+                    });
+                });
+            }
+            return modes;
+        };
+
+        // Called when the link mode for this interface and link has been
+        // changed.
+        $scope.saveInterfaceLink = function(nic) {
+            var params = {
+                "mode": nic.mode
+            };
+            if(angular.isObject(nic.subnet)) {
+                params.subnet = nic.subnet.id;
+            }
+            if(nic.link_id >= 0) {
+                params.link_id = nic.link_id;
+            }
+            if(nic.mode === LINK_MODE.STATIC && nic.ip_address.length > 0) {
+                params.ip_address = nic.ip_address;
+            }
+            NodesManager.linkSubnet($scope.node, nic.id, params).then(
+                null, function(error) {
+                    // XXX blake_r: Just log the error in the console, but
+                    // we need to expose this as a better message to the
+                    // user.
+                    console.log(error);
+
+                    // Update the interfaces so it is back to the way it
+                    // was before the user changed it.
+                    updateInterfaces();
+                });
+        };
+
+        // Called when the user changes the subnet.
+        $scope.subnetChanged = function(nic) {
+            if(!angular.isObject(nic.subnet)) {
+                // Set to 'Unconfigured' so the link mode should be set to
+                // 'link_up'.
+                nic.mode = LINK_MODE.LINK_UP;
+            }
+            // Clear the IP address so a new one on the subnet is assigned.
+            nic.ip_address = "";
+            $scope.saveInterfaceLink(nic);
+        };
+
+        // Return True when the IP address input field should be shown.
+        $scope.shouldShowIPAddress = function(nic) {
+            if(nic.mode === LINK_MODE.STATIC) {
+                // Check that the original has an IP address if it doesn't then
+                // it should not be shown as the IP address still has not been
+                // loaded over the websocket. If the subnets have been switched
+                // then the IP address has been clear, don't show the IP
+                // address until the original subnet and nic subnet match.
+                var originalLink = mapNICToOriginalLink(nic);
+                return (
+                    angular.isObject(originalLink) &&
+                    angular.isString(originalLink.ip_address) &&
+                    originalLink.ip_address.length > 0 &&
+                    angular.isObject(nic.subnet) &&
+                    nic.subnet.id === originalLink.subnet_id);
+            } else if(angular.isString(nic.ip_address) &&
+                nic.ip_address.length > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        // Return True if the interface IP address that the user typed is
+        // invalid.
+        $scope.isIPAddressInvalid = function(nic) {
+            return (nic.ip_address.length === 0 ||
+                !ValidationService.validateIP(nic.ip_address) ||
+                !ValidationService.validateIPInNetwork(
+                    nic.ip_address, nic.subnet.cidr));
+        };
+
+        // Save the interface IP address.
+        $scope.saveInterfaceIPAddress = function(nic) {
+            var originalLink = mapNICToOriginalLink(nic);
+            var prevIPAddress = originalLink.ip_address;
+            if($scope.isIPAddressInvalid(nic)) {
+                nic.ip_address = prevIPAddress;
+            } else if(nic.ip_address !== prevIPAddress) {
+                $scope.saveInterfaceLink(nic);
+            }
         };
 
         // Load all the required managers.

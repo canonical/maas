@@ -37,6 +37,7 @@ from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.partition import Partition
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
@@ -105,7 +106,8 @@ class NodeHandler(TimestampedModelHandler):
             'set_active',
             'check_power',
             'update_interface',
-            'unmountFilesystem',
+            'link_subnet',
+            'unmount_filesystem',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -348,7 +350,9 @@ class NodeHandler(TimestampedModelHandler):
 
     def dehydrate_interface(self, interface, obj):
         """Dehydrate a `interface` into a interface definition."""
-        links = interface.get_links()
+        # Sort the links by ID that way they show up in the same order in
+        # the UI.
+        links = sorted(interface.get_links(), key=itemgetter("id"))
         for link in links:
             # Replace the subnet object with the subnet_id. The client will
             # use this information to pull the subnet information from the
@@ -545,7 +549,7 @@ class NodeHandler(TimestampedModelHandler):
         node_obj.save()
         return self.full_dehydrate(node_obj)
 
-    def unmountFilesystem(self, params):
+    def unmount_filesystem(self, params):
         node = self.get_object(params)
         if params.get('partition_id') is not None:
             obj = Partition.objects.get(
@@ -601,6 +605,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def update_interface(self, params):
         """Update the interface."""
+        # Only admin users can perform update.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface_form = InterfaceForm.get_interface_form(interface.type)
@@ -609,6 +617,28 @@ class NodeHandler(TimestampedModelHandler):
             form.save()
         else:
             raise ValidationError(form.errors)
+
+    def link_subnet(self, params):
+        """Create or update the link."""
+        # Only admin users can perform update.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        subnet = None
+        if "subnet" in params:
+            subnet = Subnet.objects.get(id=params["subnet"])
+        if "link_id" in params:
+            # We are updating an already existing link.
+            interface.update_link_by_id(
+                params["link_id"], params["mode"], subnet,
+                ip_address=params.get("ip_address", None))
+        else:
+            # We are creating a new link.
+            interface.link_subnet(
+                params["mode"], subnet,
+                ip_address=params.get("ip_address", None))
 
     @asynchronous
     @inlineCallbacks

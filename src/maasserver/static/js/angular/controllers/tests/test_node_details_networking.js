@@ -65,6 +65,9 @@ describe("NodeNetworkingController", function() {
         expect($scope.nodeHasLoaded).toBe(false);
         expect($scope.managersHaveLoaded).toBe(false);
         expect($scope.column).toBe('name');
+        expect($scope.fabrics).toBe(FabricsManager.getItems());
+        expect($scope.vlans).toBe(VLANsManager.getItems());
+        expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.interfaces).toEqual([]);
         expect($scope.interfaceLinksMap).toEqual({});
         expect($scope.originalInterfaces).toEqual({});
@@ -212,7 +215,7 @@ describe("NodeNetworkingController", function() {
                 members: [parent1, parent2],
                 vlan: null,
                 link_id: -1,
-                subnet_id: null,
+                subnet: null,
                 mode: "link_up",
                 ip_address: ""
             }]);
@@ -297,13 +300,15 @@ describe("NodeNetworkingController", function() {
                 links: [],
                 vlan: null,
                 link_id: -1,
-                subnet_id: null,
+                subnet: null,
                 mode: "link_up",
                 ip_address: ""
             }]);
         });
 
         it("duplicates links as alias interfaces", function() {
+            var subnet0 = { id: 0 }, subnet1 = { id: 1 }, subnet2 = { id: 2 };
+            SubnetsManager._items = [subnet0, subnet1, subnet2];
             var links = [
                 {
                     id: 0,
@@ -345,7 +350,7 @@ describe("NodeNetworkingController", function() {
                     vlan: null,
                     fabric: undefined,
                     link_id: 0,
-                    subnet_id: 0,
+                    subnet: subnet0,
                     mode: "dhcp",
                     ip_address: ""
                 },
@@ -359,7 +364,7 @@ describe("NodeNetworkingController", function() {
                     vlan: null,
                     fabric: undefined,
                     link_id: 1,
-                    subnet_id: 1,
+                    subnet: subnet1,
                     mode: "auto",
                     ip_address: ""
                 },
@@ -373,7 +378,7 @@ describe("NodeNetworkingController", function() {
                     vlan: null,
                     fabric: undefined,
                     link_id: 2,
-                    subnet_id: 2,
+                    subnet: subnet2,
                     mode: "static",
                     ip_address: "192.168.122.10"
                 }
@@ -470,7 +475,7 @@ describe("NodeNetworkingController", function() {
             "auto": "Auto assign",
             "static": "Static assign",
             "dhcp": "DHCP",
-            "link_up": "Unconfigured",
+            "link_up": "No IP",
             "missing_type": "missing_type"
         };
 
@@ -485,64 +490,63 @@ describe("NodeNetworkingController", function() {
         });
     });
 
-    describe("getSubnet", function() {
+    describe("getVLANText", function() {
 
-        it("returns item from SubnetsManager", function() {
+        it("returns just vid", function() {
             var controller = makeController();
-            var subnet_id = makeInteger(0, 100);
-            var subnet = {
-                id: subnet_id
+            var vlan = {
+                vid: 5
             };
-            SubnetsManager._items = [subnet];
-
-            var nic = {
-                subnet_id: subnet_id
-            };
-            expect($scope.getSubnet(nic)).toBe(subnet);
+            expect($scope.getVLANText(vlan)).toBe(5);
         });
 
-        it("returns null for missing subnet", function() {
+        it("returns vid + name", function() {
             var controller = makeController();
-            var subnet_id = makeInteger(0, 100);
-            var nic = {
-                subnet_id: subnet_id
+            var name = makeName("vlan");
+            var vlan = {
+                vid: 5,
+                name: name
             };
-            expect($scope.getSubnet(nic)).toBeNull();
+            expect($scope.getVLANText(vlan)).toBe("5 (" + name + ")");
         });
     });
 
-    describe("getSubnetName", function() {
+    describe("getSubnetText", function() {
 
-        it("returns name from item in SubnetsManager", function() {
+        it("returns 'Unconfigured' for null", function() {
             var controller = makeController();
-            var subnet_id = makeInteger(0, 100);
-            var subnet_name = makeName("subnet");
+            expect($scope.getSubnetText(null)).toBe("Unconfigured");
+        });
+
+        it("returns just cidr if no name", function() {
+            var controller = makeController();
+            var cidr = makeName("cidr");
             var subnet = {
-                id: subnet_id,
-                name: subnet_name
+                cidr: cidr
             };
-            SubnetsManager._items = [subnet];
-
-            var nic = {
-                subnet_id: subnet_id
-            };
-            expect($scope.getSubnetName(nic)).toBe(subnet_name);
+            expect($scope.getSubnetText(subnet)).toBe(cidr);
         });
 
-        it("returns 'Unknown' if item not in SubnetsManager", function() {
+        it("returns just cidr if name same as cidr", function() {
             var controller = makeController();
-            var nic = {
-                subnet_id: makeInteger(0, 100)
+            var cidr = makeName("cidr");
+            var subnet = {
+                cidr: cidr,
+                name: cidr
             };
-            expect($scope.getSubnetName(nic)).toBe("Unknown");
+            expect($scope.getSubnetText(subnet)).toBe(cidr);
         });
 
-        it("returns 'Unconfigured' if no subnet_id", function() {
+        it("returns cidr + name", function() {
             var controller = makeController();
-            var nic = {
-                subnet_id: null
+            var cidr = makeName("cidr");
+            var name = makeName("name");
+            var subnet = {
+                cidr: cidr,
+                name: name
             };
-            expect($scope.getSubnetName(nic)).toBe("Unconfigured");
+            expect($scope.getSubnetText(subnet)).toBe(
+                cidr + " (" + name + ")");
         });
     });
 
@@ -612,6 +616,31 @@ describe("NodeNetworkingController", function() {
             spyOn(NodesManager, "updateInterface").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterface(nic);
+            expect(NodesManager.updateInterface).not.toHaveBeenCalled();
+        });
+
+        it("resets name if its invalid and doesn't call update", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var name = makeName("nic");
+            var vlan = { id: makeInteger(0, 100) };
+            var original_nic = {
+                id: id,
+                name: name,
+                vlan_id: vlan.id
+            };
+            var nic = {
+                id: id,
+                name: "",
+                vlan: vlan
+            };
+            $scope.originalInterfaces[id] = original_nic;
+            $scope.interfaces = [nic];
+
+            spyOn(NodesManager, "updateInterface").and.returnValue(
+                $q.defer().promise);
+            $scope.saveInterface(nic);
+            expect(nic.name).toBe(name);
             expect(NodesManager.updateInterface).not.toHaveBeenCalled();
         });
 
@@ -686,32 +715,72 @@ describe("NodeNetworkingController", function() {
 
         it("clears focusInterface no arguments", function() {
             var controller = makeController();
-            var nic = {};
+            var nic = {
+                type: "physical"
+            };
             $scope.focusInterface = nic;
             spyOn($scope, "saveInterface");
+            spyOn($scope, "saveInterfaceIPAddress");
             $scope.clearFocusInterface();
             expect($scope.focusInterface).toBeNull();
             expect($scope.saveInterface).toHaveBeenCalledWith(nic);
+            expect($scope.saveInterfaceIPAddress).toHaveBeenCalledWith(nic);
         });
 
         it("clears focusInterface if same interface", function() {
             var controller = makeController();
-            var nic = {};
+            var nic = {
+                type: "physical"
+            };
             $scope.focusInterface = nic;
             spyOn($scope, "saveInterface");
+            spyOn($scope, "saveInterfaceIPAddress");
             $scope.clearFocusInterface(nic);
             expect($scope.focusInterface).toBeNull();
             expect($scope.saveInterface).toHaveBeenCalledWith(nic);
+            expect($scope.saveInterfaceIPAddress).toHaveBeenCalledWith(nic);
         });
 
         it("doesnt clear focusInterface if different interface", function() {
             var controller = makeController();
-            var nic = {};
+            var nic = {
+                type: "physical"
+            };
             $scope.focusInterface = nic;
             spyOn($scope, "saveInterface");
+            spyOn($scope, "saveInterfaceIPAddress");
             $scope.clearFocusInterface({});
             expect($scope.focusInterface).toBe(nic);
             expect($scope.saveInterface).not.toHaveBeenCalled();
+            expect($scope.saveInterfaceIPAddress).not.toHaveBeenCalled();
+        });
+
+        it("doesnt call save with focusInterface no arguments", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias"
+            };
+            $scope.focusInterface = nic;
+            spyOn($scope, "saveInterface");
+            spyOn($scope, "saveInterfaceIPAddress");
+            $scope.clearFocusInterface();
+            expect($scope.focusInterface).toBeNull();
+            expect($scope.saveInterface).not.toHaveBeenCalled();
+            expect($scope.saveInterfaceIPAddress).toHaveBeenCalledWith(nic);
+        });
+
+        it("doesnt call save with focusInterface if same nic", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias"
+            };
+            $scope.focusInterface = nic;
+            spyOn($scope, "saveInterface");
+            spyOn($scope, "saveInterfaceIPAddress");
+            $scope.clearFocusInterface(nic);
+            expect($scope.focusInterface).toBeNull();
+            expect($scope.saveInterface).not.toHaveBeenCalled();
+            expect($scope.saveInterfaceIPAddress).toHaveBeenCalledWith(nic);
         });
     });
 
@@ -810,6 +879,409 @@ describe("NodeNetworkingController", function() {
             spyOn($scope, "saveInterface");
             $scope.fabricChanged(nic);
             expect($scope.saveInterface).toHaveBeenCalledWith(nic);
+        });
+    });
+
+    describe("isLinkModeDisabled", function() {
+
+        it("enabled when subnet", function() {
+            var controller = makeController();
+            var nic = {
+                subnet : {}
+            };
+            expect($scope.isLinkModeDisabled(nic)).toBe(false);
+        });
+
+        it("disabled when not subnet", function() {
+            var controller = makeController();
+            var nic = {
+                subnet : null
+            };
+            expect($scope.isLinkModeDisabled(nic)).toBe(true);
+        });
+    });
+
+    describe("getLinkModes", function() {
+
+        it("only link_up when no subnet", function() {
+            var controller = makeController();
+            var nic = {
+                subnet : null
+            };
+            expect($scope.getLinkModes(nic)).toEqual([
+                {
+                    "mode": "link_up",
+                    "text": "No IP"
+                }
+            ]);
+        });
+
+        it("all modes if only one link", function() {
+            var controller = makeController();
+            var nic = {
+                subnet : {},
+                links: [{}]
+            };
+            expect($scope.getLinkModes(nic)).toEqual([
+                {
+                    "mode": "auto",
+                    "text": "Auto assign"
+                },
+                {
+                    "mode": "static",
+                    "text": "Static assign"
+                },
+                {
+                    "mode": "dhcp",
+                    "text": "DHCP"
+                },
+                {
+                    "mode": "link_up",
+                    "text": "No IP"
+                }
+            ]);
+        });
+
+        it("auto and static modes if more than one link", function() {
+            var controller = makeController();
+            var nic = {
+                subnet : {},
+                links: [{}, {}]
+            };
+            expect($scope.getLinkModes(nic)).toEqual([
+                {
+                    "mode": "auto",
+                    "text": "Auto assign"
+                },
+                {
+                    "mode": "static",
+                    "text": "Static assign"
+                }
+            ]);
+        });
+    });
+
+    describe("saveInterfaceLink", function() {
+
+        it("calls NodesManager.linkSubnet with params", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                mode: "static",
+                subnet: { id: makeInteger(0, 100) },
+                link_id: makeInteger(0, 100),
+                ip_address: "192.168.122.1"
+            };
+            spyOn(NodesManager, "linkSubnet").and.returnValue(
+                $q.defer().promise);
+            $scope.saveInterfaceLink(nic);
+            expect(NodesManager.linkSubnet).toHaveBeenCalledWith(
+                node, nic.id, {
+                    "mode": "static",
+                    "subnet": nic.subnet.id,
+                    "link_id": nic.link_id,
+                    "ip_address": nic.ip_address
+                });
+        });
+    });
+
+    describe("subnetChanged", function() {
+
+        it("sets mode to link_up if set to no subnet", function() {
+            var controller = makeController();
+            var nic = {
+                subnet: null
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChanged(nic);
+            expect(nic.mode).toBe("link_up");
+            expect($scope.saveInterfaceLink).toHaveBeenCalledWith(nic);
+        });
+
+        it("doesnt set mode to link_up if set if subnet", function() {
+            var controller = makeController();
+            var nic = {
+                mode: "static",
+                subnet: {}
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChanged(nic);
+            expect(nic.mode).toBe("static");
+            expect($scope.saveInterfaceLink).toHaveBeenCalledWith(nic);
+        });
+
+        it("clears ip_address", function() {
+            var controller = makeController();
+            var nic = {
+                subnet: null,
+                ip_address: makeName("ip")
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChanged(nic);
+            expect(nic.ip_address).toBe("");
+        });
+    });
+
+    describe("shouldShowIPAddress", function() {
+
+        it("true if not static and has ip address", function() {
+            var controller = makeController();
+            var nic = {
+                mode: "auto",
+                ip_address: "192.168.122.1"
+            };
+            expect($scope.shouldShowIPAddress(nic)).toBe(true);
+        });
+
+        it("false if not static and doesn't have ip address", function() {
+            var controller = makeController();
+            var nic = {
+                mode: "dhcp",
+                ip_address: ""
+            };
+            expect($scope.shouldShowIPAddress(nic)).toBe(false);
+        });
+
+        describe("static", function() {
+
+            it("false if no orginial link", function() {
+                var controller = makeController();
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: -1,
+                    ip_address: ""
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(false);
+            });
+
+            it("false if orginial link has no IP address", function() {
+                var controller = makeController();
+                var originalInterface = {
+                    id: 0,
+                    links: [
+                        {
+                            id: 0,
+                            mode: "static"
+                        }
+                    ]
+                };
+                $scope.originalInterfaces = [originalInterface];
+
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: 0,
+                    ip_address: ""
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(false);
+            });
+
+            it("false if orginial link has empty IP address", function() {
+                var controller = makeController();
+                var originalInterface = {
+                    id: 0,
+                    links: [
+                        {
+                            id: 0,
+                            mode: "static",
+                            ip_address: ""
+                        }
+                    ]
+                };
+                $scope.originalInterfaces = [originalInterface];
+
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: 0,
+                    ip_address: ""
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(false);
+            });
+
+            it("false if no subnet on nic", function() {
+                var controller = makeController();
+                var originalInterface = {
+                    id: 0,
+                    links: [
+                        {
+                            id: 0,
+                            mode: "static",
+                            ip_address: "192.168.122.2"
+                        }
+                    ]
+                };
+                $scope.originalInterfaces = [originalInterface];
+
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: 0,
+                    ip_address: ""
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(false);
+            });
+
+            it("false if the subnets don't match", function() {
+                var controller = makeController();
+                var originalInterface = {
+                    id: 0,
+                    links: [
+                        {
+                            id: 0,
+                            mode: "static",
+                            ip_address: "192.168.122.2",
+                            subnet_id: 0
+                        }
+                    ]
+                };
+                $scope.originalInterfaces = [originalInterface];
+
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: 0,
+                    ip_address: "",
+                    subnet: {
+                        id: 1
+                    }
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(false);
+            });
+
+            it("true if all condititions match", function() {
+                var controller = makeController();
+                var originalInterface = {
+                    id: 0,
+                    links: [
+                        {
+                            id: 0,
+                            mode: "static",
+                            ip_address: "192.168.122.2",
+                            subnet_id: 0
+                        }
+                    ]
+                };
+                $scope.originalInterfaces = [originalInterface];
+
+                var nic = {
+                    id: 0,
+                    mode: "static",
+                    link_id: 0,
+                    ip_address: "",
+                    subnet: {
+                        id: 0
+                    }
+                };
+                expect($scope.shouldShowIPAddress(nic)).toBe(true);
+            });
+        });
+    });
+
+    describe("isIPAddressInvalid", function() {
+
+        it("true if empty IP address", function() {
+            var controller = makeController();
+            var nic = {
+                ip_address: ""
+            };
+            expect($scope.isIPAddressInvalid(nic)).toBe(true);
+        });
+
+        it("true if not valid IP address", function() {
+            var controller = makeController();
+            var nic = {
+                ip_address: "192.168.260.5"
+            };
+            expect($scope.isIPAddressInvalid(nic)).toBe(true);
+        });
+
+        it("true if IP address not in subnet", function() {
+            var controller = makeController();
+            var nic = {
+                ip_address: "192.168.123.10",
+                subnet: {
+                    cidr: "192.168.122.0/24"
+                }
+            };
+            expect($scope.isIPAddressInvalid(nic)).toBe(true);
+        });
+
+        it("false if IP address in subnet", function() {
+            var controller = makeController();
+            var nic = {
+                ip_address: "192.168.122.10",
+                subnet: {
+                    cidr: "192.168.122.0/24"
+                }
+            };
+            expect($scope.isIPAddressInvalid(nic)).toBe(false);
+        });
+    });
+
+    describe("saveInterfaceIPAddress", function() {
+
+        it("resets IP address if invalid doesn't save", function() {
+            var controller = makeController();
+            var originalInterface = {
+                id: 0,
+                links: [
+                    {
+                        id: 0,
+                        mode: "static",
+                        ip_address: "192.168.122.10",
+                        subnet_id: 0
+                    }
+                ]
+            };
+            $scope.originalInterfaces = [originalInterface];
+
+            var nic = {
+                id: 0,
+                mode: "static",
+                link_id: 0,
+                ip_address: "192.168.123.10",
+                subnet: {
+                    id: 0,
+                    cidr: "192.168.122.0/24"
+                }
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.saveInterfaceIPAddress(nic);
+            expect(nic.ip_address).toBe("192.168.122.10");
+            expect($scope.saveInterfaceLink).not.toHaveBeenCalled();
+        });
+
+        it("saves the link if valid", function() {
+            var controller = makeController();
+            var originalInterface = {
+                id: 0,
+                links: [
+                    {
+                        id: 0,
+                        mode: "static",
+                        ip_address: "192.168.122.10",
+                        subnet_id: 0
+                    }
+                ]
+            };
+            $scope.originalInterfaces = [originalInterface];
+
+            var nic = {
+                id: 0,
+                mode: "static",
+                link_id: 0,
+                ip_address: "192.168.122.11",
+                subnet: {
+                    id: 0,
+                    cidr: "192.168.122.0/24"
+                }
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.saveInterfaceIPAddress(nic);
+            expect(nic.ip_address).toBe("192.168.122.11");
+            expect($scope.saveInterfaceLink).toHaveBeenCalledWith(nic);
         });
     });
 });

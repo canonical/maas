@@ -25,6 +25,7 @@ from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -33,6 +34,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import interface as interface_module
 from maasserver.models.config import Config
+from maasserver.models.interface import Interface
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
@@ -79,7 +81,10 @@ from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
-from mock import sentinel
+from mock import (
+    ANY,
+    sentinel,
+)
 from netaddr import IPAddress
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
@@ -915,14 +920,14 @@ class TestNodeHandler(MAASServerTestCase):
         updated_node = handler.update(node_data)
         self.assertItemsEqual([tag_name], updated_node["tags"])
 
-    def test_unmountFilesystem(self):
+    def test_unmount_filesystem(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
         node = factory.make_Node(interface=True, architecture=architecture)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
-        handler.unmountFilesystem({
+        handler.unmount_filesystem({
             'system_id': node.system_id,
             'block_id': block_device.id
             })
@@ -1006,7 +1011,7 @@ class TestNodeHandler(MAASServerTestCase):
             node.distro_series, Equals(osystem["releases"][0]["name"]))
 
     def test_update_interface(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         node = factory.make_Node()
         handler = NodeHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1023,7 +1028,7 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(new_vlan, interface.vlan)
 
     def test_update_interface_raises_ValidationError(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         node = factory.make_Node()
         handler = NodeHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1035,6 +1040,50 @@ class TestNodeHandler(MAASServerTestCase):
                 "name": new_name,
                 "vlan": random.randint(1000, 5000),
                 })
+
+    def test_link_subnet_calls_update_link_by_id_if_link_id(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        link_id = random.randint(0, 100)
+        mode = factory.pick_enum(INTERFACE_LINK_TYPE)
+        ip_address = factory.make_ip_address()
+        self.patch_autospec(Interface, "update_link_by_id")
+        handler.link_subnet({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "link_id": link_id,
+            "subnet": subnet.id,
+            "mode": mode,
+            "ip_address": ip_address,
+            })
+        self.assertThat(
+            Interface.update_link_by_id,
+            MockCalledOnceWith(
+                ANY, link_id, mode, subnet, ip_address=ip_address))
+
+    def test_link_subnet_calls_link_subnet_if_not_link_id(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        mode = factory.pick_enum(INTERFACE_LINK_TYPE)
+        ip_address = factory.make_ip_address()
+        self.patch_autospec(Interface, "link_subnet")
+        handler.link_subnet({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "subnet": subnet.id,
+            "mode": mode,
+            "ip_address": ip_address,
+            })
+        self.assertThat(
+            Interface.link_subnet,
+            MockCalledOnceWith(
+                ANY, mode, subnet, ip_address=ip_address))
 
 
 class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):

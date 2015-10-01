@@ -178,6 +178,49 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("linkSubnet", function() {
+
+        it("calls node.link_subnet with system_id and interface_id",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("updated"));
+                NodesManager.linkSubnet(node, interface_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.link_subnet");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        done();
+                    });
+            });
+
+        it("calls node.link_subnet with params",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                var params = {
+                    name: makeName("eth0")
+                };
+                webSocket.returnData.push(makeFakeResponse("updated"));
+                NodesManager.linkSubnet(node, interface_id, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.link_subnet");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        expect(sentObject.params.name).toBe(params.name);
+                        done();
+                    });
+            });
+    });
+
     describe("unmountFilesystem", function() {
 
         it("calls node.unmountFilesystem", function(done) {
@@ -186,7 +229,7 @@ describe("NodesManager", function() {
             NodesManager.unmountFilesystem(
                     makeName("block_id"), null).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("node.unmountFilesystem");
+                expect(sentObject.method).toBe("node.unmount_filesystem");
                 done();
             });
         });
@@ -200,6 +243,7 @@ describe("NodesManager", function() {
                     fakeNode.system_id, block_id, partition_id).then(
                         function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.unmount_filesystem");
                 expect(sentObject.params.system_id).toBe(fakeNode.system_id);
                 expect(sentObject.params.block_id).toBe(block_id);
                 expect(sentObject.params.partition_id).toBe(partition_id);

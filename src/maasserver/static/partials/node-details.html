@@ -358,6 +358,7 @@
                                 <div class="table__data table__column--14">
                                     <select class="table__input" name="fabric" id="fabric"
                                         data-ng-model="interface.fabric"
+                                        data-ng-disabled="interface.type == 'alias'"
                                         data-ng-change="fabricChanged(interface)"
                                         data-ng-options="fabric as fabric.name for fabric in fabrics">
                                     </select>
@@ -365,39 +366,37 @@
                                 <div class="table__data table__column--14">
                                     <select class="table__input" name="vlan" id="vlan"
                                         data-ng-model="interface.vlan"
+                                        data-ng-disabled="interface.type == 'alias'"
                                         data-ng-change="saveInterface(interface)"
-                                        data-ng-options="vlan as vlan.name for vlan in vlans | filterByFabric:interface.fabric">
+                                        data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
                                     </select>
                                 </div>
                                 <div class="table__data table__column--18">
-                                    {$ getSubnetName(interface) $}
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <select class="table__input" name="range" id="range">
-                                        <option value="auto">10.10.10.1/6 (managed)</option>
+                                    <select class="table__input" name="subnet" id="subnet"
+                                        data-ng-model="interface.subnet"
+                                        data-ng-change="subnetChanged(interface)"
+                                        data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
+                                        <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
                                     </select>
-                                    -->
                                 </div>
                                 <div class="table__data table__column--14">
                                     <ul class="no-bullets">
                                         <li>
-                                            {$ getLinkModeText(interface) $}
-                                            <!--
-                                            TODO: Use when editing is done.
-                                            <select class="table__input" name="ip-address" id="ip-address">
-                                                <option value="auto">Auto assign</option>
-                                                <option value="manual" selected>Manual</option>
-                                                <option value="DHCP">DHCP</option>
-                                                <option value="unconfigured">Unconfigured</option>
+                                            <select class="table__input" name="link-mode" id="link-mode"
+                                                data-ng-model="interface.mode"
+                                                data-ng-change="saveInterfaceLink(interface)"
+                                                data-ng-disabled="isLinkModeDisabled(interface)"
+                                                data-ng-options="mode.mode as mode.text for mode in getLinkModes(interface)">
                                             </select>
-                                            -->
                                         </li>
-                                        <li class="margin-top--ten" data-ng-show="interface.ip_address">
-                                            {$ interface.ip_address $}
-                                            <!--
-                                            TODO: Use when editing is done.
-                                            <input type="text" class="table__input" value="127.0.0.1">
-                                            -->
+                                        <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
+                                            <input type="text" class="table__input"
+                                                data-ng-model="interface.ip_address"
+                                                data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
+                                                data-maas-enter-blur
+                                                data-ng-focus="setFocusInterface(interface)"
+                                                data-ng-blur="clearFocusInterface(interface)"
+                                                data-ng-disabled="interface.mode != 'static'">
                                         </li>
                                     </ul>
                                 </div>

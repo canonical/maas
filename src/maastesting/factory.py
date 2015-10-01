@@ -276,15 +276,31 @@ class Factory:
                 slash = 128 - host_bits
             return self.make_ipv6_network(slash=slash)
 
-    def pick_ip_in_dynamic_range(self, ngi):
+    def pick_ip_in_dynamic_range(self, ngi, but_not=None):
+        if but_not is None:
+            but_not = []
         first = ngi.get_dynamic_ip_range().first
         last = ngi.get_dynamic_ip_range().last
-        return unicode(IPAddress(random.randrange(first, last)))
+        but_not = [IPAddress(but) for but in but_not if but is not None]
+        for _ in range(100):
+            address = IPAddress(random.randint(first, last))
+            if address not in but_not:
+                return bytes(address)
+        raise TooManyRandomRetries(
+            "Could not find available IP in static range")
 
-    def pick_ip_in_static_range(self, ngi):
+    def pick_ip_in_static_range(self, ngi, but_not=None):
+        if but_not is None:
+            but_not = []
         first = ngi.get_static_ip_range().first
         last = ngi.get_static_ip_range().last
-        return unicode(IPAddress(random.randrange(first, last)))
+        but_not = [IPAddress(but) for but in but_not if but is not None]
+        for _ in range(100):
+            address = IPAddress(random.randint(first, last))
+            if address not in but_not:
+                return bytes(address)
+        raise TooManyRandomRetries(
+            "Could not find available IP in static range")
 
     def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:

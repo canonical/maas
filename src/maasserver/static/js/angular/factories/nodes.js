@@ -90,11 +90,23 @@ angular.module('MAAS').factory(
                     "node.update_interface", params);
             };
 
-        // Send the update information to the region.
+        // Create or update the link to the subnet for the interface.
+        NodesManager.prototype.linkSubnet = function(
+            node, interface_id, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                params.interface_id = interface_id;
+                return RegionConnection.callMethod(
+                    "node.link_subnet", params);
+            };
+
+        // Unmount the filesystem on the block device or partition.
         NodesManager.prototype.unmountFilesystem = function(
             system_id, block_id, partition_id) {
                 var self = this;
-                var method = this._handler + ".unmountFilesystem";
+                var method = this._handler + ".unmount_filesystem";
                 var params = {
                     system_id: system_id,
                     block_id: block_id,
