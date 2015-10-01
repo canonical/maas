@@ -16,11 +16,11 @@ __all__ = []
 
 from itertools import islice
 
-from hypothesis import (
-    assume,
-    given,
+from hypothesis import given
+from hypothesis.strategies import (
+    floats,
+    lists,
 )
-from hypothesis.specifiers import floats_in_range
 from maastesting.matchers import GreaterThanOrEqual
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.backoff import (
@@ -39,13 +39,8 @@ from testtools.matchers import (
 class TestFunctions(MAASTestCase):
     """Test functions in `backoff`."""
 
-    @given(floats_in_range(0.0, 10.0), floats_in_range(1.0, 3.0))
+    @given(floats(0.0, 10.0), floats(1.0, 3.0))
     def test_exponential_growth(self, base, rate):
-        # Hypothesis generates rates that are less than 1.0 in contradiction
-        # to the given specifier. This appears to be a bug, but we can work
-        # around it with assume().
-        assume(rate >= 1.0)
-
         growth = exponential_growth(base, rate)
         growth_seq = list(islice(growth, 10))
 
@@ -56,7 +51,7 @@ class TestFunctions(MAASTestCase):
         self.assertEqual((base * rate), growth_seq[0])
         self.assertEqual((base * (rate ** 10)), growth_seq[-1])
 
-    @given([floats_in_range(0.0, 10000.0)])
+    @given(lists(floats(0.0, 10000.0), 0, 100))
     def test_full_jitter(self, values):
         jittered = list(full_jitter(values))
 

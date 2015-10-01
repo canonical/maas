@@ -1,5 +1,10 @@
 python := python2.7
 
+# pkg_resources makes some incredible noise about version numbers. They
+# are not indications of bugs in MAAS so we silence them everywhere.
+export PYTHONWARNINGS = \
+  ignore:You have iterated over the result:RuntimeWarning:pkg_resources:
+
 # Network activity can be suppressed by setting offline=true (or any
 # non-empty string) at the command-line.
 ifeq ($(offline),)
@@ -81,7 +86,6 @@ install-dependencies:
 
 bin/python:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
-	bin/pip install hypothesis==0.7.2  # buildout can't install this.
 
 configure-buildout:
 	utilities/configure-buildout
