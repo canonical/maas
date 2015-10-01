@@ -102,6 +102,24 @@ def get_rogue_database_activity():
         return [dict(izip(names, row)) for row in cursor]
 
 
+def terminate_rogue_database_activity():
+    """Terminate rogue database activity.
+
+    This excludes itself, naturally, and also auto-vacuum activity which is
+    governed by PostgreSQL and not something to be concerned about.
+
+    :return: A set of PIDs that could not be terminated, presumably because
+        they're running under a different role and we're not a superuser.
+    """
+    with connection.temporary_connection() as cursor:
+        cursor.execute("""\
+        SELECT pid, pg_terminate_backend(pid) FROM pg_stat_activity
+         WHERE pid != pg_backend_pid()
+           AND query NOT LIKE 'autovacuum:%'
+        """)
+        return {pid for pid, success in cursor if not success}
+
+
 def check_for_rogue_database_activity(test):
     """Check for rogue database activity and fail the test if found.
 
@@ -109,6 +127,9 @@ def check_for_rogue_database_activity(test):
     time this is called, but in practice it won't have. We have unconsciously
     lived with this situation for a long time, so we give it a few seconds to
     finish up before failing.
+
+    This also attempts to terminate rogue activity, and reports on its success
+    or failure.
 
     """
     cutoff = time() + 5.0  # Give it 5 seconds.
@@ -120,14 +141,22 @@ def check_for_rogue_database_activity(test):
             pause = max(0.0, min(0.2, cutoff - time()))
             sleep(pause)  # Somat's still wriggling.
     else:
+        not_terminated = terminate_rogue_database_activity()
+        if len(not_terminated) == 0:
+            not_terminated_message = (
+                "Rogue activity successfully terminated.")
+        else:
+            not_terminated_message = (
+                "Rogue activity NOT all terminated (pids: %s)." % " ".join(
+                    unicode(pid) for pid in sorted(not_terminated)))
         test.fail(
-            "Rogue database activity:\n" + "\n--\n".join(
+            "Rogue database activity:\n--\n" + "\n--\n".join(
                 "\n".join(
                     "%s=%s" % (name, activity[name])
                     for name in sorted(activity)
                 )
                 for activity in database_activity
-            )
+            ) + "\n--\n" + not_terminated_message + "\n"
         )
 
 
