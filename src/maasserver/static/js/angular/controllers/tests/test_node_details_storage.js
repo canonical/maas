@@ -191,7 +191,12 @@ describe("NodeStorageController", function() {
                 type: disks[0].type,
                 model: disks[0].model,
                 serial: disks[0].serial,
-                tags: disks[0].tags
+                tags: disks[0].tags,
+                fstype: null,
+                mount_point: null,
+                block_id: 0,
+                partition_id: null,
+                editing_fs: false
             },
             {
                 name: disks[1].name,
@@ -199,7 +204,12 @@ describe("NodeStorageController", function() {
                 type: disks[1].type,
                 model: disks[1].model,
                 serial: disks[1].serial,
-                tags: disks[1].tags
+                tags: disks[1].tags,
+                fstype: "ext4",
+                mount_point: null,
+                block_id: 1,
+                partition_id: null,
+                editing_fs: false
             },
             {
                 name: disks[3].partitions[0].name,
@@ -207,7 +217,12 @@ describe("NodeStorageController", function() {
                 type: disks[3].partitions[0].type,
                 model: "",
                 serial: "",
-                tags: []
+                tags: [],
+                fstype: null,
+                mount_point: null,
+                block_id: 3,
+                partition_id: 0,
+                editing_fs: false
             }
         ];
         var used = [
@@ -245,32 +260,38 @@ describe("NodeStorageController", function() {
         expect($scope.used).toEqual(used);
     });
 
-    describe("edit", function() {
+    describe("editTags", function() {
 
         it("doesnt sets editing to true if cannot edit", function() {
             var controller = makeController();
             canEditSpy.and.returnValue(false);
             $scope.editing = false;
-            $scope.edit();
+            $scope.editing_tags = false;
+            $scope.editTags();
             expect($scope.editing).toBe(false);
+            expect($scope.editing_tags).toBe(false);
         });
 
         it("sets editing to true", function() {
             var controller = makeController();
             canEditSpy.and.returnValue(true);
             $scope.editing = false;
-            $scope.edit();
+            $scope.editing_tags = false;
+            $scope.editTags();
             expect($scope.editing).toBe(true);
+            expect($scope.editing_tags).toBe(true);
         });
     });
 
-    describe("cancel", function() {
+    describe("cancelTags", function() {
 
         it("sets editing to false", function() {
             var controller = makeController();
             $scope.editing = true;
-            $scope.cancel();
+            $scope.editing_tags = true;
+            $scope.cancelTags();
             expect($scope.editing).toBe(false);
+            expect($scope.editing_tags).toBe(false);
         });
 
         it("calls updateDisks", function() {
@@ -295,7 +316,8 @@ describe("NodeStorageController", function() {
             var available = $scope.available;
             var used = $scope.used;
             $scope.editing = true;
-            $scope.cancel();
+            $scope.editing_tags = true;
+            $scope.cancelTags();
 
             // Verify cancel calls updateStorage but doesn't change any data
             expect($scope.filesystems).toEqual(filesystems);
@@ -304,48 +326,55 @@ describe("NodeStorageController", function() {
         });
     });
 
-    describe("save", function() {
+    describe("saveTags", function() {
 
         it("sets editing to false", function() {
             var controller = makeController();
 
             $scope.editing = true;
-            $scope.save();
+            $scope.editing_tags = true;
+            $scope.saveTags();
 
             expect($scope.editing).toBe(false);
+            expect($scope.editing_tags).toBe(false);
+        });
+    });
+
+    describe("editFilesystem", function() {
+
+        it("doesnt sets editing to true if cannot edit", function() {
+            var controller = makeController();
+            canEditSpy.and.returnValue(false);
+            var item = {editing_fs: false};
+            $scope.editing = false;
+            $scope.editFilesystem(item);
+
+            expect($scope.editing).toBe(false);
+            expect(item.editing_fs).toBe(false);
         });
 
-        it("calls updateNode with copy of node", function() {
+        it("sets editing to true", function() {
             var controller = makeController();
+            canEditSpy.and.returnValue(true);
+            var item = {editing_fs: false};
+            $scope.editing = false;
+            $scope.editFilesystem(item);
 
-            $scope.editing = true;
-            $scope.save();
-
-            var calledWithNode = updateNodeSpy.calls.argsFor(0)[0];
-            expect(calledWithNode).not.toBe(node);
+            expect($scope.editing).toBe(true);
+            expect(item.editing_fs).toBe(true);
         });
+    });
 
-        it("calls updateNode with new tags on disks", function() {
+    describe("cancelFilesystem", function() {
+
+        it("sets editing to false", function() {
             var controller = makeController();
-            var disks = [
-                {
-                    id: 0,
-                    model: makeName("model"),
-                    tags: [makeName("tag"), makeName("tag")]
-                }
-            ];
-            var disksWithnewTags = angular.copy(disks);
-            disksWithnewTags[0].tags = [makeName("tag"), makeName("tag")];
-
-            node.disks = disks;
+            var item = {editing_fs: true};
             $scope.editing = true;
-            $scope.disks = disksWithnewTags;
-            $scope.save();
+            $scope.cancelFilesystem(item);
 
-            var calledWithNode = updateNodeSpy.calls.argsFor(0)[0];
-            expect(calledWithNode.disks).toBe(disksWithnewTags);
-            expect(calledWithNode.disks).not.toBe(
-                disks);
+            expect($scope.editing).toBe(false);
+            expect(item.editing_fs).toBe(false);
         });
     });
 });

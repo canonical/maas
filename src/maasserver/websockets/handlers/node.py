@@ -22,13 +22,20 @@ from operator import itemgetter
 from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import (
+    AdminNodeWithMACAddressesForm,
+    FormatBlockDeviceForm,
+    FormatPartitionForm,
+    MountBlockDeviceForm,
+    MountPartitionForm,
+)
 from maasserver.forms_interface import (
     InterfaceForm,
     VLANInterfaceForm,
@@ -116,7 +123,8 @@ class NodeHandler(TimestampedModelHandler):
             'delete_interface',
             'link_subnet',
             'unlink_subnet',
-            'unmount_filesystem',
+            'update_filesystem',
+            'update_disk_tags',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -255,6 +263,10 @@ class NodeHandler(TimestampedModelHandler):
                 self.dehydrate_blockdevice(blockdevice)
                 for blockdevice in blockdevices
             ]
+
+            data["supported_filesystems"] = [
+                {'key': key, 'ui': ui}
+                for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES]
 
             # Events
             data["events"] = self.dehydrate_events(obj)
@@ -554,21 +566,76 @@ class NodeHandler(TimestampedModelHandler):
 
         # Update the tags for the node and disks.
         self.update_tags(node_obj, params['tags'])
-        self.update_disk_tags(params['disks'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
 
-    def unmount_filesystem(self, params):
+    def update_filesystem(self, params):
         node = self.get_object(params)
-        if params.get('partition_id') is not None:
-            obj = Partition.objects.get(
-                id=params['partition_id'], block_device__node=node)
+        block_id = params.get('block_id')
+        partition_id = params.get('partition_id')
+        fstype = params.get('fstype')
+        mount_point = params.get('mount_point')
+
+        if partition_id:
+            self.update_partition_filesystem(
+                node, block_id, partition_id, fstype, mount_point)
         else:
-            obj = BlockDevice.objects.get(id=params['block_id'], node=node)
-        fs = obj.get_effective_filesystem()
-        if fs is not None:
-            fs.mount_point = None
-            fs.save()
+            self.update_blockdevice_filesystem(
+                node, block_id, fstype, mount_point)
+
+    def update_partition_filesystem(
+            self, node, block_id, partition_id, fstype, mount_point):
+        partition = Partition.objects.get(
+            id=partition_id,
+            partition_table__block_device__node=node)
+        fs = partition.get_effective_filesystem()
+        if not fstype:
+            if fs:
+                fs.delete()
+                return
+        if fs is None or fstype != fs.fstype:
+            form = FormatPartitionForm(partition, {'fstype': fstype})
+            if not form.is_valid():
+                raise HandlerError(form.errors)
+            form.save()
+            fs = partition.get_effective_filesystem()
+        if mount_point != fs.mount_point:
+            if not mount_point:
+                fs.mount_point = None
+                fs.save()
+            else:
+                form = MountPartitionForm(
+                    partition, {'mount_point': mount_point})
+                if not form.is_valid():
+                    raise HandlerError(form.errors)
+                else:
+                    form.save()
+
+    def update_blockdevice_filesystem(
+            self, node, block_id, fstype, mount_point):
+        blockdevice = BlockDevice.objects.get(id=block_id, node=node)
+        fs = blockdevice.get_effective_filesystem()
+        if not fstype:
+            if fs:
+                fs.delete()
+                return
+        if fs is None or fstype != fs.fstype:
+            form = FormatBlockDeviceForm(blockdevice, {'fstype': fstype})
+            if not form.is_valid():
+                raise HandlerError(form.errors)
+            form.save()
+            fs = blockdevice.get_effective_filesystem()
+        if mount_point != fs.mount_point:
+            if not mount_point:
+                fs.mount_point = None
+                fs.save()
+            else:
+                form = MountBlockDeviceForm(
+                    blockdevice, {'mount_point': mount_point})
+                if not form.is_valid():
+                    raise HandlerError(form.errors)
+                else:
+                    form.save()
 
     def update_tags(self, node_obj, tags):
         # Loop through the nodes current tags. If the tag exists in `tags` then
@@ -592,13 +659,12 @@ class NodeHandler(TimestampedModelHandler):
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
 
-    def update_disk_tags(self, disks):
+    def update_disk_tags(self, params):
         """Update all the tags on all disks."""
-        # Loop through each disk and update the tags array list.
-        for disk in disks:
-            disk_obj = BlockDevice.objects.get(id=disk["id"])
-            disk_obj.tags = disk["tags"]
-            disk_obj.save(update_fields=['tags'])
+        node = self.get_object(params)
+        disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
+        disk_obj.tags = params['tags']
+        disk_obj.save(update_fields=['tags'])
 
     def action(self, params):
         """Perform the action on the object."""

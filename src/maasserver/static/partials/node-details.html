@@ -634,7 +634,7 @@
                                     <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
-                                            <a class="icon delete" data-ng-click="unmountFilesystem(node.system_id, filesystem.block_id, filesystem.partition_id)">Delete</a>
+                                            <a class="icon delete" data-ng-click="unmountFilesystem(filesystem.block_id, filesystem.partition_id, filesystem.fstype)">Delete</a>
                                         </div>
                                     </div>
                                 </div>
@@ -685,21 +685,44 @@
                                     <div class="table__data table__column--15">{$ item.size_human $}</div>
                                     <div class="table__data table__column--15">{$ item.type $}</div>
                                     <div class="table__data table__column--15">
-                                        <a class="table__controls table__controls--secondary ng-hide">Format</a>
+                                        <a class="table__controls table__controls--secondary" data-ng-click="editFilesystem(item)">{$ item.fstype == null ? "Format" : "Mount " $}</a>{$ item.fstype $}
                                     </div>
                                     <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table__column--15 ng-hide">{$ item.available_size $}</div>
                                     <div class="table__data table__column--15">
-                                        <div data-ng-repeat="tag in item.tags" data-ng-hide="editing">
+                                        <div data-ng-repeat="tag in item.tags" data-ng-hide="editing_tags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </div>
-                                        <tags-input ng-model="item.tags" data-ng-show="editing" allow-tags-pattern="[\w-]+" />
+                                        <tags-input ng-if="item.type != 'partition'" ng-model="item.tags" data-ng-show="editing_tags" allow-tags-pattern="[\w-]+" />
                                     </div>
                                     <div class="table__data table__column--7">
-                                        <div class="table__controls ng-hide">
-                                            <a class="icon partition" ng-if="item.type == 'physical'">Partition</a>
+                                        <div class="table__controls">
+                                            <a class="icon partition" ng-if="item.type != 'partition'">Partition</a>
                                             <a class="icon delete" ng-if="item.type != 'physical'">Delete</a>
+                                        </div>
+                                    </div>
+                                    <div class="table__dropdown ng-hide" ng-show="item.editing_fs">
+                                        <div class="table__row table__dropdown-row padding-bottom--ten">
+                                            <div class="table__data table__column--3"></div>
+                                                <div class="table__data table__column--15">
+                                                    <label for="filesys">Filesystem</label>
+                                                    <select name="filesys" if="filesys" ng-model="item.fstype" data-ng-options="fs.key as fs.key for fs in node.supported_filesystems" ng-selected="item.fstype == fs.key">
+                                                        <option value='' ng-selected="item.fstype == null">Unformatted</option>
+                                                    </select>
+                                                </div>
+                                                <div class="table__data table__column--30">
+                                                    <label for="mountpoint">Mountpoint</label>
+                                                    <input type="text" id="mountpoint" ng-model="item.mount_point" ng-disabled="item.fstype == null || item.fstype == ''">
+                                                </div>
+                                                <div class="table__data table__column--52">
+                                                </div>
+                                            </div>
+                                            <div class="table__row table__dropdown-row">
+                                                <div class="table__data right">
+                                                <a class="link-cta-ubuntu text-button" data-ng-click="cancelFilesystem(item)">Cancel</a>
+                                                <button class="cta-ubuntu" data-ng-click="updateFilesystem(item.block_id, item.partition_id, item)">{$ item.fstype != null && item.mount_point != null && item.mount_point != ''? "Format & Mount" : "Format" $}</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -711,12 +734,12 @@
                         <a class="link-cta-ubuntu secondary margin-right">Create BCache</a>
                         <a class="link-cta-ubuntu secondary">Create LVM</a>
                     </div>
-                    <div class="controls ng-hide" data-ng-show="available && !editing && false">
-                        <a href="" class="link-cta-ubuntu secondary" data-ng-show="canEdit()" data-ng-click="edit()">Edit Tags</a>
+                    <div class="controls ng-hide" data-ng-show="available && !editing_tags">
+                        <a href="" class="link-cta-ubuntu secondary" data-ng-click="editTags()">Edit Tags</a>
                     </div>
-                    <div class="controls ng-hide" data-ng-show="available && editing">
-                        <a href="" class="link-cta-ubuntu clear" data-ng-click="cancel()">Cancel</a>
-                        <button class="cta-ubuntu" data-ng-click="save()">Save changes</button>
+                    <div class="controls ng-hide" data-ng-show="available && editing_tags">
+                        <a href="" class="link-cta-ubuntu clear" data-ng-click="cancelTags()">Cancel</a>
+                        <button class="cta-ubuntu" data-ng-click="saveTags()">Save changes</button>
                     </div>
                 </div>
                 <div class="twelve-col padding-bottom">
@@ -765,64 +788,6 @@
                 // Markup for a row when create a partition has been clicked. All
                 // Form elements creating the partition will be in table__dropdown
                 // and the original table__row has a class of active applied
-
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                        <input class="checkbox" type="checkbox" id="sdb" />
-                        <label class="checkbox-label" for="sdb"></label>
-                    </div>
-                    <div class="table__data table__column--15">
-                        <input type="text" value="sdb" class="table__input">
-                    </div>
-                    <div class="table__data table__column--15">8.5 G</div>
-                    <div class="table__data table__column--15">Physical</div>
-                    <div class="table__data table__column--15">
-                        fat32 <a class="table__controls table__controls--secondary margin-left--ten">Mount</a>
-                    </div>
-                    <div class="table__data table__column--15">QEMU HARDDISK</div>
-                    <div class="table__data table__column--15 ng-hide">937368252</div>
-                    <div class="table__data table__column--15">
-                        <div class="table__tags">rotary, storage, test, hp, machine<span class="table__controls table__controls--secondary">, <a>edit</a></span></div>
-                    </div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a class="icon partition">Partition</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row padding-bottom--ten">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15">
-                                <label for="filesys">Filesystem</label>
-                                <select name="filesys" id="filesys">
-                                    <option value="fat32">fat32</option>
-                                </select>
-                            </div>
-                            <div class="table__data table__column--30">
-                                <label for="mountpoint">Mountpoint</label>
-                                <input type="text" id="mountpoint">
-                            </div>
-                            <div class="table__data table__column--52">
-                            </div>
-                        </div>
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data right">
-                                  <a class="link-cta-ubuntu text-button">Cancel</a>
-                                  <button class="cta-ubuntu">Mount</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                -->
-
-                <!--
-
-                // Available disks & Block devices (MOUNT DISK)
-
-                // Markup for when format / mount has been clicks on a disk. Dropdown
-                // will show the filesystem and mountpoint to be applied to the disk
 
                 <div class="table__row active">
                     <div class="table__data table__column--3">

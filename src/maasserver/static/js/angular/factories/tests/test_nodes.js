@@ -305,32 +305,70 @@ describe("NodesManager", function() {
             });
     });
 
-    describe("unmountFilesystem", function() {
-
-        it("calls node.unmountFilesystem", function(done) {
+    describe("updateFilesystem", function() {
+        it("calls node.update_filesystem", function(done) {
             var fakeNode = makeNode();
             webSocket.returnData.push(makeFakeResponse(null));
-            NodesManager.unmountFilesystem(
-                    makeName("block_id"), null).then(function() {
+            NodesManager.updateFilesystem(
+                    makeName("system_id"), makeName("block_id"),
+                    makeName("partition_id"), makeName("fstype"),
+                    makeName("mount_point")).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("node.unmount_filesystem");
+                expect(sentObject.method).toBe("node.update_filesystem");
                 done();
             });
         });
 
-        it("calls node.unmountFilesystem with params", function(done) {
+        it("calls node.update_filesystem with params", function(done) {
             var fakeNode = makeNode();
             var block_id = makeName("block_id");
             var partition_id = makeName("partition_id");
+            var fstype = makeName("fstype");
+            var mount_point = makeName("mount_point");
             webSocket.returnData.push(makeFakeResponse(null));
-            NodesManager.unmountFilesystem(
-                    fakeNode.system_id, block_id, partition_id).then(
+            NodesManager.updateFilesystem(
+                    fakeNode.system_id, block_id, partition_id,
+                    fstype, mount_point).then(
                         function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("node.unmount_filesystem");
+                expect(sentObject.method).toBe("node.update_filesystem");
                 expect(sentObject.params.system_id).toBe(fakeNode.system_id);
                 expect(sentObject.params.block_id).toBe(block_id);
                 expect(sentObject.params.partition_id).toBe(partition_id);
+                expect(sentObject.params.fstype).toBe(fstype);
+                expect(sentObject.params.mount_point).toBe(mount_point);
+                done();
+            });
+        });
+    });
+
+    describe("updateDiskTags", function() {
+
+        it("calls node.update_disk_tags", function(done) {
+            var fakeNode = makeNode();
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.updateDiskTags(
+                    makeName("system_id"), makeName("block_id"),
+                    [ makeName("tag") ]).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.update_disk_tags");
+                done();
+            });
+        });
+
+        it("calls node.update_disk_tags with params", function(done) {
+            var fakeNode = makeNode();
+            var block_id = makeName("block_id");
+            var tags = [ makeName("tag") ];
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.updateDiskTags(
+                    fakeNode.system_id, block_id, tags).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.update_disk_tags");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(block_id);
+                expect(sentObject.params.tags[0]).toBe(tags[0]);
                 done();
             });
         });

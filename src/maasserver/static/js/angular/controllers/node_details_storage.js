@@ -9,6 +9,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
 
         $scope.editing = false;
+        $scope.editing_tags = false;
         $scope.column = 'model';
         $scope.has_disks = false;
         $scope.filesystems = [];
@@ -19,11 +20,24 @@ angular.module('MAAS').controller('NodeStorageController', [
         // it will call `nodeLoaded` once the node has been fully loaded.
         $scope.$parent.storageController = $scope;
 
-        // Return True if the item has a filesystem and it mounted.
+        // Return True if the item has a filesystem and its mounted.
         function hasMountedFilesystem(item) {
             return angular.isObject(item.filesystem) &&
                 angular.isString(item.filesystem.mount_point) &&
                 item.filesystem.mount_point !== "";
+        }
+
+        // Returns the fstype if the item has a filesystem and its unmounted.
+        function hasFormattedUnmountedFilesystem(item) {
+            if(angular.isObject(item.filesystem) &&
+                angular.isString(item.filesystem.fstype) &&
+                item.filesystem.fstype !== '' &&
+                (angular.isString(item.filesystem.mount_point) === false ||
+                    item.filesystem.mount_point === '')) {
+                return item.filesystem.fstype;
+            }else{
+                return null;
+            }
         }
 
         // Return True if the item is in use.
@@ -95,7 +109,12 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "type": disk.type,
                         "model": disk.model,
                         "serial": disk.serial,
-                        "tags": getTags(disk)
+                        "tags": getTags(disk),
+                        "fstype": hasFormattedUnmountedFilesystem(disk),
+                        "mount_point": null,
+                        "block_id": disk.id,
+                        "partition_id": null,
+                        "editing_fs": false
                     });
                 }
                 angular.forEach(disk.partitions, function(partition) {
@@ -106,7 +125,13 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "type": "partition",
                             "model": "",
                             "serial": "",
-                            "tags": []
+                            "tags": [],
+                            "fstype":
+                                hasFormattedUnmountedFilesystem(partition),
+                            "mount_point": null,
+                            "block_id": disk.id,
+                            "partition_id": partition.id,
+                            "editing_fs": false
                         });
                     }
                 });
@@ -148,11 +173,9 @@ angular.module('MAAS').controller('NodeStorageController', [
         function updateDisks() {
             // Do not update the items, when editing this would
             // cause the users changes to change.
-            // Only update if node is available
             if($scope.editing) {
                 return;
             }
-
             $scope.has_disks = $scope.node.disks.length > 0;
             $scope.filesystems = getFilesystems();
             $scope.available = getAvailable();
@@ -164,45 +187,58 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.$watch("node.disks", updateDisks);
         };
 
-        // Called to return the list
-
-        // Called to enter edit mode.
-        $scope.edit = function() {
-            if(!$scope.$parent.canEdit()) {
-                return;
+        // Called to enter tag editing mode
+        $scope.editTags = function() {
+            if($scope.$parent.canEdit() && !$scope.editing) {
+                $scope.editing = true;
+                $scope.editing_tags = true;
             }
-            $scope.editing = true;
         };
 
         // Called to cancel editing.
-        $scope.cancel = function() {
+        $scope.cancelTags = function() {
             $scope.editing = false;
+            $scope.editing_tags = false;
             updateDisks();
         };
 
         // Called to save the changes.
-        $scope.save = function() {
+        $scope.saveTags = function() {
             $scope.editing = false;
+            $scope.editing_tags = false;
 
-            // Copy the node and make the changes.
-            var node = angular.copy($scope.node);
-            node.disks = $scope.disks;
-
-            // Fix the tags as ngTagsInput stores the tags as an object with
-            // a text field.
-            angular.forEach(node.disks, function(disk) {
+            angular.forEach($scope.available, function(disk) {
                 var tags = [];
                 angular.forEach(disk.tags, function(tag) {
                     tags.push(tag.text);
                 });
-                disk.tags = tags;
+                NodesManager.updateDiskTags(
+                    $scope.node.system_id, disk.block_id, tags);
             });
-
-            $scope.$parent.updateNode(node);
-            updateDisks();
         };
 
-        $scope.unmountFilesystem = function(system_id, block_id, partition_id) {
-            NodesManager.unmountFilesystem(system_id, block_id, partition_id);
+        $scope.editFilesystem = function(item) {
+            if($scope.$parent.canEdit() && !$scope.editing) {
+                $scope.editing = true;
+                item.editing_fs = true;
+            }
+        };
+
+        $scope.cancelFilesystem = function(item) {
+            $scope.editing = false;
+            item.editing_fs = false;
+        };
+
+        $scope.unmountFilesystem = function(block_id, partition_id, fstype) {
+            NodesManager.updateFilesystem(
+                $scope.node.system_id, block_id, partition_id, fstype, null);
+        };
+
+        $scope.updateFilesystem = function(block_id, partition_id, item) {
+            $scope.editing = false;
+            item.editing_fs = false;
+            NodesManager.updateFilesystem(
+                $scope.node.system_id, block_id, partition_id,
+                item.fstype, item.mount_point);
         };
     }]);

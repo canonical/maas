@@ -136,15 +136,29 @@ angular.module('MAAS').factory(
                     "node.unlink_subnet", params);
             };
 
-        // Unmount the filesystem on the block device or partition.
-        NodesManager.prototype.unmountFilesystem = function(
-            system_id, block_id, partition_id) {
+        // Send the update information to the region.
+        NodesManager.prototype.updateFilesystem = function(
+            system_id, block_id, partition_id, fstype, mount_point) {
                 var self = this;
-                var method = this._handler + ".unmount_filesystem";
+                var method = this._handler + ".update_filesystem";
                 var params = {
                     system_id: system_id,
                     block_id: block_id,
-                    partition_id: partition_id
+                    partition_id: partition_id,
+                    fstype: fstype,
+                    mount_point: mount_point
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        NodesManager.prototype.updateDiskTags = function(
+            system_id, block_id, tags) {
+                var self = this;
+                var method = this._handler + ".update_disk_tags";
+                var params = {
+                    system_id: system_id,
+                    block_id: block_id,
+                    tags: tags
                 };
                 return RegionConnection.callMethod(method, params);
             };
