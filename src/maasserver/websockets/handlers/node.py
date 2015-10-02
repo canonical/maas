@@ -23,11 +23,17 @@ from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    INTERFACE_LINK_TYPE,
+    IPADDRESS_TYPE,
     NODE_PERMISSION,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
-from maasserver.forms_interface import InterfaceForm
+from maasserver.forms_interface import (
+    InterfaceForm,
+    VLANInterfaceForm,
+)
+from maasserver.forms_interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.config import Config
 from maasserver.models.event import Event
@@ -105,8 +111,11 @@ class NodeHandler(TimestampedModelHandler):
             'action',
             'set_active',
             'check_power',
+            'create_vlan',
             'update_interface',
+            'delete_interface',
             'link_subnet',
+            'unlink_subnet',
             'unmount_filesystem',
         ]
         form = AdminNodeWithMACAddressesForm
@@ -603,6 +612,38 @@ class NodeHandler(TimestampedModelHandler):
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
 
+    def _create_link_on_interface(self, interface, params):
+        """Create a link on a new interface."""
+        mode = params.get("mode", None)
+        subnet_id = params.get("subnet", None)
+        if mode is not None:
+            if mode != INTERFACE_LINK_TYPE.LINK_UP:
+                link_form = InterfaceLinkForm(instance=interface, data=params)
+                if link_form.is_valid():
+                    link_form.save()
+                else:
+                    raise ValidationError(link_form.errors)
+            elif subnet_id is not None:
+                link_ip = interface.ip_addresses.get(
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=True)
+                link_ip.subnet = Subnet.objects.get(id=subnet_id)
+                link_ip.save()
+
+    def create_vlan(self, params):
+        """Create VLAN interface."""
+        # Only admin users can perform create.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        params['parents'] = [params.pop('parent')]
+        form = VLANInterfaceForm(node=node, data=params)
+        if form.is_valid():
+            interface = form.save()
+            self._create_link_on_interface(interface, params)
+        else:
+            raise ValidationError(form.errors)
+
     def update_interface(self, params):
         """Update the interface."""
         # Only admin users can perform update.
@@ -617,6 +658,16 @@ class NodeHandler(TimestampedModelHandler):
             form.save()
         else:
             raise ValidationError(form.errors)
+
+    def delete_interface(self, params):
+        """Delete the interface."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface.delete()
 
     def link_subnet(self, params):
         """Create or update the link."""
@@ -639,6 +690,16 @@ class NodeHandler(TimestampedModelHandler):
             interface.link_subnet(
                 params["mode"], subnet,
                 ip_address=params.get("ip_address", None))
+
+    def unlink_subnet(self, params):
+        """Delete the link."""
+        # Only admin users can perform unlink.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface.unlink_subnet_by_id(params["link_id"])
 
     @asynchronous
     @inlineCallbacks

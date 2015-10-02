@@ -15,6 +15,17 @@ describe("filterByVLAN", function() {
         filterByVLAN = $filter("filterByVLAN");
     }));
 
+    it("returns empty if undefined space", function() {
+        var i, subnet, subnets = [];
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                vlan: 0
+            };
+            subnets.push(subnet);
+        }
+        expect(filterByVLAN(subnets)).toEqual([]);
+    });
+
     it("only returns subnets with vlan id", function() {
         var i, subnet, vlan_id = 1, other_vlan_id = 2;
         var subnet_vlans = [], other_subnet_vlans = [], all_subnets = [];

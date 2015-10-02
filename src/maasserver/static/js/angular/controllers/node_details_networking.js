@@ -4,12 +4,41 @@
  * MAAS Node Networking Controller
  */
 
+// Filter that is specific to the NodeNetworkingController. Filters the
+// list of VLANs to be only those that are unused by the interface.
+angular.module('MAAS').filter('filterByUnusedForInterface', function() {
+    return function(vlans, nic, originalInterfaces) {
+        var filtered = [];
+        if(!angular.isObject(nic) ||
+            !angular.isObject(originalInterfaces)) {
+            return filtered;
+        }
+        var usedVLANs = [];
+        angular.forEach(originalInterfaces, function(inter) {
+            if(inter.type === "vlan") {
+                var parent = inter.parents[0];
+                if(parent === nic.id) {
+                    usedVLANs.push(inter.vlan_id);
+                }
+            }
+        });
+        angular.forEach(vlans, function(vlan) {
+            var idx = usedVLANs.indexOf(vlan.id);
+            if(idx === -1) {
+                filtered.push(vlan);
+            }
+        });
+        return filtered;
+    };
+});
+
+
 angular.module('MAAS').controller('NodeNetworkingController', [
-    '$scope', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
+    '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
     'NodesManager', 'ManagerHelperService', 'ValidationService',
     function(
-        $scope, FabricsManager, VLANsManager, SubnetsManager, NodesManager,
-        ManagerHelperService, ValidationService) {
+        $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
+        NodesManager, ManagerHelperService, ValidationService) {
 
         // Different interface types.
         var INTERFACE_TYPE = {
@@ -36,7 +65,17 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             "auto": "Auto assign",
             "static": "Static assign",
             "dhcp": "DHCP",
-            "link_up": "No IP"
+            "link_up": "Unconfigured"
+        };
+
+        // Different selection modes.
+        var SELECTION_MODE = {
+            NONE: null,
+            SINGLE: "single",
+            MUTLI: "multi",
+            DELETE: "delete",
+            ADD: "add",
+            CREATE_BOND: "create-bond"
         };
 
         // Set the initial values for this scope.
@@ -52,6 +91,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.originalInterfaces = {};
         $scope.showingMembers = [];
         $scope.focusInterface = null;
+        $scope.selectedInterfaces = [];
+        $scope.selectedMode = null;
+        $scope.newInterface = {};
 
         // Give $parent which is the NodeDetailsController access to this scope
         // it will call `nodeLoaded` once the node has been fully loaded.
@@ -179,6 +221,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     }
                 }
             }
+
+            // Update newInterface.parent if it has changed.
+            updateNewInterface();
         }
 
         // Return the original link object for the given interface.
@@ -196,6 +241,83 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             } else {
                 return null;
             }
+        }
+
+        // Leave single selection mode.
+        function leaveSingleSelectionMode() {
+            if($scope.selectedMode === SELECTION_MODE.SINGLE ||
+                $scope.selectedMode === SELECTION_MODE.ADD ||
+                $scope.selectedMode === SELECTION_MODE.DELETE) {
+                $scope.selectedMode = SELECTION_MODE.NONE;
+            }
+        }
+
+        // Update the new interface since the interfaces list has
+        // been reloaded.
+        function updateNewInterface() {
+            if(angular.isObject($scope.newInterface.parent)) {
+                var parentId = $scope.newInterface.parent.id;
+                var linkId = $scope.newInterface.parent.link_id;
+                var links = $scope.interfaceLinksMap[parentId];
+                if(angular.isObject(links)) {
+                    var newParent = links[linkId];
+                    if(angular.isObject(newParent)) {
+                        $scope.newInterface.parent = newParent;
+
+                        var iType = $scope.newInterface.type;
+                        var isAlias = iType === INTERFACE_TYPE.ALIAS;
+                        var isVLAN = iType === INTERFACE_TYPE.VLAN;
+                        var canAddAlias = $scope.canAddAlias(newParent);
+                        var canAddVLAN = $scope.canAddVLAN(newParent);
+                        if(!canAddAlias && !canAddVLAN) {
+                            // Cannot do any adding now.
+                            $scope.newInterface = {};
+                            leaveSingleSelectionMode();
+                        } else {
+                            if(isAlias && !canAddAlias && canAddVLAN) {
+                                $scope.newInterface.type = "vlan";
+                                $scope.addTypeChanged();
+                            } else if(isVLAN && !canAddVLAN && canAddAlias) {
+                                $scope.newInterface.type = "alias";
+                                $scope.addTypeChanged();
+                            }
+                        }
+                        return;
+                    }
+                }
+
+                // Parent no longer exists. Exit the single selection modes.
+                $scope.newInterface = {};
+                leaveSingleSelectionMode();
+            }
+        }
+
+        // Return the default VLAN for a fabric.
+        function getDefaultVLAN(fabric) {
+            return VLANsManager.getItemFromList(fabric.vlan_ids[0]);
+        }
+
+        // Return list of
+        function getUnusedVLANs(nic, ignoreVLANs) {
+            var vlans = $filter('filterByFabric')($scope.vlans, nic.fabric);
+            vlans = $filter('filterByUnusedForInterface')(
+                vlans, nic, $scope.originalInterfaces);
+
+            // Remove the VLAN's that should be ignored when getting the unused
+            // VLANs. This is done to help the selection of the next default.
+            if(angular.isUndefined(ignoreVLANs)) {
+                ignoreVLANs = [];
+            }
+            angular.forEach(ignoreVLANs, function(vlan) {
+                var i;
+                for(i = 0; i < vlans.length; i++) {
+                    if(vlans[i].id === vlan.id) {
+                        vlans.splice(i, 1);
+                        break;
+                    }
+                }
+            });
+            return vlans;
         }
 
         // Called by $parent when the node has been loaded.
@@ -227,6 +349,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Get the text to display in the VLAN dropdown.
         $scope.getVLANText = function(vlan) {
+            if(!angular.isObject(vlan)) {
+                return "";
+            }
+
             if(angular.isString(vlan.name) && vlan.name.length > 0) {
                 return vlan.vid + " (" + vlan.name + ")";
             } else {
@@ -331,7 +457,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.fabricChanged = function(nic) {
             // Update the VLAN on the node to be the default VLAN for that
             // fabric. The first VLAN for the fabric is the default.
-            nic.vlan = VLANsManager.getItemFromList(nic.fabric.vlan_ids[0]);
+            nic.vlan = getDefaultVLAN(nic.fabric);
             $scope.saveInterface(nic);
         };
 
@@ -352,9 +478,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     "text": LINK_MODE_TEXTS[LINK_MODE.LINK_UP]
                 });
             } else {
+                // Don't add LINK_UP  or DHCP if more than one link exists or
+                // if the interface is an alias.
+                var allowLinkUpAndDHCP = (
+                    (angular.isObject(nic.links) && nic.links.length > 1) ||
+                    (nic.type === INTERFACE_TYPE.ALIAS));
                 angular.forEach(LINK_MODE_TEXTS, function(text, mode) {
-                    // Don't add LINK_UP  or DHCP if more than one link exists.
-                    if(nic.links.length > 1 && (
+                    if(allowLinkUpAndDHCP && (
                         mode === LINK_MODE.LINK_UP ||
                         mode === LINK_MODE.DHCP)) {
                         return;
@@ -377,13 +507,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if(angular.isObject(nic.subnet)) {
                 params.subnet = nic.subnet.id;
             }
-            if(nic.link_id >= 0) {
+            if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
                 params.link_id = nic.link_id;
             }
             if(nic.mode === LINK_MODE.STATIC && nic.ip_address.length > 0) {
                 params.ip_address = nic.ip_address;
             }
-            NodesManager.linkSubnet($scope.node, nic.id, params).then(
+            return NodesManager.linkSubnet($scope.node, nic.id, params).then(
                 null, function(error) {
                     // XXX blake_r: Just log the error in the console, but
                     // we need to expose this as a better message to the
@@ -448,6 +578,270 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 nic.ip_address = prevIPAddress;
             } else if(nic.ip_address !== prevIPAddress) {
                 $scope.saveInterfaceLink(nic);
+            }
+        };
+
+        // Return unique key for the interface.
+        $scope.getUniqueKey = function(nic) {
+            return nic.id + "/" + nic.link_id;
+        };
+
+        // Toggle selection of the interface.
+        $scope.toggleInterfaceSelect = function(nic) {
+            var key = $scope.getUniqueKey(nic);
+            var idx = $scope.selectedInterfaces.indexOf(key);
+            if(idx > -1) {
+                $scope.selectedInterfaces.splice(idx, 1);
+            } else {
+                $scope.selectedInterfaces.push(key);
+            }
+
+            if($scope.selectedInterfaces.length > 1) {
+                if($scope.selectedMode !== SELECTION_MODE.BOND) {
+                    $scope.selectedMode = SELECTION_MODE.MUTLI;
+                }
+            } else if($scope.selectedInterfaces.length === 1) {
+                $scope.selectedMode = SELECTION_MODE.SINGLE;
+            } else {
+                $scope.selectedMode = SELECTION_MODE.NONE;
+            }
+        };
+
+        // Return true when the interface is selected.
+        $scope.isInterfaceSelected = function(nic) {
+            return $scope.selectedInterfaces.indexOf(
+                $scope.getUniqueKey(nic)) > -1;
+        };
+
+        // Return true if this is the only interface selected.
+        $scope.isOnlyInterfaceSelected = function(nic) {
+            if($scope.selectedInterfaces.length === 1) {
+                var key = $scope.getUniqueKey(nic);
+                return $scope.selectedInterfaces[0] === key;
+            } else {
+                return false;
+            }
+        };
+
+        // Return true if the interface options is being shown.
+        $scope.isShowingInterfaceOptions = function() {
+            return $scope.selectedMode === SELECTION_MODE.SINGLE;
+        };
+
+        // Return true if the interface delete confirm is being shown.
+        $scope.isShowingDeleteComfirm = function() {
+            return $scope.selectedMode === SELECTION_MODE.DELETE;
+        };
+
+        // Return true if the interface add interface is being shown.
+        $scope.isShowingAdd = function() {
+            return $scope.selectedMode === SELECTION_MODE.ADD;
+        };
+
+        // Return true if the alias can be added to interface.
+        $scope.canAddAlias = function(nic) {
+            if(!angular.isObject(nic)) {
+                return false;
+            } else if(nic.type === INTERFACE_TYPE.ALIAS) {
+                return false;
+            } else if(nic.links.length === 0 ||
+                nic.links[0].mode === LINK_MODE.LINK_UP ||
+                nic.links[0].mode === LINK_MODE.DHCP) {
+                return false;
+            } else {
+                return true;
+            }
+        };
+
+        // Return true if the VLAN can be added to interface.
+        $scope.canAddVLAN = function(nic) {
+            if(!angular.isObject(nic)) {
+                return false;
+            } else if(nic.type === INTERFACE_TYPE.ALIAS ||
+                nic.type === INTERFACE_TYPE.VLAN) {
+                return false;
+            }
+            var unusedVLANs = getUnusedVLANs(nic);
+            return unusedVLANs.length > 0;
+        };
+
+        // Return true if another VLAN can be added to this already being
+        // added interface.
+        $scope.canAddAnotherVLAN = function(nic) {
+            if(!$scope.canAddVLAN(nic)) {
+                return false;
+            }
+            var unusedVLANs = getUnusedVLANs(nic);
+            return unusedVLANs.length > 1;
+        };
+
+        // Return the text to use for the remove link and message.
+        $scope.getRemoveTypeText = function(nic) {
+            if(nic.type === INTERFACE_TYPE.PHYSICAL) {
+                return "interface";
+            } else if(nic.type === INTERFACE_TYPE.VLAN) {
+                return "VLAN";
+            } else {
+                return nic.type;
+            }
+        };
+
+        // Enter remove mode.
+        $scope.remove = function() {
+            $scope.selectedMode = SELECTION_MODE.DELETE;
+        };
+
+        // Quickly enter remove by selecting the node first.
+        $scope.quickRemove = function(nic) {
+            $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+            $scope.remove();
+        };
+
+        // Cancel the current mode go back to sinle selection mode.
+        $scope.cancel = function() {
+            $scope.newInterface = {};
+            $scope.selectedMode = SELECTION_MODE.SINGLE;
+        };
+
+        // Confirm the removal of interface.
+        $scope.confirmRemove = function(nic) {
+            $scope.selectedMode = SELECTION_MODE.NONE;
+            $scope.selectedInterfaces = [];
+            if(nic.type !== INTERFACE_TYPE.ALIAS) {
+                NodesManager.deleteInterface($scope.node, nic.id);
+            } else {
+                NodesManager.unlinkSubnet($scope.node, nic.id, nic.link_id);
+            }
+
+            // Remove the interface from available interfaces
+            var idx = $scope.interfaces.indexOf(nic);
+            if(idx > -1) {
+                $scope.interfaces.splice(idx, 1);
+            }
+        };
+
+        // Enter add mode.
+        $scope.add = function(type, nic) {
+            // When this is called right after another VLAN was just added, we
+            // remove its used VLAN from the available list.
+            var ignoreVLANs = [];
+            if(angular.isObject($scope.newInterface.vlan)) {
+                ignoreVLANs.push($scope.newInterface.vlan);
+            }
+
+            // Get the default VLAN for the new interface.
+            var vlans = getUnusedVLANs(nic, ignoreVLANs);
+            var defaultVLAN = null;
+            if(vlans.length > 0) {
+                defaultVLAN = vlans[0];
+            }
+            var defaultSubnet = null;
+            var defaultMode = LINK_MODE.LINK_UP;
+
+            // Alias used defaults based from its parent.
+            if(type === INTERFACE_TYPE.ALIAS) {
+                defaultVLAN = nic.vlan;
+                defaultSubnet = VLANsManager.getSubnets(defaultVLAN)[0];
+                defaultMode = LINK_MODE.AUTO;
+            }
+
+            // Setup the new interface and enter add mode.
+            $scope.newInterface = {
+                type: type,
+                vlan: defaultVLAN,
+                subnet: defaultSubnet,
+                mode: defaultMode,
+                parent: nic
+            };
+            $scope.selectedMode = SELECTION_MODE.ADD;
+        };
+
+        // Quickly enter add by selecting the node first.
+        $scope.quickAdd = function(nic) {
+            $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+            var type = 'alias';
+            if(!$scope.canAddAlias(nic)) {
+                type = 'vlan';
+            }
+            $scope.add(type, nic);
+        };
+
+        // Return the name of the interface being added.
+        $scope.getAddName = function() {
+            if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
+                var aliasIdx = $scope.newInterface.parent.links.length;
+                return $scope.newInterface.parent.name + ":" + aliasIdx;
+            } else if ($scope.newInterface.type === INTERFACE_TYPE.VLAN) {
+                return (
+                    $scope.newInterface.parent.name + "." +
+                    $scope.newInterface.vlan.vid);
+            }
+        };
+
+        // Called when the type of interface is changed.
+        $scope.addTypeChanged = function() {
+            if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
+                $scope.newInterface.vlan = $scope.newInterface.parent.vlan;
+                $scope.newInterface.subnet = VLANsManager.getSubnets(
+                    $scope.newInterface.vlan)[0];
+                $scope.newInterface.mode = LINK_MODE.AUTO;
+            } else if($scope.newInterface.type === INTERFACE_TYPE.VLAN) {
+                var vlans = getUnusedVLANs($scope.newInterface.parent);
+                $scope.newInterface.vlan = null;
+                if(vlans.length > 0) {
+                    $scope.newInterface.vlan = vlans[0];
+                }
+                $scope.newInterface.subnet = null;
+                $scope.newInterface.mode = LINK_MODE.LINK_UP;
+            }
+        };
+
+        // Called when the VLAN is changed.
+        $scope.addVLANChanged = function() {
+            $scope.newInterface.subnet = null;
+        };
+
+        // Called when the subnet is changed.
+        $scope.addSubnetChanged = function() {
+            if(!angular.isObject($scope.newInterface.subnet)) {
+                $scope.newInterface.mode = LINK_MODE.LINK_UP;
+            }
+        };
+
+        // Perform the add action over the websocket.
+        $scope.addInterface = function(type) {
+            if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
+                // Add a link to the current interface.
+                var nic = {
+                    id: $scope.newInterface.parent.id,
+                    mode: $scope.newInterface.mode,
+                    subnet: $scope.newInterface.subnet,
+                    ip_address: ""
+                };
+                $scope.saveInterfaceLink(nic);
+            } else if($scope.newInterface.type === INTERFACE_TYPE.VLAN) {
+                var params = {
+                    parent: $scope.newInterface.parent.id,
+                    vlan: $scope.newInterface.vlan.id,
+                    mode: $scope.newInterface.mode
+                };
+                if(angular.isObject($scope.newInterface.subnet)) {
+                    params.subnet = $scope.newInterface.subnet.id;
+                }
+                NodesManager.createVLANInterface($scope.node, params).then(
+                    null, function(error) {
+                        // Should do something better but for now just log
+                        // the error.
+                        console.log(error);
+                    });
+            }
+
+            // Add again based on the clicked option.
+            if(angular.isString(type)) {
+                $scope.add(type, $scope.newInterface.parent);
+            } else {
+                $scope.selectedMode = SELECTION_MODE.NONE;
+                $scope.selectedInterfaces = [];
             }
         };
 

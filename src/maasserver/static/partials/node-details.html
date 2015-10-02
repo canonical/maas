@@ -330,103 +330,186 @@
                         </header>
                         <main class="table-body">
                             <div class="table__row"
+                                data-ng-class="{ active: isInterfaceSelected(interface) }"
                                 data-ng-repeat="interface in interfaces">
-                                <div class="table__data table__column--3">
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <input class="checkbox" type="checkbox" id="{$ interface.id $}" />
-                                    <label class="checkbox-label" for="{$ interface.id $}"></label>
-                                    -->
-                                </div>
-                                <div class="table__data table__column--15" data-ng-show="column == 'name'">
-                                    <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
-                                    <input type="text" class="table__input"
-                                        data-ng-show="interface.type != 'alias'"
-                                        data-ng-model="interface.name"
-                                        data-maas-enter-blur
-                                        data-ng-focus="setFocusInterface(interface)"
-                                        data-ng-blur="clearFocusInterface(interface)"
-                                        data-ng-class="{ invalid: isInterfaceNameInvalid(interface) }">
-                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
-                                        <a data-ng-click="toggleMembers(interface)">
-                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
-                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
-                                        </a>
-                                    </span>
-                                </div>
-                                <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
-                                    {$ interface.mac_address $}
-                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
-                                        <a data-ng-click="toggleMembers(interface)">
-                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
-                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
-                                        </a>
-                                    </span>
-                                </div>
-                                <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
-                                <div class="table__data table__column--14">
-                                    <select class="table__input" name="fabric" id="fabric"
-                                        data-ng-model="interface.fabric"
-                                        data-ng-disabled="interface.type == 'alias'"
-                                        data-ng-change="fabricChanged(interface)"
-                                        data-ng-options="fabric as fabric.name for fabric in fabrics">
-                                    </select>
-                                </div>
-                                <div class="table__data table__column--14">
-                                    <select class="table__input" name="vlan" id="vlan"
-                                        data-ng-model="interface.vlan"
-                                        data-ng-disabled="interface.type == 'alias'"
-                                        data-ng-change="saveInterface(interface)"
-                                        data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
-                                    </select>
-                                </div>
-                                <div class="table__data table__column--18">
-                                    <select class="table__input" name="subnet" id="subnet"
-                                        data-ng-model="interface.subnet"
-                                        data-ng-change="subnetChanged(interface)"
-                                        data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
-                                        <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
-                                    </select>
-                                </div>
-                                <div class="table__data table__column--14">
-                                    <ul class="no-bullets">
-                                        <li>
-                                            <select class="table__input" name="link-mode" id="link-mode"
-                                                data-ng-model="interface.mode"
-                                                data-ng-change="saveInterfaceLink(interface)"
-                                                data-ng-disabled="isLinkModeDisabled(interface)"
-                                                data-ng-options="mode.mode as mode.text for mode in getLinkModes(interface)">
-                                            </select>
-                                        </li>
-                                        <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
-                                            <input type="text" class="table__input"
-                                                data-ng-model="interface.ip_address"
-                                                data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
-                                                data-maas-enter-blur
-                                                data-ng-focus="setFocusInterface(interface)"
-                                                data-ng-blur="clearFocusInterface(interface)"
-                                                data-ng-disabled="interface.mode != 'static'">
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div class="table__data table__column--13">
-                                    <!--
-                                    TODO: Use when editing is done.
-                                    <div class="table__controls align-right">
-                                        <a class="margin-right--ten">Add VLAN</a>
-                                        <a>Add alias</a>
+                                <div>
+                                    <div class="table__data table__column--3">
+                                        <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
+                                            data-ng-checked="isInterfaceSelected(interface)"
+                                            data-ng-click="toggleInterfaceSelect(interface)" />
+                                        <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
                                     </div>
-                                    -->
-                                </div>
+                                    <div class="table__data table__column--15" data-ng-show="column == 'name'">
+                                        <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
+                                        <input type="text" class="table__input"
+                                            data-ng-show="interface.type != 'alias'"
+                                            data-ng-model="interface.name"
+                                            data-maas-enter-blur
+                                            data-ng-focus="setFocusInterface(interface)"
+                                            data-ng-blur="clearFocusInterface(interface)"
+                                            data-ng-class="{ invalid: isInterfaceNameInvalid(interface) }">
+                                        <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                            <a data-ng-click="toggleMembers(interface)">
+                                                <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                                <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                            </a>
+                                        </span>
+                                    </div>
+                                    <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
+                                        {$ interface.mac_address $}
+                                        <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                            <a data-ng-click="toggleMembers(interface)">
+                                                <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                                <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                            </a>
+                                        </span>
+                                    </div>
+                                    <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
+                                    <div class="table__data table__column--14">
+                                        <select class="table__input" name="fabric" id="fabric"
+                                            data-ng-model="interface.fabric"
+                                            data-ng-disabled="interface.type == 'alias'"
+                                            data-ng-change="fabricChanged(interface)"
+                                            data-ng-options="fabric as fabric.name for fabric in fabrics">
+                                        </select>
+                                    </div>
+                                    <div class="table__data table__column--14">
+                                        <select class="table__input" name="vlan" id="vlan"
+                                            data-ng-model="interface.vlan"
+                                            data-ng-disabled="interface.type == 'alias'"
+                                            data-ng-change="saveInterface(interface)"
+                                            data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
+                                        </select>
+                                    </div>
+                                    <div class="table__data table__column--18">
+                                        <select class="table__input" name="subnet" id="subnet"
+                                            data-ng-model="interface.subnet"
+                                            data-ng-change="subnetChanged(interface)"
+                                            data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
+                                            <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
+                                        </select>
+                                    </div>
+                                    <div class="table__data table__column--14">
+                                        <ul class="no-bullets">
+                                            <li>
+                                                <select class="table__input" name="link-mode" id="link-mode"
+                                                    data-ng-model="interface.mode"
+                                                    data-ng-change="saveInterfaceLink(interface)"
+                                                    data-ng-disabled="isLinkModeDisabled(interface)"
+                                                    data-ng-options="mode.mode as mode.text for mode in getLinkModes(interface)">
+                                                </select>
+                                            </li>
+                                            <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
+                                                <input type="text" class="table__input"
+                                                    data-ng-model="interface.ip_address"
+                                                    data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
+                                                    data-maas-enter-blur
+                                                    data-ng-focus="setFocusInterface(interface)"
+                                                    data-ng-blur="clearFocusInterface(interface)"
+                                                    data-ng-disabled="interface.mode != 'static'">
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="table__data table__column--13">
+                                        <div class="table__controls align-right">
+                                            <a class="icon add"
+                                                data-ng-click="quickAdd(interface)"
+                                                data-ng-show="canAddAlias(interface) || canAddVLAN(interface)"></a>
+                                            <a class="icon delete" data-ng-click="quickRemove(interface)"></a>
+                                        </div>
+                                    </div>
                                 <div class="table__dropdown--info ng-hide" data-ng-show="isShowingMembers(interface)">
                                     <div class="table__row" data-ng-repeat="member in interface.members">
-                                        <div class="table__data no-padding-top table__column--3"></div>
-                                        <div class="table__data no-padding-top table__column--15"
-                                            data-ng-show="column == 'name'">{$ member.name $}</div>
-                                        <div class="table__data no-padding-top table__column--15 ng-hide"
-                                            data-ng-show="column == 'mac'">{$ member.mac_address $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(member) $}</div>
-                                        <div class="table__data no-padding-top table__column--67">
+                                            <div class="table__data no-padding-top table__column--3"></div>
+                                            <div class="table__data no-padding-top table__column--15"
+                                                data-ng-show="column == 'name'">{$ member.name $}</div>
+                                            <div class="table__data no-padding-top table__column--15 ng-hide"
+                                                data-ng-show="column == 'mac'">{$ member.mac_address $}</div>
+                                            <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(member) $}</div>
+                                            <div class="table__data no-padding-top table__column--67">
+                                            </div>
+                                        </div>
+                                </div>
+                                <div class="table__dropdown ng-hide" data-ng-show="isOnlyInterfaceSelected(interface)">
+                                    <div class="table__row table__dropdown-row ng-hide" data-ng-show="isShowingInterfaceOptions()">
+                                        <div class="table__data left">
+                                              <button class="cta-ubuntu secondary"
+                                                data-ng-click="add('alias', interface)"
+                                                data-ng-show="canAddAlias(interface)">Add Alias</button>
+                                              <button class="cta-ubuntu secondary"
+                                                data-ng-click="add('vlan', interface)"
+                                                data-ng-show="canAddVLAN(interface)">Add VLAN</button>
+                                              <a class="link-cta-ubuntu text-button"
+                                                data-ng-click="remove()">Remove {$ getRemoveTypeText(interface) $}</a>
+                                        </div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row ng-hide" data-ng-show="isShowingDeleteComfirm()">
+                                        <div class="table__data left">
+                                              <span class="icon warning margin-right"></span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?
+                                        </div>
+                                        <div class="table__data right">
+                                              <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                              <button class="cta-ubuntu" data-ng-click="confirmRemove(interface)">Remove</button>
+                                        </div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten"
+                                        data-ng-show="isShowingAdd()">
+                                        <div class="table__data table__column--3">
+                                        </div>
+                                        <div class="table__data table__column--15">
+                                            {$ getAddName() $}
+                                        </div>
+                                        <div class="table__data table__column--9">
+                                            <select class="table__input" name="type" id="type"
+                                                data-ng-model="newInterface.type"
+                                                data-ng-change="addTypeChanged()">
+                                                <option value="alias" data-ng-show="canAddAlias(newInterface.parent)">Alias</option>
+                                                <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--14">
+                                            {$ newInterface.parent.fabric.name $}
+                                        </div>
+                                        <div class="table__data table__column--14">
+                                            <span data-ng-show="newInterface.type === 'alias'">{$ getVLANText(newInterface.parent.vlan) $}</span>
+                                            <select class="table__input" name="vlan" id="vlan"
+                                                data-ng-model="newInterface.vlan"
+                                                data-ng-disabled="newInterface.type == 'alias'"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces"
+                                                data-ng-show="newInterface.type === 'vlan'"
+                                                data-ng-change="addVLANChanged()">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--18">
+                                            <select class="table__input" name="subnet" id="subnet"
+                                                data-ng-model="newInterface.subnet"
+                                                data-ng-change="addSubnetChanged()"
+                                                data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
+                                                <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--14">
+                                            <select class="table__input" name="link-mode" id="link-mode"
+                                                data-ng-model="newInterface.mode"
+                                                data-ng-disabled="isLinkModeDisabled(newInterface)"
+                                                data-ng-options="mode.mode as mode.text for mode in getLinkModes(newInterface)">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table_column--13"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row"
+                                        data-ng-show="isShowingAdd() && !newInterface.saving">
+                                        <div class="table__data left">
+                                            <button class="cta-ubuntu secondary"
+                                                data-ng-click="addInterface('alias')"
+                                                data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>Alias</button>
+                                            <button class="cta-ubuntu secondary"
+                                                data-ng-click="addInterface('vlan')"
+                                                data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
+                                        </div>
+                                        <div class="table__data right">
+                                              <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                              <button class="cta-ubuntu" data-ng-click="addInterface()">Save</button>
                                         </div>
                                     </div>
                                 </div>
@@ -440,253 +523,6 @@
                     -->
                 </div>
             </form>
-
-            <!--
-
-            // Set manual IP in a row creates an input in the IP data cell. This
-            // Needs to be arranged in a list to keep both form items stacked.
-
-            <div class="table__row">
-                <div class="table__data table__column--3">
-                    <input class="checkbox" type="checkbox" id="eth6" />
-                    <label class="checkbox-label" for="eth6"></label>
-                </div>
-                <div class="table__data table__column--15">
-                    <input type="text" class="table__input" value="Eth6">
-                </div>
-                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
-                <div class="table__data table__column--9">Physical</div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="fabric" id="fabric">
-                        <option value="fabric1">Fabric 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="vlan" id="vlan">
-                        <option value="valn1">VLAN 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--18">
-                    <select class="table__input" name="range" id="range">
-                        <option value="auto">10.10.10.1/6 (managed)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <ul class="no-bullets">
-                        <li>
-                            <select class="table__input" name="ip-address" id="ip-address">
-                                <option value="auto">Auto assign</option>
-                                <option value="manual" selected>Manual</option>
-                                <option value="DHCP">DHCP</option>
-                                <option value="unconfigured">Unconfigured</option>
-                            </select>
-                        </li>
-                        <li class="margin-top--ten">
-                            <input type="text" class="table__input" value="127.0.0.1">
-                        </li>
-                    </ul>
-                </div>
-                <div class="table__data table__column--13">
-                    <div class="table__controls align-right">
-                        <a class="margin-right--ten">Add VLAN</a>
-                        <a>Add alias</a>
-                    </div>
-                </div>
-            </div>
-
-            -->
-
-            <!--
-
-            // Add Alias
-
-            // Once a user clicks on *Add alias* This dropdown appears with
-            // all the controls on creating a alias
-
-            <div class="table__row active">
-                <div class="table__data table__column--3">
-                    <input class="checkbox" type="checkbox" id="eth4" />
-                    <label class="checkbox-label" for="eth4"></label>
-                </div>
-                <div class="table__data table__column--15">
-                    <input type="text" class="table__input" value="Eth4">
-                </div>
-                <div class="table__data t15 ng-hide">00:00:00:00:00:00</div>
-                <div class="table__data table__column--9">Physical</div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="fabric" id="fabric">
-                        <option value="fabric1">Fabric 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="vlan" id="vlan">
-                        <option value="valn1">VLAN 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--18">
-                    <select class="table__input" name="range" id="range">
-                        <option value="auto">10.10.10.1/6 (managed)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <ul class="no-bullets">
-                        <li>
-                            <select class="table__input" name="ip-address" id="ip-address">
-                                <option value="auto">Auto assign</option>
-                                <option value="manual">Manual</option>
-                                <option value="DHCP">DHCP</option>
-                                <option value="unconfigured">Unconfigured</option>
-                            </select>
-                        </li>
-                    </ul>
-                </div>
-                <div class="table__data table__column--13">
-                    <div class="table__controls align-right">
-                        <a class="margin-right--ten">Add VLAN</a>
-                        <a>Add alias</a>
-                    </div>
-                </div>
-                <div class="table__dropdown">
-                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten">
-                        <div class="table__data table__column--3">
-                        </div>
-                        <div class="table__data table__column--15">
-                            Eth4:1
-                        </div>
-                        <div class="table__data table__column--9">Alias</div>
-                        <div class="table__data table__column--14">
-                            Fabric 1
-                        </div>
-                        <div class="table__data table__column--14">
-                            VLAN 1 (default)
-                        </div>
-                        <div class="table__data table__column--18">
-                            <select class="table__input" name="range" id="range">
-                                <option value="auto">10.10.10.1/6 (managed)</option>
-                            </select>
-                        </div>
-                        <div class="table__data table__column--14">
-                            <select class="table__input" name="ip-address" id="ip-address">
-                                <option value="auto">Auto assign</option>
-                                <option value="manual">Manual</option>
-                                <option value="DHCP">DHCP</option>
-                                <option value="unconfigured">Unconfigured</option>
-                            </select>
-                        </div>
-                        <div class="table__data table_column--13"></div>
-                    </div>
-                    <div class="table__row table__dropdown-row">
-                        <div class="table__data left">
-                            <a href="" class="link-cta-ubuntu secondary margin-right">Add VLAN</a>
-                            <a href="" class="link-cta-ubuntu secondary">Add another alias</a>
-                        </div>
-                        <div class="table__data right">
-                              <a class="link-cta-ubuntu text-button">Cancel</a>
-                              <button class="cta-ubuntu">Save</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            -->
-
-
-            <!--
-
-            // Add VLAN
-
-            // Once a user clicks on *Add VLAN* This dropdown appears with
-            // all the controls on creating a VLAN
-
-            <div class="table__row active">
-                <div class="table__data table__column--3">
-                    <input class="checkbox" type="checkbox" id="eth2" />
-                    <label class="checkbox-label" for="eth2"></label>
-                </div>
-                <div class="table__data table__column--15">
-                    <input type="text" class="table__input" value="Eth2">
-                </div>
-                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
-                <div class="table__data table__column--9">Physical</div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="fabric" id="fabric">
-                        <option value="fabric1">Fabric 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <select class="table__input" name="vlan" id="vlan">
-                        <option value="valn1">VLAN 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--18">
-                    <select class="table__input" name="range" id="range">
-                        <option value="auto">10.10.10.1/6 (managed)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--14">
-                    <ul class="no-bullets">
-                        <li>
-                            <select class="table__input" name="ip-address" id="ip-address">
-                                <option value="auto">Auto assign</option>
-                                <option value="manual">Manual</option>
-                                <option value="DHCP">DHCP</option>
-                                <option value="unconfigured">Unconfigured</option>
-                            </select>
-                        </li>
-                    </ul>
-                </div>
-                <div class="table__data table__column--13">
-                    <div class="table__controls align-right">
-                        <a class="margin-right--ten">Add VLAN</a>
-                        <a>Add alias</a>
-                    </div>
-                </div>
-                <div class="table__dropdown">
-                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten">
-                        <div class="table__data table__column--3">
-                        </div>
-                        <div class="table__data table__column--15">
-                            Eth2.1
-                        </div>
-                        <div class="table__data table__column--9">VLAN</div>
-                        <div class="table__data table__column--14">
-                            Fabric 1
-                        </div>
-                        <div class="table__data table__column--14">
-                            <select class="table__input" name="vlan" id="vlan">
-                                <option value="valn1">VLAN 1 (default)</option>
-                            </select>
-                        </div>
-                        <div class="table__data table__column--18">
-                            <select class="table__input" name="range" id="range">
-                                <option value="auto">10.10.10.1/6</option>
-                            </select>
-                        </div>
-                        <div class="table__data table__column--14">
-                            <select class="table__input" name="ip-address" id="ip-address">
-                                <option value="auto">Auto assign</option>
-                                <option value="manual">Manual</option>
-                                <option value="DHCP">DHCP</option>
-                                <option value="unconfigured">Unconfigured</option>
-                            </select>
-                        </div>
-                        <div class="table__data table_column--13"></div>
-                    </div>
-                    <div class="table__row table__dropdown-row">
-                        <div class="table__data left">
-                            <a href="" class="link-cta-ubuntu secondary margin-right">Add another VLAN</a>
-                            <a href="" class="link-cta-ubuntu secondary">Add alias</a>
-                        </div>
-                        <div class="table__data right">
-                              <a class="link-cta-ubuntu text-button">Cancel</a>
-                              <button class="cta-ubuntu">Save</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            -->
-
 
             <!--
 
@@ -757,70 +593,6 @@
                         <div class="table__data right">
                             <a href="" class="link-cta-ubuntu text-button">Cancel</a>
                             <button class="cta-ubuntu">Save</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            -->
-
-            <!--
-
-            // Show bond members
-
-            <div class="table__row active">
-                <div class="table__data table__column--3">
-                    <input class="checkbox" type="checkbox" id="eth0" />
-                    <label class="checkbox-label" for="eth0"></label>
-                </div>
-                <div class="table__data table__column--15">
-                    <input type="text" class="table__input" value="Bond0">
-                    <span class="table__label active">
-                        <a href="">Hide members</a>
-                    </span>
-                </div>
-                <div class="table__data table__column--15 ng-hide">00:00:00:00:00:00</div>
-                <div class="table__data table__column--15">Bond</div>
-                <div class="table__data table__column--15">
-                    <select class="table__input" name="fabric" id="fabric">
-                        <option value="fabric1">Fabric 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--15">
-                    <select class="table__input" name="vlan" id="vlan">
-                        <option value="valn1">VLAN 1 (default)</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--15">
-                    <select class="table__input" name="range" id="range">
-                        <option value="auto">10.10.10.1/6</option>
-                    </select>
-                </div>
-                <div class="table__data table__column--22">
-                    <div class="table__controls">
-                        <a class="">Add IP Address</a>
-                    </div>
-                </div>
-                <div class="table__dropdown--info">
-                    <div class="table__row">
-                        <div class="table__data no-padding-top table__column--3"></div>
-                        <div class="table__data no-padding-top table__column--15">Eth1</div>
-                        <div class="table__data no-padding-top table__column--15">Physical</div>
-                        <div class="table__data no-padding-top table__column--67">
-                        </div>
-                    </div>
-                    <div class="table__row table__dropdown-row no-border">
-                        <div class="table__data no-padding-top table__column--3"></div>
-                        <div class="table__data no-padding-top table__column--15">Eth2</div>
-                        <div class="table__data no-padding-top table__column--15">Physical</div>
-                        <div class="table__data no-padding-top table__column--67">
-                        </div>
-                    </div>
-                    <div class="table__row table__dropdown-row no-border">
-                        <div class="table__data no-padding-top table__column--3"></div>
-                        <div class="table__data no-padding-top table__column--15">Eth3</div>
-                        <div class="table__data no-padding-top table__column--15">Physical</div>
-                        <div class="table__data no-padding-top table__column--67">
                         </div>
                     </div>
                 </div>

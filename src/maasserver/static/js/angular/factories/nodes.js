@@ -78,6 +78,17 @@ angular.module('MAAS').factory(
                 });
         };
 
+        // Create the VLAN interface on the node.
+        NodesManager.prototype.createVLANInterface = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_vlan", params);
+            };
+
         // Update the interface for the node.
         NodesManager.prototype.updateInterface = function(
             node, interface_id, params) {
@@ -90,6 +101,17 @@ angular.module('MAAS').factory(
                     "node.update_interface", params);
             };
 
+        // Delete the interface for the node.
+        NodesManager.prototype.deleteInterface = function(
+            node, interface_id) {
+                var params = {
+                    system_id: node.system_id,
+                    interface_id: interface_id
+                };
+                return RegionConnection.callMethod(
+                    "node.delete_interface", params);
+            };
+
         // Create or update the link to the subnet for the interface.
         NodesManager.prototype.linkSubnet = function(
             node, interface_id, params) {
@@ -100,6 +122,18 @@ angular.module('MAAS').factory(
                 params.interface_id = interface_id;
                 return RegionConnection.callMethod(
                     "node.link_subnet", params);
+            };
+
+        // Remove the link to the subnet for the interface.
+        NodesManager.prototype.unlinkSubnet = function(
+            node, interface_id, link_id) {
+                var params = {
+                    system_id: node.system_id,
+                    interface_id: interface_id,
+                    link_id: link_id
+                };
+                return RegionConnection.callMethod(
+                    "node.unlink_subnet", params);
             };
 
         // Unmount the filesystem on the block device or partition.

@@ -7,6 +7,9 @@
 angular.module('MAAS').filter('filterByVLAN', function() {
     return function(subnets, vlan) {
         var filtered = [];
+        if(!angular.isObject(vlan)) {
+            return filtered;
+        }
         angular.forEach(subnets, function(subnet) {
             if(subnet.vlan === vlan.id) {
                 filtered.push(subnet);

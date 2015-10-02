@@ -55,7 +55,10 @@ from maasserver.utils.converters import (
     human_readable_bytes,
     XMLToYAML,
 )
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    get_one,
+    transactional,
+)
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -1010,6 +1013,86 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(
             node.distro_series, Equals(osystem["releases"][0]["name"]))
 
+    def test_create_vlan_creates_vlan(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_vlan = factory.make_VLAN()
+        handler.create_vlan({
+            "system_id": node.system_id,
+            "parent": interface.id,
+            "vlan": new_vlan.id,
+            })
+        vlan_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.VLAN, parents=interface))
+        self.assertIsNotNone(vlan_interface)
+
+    def test_create_vlan_creates_link_auto(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_vlan = factory.make_VLAN()
+        new_subnet = factory.make_Subnet(vlan=new_vlan)
+        handler.create_vlan({
+            "system_id": node.system_id,
+            "parent": interface.id,
+            "vlan": new_vlan.id,
+            "mode": INTERFACE_LINK_TYPE.AUTO,
+            "subnet": new_subnet.id,
+            })
+        vlan_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.VLAN, parents=interface))
+        self.assertIsNotNone(vlan_interface)
+        auto_ip = vlan_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=new_subnet)
+        self.assertIsNotNone(auto_ip)
+
+    def test_create_vlan_creates_link_up(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_vlan = factory.make_VLAN()
+        handler.create_vlan({
+            "system_id": node.system_id,
+            "parent": interface.id,
+            "vlan": new_vlan.id,
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            })
+        vlan_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.VLAN, parents=interface))
+        self.assertIsNotNone(vlan_interface)
+        link_up_ip = vlan_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None)
+        self.assertIsNotNone(link_up_ip)
+
+    def test_create_vlan_creates_link_up_with_subnet(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_vlan = factory.make_VLAN()
+        new_subnet = factory.make_Subnet(vlan=new_vlan)
+        handler.create_vlan({
+            "system_id": node.system_id,
+            "parent": interface.id,
+            "vlan": new_vlan.id,
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": new_subnet.id,
+            })
+        vlan_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.VLAN, parents=interface))
+        self.assertIsNotNone(vlan_interface)
+        link_up_ip = vlan_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=new_subnet)
+        self.assertIsNotNone(link_up_ip)
+
     def test_update_interface(self):
         user = factory.make_admin()
         node = factory.make_Node()
@@ -1040,6 +1123,17 @@ class TestNodeHandler(MAASServerTestCase):
                 "name": new_name,
                 "vlan": random.randint(1000, 5000),
                 })
+
+    def test_delete_interface(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        handler.delete_interface({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            })
+        self.assertIsNone(reload_object(interface))
 
     def test_link_subnet_calls_update_link_by_id_if_link_id(self):
         user = factory.make_admin()
@@ -1084,6 +1178,20 @@ class TestNodeHandler(MAASServerTestCase):
             Interface.link_subnet,
             MockCalledOnceWith(
                 ANY, mode, subnet, ip_address=ip_address))
+
+    def test_unlink_subnet(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        link_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", interface=interface)
+        handler.delete_interface({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "link_id": link_ip.id,
+            })
+        self.assertIsNone(reload_object(link_ip))
 
 
 class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):

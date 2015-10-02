@@ -135,6 +135,45 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("createVLANInterface", function() {
+
+        it("calls node.create_vlan with system_id without params",
+            function(done) {
+                var node = makeNode();
+                webSocket.returnData.push(makeFakeResponse("created"));
+                NodesManager.createVLANInterface(node).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_vlan");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        done();
+                    });
+            });
+
+        it("calls node.create_vlan with params",
+            function(done) {
+                var node = makeNode();
+                var params = {
+                    vlan: makeInteger(0, 100)
+                };
+                webSocket.returnData.push(makeFakeResponse("created"));
+                NodesManager.createVLANInterface(node, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_vlan");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.vlan).toBe(params.vlan);
+                        done();
+                    });
+            });
+    });
+
     describe("updateInterface", function() {
 
         it("calls node.update_interface with system_id and interface_id",
@@ -178,6 +217,27 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("deleteInterface", function() {
+
+        it("calls node.delete_interface with correct params",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.deleteInterface(node, interface_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.delete_interface");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        done();
+                    });
+            });
+    });
+
     describe("linkSubnet", function() {
 
         it("calls node.link_subnet with system_id and interface_id",
@@ -216,6 +276,30 @@ describe("NodesManager", function() {
                         expect(sentObject.params.interface_id).toBe(
                             interface_id);
                         expect(sentObject.params.name).toBe(params.name);
+                        done();
+                    });
+            });
+    });
+
+    describe("unlinkSubnet", function() {
+
+        it("calls node.unlink_subnet with correct params",
+            function(done) {
+                var node = makeNode(), interface_id = makeInteger(0, 100);
+                var link_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("updated"));
+                NodesManager.unlinkSubnet(node, interface_id, link_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.unlink_subnet");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.interface_id).toBe(
+                            interface_id);
+                        expect(sentObject.params.link_id).toBe(
+                            link_id);
                         done();
                     });
             });

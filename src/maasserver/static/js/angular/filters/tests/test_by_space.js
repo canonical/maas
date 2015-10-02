@@ -15,6 +15,17 @@ describe("filterBySpace", function() {
         filterBySpace = $filter("filterBySpace");
     }));
 
+    it("returns empty if undefined space", function() {
+        var i, subnet, subnets = [];
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                space: 0
+            };
+            subnets.push(subnet);
+        }
+        expect(filterBySpace(subnets)).toEqual([]);
+    });
+
     it("only returns subnets with space id", function() {
         var i, subnet, space_id = 1, other_space_id = 2;
         var subnet_spaces = [], other_subnet_spaces = [], all_subnets = [];

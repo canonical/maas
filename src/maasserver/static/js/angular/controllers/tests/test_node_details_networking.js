@@ -4,6 +4,79 @@
  * Unit tests for NodeNetworkingController.
  */
 
+describe("filterByUnusedForInterface", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filterByUnusedForInterface.
+    var filterByUnusedForInterface;
+    beforeEach(inject(function($filter) {
+        filterByUnusedForInterface = $filter("filterByUnusedForInterface");
+    }));
+
+    it("returns empty if undefined nic", function() {
+        var i, vlan, vlans = [];
+        for(i = 0; i < 3; i++) {
+            vlan = {
+                fabric: 0
+            };
+            vlans.push(vlan);
+        }
+        expect(filterByUnusedForInterface(vlans)).toEqual([]);
+    });
+
+    it("returns empty if undefined originalInterfaces", function() {
+        var i, vlan, used_vlans = [], free_vlans = [], all_vlans = [];
+        for(i = 0; i < 3; i++) {
+            vlan = {
+                id: i,
+                fabric: 0
+            };
+            used_vlans.push(vlan);
+            all_vlans.push(vlan);
+        }
+        for(i = 3; i < 6; i++) {
+            vlan = {
+                id: i,
+                fabric: 0
+            };
+            free_vlans.push(vlan);
+            all_vlans.push(vlan);
+        }
+
+        var nic = {
+            id: 0
+        };
+        var originalInterfaces = {
+            0: {
+                type: "vlan",
+                parents: [0],
+                vlan_id: used_vlans[0].id
+            },
+            1: {
+                type: "vlan",
+                parents: [0],
+                vlan_id: used_vlans[1].id
+            },
+            2: {
+                type: "vlan",
+                parents: [0],
+                vlan_id: used_vlans[2].id
+            },
+            3: {
+                type: "physical",
+                vlan_id: free_vlans[0].id
+            }
+        };
+
+        expect(
+            filterByUnusedForInterface(
+                all_vlans, nic, originalInterfaces)).toEqual(free_vlans);
+    });
+});
+
+
 describe("NodeNetworkingController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -73,6 +146,9 @@ describe("NodeNetworkingController", function() {
         expect($scope.originalInterfaces).toEqual({});
         expect($scope.showingMembers).toEqual([]);
         expect($scope.focusInterface).toBeNull();
+        expect($scope.selectedInterfaces).toEqual([]);
+        expect($scope.selectedMode).toBeNull();
+        expect($scope.newInterface).toEqual({});
     });
 
     it("sets loaded once node loaded then managers loaded", function() {
@@ -141,8 +217,10 @@ describe("NodeNetworkingController", function() {
         // updateInterfaces is a private method in the controller but we test
         // it by calling nodeLoaded which will setup the watcher which call
         // updateInterfaces and set $scope.interfaces.
-        function updateInterfaces() {
-            var controller = makeController();
+        function updateInterfaces(controller) {
+            if(!angular.isObject(controller)) {
+                controller = makeController();
+            }
             $scope.nodeLoaded();
             $scope.$digest();
         }
@@ -448,6 +526,152 @@ describe("NodeNetworkingController", function() {
             updateInterfaces();
             expect($scope.focusInterface).toBeNull();
         });
+
+        describe("newInterface", function() {
+
+            // Setup the initial data for newInterface to be set.
+            function setupNewInterface(controller, newInterface) {
+                var links = [
+                    {
+                        id: 0,
+                        subnet_id: 0,
+                        mode: "dhcp",
+                        ip_address: ""
+                    },
+                    {
+                        id: 1,
+                        subnet_id: 1,
+                        mode: "auto",
+                        ip_address: ""
+                    },
+                    {
+                        id: 2,
+                        subnet_id: 2,
+                        mode: "static",
+                        ip_address: "192.168.122.10"
+                    }
+                ];
+                var nic = {
+                    id: 0,
+                    name: "eth0",
+                    type: "physical",
+                    parents: [],
+                    children: [],
+                    links: links
+                };
+                node.interfaces = [nic];
+                updateInterfaces(controller);
+
+                var parent = $scope.interfaceLinksMap[0][0];
+                newInterface.parent = parent;
+                $scope.newInterface = newInterface;
+            }
+
+            // Cause the updateInterfaces to be called again to perform
+            // the logic on newInterface.
+            function reloadNewInterface(controller) {
+                // Add another nic to interfaces so that updateInterfaces
+                // really performs an action.
+                node.interfaces.push({
+                    id: 1,
+                    name: "eth1",
+                    type: "physical",
+                    parents: [],
+                    children: [],
+                    links: []
+                });
+                updateInterfaces(controller);
+            }
+
+            it("updates newInterface.parent object", function() {
+                var controller = makeController();
+                var newInterface = {
+                    type: "vlan"
+                };
+                setupNewInterface(controller, newInterface);
+                var parent = newInterface.parent;
+                reloadNewInterface(controller);
+
+                // Should be the same value but a different object.
+                expect(newInterface.parent).toEqual(parent);
+                expect(newInterface.parent).not.toBe(parent);
+            });
+
+            it("changes newInterface.type from alias to VLAN", function() {
+                var controller = makeController();
+                var newInterface = {
+                    type: "alias"
+                };
+                setupNewInterface(controller, newInterface);
+
+                spyOn($scope, "canAddAlias").and.returnValue(false);
+                spyOn($scope, "canAddVLAN").and.returnValue(true);
+                spyOn($scope, "addTypeChanged");
+                reloadNewInterface(controller);
+                expect(newInterface.type).toBe("vlan");
+                expect($scope.addTypeChanged).toHaveBeenCalled();
+            });
+
+            it("changes newInterface.type from VLAN to alias", function() {
+                var controller = makeController();
+                var newInterface = {
+                    type: "vlan"
+                };
+                setupNewInterface(controller, newInterface);
+
+                spyOn($scope, "canAddAlias").and.returnValue(true);
+                spyOn($scope, "canAddVLAN").and.returnValue(false);
+                spyOn($scope, "addTypeChanged");
+                reloadNewInterface(controller);
+                expect(newInterface.type).toBe("alias");
+                expect($scope.addTypeChanged).toHaveBeenCalled();
+            });
+
+            it("clears newInterface if cannot add VLAN or alias", function() {
+                var controller = makeController();
+                var newInterface = {
+                    type: "vlan"
+                };
+                setupNewInterface(controller, newInterface);
+
+                spyOn($scope, "canAddAlias").and.returnValue(false);
+                spyOn($scope, "canAddVLAN").and.returnValue(false);
+                reloadNewInterface(controller);
+                expect($scope.newInterface).toEqual({});
+            });
+
+            it("clears newInterface if parent removed",
+                function() {
+                    var controller = makeController();
+                    var newInterface = {
+                        type: "vlan"
+                    };
+                    setupNewInterface(controller, newInterface);
+
+                    spyOn($scope, "canAddAlias").and.returnValue(false);
+                    spyOn($scope, "canAddVLAN").and.returnValue(false);
+                    $scope.selectedMode = "add";
+                    reloadNewInterface(controller);
+                    expect($scope.selectedMode).toBeNull();
+                });
+
+            it("leaves single selection mode if newInterface is cleared",
+                function() {
+                    var controller = makeController();
+                    var newInterface = {
+                        type: "vlan"
+                    };
+                    setupNewInterface(controller, newInterface);
+
+                    spyOn($scope, "canAddAlias").and.returnValue(false);
+                    spyOn($scope, "canAddVLAN").and.returnValue(false);
+                    $scope.selectedMode = "add";
+                    node.interfaces = [];
+                    updateInterfaces(controller);
+                    expect($scope.newInterface).toEqual({});
+                    expect($scope.selectedMode).toBeNull();
+                });
+        });
     });
 
     describe("getInterfaceTypeText", function() {
@@ -475,7 +699,7 @@ describe("NodeNetworkingController", function() {
             "auto": "Auto assign",
             "static": "Static assign",
             "dhcp": "DHCP",
-            "link_up": "No IP",
+            "link_up": "Unconfigured",
             "missing_type": "missing_type"
         };
 
@@ -491,6 +715,11 @@ describe("NodeNetworkingController", function() {
     });
 
     describe("getVLANText", function() {
+
+        it("returns empty if vlan undefined", function() {
+            var controller = makeController();
+            expect($scope.getVLANText()).toBe("");
+        });
 
         it("returns just vid", function() {
             var controller = makeController();
@@ -911,7 +1140,7 @@ describe("NodeNetworkingController", function() {
             expect($scope.getLinkModes(nic)).toEqual([
                 {
                     "mode": "link_up",
-                    "text": "No IP"
+                    "text": "Unconfigured"
                 }
             ]);
         });
@@ -937,7 +1166,7 @@ describe("NodeNetworkingController", function() {
                 },
                 {
                     "mode": "link_up",
-                    "text": "No IP"
+                    "text": "Unconfigured"
                 }
             ]);
         });
@@ -947,6 +1176,24 @@ describe("NodeNetworkingController", function() {
             var nic = {
                 subnet : {},
                 links: [{}, {}]
+            };
+            expect($scope.getLinkModes(nic)).toEqual([
+                {
+                    "mode": "auto",
+                    "text": "Auto assign"
+                },
+                {
+                    "mode": "static",
+                    "text": "Static assign"
+                }
+            ]);
+        });
+
+        it("auto and static modes if interface is alias", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias",
+                subnet : {}
             };
             expect($scope.getLinkModes(nic)).toEqual([
                 {
@@ -1282,6 +1529,985 @@ describe("NodeNetworkingController", function() {
             $scope.saveInterfaceIPAddress(nic);
             expect(nic.ip_address).toBe("192.168.122.11");
             expect($scope.saveInterfaceLink).toHaveBeenCalledWith(nic);
+        });
+    });
+
+    describe("getUniqueKey", function() {
+
+        it("returns id + / + link_id", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            expect($scope.getUniqueKey(nic)).toBe(nic.id + "/" + nic.link_id);
+        });
+    });
+
+    describe("toggleInterfaceSelect", function() {
+
+        it("selects interface and enters single mode", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var key = $scope.getUniqueKey(nic);
+            $scope.toggleInterfaceSelect(nic);
+            expect($scope.selectedInterfaces).toEqual([key]);
+            expect($scope.selectedMode).toBe("single");
+        });
+
+        it("deselects interface and enters none mode", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var key = $scope.getUniqueKey(nic);
+            $scope.toggleInterfaceSelect(nic);
+            $scope.toggleInterfaceSelect(nic);
+            expect($scope.selectedInterfaces).toEqual([]);
+            expect($scope.selectedMode).toBeNull();
+        });
+
+        it("selecting multiple enters multi mode", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var nic2 = {
+                id: makeInteger(100, 200),
+                link_id: makeInteger(0, 100)
+            };
+            var key1 = $scope.getUniqueKey(nic1);
+            var key2 = $scope.getUniqueKey(nic2);
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            expect($scope.selectedInterfaces).toEqual([key1, key2]);
+            expect($scope.selectedMode).toBe("multi");
+        });
+    });
+
+    describe("isInterfaceSelected", function() {
+
+        it("returns true when selected", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var key = $scope.getUniqueKey(nic);
+            $scope.selectedInterfaces = [key];
+            expect($scope.isInterfaceSelected(nic)).toBe(true);
+        });
+
+        it("returns false when not selected", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            $scope.selectedInterfaces = [];
+            expect($scope.isInterfaceSelected(nic)).toBe(false);
+        });
+    });
+
+    describe("isOnlyInterfaceSelected", function() {
+
+        it("returns true when only one selected", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var key = $scope.getUniqueKey(nic);
+            $scope.selectedInterfaces = [key];
+            expect($scope.isOnlyInterfaceSelected(nic)).toBe(true);
+        });
+
+        it("returns false when multiple selected", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            var nic2 = {
+                id: makeInteger(100, 200),
+                link_id: makeInteger(0, 100)
+            };
+            var key1 = $scope.getUniqueKey(nic1);
+            var key2 = $scope.getUniqueKey(nic2);
+            $scope.selectedInterfaces = [key1, key2];
+            expect($scope.isOnlyInterfaceSelected(nic1)).toBe(false);
+        });
+
+        it("returns false when not selected", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            $scope.selectedInterfaces = [];
+            expect($scope.isOnlyInterfaceSelected(nic)).toBe(false);
+        });
+    });
+
+    describe("isShowingInterfaceOptions", function() {
+
+        it("returns true in single mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "single";
+            expect($scope.isShowingInterfaceOptions()).toBe(true);
+        });
+
+        it("returns false not in single mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "mutli";
+            expect($scope.isShowingInterfaceOptions()).toBe(false);
+        });
+    });
+
+    describe("isShowingDeleteComfirm", function() {
+
+        it("returns true in delete mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "delete";
+            expect($scope.isShowingDeleteComfirm()).toBe(true);
+        });
+
+        it("returns false not in delete mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "single";
+            expect($scope.isShowingDeleteComfirm()).toBe(false);
+        });
+    });
+
+    describe("isShowingAdd", function() {
+
+        it("returns true in add mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "add";
+            expect($scope.isShowingAdd()).toBe(true);
+        });
+
+        it("returns false not in add mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "delete";
+            expect($scope.isShowingAdd()).toBe(false);
+        });
+    });
+
+    describe("canAddAlias", function() {
+
+        it("returns false if nic undefined", function() {
+            var controller = makeController();
+            expect($scope.canAddAlias()).toBe(false);
+        });
+
+        it("returns false if nic type is alias", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias"
+            };
+            expect($scope.canAddAlias(nic)).toBe(false);
+        });
+
+        it("returns false if nic has no links", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                links: []
+            };
+            expect($scope.canAddAlias(nic)).toBe(false);
+        });
+
+        it("returns false if nic has link_up", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                links: [{
+                    mode: "link_up"
+                }]
+            };
+            expect($scope.canAddAlias(nic)).toBe(false);
+        });
+
+        it("returns false if nic has dhcp", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                links: [{
+                    mode: "dhcp"
+                }]
+            };
+            expect($scope.canAddAlias(nic)).toBe(false);
+        });
+
+        it("returns true if nic has static", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                links: [{
+                    mode: "static"
+                }]
+            };
+            expect($scope.canAddAlias(nic)).toBe(true);
+        });
+
+        it("returns true if nic has auto", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                links: [{
+                    mode: "auto"
+                }]
+            };
+            expect($scope.canAddAlias(nic)).toBe(true);
+        });
+    });
+
+    describe("canAddVLAN", function() {
+
+        it("returns false if nic undefined", function() {
+            var controller = makeController();
+            expect($scope.canAddVLAN()).toBe(false);
+        });
+
+        it("returns false if nic type is alias", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias"
+            };
+            expect($scope.canAddVLAN(nic)).toBe(false);
+        });
+
+        it("returns false if nic type is vlan", function() {
+            var controller = makeController();
+            var nic = {
+                type: "vlan"
+            };
+            expect($scope.canAddVLAN(nic)).toBe(false);
+        });
+
+        it("returns false if no unused vlans", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1, 2, 3],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                },
+                {
+                    id: 2,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 1
+                },
+                {
+                    id: 3,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 2
+                }
+            ];
+            var nic = {
+                id: 0,
+                type: "physical",
+                fabric: fabric
+            };
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            expect($scope.canAddVLAN(nic)).toBe(false);
+        });
+
+        it("returns true if unused vlans", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1, 2, 3],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                },
+                {
+                    id: 2,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 1
+                }
+            ];
+            var nic = {
+                id: 0,
+                type: "physical",
+                fabric: fabric
+            };
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            expect($scope.canAddVLAN(nic)).toBe(true);
+        });
+    });
+
+    describe("canAddAnotherVLAN", function() {
+
+        it("returns false if canAddVLAN returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "canAddVLAN").and.returnValue(false);
+            expect($scope.canAddAnotherVLAN()).toBe(false);
+        });
+
+        it("returns false if only 1 unused vlans", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1, 2, 3],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                },
+                {
+                    id: 2,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 1
+                }
+            ];
+            var nic = {
+                id: 0,
+                type: "physical",
+                fabric: fabric
+            };
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            expect($scope.canAddAnotherVLAN(nic)).toBe(false);
+        });
+
+        it("returns true if more than 1 unused vlans", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1, 2, 3],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                }
+            ];
+            var nic = {
+                id: 0,
+                type: "physical",
+                fabric: fabric
+            };
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            expect($scope.canAddAnotherVLAN(nic)).toBe(true);
+        });
+    });
+
+    describe("getRemoveTypeText", function() {
+
+        it("returns interface for physical interface", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical"
+            };
+            expect($scope.getRemoveTypeText(nic)).toBe("interface");
+        });
+
+        it("returns VLAN for VLAN interface", function() {
+            var controller = makeController();
+            var nic = {
+                type: "vlan"
+            };
+            expect($scope.getRemoveTypeText(nic)).toBe("VLAN");
+        });
+
+        it("returns type for other types", function() {
+            var controller = makeController();
+            var type = makeName("type");
+            var nic = {
+                type: type
+            };
+            expect($scope.getRemoveTypeText(nic)).toBe(type);
+        });
+    });
+
+    describe("remove", function() {
+
+        it("sets selectedMode to delete", function() {
+            var controller = makeController();
+            $scope.remove();
+            expect($scope.selectedMode).toBe("delete");
+        });
+    });
+
+    describe("quickRemove", function() {
+
+        it("selects interface and sets selectedMode to delete", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+            $scope.quickRemove(nic);
+            expect($scope.isInterfaceSelected(nic)).toBe(true);
+            expect($scope.selectedMode).toBe("delete");
+        });
+    });
+
+    describe("cancel", function() {
+
+        it("clears newInterface and sets selectedMode to single", function() {
+            var controller = makeController();
+            var newInterface = {};
+            $scope.newInterface = newInterface;
+            $scope.selectedMode = "delete";
+            $scope.cancel();
+            expect($scope.newInterface).not.toBe(newInterface);
+            expect($scope.selectedMode).toBe("single");
+        });
+    });
+
+    describe("confirmRemove", function() {
+
+        it("sets selectedMode to none", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                type: "physical",
+                link_id: makeInteger(0, 100)
+            };
+            $scope.toggleInterfaceSelect(nic);
+            $scope.selectedMode = "delete";
+
+            spyOn(NodesManager, "deleteInterface");
+            $scope.confirmRemove(nic);
+
+            expect($scope.selectedMode).toBeNull();
+            expect($scope.selectedInterfaces).toEqual([]);
+        });
+
+        it("calls NodesManager.deleteInterface", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                type: "physical",
+                link_id: makeInteger(0, 100)
+            };
+            $scope.toggleInterfaceSelect(nic);
+            $scope.selectedMode = "delete";
+
+            spyOn(NodesManager, "deleteInterface");
+            $scope.confirmRemove(nic);
+
+            expect(NodesManager.deleteInterface).toHaveBeenCalledWith(
+                node, nic.id);
+        });
+
+        it("calls NodesManager.unlinkSubnet", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                type: "alias",
+                link_id: makeInteger(0, 100)
+            };
+            $scope.toggleInterfaceSelect(nic);
+            $scope.selectedMode = "delete";
+
+            spyOn(NodesManager, "unlinkSubnet");
+            $scope.confirmRemove(nic);
+
+            expect(NodesManager.unlinkSubnet).toHaveBeenCalledWith(
+                node, nic.id, nic.link_id);
+        });
+
+        it("removes nic from interfaces", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                type: "alias",
+                link_id: makeInteger(0, 100)
+            };
+            $scope.interfaces = [nic];
+            $scope.toggleInterfaceSelect(nic);
+            $scope.selectedMode = "delete";
+
+            spyOn(NodesManager, "unlinkSubnet");
+            $scope.confirmRemove(nic);
+
+            expect($scope.interfaces).toEqual([]);
+        });
+    });
+
+    describe("add", function() {
+
+        it("sets up newInterface for alias", function() {
+            var controller = makeController();
+            var vlan = {};
+            var nic = {
+                id: makeInteger(0, 100),
+                type: "physical",
+                link_id: makeInteger(0, 100),
+                vlan: vlan
+            };
+
+            var subnet = {};
+            spyOn(VLANsManager, "getSubnets").and.returnValue([subnet]);
+
+            $scope.add('alias', nic);
+            expect($scope.newInterface).toEqual({
+                type: "alias",
+                vlan: vlan,
+                subnet: subnet,
+                mode: "auto",
+                parent: nic
+            });
+            expect($scope.newInterface.vlan).toBe(vlan);
+            expect($scope.newInterface.subnet).toBe(subnet);
+            expect($scope.newInterface.parent).toBe(nic);
+            expect($scope.selectedMode).toBe("add");
+        });
+
+        it("sets up newInterface for vlan", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                }
+            ];
+            var nic = {
+                id: 0,
+                type: "physical",
+                link_id: -1,
+                fabric: fabric,
+                vlan: vlans[0]
+            };
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            $scope.newInterface = {
+                vlan: vlans[1]
+            };
+
+            $scope.add('vlan', nic);
+            expect($scope.newInterface).toEqual({
+                type: "vlan",
+                vlan: vlans[2],
+                subnet: null,
+                mode: "link_up",
+                parent: nic
+            });
+            expect($scope.newInterface.vlan).toBe(vlans[2]);
+            expect($scope.newInterface.parent).toBe(nic);
+            expect($scope.selectedMode).toBe("add");
+        });
+    });
+
+    describe("quickAdd", function() {
+
+        it("selects nic and calls add with alias", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+
+            $scope.selectedInterfaces = [{}, {}, {}];
+            spyOn($scope, "canAddAlias").and.returnValue(true);
+            spyOn($scope, "add");
+
+            $scope.quickAdd(nic);
+            expect($scope.selectedInterfaces).toEqual(
+                [$scope.getUniqueKey(nic)]);
+            expect($scope.add).toHaveBeenCalledWith('alias', nic);
+        });
+
+        it("selects nic and calls add with vlan", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100)
+            };
+
+            $scope.selectedInterfaces = [{}, {}, {}];
+            spyOn($scope, "canAddAlias").and.returnValue(false);
+            spyOn($scope, "add");
+
+            $scope.quickAdd(nic);
+            expect($scope.selectedInterfaces).toEqual(
+                [$scope.getUniqueKey(nic)]);
+            expect($scope.add).toHaveBeenCalledWith('vlan', nic);
+        });
+    });
+
+    describe("getAddName", function() {
+
+        it("returns alias name based on links length", function() {
+            var controller = makeController();
+            var name = makeName("eth");
+            var parent = {
+                id: makeInteger(0, 100),
+                name: name,
+                link_id: makeInteger(0, 100),
+                links: [{}, {}, {}]
+            };
+            $scope.newInterface = {
+                type: "alias",
+                parent: parent
+            };
+
+            expect($scope.getAddName()).toBe(name + ":3");
+        });
+
+        it("returns VLAN name based on VLAN vid", function() {
+            var controller = makeController();
+            var name = makeName("eth");
+            var vid = makeInteger(0, 100);
+            var parent = {
+                id: makeInteger(0, 100),
+                name: name,
+                link_id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                type: "vlan",
+                parent: parent,
+                vlan: {
+                    vid: vid
+                }
+            };
+
+            expect($scope.getAddName()).toBe(name + "." + vid);
+        });
+    });
+
+    describe("addTypeChanged", function() {
+
+        it("reset properties based on the new type alias", function() {
+            var controller = makeController();
+            var vlan = {};
+            var subnet = {};
+            var parent = {
+                id: makeInteger(0, 100),
+                name: name,
+                link_id: makeInteger(0, 100),
+                vlan: vlan
+            };
+            spyOn(VLANsManager, "getSubnets").and.returnValue([subnet]);
+            $scope.newInterface = {
+                type: "alias",
+                parent: parent
+            };
+            $scope.addTypeChanged();
+
+            expect($scope.newInterface.vlan).toBe(vlan);
+            expect($scope.newInterface.subnet).toBe(subnet);
+            expect($scope.newInterface.mode).toBe("auto");
+        });
+
+        it("reset properties based on the new type VLAN", function() {
+            var controller = makeController();
+            var fabric = {
+                id: 0
+            };
+            var vlans = [
+                {
+                    id: 0,
+                    fabric: 0
+                },
+                {
+                    id: 1,
+                    fabric: 0
+                },
+                {
+                    id: 2,
+                    fabric: 0
+                }
+            ];
+            var originalInterfaces = [
+                {
+                    id: 0,
+                    type: "physical",
+                    parents: [],
+                    children: [1],
+                    vlan_id: 0
+                },
+                {
+                    id: 1,
+                    type: "vlan",
+                    parents: [0],
+                    children: [],
+                    vlan_id: 0
+                }
+            ];
+            var parent = {
+                id: 0,
+                type: "physical",
+                link_id: -1,
+                fabric: fabric,
+                vlan: vlans[0]
+            };
+
+            $scope.originalInterfaces = originalInterfaces;
+            $scope.vlans = vlans;
+            $scope.newInterface = {
+                type: "vlan",
+                parent: parent
+            };
+            $scope.addTypeChanged();
+
+            expect($scope.newInterface.vlan).toBe(vlans[1]);
+            expect($scope.newInterface.subnet).toBeNull();
+            expect($scope.newInterface.mode).toBe("link_up");
+        });
+    });
+
+    describe("addVLANChanged", function() {
+
+        it("clears subnets on newInterface", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                subnet: {}
+            };
+            $scope.addVLANChanged();
+            expect($scope.newInterface.subnet).toBeNull();
+        });
+    });
+
+    describe("addSubnetChanged", function() {
+
+        it("sets mode to link_up if no subnet", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                mode: "auto"
+            };
+            $scope.addSubnetChanged();
+            expect($scope.newInterface.mode).toBe("link_up");
+        });
+
+        it("leaves mode to alone when subnet", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                mode: "auto",
+                subnet: {}
+            };
+            $scope.addSubnetChanged();
+            expect($scope.newInterface.mode).toBe("auto");
+        });
+    });
+
+    describe("addInterface", function() {
+
+        it("calls saveInterfaceLink with correct params", function() {
+            var controller = makeController();
+            var parent = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                type: "alias",
+                mode: "auto",
+                subnet: {},
+                parent: parent
+            };
+            $scope.selectedInterfaces = [{}];
+            $scope.selectedMode = "add";
+            spyOn($scope, "saveInterfaceLink");
+            $scope.addInterface();
+            expect($scope.saveInterfaceLink).toHaveBeenCalledWith({
+                id: parent.id,
+                mode: "auto",
+                subnet: $scope.newInterface.subnet,
+                ip_address: ""
+            });
+            expect($scope.selectedMode).toBeNull();
+            expect($scope.selectedInterfaces).toEqual([]);
+        });
+
+        it("calls createVLANInterface with correct params", function() {
+            var controller = makeController();
+            var parent = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                type: "vlan",
+                mode: "auto",
+                parent: parent,
+                vlan: {
+                    id: makeInteger(0, 100)
+                },
+                subnet: {
+                    id: makeInteger(0, 100)
+                }
+            };
+            $scope.selectedInterfaces = [{}];
+            $scope.selectedMode = "add";
+            spyOn(NodesManager, "createVLANInterface").and.returnValue(
+                $q.defer().promise);
+
+            $scope.addInterface();
+            expect(NodesManager.createVLANInterface).toHaveBeenCalledWith(
+                node, {
+                    parent: parent.id,
+                    vlan: $scope.newInterface.vlan.id,
+                    mode: "auto",
+                    subnet: $scope.newInterface.subnet.id
+                });
+            expect($scope.selectedMode).toBeNull();
+            expect($scope.selectedInterfaces).toEqual([]);
+        });
+
+        it("calls add again with type", function() {
+            var controller = makeController();
+            var parent = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                type: "alias",
+                mode: "auto",
+                subnet: {},
+                parent: parent
+            };
+            var selection = [{}];
+            $scope.selectedInterfaces = selection;
+            $scope.selectedMode = "add";
+            spyOn($scope, "saveInterfaceLink");
+            spyOn($scope, "add");
+            $scope.addInterface("alias");
+
+            expect($scope.add).toHaveBeenCalledWith("alias", parent);
+            expect($scope.selectedMode).toBe("add");
+            expect($scope.selectedInterfaces).toBe(selection);
         });
     });
 });

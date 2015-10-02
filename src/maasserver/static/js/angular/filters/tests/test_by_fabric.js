@@ -15,6 +15,17 @@ describe("filterByFabric", function() {
         filterByFabric = $filter("filterByFabric");
     }));
 
+    it("returns empty if undefined fabric", function() {
+        var i, vlan, vlans = [];
+        for(i = 0; i < 3; i++) {
+            vlan = {
+                fabric: 0
+            };
+            vlans.push(vlan);
+        }
+        expect(filterByFabric(vlans)).toEqual([]);
+    });
+
     it("only returns vlans with fabric id", function() {
         var i, vlan, fabric_id = 1, other_fabric_id = 2;
         var fabric_vlans = [], other_fabric_vlans = [], all_vlans = [];
