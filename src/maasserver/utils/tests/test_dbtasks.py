@@ -109,6 +109,20 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
+    def test__cannot_sync_task_when_queue_is_full(self):
+        service = DatabaseTasksService(0)
+        service.startService()
+        try:
+            event = threading.Event()
+            service.addTask(event.wait)
+            try:
+                self.assertRaises(
+                    QueueOverflow, lambda: service.syncTask().wait())
+            finally:
+                event.set()
+        finally:
+            service.stopService()
+
     def test__startup_creates_queue_with_previously_defined_limit(self):
         limit = random.randint(1, 1000)
         service = DatabaseTasksService(limit)
@@ -208,6 +222,31 @@ class TestDatabaseTaskService(MAASTestCase):
             self.assertRaises(DatabaseTaskAlreadyRunning, d.cancel)
         finally:
             yield service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__sync_task_can_be_cancelled_when_enqueued(self):
+        things = []  # This will NOT be populated by tasks.
+
+        service = DatabaseTasksService()
+        yield service.startService()
+        try:
+            event = threading.Event()
+            service.deferTask(event.wait)
+            service.syncTask().cancel()
+        finally:
+            event.set()
+            yield service.stopService()
+
+        self.assertThat(things, Equals([]))
+
+    def test__sync_task_fires_with_service(self):
+        service = DatabaseTasksService()
+        service.startService()
+        try:
+            self.assertThat(service.syncTask().wait(), Is(service))
+        finally:
+            service.stopService()
 
     def test__failure_in_deferred_task_does_not_crash_service(self):
         things = []  # This will be populated by tasks.

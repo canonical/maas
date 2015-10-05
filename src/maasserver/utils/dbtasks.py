@@ -111,6 +111,29 @@ class DatabaseTasksService(Service, object):
         done.addErrback(log.err, "Unhandled failure in database task.")
         return None
 
+    @asynchronous
+    def syncTask(self):
+        """Schedules a "synchronise" task with the queue.
+
+        Tasks are processed in order, so this is a convenient way to ensure
+        that all previously added/deferred tasks have been processed.
+
+        :raise QueueOverflow: If the queue of tasks is full.
+        :return: :class:`Deferred` that will fire when this task is pulled out
+            of the queue. Processing of the queue will continue without pause.
+        """
+        def cancel(done):
+            if task in self.queue.pending:
+                self.queue.pending.remove(task)
+
+        done = Deferred(cancel)
+
+        def task():
+            done.callback(self)
+
+        self.queue.put(task)
+        return done
+
     @asynchronous(timeout=FOREVER)
     def startService(self):
         """Open the queue and start processing database tasks.
