@@ -105,4 +105,134 @@ describe("SubentsListController", function() {
             expect($scope.currentpage).toBe('fabrics');
         });
     });
+
+    it("fabrics updated properly", function() {
+        var controller = makeController();
+        var fabrics = [
+            { id: 0, name: "fabric 0" },
+            { id: 1, name: "fabric 1" }
+        ];
+        var spaces = [
+            { id: 0, name: "Default space" },
+            { id: 1, name: "DMZ" },
+            { id: 2, name: "LAN" }
+        ];
+        var vlans = [
+            { id: 0, name: "vlan5", vid: 5, fabric: 0 },
+            { id: 1, name: "vlan4", vid: 4, fabric: 0 },
+            { id: 2, name: "vlan3", vid: 3, fabric: 1 }
+        ];
+        var subnets = [
+            { id:0, name:"subnet 0", vlan:1, space:1, cidr:"10.20.0.0/16" },
+            { id:1, name:"subnet 1", vlan:1, space:1, cidr:"10.10.0.0/24" },
+            { id:2, name:"subnet 2", vlan:1, space:2, cidr:"10.0.0.0/24" },
+            { id:3, name:"subnet 3", vlan:2, space:1, cidr:"10.99.0.0/23" },
+            { id:4, name:"subnet 4", vlan:2, space:1, cidr:"10.100.6.0/24" },
+            { id:5, name:"subnet 5", vlan:1, space:1, cidr:"10.200.7.0/24" }
+        ];
+        var expectedFabricsData = [
+          { fabric: { id: 0, name: 'fabric 0' },
+            rows: [
+              {
+                vlan: { id: 0, name: 'vlan5', vid: 5, fabric: 0 },
+                space: null,
+                subnet: null
+              },
+              { vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                space: { id: 1, name: 'DMZ' },
+                subnet: {
+                  id: 0, name: 'subnet 0', vlan: 1, space: 1,
+                  cidr: '10.20.0.0/16'
+                }
+              },
+              { vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                space: { id: 1, name: 'DMZ' },
+                subnet: {
+                  id: 1, name: 'subnet 1', vlan: 1, space: 1,
+                  cidr: '10.10.0.0/24' }
+              },
+              { vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                space: { id: 2, name: 'LAN' },
+                subnet: {
+                  id: 2, name: 'subnet 2', vlan: 1, space: 2,
+                  cidr: '10.0.0.0/24' }
+              },
+              { vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                space: { id: 1, name: 'DMZ' },
+                subnet: {
+                  id: 5, name: 'subnet 5', vlan: 1, space: 1,
+                  cidr: '10.200.7.0/24' }
+              }
+            ]
+          },
+          { fabric: { id: 1, name: 'fabric 1' },
+            rows: [
+              { vlan: { id: 2, name: 'vlan3', vid: 3, fabric: 1 },
+                space: { id: 1, name: 'DMZ' },
+                subnet: {
+                  id: 3, name: 'subnet 3', vlan: 2, space: 1,
+                  cidr: '10.99.0.0/23' } },
+              { vlan: { id: 2, name: 'vlan3', vid: 3, fabric: 1 },
+                space: { id: 1, name: 'DMZ' },
+                subnet: {
+                  id: 4, name: 'subnet 4', vlan: 2, space: 1,
+                  cidr: '10.100.6.0/24' } }
+            ]
+          }
+        ];
+        var expectedSpacesData = [
+          { space: { id: 0, name: 'Default space' }, rows: [  ] },
+          { space: { id: 1, name: 'DMZ' },
+            rows: [
+              { fabric: { id: 0, name: 'fabric 0' },
+                vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                subnet: {
+                  id: 0, name: 'subnet 0', vlan: 1, space: 1,
+                  cidr: '10.20.0.0/16' } },
+              { fabric: { id: 0, name: 'fabric 0' },
+                vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                subnet: {
+                  id: 1, name: 'subnet 1', vlan: 1, space: 1,
+                  cidr: '10.10.0.0/24' } },
+              { fabric: { id: 1, name: 'fabric 1' },
+                vlan: { id: 2, name: 'vlan3', vid: 3, fabric: 1 },
+                subnet: {
+                  id: 3, name: 'subnet 3', vlan: 2, space: 1,
+                  cidr: '10.99.0.0/23' } },
+              { fabric: { id: 1, name: 'fabric 1' },
+                vlan: { id: 2, name: 'vlan3', vid: 3, fabric: 1 },
+                subnet: {
+                  id: 4, name: 'subnet 4', vlan: 2, space: 1,
+                  cidr: '10.100.6.0/24' } },
+              { fabric: { id: 0, name: 'fabric 0' },
+                vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                subnet: {
+                  id: 5, name: 'subnet 5', vlan: 1, space: 1,
+                  cidr: '10.200.7.0/24' } }
+            ]
+          },
+          { space: { id: 2, name: 'LAN' },
+            rows: [
+              { fabric: { id: 0, name: 'fabric 0' },
+                vlan: { id: 1, name: 'vlan4', vid: 4, fabric: 0 },
+                subnet: {
+                  id: 2, name: 'subnet 2', vlan: 1, space: 2,
+                  cidr: '10.0.0.0/24' } }
+            ]
+          }
+        ];
+        $scope.fabrics = fabrics;
+        FabricsManager._items = fabrics;
+        $scope.spaces = spaces;
+        SpacesManager._items = spaces;
+        $scope.vlans = vlans;
+        VLANsManager._items = vlans;
+        $scope.subnets = subnets;
+        SubnetsManager._items = subnets;
+        $scope.forceUpdateFabricsData();
+        $scope.forceUpdateSpacesData();
+        expect($scope.tabs.fabrics.data).toEqual(expectedFabricsData);
+        expect($scope.tabs.spaces.data).toEqual(expectedSpacesData);
+    });
+
 });

@@ -28,51 +28,30 @@
     </div>
 </header>
 <div data-ng-show="currentpage === 'fabrics' && !loading">
-    <section class="row" data-ng-repeat="fabric in fabrics">
+    <section class="row" data-ng-repeat="data in tabs.fabrics.data">
         <div class="inner-wrapper">
             <div class="twelve-col">
-                <h2>{$ fabric.name $}</h2>
+                <h2>{$ data.fabric.name $}</h2>
             </div>
-            <dl class="six-col">
-                <!-- XXX mpontillo 2015-09-28
-                     Need description, links to managed clusters -->
-                <dt class="two-col">Nodes</dt>
-                    <dd class="four-col last-col">{$ fabric.nodes_count $}</dd>
-                <dt class="two-col">VLANs</dt>
-                    <dd class="four-col last-col">{$ fabric.vlan_ids.length $}</dd>
-            </dl>
             <div class="twelve-col">
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table__column--20">Name</div>
-                            <div class="table__header table__column--15">VID</div>
-                            <div class="table__header table__column--10">Nodes</div>
-                            <div class="table__header table__column--55">Subnet</div>
+                            <div class="table__header table__column--20">VLAN</div>
+                            <div class="table__header table__column--15">Space</div>
+                            <div class="table__header table__column--45">Subnet</div>
+                            <div class="table__header table__column--10">AVAILABLE free addresses</div>
+                            <div class="table__header table__column--10">INEFFICIENCY allocated, not used</div>
                         </div>
                     </header>
                     <main class="table-body">
                         <div class="table__row"
-                             data-ng-repeat="vlan in vlans | filterByFabric:fabric">
-                            <div class="table__data table__column--20">{$ vlan.name $}</div>
-                            <div class="table__data table__column--15">{$ vlan.vid $}</div>
-                            <!-- XXX mpontillo 2015-09-28
-                            link to nodes page with these nodes selected -->
-                            <div class="table__data table__column--10">{$ vlan.nodes_count $}</div>
-                            <div class="table__data table__column--55">
-                                <ul class="no-bullets">
-                                <!-- XXX mpontillo 2015-09-28
-                                link to subnet details page -->
-                                    <li data-ng-repeat="subnet in subnets | filterByVLAN:vlan">
-                                        <a href="#/subnet/{$ subnet.id $}">
-                                            {$ subnet.cidr $}
-                                        </a>
-                                        <span data-ng-if="subnet.name && subnet.cidr != subnet.name">
-                                            ({$ subnet.name $})
-                                        </span>
-                                    </li>
-                                </ul>
-                            </div>
+                             data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['vlan.vid','space.name','subnet.cidr'])">
+                            <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
+                            <div class="table__data table__column--15">{$ getSpaceName(row, data.sortedData) $}</div>
+                            <div class="table__data table__column--45">{$ getSubnetName(row.subnet) $}</div>
+                            <div class="table__data table__column--10">{$ row.subnet.statistics.available_string $}</div>
+                            <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
                         </div>
                     </main>
                 </div>
@@ -81,41 +60,36 @@
     </section>
 </div>
 <div data-ng-show="currentpage === 'spaces' && !loading"">
-    <section class="row" data-ng-repeat="space in spaces">
+    <section class="row" data-ng-repeat="data in tabs.spaces.data">
         <div class="inner-wrapper">
             <div class="twelve-col">
-                <h2>{$ space.name $}</h2>
+                <h2>{$ data.space.name $}</h2>
             </div>
-            <dl class="six-col last-col">
-                <dt class="two-col">Nodes</dt>
-                <!-- XXX mpontillo 2015-09-28
-                     Need description, links to managed clusters -->
-                    <!-- XXX mpontillo 2015-09-28
-                    link to nodes page with these nodes selected -->
-                    <dd class="four-col last-col">{$ space.nodes_count $}</dd>
-                <dt class="two-col">Subnets</dt>
-                    <dd class="four-col last-col">{$ space.subnet_ids.length $}</dd>
-            </dl>
             <div class="twelve-col">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>IP range</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr data-ng-show="space.subnet_ids.length == 0">
-                            <td colspan="2">There are currently no subnets in this space.</td>
-                        </tr>
-                        <tr data-ng-repeat="subnet in subnets | filterBySpace:space">
-                            <!-- XXX mpontillo 2015-09-28
-                            link to subnet details page -->
-                            <td>{$ subnet.name $}</td>
-                            <td><a href="#/subnet/{$ subnet.id $}">{$ subnet.cidr $}</a></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--15">Fabric</div>
+                            <div class="table__header table__column--20">VLAN</div>
+                            <div class="table__header table__column--45">Subnet</div>
+                            <div class="table__header table__column--10">AVAILABLE free addresses</div>
+                            <div class="table__header table__column--10">INEFFICIENCY allocated, not used</div>
+                        </div>
+                    </header>
+                    <main class="table-body">
+                        <div class="table__row" data-ng-show="data.rows.length == 0">
+                            <div class="table__data table__column--100">There are currently no subnets in this space.</div>
+                        </div>
+                        <div class="table__row"
+                             data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['fabric.name','vlan.vid','subnet.cidr'])">
+                            <div class="table__data table__column--15">{$ getFabricName(row, data.sortedData) $}</div>
+                            <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
+                            <div class="table__data table__column--45">{$ getSubnetName(row.subnet) $}</div>
+                            <div class="table__data table__column--10">{$ row.subnet.statistics.available_string $}</div>
+                            <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
+                        </div>
+                    </main>
+                </div>
             </div>
         </div>
     </section>

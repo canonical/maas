@@ -29,7 +29,8 @@ class SubnetHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             Subnet.objects.all()
-                  .select_related('space')
+                  .select_related('space', 'vlan')
+                  .prefetch_related('vlan__fabric')
                   .prefetch_related('nodegroupinterface_set__nodegroup')
                   .prefetch_related('staticipaddress_set__user')
                   .prefetch_related(
@@ -41,10 +42,10 @@ class SubnetHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, subnet, data, for_list=False):
+        full_range = subnet.get_iprange_usage()
+        metadata = IPRangeStatistics(full_range)
+        data['statistics'] = metadata.render_json()
         if not for_list:
-            full_range = subnet.get_iprange_usage()
-            metadata = IPRangeStatistics(full_range)
-            data['statistics'] = metadata.render_json()
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)
         return data

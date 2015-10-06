@@ -146,6 +146,18 @@ class IPRangeStatistics(object):
         self.total_addresses = self.num_available + self.num_unavailable
 
     @property
+    def available_percentage(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:float"""
+        return float(self.num_available) / float(self.total_addresses)
+
+    @property
+    def available_percentage_string(self):
+        """Returns the utilization percentage for this set of addresses.
+        :return:unicode"""
+        return "{0:.0%}".format(self.available_percentage)
+
+    @property
     def usage_percentage(self):
         """Returns the utilization percentage for this set of addresses.
         :return:float"""
@@ -167,6 +179,9 @@ class IPRangeStatistics(object):
             "total_addresses": self.total_addresses,
             "usage": self.usage_percentage,
             "usage_string": self.usage_percentage_string,
+            "available_string": self.available_percentage_string,
+            # XXX LJ 20151004: determine the right calculation, and do it.
+            "inefficiency_string": "TBD",
         }
         if include_ranges:
             data["ranges"] = self.ranges.render_json()

@@ -715,6 +715,8 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['num_unavailable'], Equals(4))
         self.assertThat(json['usage'], Equals(float(4) / float(254)))
         self.assertThat(json['usage_string'], Equals("2%"))
+        self.assertThat(json['available_string'], Equals("98%"))
+        self.assertThat(json['inefficiency_string'], Equals("TBD"))
         self.assertThat(json, Not(Contains("ranges")))
 
     def test__statistics_are_accurate_and_ranges_are_returned_if_desired(self):
@@ -727,5 +729,7 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['num_unavailable'], Equals(4))
         self.assertThat(json['usage'], Equals(float(4) / float(254)))
         self.assertThat(json['usage_string'], Equals('2%'))
+        self.assertThat(json['available_string'], Equals("98%"))
+        self.assertThat(json['inefficiency_string'], Equals("TBD"))
         self.assertThat(json, Contains('ranges'))
         self.assertThat(json['ranges'], Equals(stats.ranges.render_json()))

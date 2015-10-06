@@ -37,10 +37,10 @@ class TestSubnetHandler(MAASServerTestCase):
             "cidr": subnet.cidr,
             "gateway_ip": subnet.gateway_ip,
         }
+        full_range = subnet.get_iprange_usage()
+        metadata = IPRangeStatistics(full_range)
+        data['statistics'] = metadata.render_json()
         if not for_list:
-            full_range = subnet.get_iprange_usage()
-            metadata = IPRangeStatistics(full_range)
-            data['statistics'] = metadata.render_json()
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)
         return data
