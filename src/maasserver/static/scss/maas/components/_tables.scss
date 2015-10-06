@@ -243,6 +243,11 @@ table {
         &.invalid {
           border-color: #D90000;
         }
+
+        &[disabled] {
+          border-color: transparent;
+          color: #333;
+        }
       }
 
       .table__controls {
@@ -260,7 +265,7 @@ table {
       background-color: #FFF;
     }
 
-    &.active, &.disabled {
+    &.active {
 
       &:hover {
 
@@ -300,6 +305,54 @@ table {
           }
         }
       }
+
+      .table__dropdown {
+        max-height: 3000px;
+      }
+    }
+
+    &.disabled {
+      background-color: transparent;
+
+      .table__data,
+      .table__input {
+        color: #888;
+      }
+
+      &:hover {
+
+        .table__input {
+          background-color: transparent;
+          border-color: transparent;
+          pointer-events: none;
+          background-position: -9999px -9999px;
+          color: #888;
+        }
+
+        .table__controls {
+          opacity: 0;
+          z-index: -1000;
+          pointer-events: none;
+
+          &--secondary {
+            z-index: -1000;
+            opacity: 0;
+            pointer-events: none;
+          }
+        }
+      }
+    }
+
+    &.active {
+      background-color: #FFF;
+
+      .table__dropdown {
+
+        .table__data,
+        .table__input {
+          color: #333;
+        }
+      }
     }
   }
 
@@ -309,7 +362,7 @@ table {
     display: table-cell;
     padding: 13px 10px;
     box-sizing: border-box;
-    min-height: 21px;
+    height: 100%;
     background: none;
     border: 0;
     text-align: left;
@@ -432,6 +485,11 @@ table {
       }
     }
 
+    &[disabled] {
+      border-color: transparent;
+      color: #333;
+    }
+
     &:focus {
       background-color: #FFF;
       border-color: #D2D2D2;
@@ -467,10 +525,30 @@ table {
   // Table dropdown
   .table__dropdown {
     width: 100%;
+    max-height: 0;
+    overflow: hidden;
 
     .table__dropdown-row {
         border-bottom: 0;
         position: relative;
+        max-height: 3000px;
+        transition-property: max-height;
+        transition-duration: 3.5s;
+        transition-timing-function: linear;
+
+        &.ng-hide {
+          max-height: 0;
+          overflow: hidden;
+          display: block !important;
+          transition-property: max-height;
+          transition-delay: -1s;
+          transition-duration: 1.25s;
+          transition-timing-function: linear;
+
+          .table__data {
+            opacity: 0;
+          }
+        }
 
         &:before {
           display: block;

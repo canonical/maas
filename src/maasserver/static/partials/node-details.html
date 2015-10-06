@@ -418,7 +418,7 @@
                                         <a class="icon delete" data-ng-click="quickRemove(interface)"></a>
                                     </div>
                                 </div>
-                                <div class="table__dropdown--info ng-hide" data-ng-show="isShowingMembers(interface)">
+                                <div class="table__dropdown--info" data-ng-show="isShowingMembers(interface)">
                                     <div class="table__row" data-ng-repeat="member in interface.members">
                                             <div class="table__data no-padding-top table__column--3"></div>
                                             <div class="table__data no-padding-top table__column--15"
@@ -430,30 +430,8 @@
                                             </div>
                                         </div>
                                 </div>
-                                <div class="table__dropdown ng-hide" data-ng-show="isOnlyInterfaceSelected(interface)">
-                                    <div class="table__row table__dropdown-row ng-hide" data-ng-show="isShowingInterfaceOptions()">
-                                        <div class="table__data left">
-                                              <button class="cta-ubuntu secondary"
-                                                data-ng-click="add('alias', interface)"
-                                                data-ng-show="canAddAlias(interface)">Add Alias</button>
-                                              <button class="cta-ubuntu secondary"
-                                                data-ng-click="add('vlan', interface)"
-                                                data-ng-show="canAddVLAN(interface)">Add VLAN</button>
-                                              <a class="link-cta-ubuntu text-button"
-                                                data-ng-click="remove()">Remove {$ getRemoveTypeText(interface) $}</a>
-                                        </div>
-                                    </div>
-                                    <div class="table__row table__dropdown-row ng-hide" data-ng-show="isShowingDeleteComfirm()">
-                                        <div class="table__data left">
-                                              <span class="icon warning margin-right"></span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?
-                                        </div>
-                                        <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
-                                              <button class="cta-ubuntu" data-ng-click="confirmRemove(interface)">Remove</button>
-                                        </div>
-                                    </div>
-                                    <div class="table__row table__dropdown-row padding-top--ten padding-bottom--ten"
-                                        data-ng-show="isShowingAdd()">
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row" data-ng-show="isShowingAdd()">
                                         <div class="table__data table__column--3">
                                         </div>
                                         <div class="table__data table__column--15">
@@ -497,19 +475,41 @@
                                         </div>
                                         <div class="table__data table_column--13"></div>
                                     </div>
-                                    <div class="table__row table__dropdown-row"
-                                        data-ng-show="isShowingAdd() && !newInterface.saving">
-                                        <div class="table__data left">
-                                            <button class="cta-ubuntu secondary"
-                                                data-ng-click="addInterface('alias')"
-                                                data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>Alias</button>
-                                            <button class="cta-ubuntu secondary"
-                                                data-ng-click="addInterface('vlan')"
-                                                data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="ng-hide" data-ng-show="isShowingInterfaceOptions()">
+                                            <div class="table__data left">
+                                                  <button class="cta-ubuntu secondary"
+                                                    data-ng-click="add('alias', interface)"
+                                                    data-ng-show="canAddAlias(interface)">Add Alias</button>
+                                                  <button class="cta-ubuntu secondary"
+                                                    data-ng-click="add('vlan', interface)"
+                                                    data-ng-show="canAddVLAN(interface)">Add VLAN</button>
+                                                  <a class="link-cta-ubuntu text-button"
+                                                    data-ng-click="remove()">Remove {$ getRemoveTypeText(interface) $}</a>
+                                            </div>
                                         </div>
-                                        <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
-                                              <button class="cta-ubuntu" data-ng-click="addInterface()">Save</button>
+                                        <div class="ng-hide" data-ng-show="isShowingDeleteComfirm()">
+                                            <div class="table__data left margin-top--five">
+                                                  <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
+                                            </div>
+                                            <div class="table__data right">
+                                                  <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                                  <button class="cta-ubuntu" data-ng-click="confirmRemove(interface)">Remove</button>
+                                            </div>
+                                        </div>
+                                        <div data-ng-show="isShowingAdd() && !newInterface.saving">
+                                            <div class="table__data left">
+                                                <button class="cta-ubuntu secondary"
+                                                    data-ng-click="addInterface('alias')"
+                                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>Alias</button>
+                                                <button class="cta-ubuntu secondary"
+                                                    data-ng-click="addInterface('vlan')"
+                                                    data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
+                                            </div>
+                                            <div class="table__data right">
+                                                  <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                                  <button class="cta-ubuntu" data-ng-click="addInterface()">Save</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
