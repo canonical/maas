@@ -52,17 +52,6 @@ from twisted.python import log
 maaslog = get_maas_logger("power")
 
 
-@asynchronous
-@inlineCallbacks
-def power_query_failure(system_id, hostname, message):
-    """Report a node that for which power querying has failed."""
-    maaslog.error(message)
-    yield power.power_state_update(system_id, 'error')
-    yield send_event_node(
-        EVENT_TYPES.NODE_POWER_QUERY_FAILED,
-        system_id, hostname, message)
-
-
 @synchronous
 def perform_power_query(system_id, hostname, power_type, context):
     """Query the node's power state.
@@ -100,9 +89,6 @@ def perform_power_driver_query(system_id, hostname, power_type, context):
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     """Return the power state of the given node.
 
-    A side-effect of calling this method is that the power state recorded in
-    the database is updated.
-
     :return: The string "on" or "off".
     :raises PowerActionFail: When `power_type` is not queryable, or when
         there's a failure when querying the node's power state.
@@ -132,7 +118,6 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
             # Hold the error; it will be reported later.
             exc_info = sys.exc_info()
         else:
-            yield power.power_state_update(system_id, power_state)
             returnValue(power_state)
     else:
         # Old-style power drivers need to be retried. Use increasing waiting
@@ -151,15 +136,51 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
                 # Wait before trying again.
                 yield pause(waiting_time, clock)
             else:
-                yield power.power_state_update(system_id, power_state)
                 returnValue(power_state)
 
     # Reaching here means that things have gone wrong.
     assert exc_info != (None, None, None)
     exc_type, exc_value, exc_trace = exc_info
-    message = "Power state could not be queried: %s" % (exc_value,)
-    yield power_query_failure(system_id, hostname, message)
     raise exc_type, exc_value, exc_trace
+
+
+@inlineCallbacks
+def power_query_success(system_id, hostname, state):
+    """Report a node that for which power querying has succeeded."""
+    yield power.power_state_update(system_id, state)
+
+
+@inlineCallbacks
+def power_query_failure(system_id, hostname, failure):
+    """Report a node that for which power querying has failed."""
+    message = "Power state could not be queried: %s"
+    message %= failure.getErrorMessage()
+    maaslog.error(message)
+    yield power.power_state_update(system_id, 'error')
+    yield send_event_node(
+        EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+        system_id, hostname, message)
+
+
+@asynchronous
+def report_power_state(d, system_id, hostname):
+    """Report the result of a power query.
+
+    :param d: A `Deferred` that will fire with the node's updated power state,
+        or an error condition. The callback/errback values are passed through
+        unaltered. See `get_power_state` for details.
+    """
+    def cb(state):
+        d = power_query_success(system_id, hostname, state)
+        d.addCallback(lambda _: state)
+        return d
+
+    def eb(failure):
+        d = power_query_failure(system_id, hostname, failure)
+        d.addCallback(lambda _: failure)
+        return d
+
+    return d.addCallbacks(cb, eb)
 
 
 def maaslog_report_success(node, power_state):
@@ -202,9 +223,9 @@ def query_node(node, clock):
         return succeed(None)
     else:
         d = get_power_state(
-            node['system_id'], node['hostname'],
-            node['power_type'], node['context'],
-            clock=clock)
+            node['system_id'], node['hostname'], node['power_type'],
+            node['context'], clock=clock)
+        d = report_power_state(d, node['system_id'], node['hostname'])
         d.addCallbacks(
             partial(maaslog_report_success, node),
             partial(maaslog_report_failure, node))

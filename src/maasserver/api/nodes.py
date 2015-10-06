@@ -26,7 +26,10 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver import locks
+from maasserver import (
+    eventloop,
+    locks,
+)
 from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
@@ -45,6 +48,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -753,6 +757,15 @@ class NodeHandler(OperationsHandler):
         Returns 503 (with explanatory text) if the power state could not
         be queried.
         """
+        # addTask() is used here even though this function runs within a
+        # transaction. It is sane and correct to do so for a couple of
+        # reasons. First, the thing we want to do in the database is a *fact*
+        # and we want to record it whether or not this method raises an
+        # exception. Second, if the write to the database were to fail it does
+        # not matter that we won't be able to tell the caller. Ideally,
+        # however, we would not be making RPC calls from within transactions.
+        addTask = eventloop.services.getServiceNamed("database-tasks").addTask
+
         node = get_object_or_404(Node, system_id=system_id)
         if not node.installable:
             raise MAASAPIBadRequest(
@@ -773,7 +786,9 @@ class NodeHandler(OperationsHandler):
             power_info = node.get_effective_power_info()
         except UnknownPowerType as e:
             raise PowerProblem(e)
+
         if not power_info.can_be_started:
+            addTask(node.update_power_state, POWER_STATE.UNKNOWN)
             raise PowerProblem("Power state is not queryable")
 
         call = client(
@@ -787,8 +802,15 @@ class NodeHandler(OperationsHandler):
                 "%s: Timed out waiting for power response in Node.power_state",
                 node.hostname)
             raise PowerProblem("Timed out waiting for power response")
-        except (NotImplementedError, PowerActionFail) as e:
+        except PowerActionFail as e:
+            addTask(node.update_power_state, POWER_STATE.ERROR)
             raise PowerProblem(e)
+        except NotImplementedError as e:
+            addTask(node.update_power_state, POWER_STATE.UNKNOWN)
+            raise PowerProblem(e)
+
+        # Record the new state.
+        addTask(node.update_power_state, state["state"])
 
         return state
 

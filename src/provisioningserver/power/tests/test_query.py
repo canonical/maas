@@ -14,6 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from itertools import (
+    imap,
+    izip,
+)
 import logging
 import random
 
@@ -67,6 +71,7 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.task import Clock
+from twisted.python.failure import Failure
 
 
 def patch_PowerAction(test, return_value=DEFAULT, side_effect=None):
@@ -96,6 +101,12 @@ def do_not_pause(test):
     test.patch_autospec(power.query, "pause", always_succeed_with(None))
 
 
+def suppress_reporting(test):
+    # Skip telling the region; just pass-through the query result.
+    report_power_state = test.patch(power.query, "report_power_state")
+    report_power_state.side_effect = lambda d, system_id, hostname: d
+
+
 class TestPowerHelpers(MAASTestCase):
 
     def setUp(self):
@@ -115,18 +126,17 @@ class TestPowerHelpers(MAASTestCase):
         message = factory.make_name('message')
         protocol, io = self.patch_rpc_methods()
         d = power.query.power_query_failure(
-            system_id, hostname, message)
+            system_id, hostname, Failure(Exception(message)))
         # This blocks until the deferred is complete
         io.flush()
         self.assertIsNone(extract_result(d))
         self.assertThat(
             protocol.SendEvent,
             MockCalledOnceWith(
-                ANY,
-                type_name=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
-                system_id=system_id,
-                description=message)
-        )
+                ANY, type_name=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                system_id=system_id, description=(
+                    "Power state could not be queried: " + message),
+            ))
 
 
 class TestPowerQuery(MAASTestCase):
@@ -220,79 +230,64 @@ class TestPowerQuery(MAASTestCase):
         # The node hasn't been marked broken.
         self.assertThat(markNodeBroken, MockNotCalled())
 
-    def test_get_power_state_changes_power_state_if_failure(self):
+    def test_report_power_state_changes_power_state_if_failure(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
         err_msg = factory.make_name('error')
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power_state_update = self.patch_autospec(power, 'power_state_update')
-        do_not_pause(self)
 
-        # Simulate a persistent failure.
-        power_action, execute = patch_PowerAction(
-            self, side_effect=poweraction.PowerActionFail(err_msg))
         _, _, io = self.patch_rpc_methods()
+        self.patch_autospec(power, 'power_state_update')
 
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
+        # Simulate a failure when querying state.
+        query = fail(poweraction.PowerActionFail(err_msg))
+        report = power.query.report_power_state(query, system_id, hostname)
+
         io.flush()
-        d.addCallback(self.fail)
 
         error = self.assertRaises(
-            poweraction.PowerActionFail, extract_result, d)
+            poweraction.PowerActionFail, extract_result, report)
         self.assertEqual(err_msg, unicode(error))
         self.assertThat(
-            power_state_update, MockCalledOnceWith(system_id, 'error'))
+            power.power_state_update,
+            MockCalledOnceWith(system_id, 'error'))
 
-    def test_get_power_state_changes_power_state_if_success(self):
+    def test_report_power_state_changes_power_state_if_success(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_state = random.choice(['on', 'off'])
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power_state_update = self.patch_autospec(power, 'power_state_update')
 
-        # Simulate success.
-        power_action, execute = patch_PowerAction(
-            self, return_value=power_state)
         _, _, io = self.patch_rpc_methods()
+        self.patch_autospec(power, 'power_state_update')
 
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
+        # Simulate a success when querying state.
+        query = succeed(power_state)
+        report = power.query.report_power_state(query, system_id, hostname)
+
         io.flush()
-        self.assertEqual(power_state, extract_result(d))
-        self.assertThat(
-            power_state_update, MockCalledOnceWith(system_id, power_state))
 
-    def test_get_power_state_changes_power_state_if_unknown(self):
+        self.assertEqual(power_state, extract_result(report))
+        self.assertThat(
+            power.power_state_update,
+            MockCalledOnceWith(system_id, power_state))
+
+    def test_report_power_state_changes_power_state_if_unknown(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_state = "unknown"
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power_state_update = self.patch_autospec(power, 'power_state_update')
 
-        # Simulate success.
-        power_action, execute = patch_PowerAction(
-            self, return_value=power_state)
         _, _, io = self.patch_rpc_methods()
+        self.patch_autospec(power, 'power_state_update')
 
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
+        # Simulate a success when querying state.
+        query = succeed(power_state)
+        report = power.query.report_power_state(query, system_id, hostname)
+
         io.flush()
-        self.assertEqual(power_state, extract_result(d))
+
+        self.assertEqual(power_state, extract_result(report))
         self.assertThat(
-            power_state_update, MockCalledOnceWith(system_id, power_state))
+            power.power_state_update,
+            MockCalledOnceWith(system_id, power_state))
 
     def test_get_power_state_pauses_inbetween_retries(self):
         system_id = factory.make_name('system_id')
@@ -351,7 +346,7 @@ class TestPowerQueryExceptions(MAASTestCase):
         for power_type in power.QUERY_POWER_TYPES
     )
 
-    def test_get_power_state_captures_all_exceptions(self):
+    def test_report_power_state_reports_all_exceptions(self):
         logger_twisted = self.useFixture(TwistedLoggerFixture())
         logger_maaslog = self.useFixture(FakeLogger("maas"))
 
@@ -366,8 +361,11 @@ class TestPowerQueryExceptions(MAASTestCase):
         query = self.patch_autospec(power.query, self.func)
         query.side_effect = always_fail_with(exception)
 
-        # Intercept calls to power_query_failure().
-        self.patch_autospec(power.query, "power_query_failure")
+        # Intercept calls to power_state_update() and send_event_node().
+        power_state_update = self.patch_autospec(power, "power_state_update")
+        power_state_update.return_value = succeed(None)
+        send_event_node = self.patch_autospec(power.query, "send_event_node")
+        send_event_node.return_value = succeed(None)
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -376,6 +374,8 @@ class TestPowerQueryExceptions(MAASTestCase):
 
         d = power.query.get_power_state(
             system_id, hostname, self.power_type, context, clock)
+        d = power.query.report_power_state(
+            d, system_id, hostname)
 
         # Crank through some number of retries.
         for wait in self.waits:
@@ -392,17 +392,22 @@ class TestPowerQueryExceptions(MAASTestCase):
         expected_calls = [expected_call] * self.calls
         self.assertThat(query, MockCallsMatch(*expected_calls))
 
-        # power_query_failure() was called once at the end with a message
-        # constructed using the error message we fabricated at the beginning.
         expected_message = (
             "Power state could not be queried: %s" % exception_message)
-        self.assertThat(power.query.power_query_failure, MockCalledOnceWith(
-            system_id, hostname, expected_message))
 
-        # Nothing was logged to the Twisted log or to maaslog; that happens
-        # elsewhere, in maaslog_query_failure() and maaslog_query().
+        # An attempt was made to report the failure to the region.
+        self.assertThat(
+            power_state_update, MockCalledOnceWith(system_id, 'error'))
+        # An attempt was made to log a node event with details.
+        self.assertThat(
+            send_event_node, MockCalledOnceWith(
+                EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                system_id, hostname, expected_message))
+
+        # Nothing was logged to the Twisted log.
         self.assertEqual("", logger_twisted.output)
-        self.assertEqual("", logger_maaslog.output)
+        # A brief message is written to maaslog.
+        self.assertEqual(expected_message + "\n", logger_maaslog.output)
 
 
 class TestPowerQueryAsync(MAASTestCase):
@@ -444,15 +449,16 @@ class TestPowerQueryAsync(MAASTestCase):
             if value != state])
 
     @inlineCallbacks
-    def test_query_all_nodes_calls_get_power_state(self):
+    def test_query_all_nodes_gets_and_reports_power_state(self):
         nodes = self.make_nodes()
+
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
-        get_power_state = self.patch_autospec(power.query, 'get_power_state')
-        get_power_state.side_effect = [
-            succeed(power_state)
-            for power_state in power_states
-            ]
+        queries = list(imap(succeed, power_states))
+        get_power_state = self.patch(power.query, 'get_power_state')
+        get_power_state.side_effect = queries
+        report_power_state = self.patch(power.query, 'report_power_state')
+        report_power_state.side_effect = lambda d, sid, hn: d
 
         yield power.query.query_all_nodes(nodes)
         self.assertThat(get_power_state, MockCallsMatch(*(
@@ -461,6 +467,10 @@ class TestPowerQueryAsync(MAASTestCase):
                 node['power_type'], node['context'],
                 clock=reactor)
             for node in nodes
+        )))
+        self.assertThat(report_power_state, MockCallsMatch(*(
+            call(query, node['system_id'], node['hostname'])
+            for query, node in izip(queries, nodes)
         )))
 
     @inlineCallbacks
@@ -484,10 +494,8 @@ class TestPowerQueryAsync(MAASTestCase):
         # Report back power state of nodes' not in registry.
         power_states = [node['power_state'] for node in nodes[1:]]
         get_power_state = self.patch(power.query, 'get_power_state')
-        get_power_state.side_effect = [
-            succeed(power_state)
-            for power_state in power_states
-            ]
+        get_power_state.side_effect = imap(succeed, power_states)
+        suppress_reporting(self)
 
         yield power.query.query_all_nodes(nodes)
         self.assertThat(get_power_state, MockCallsMatch(*(
@@ -512,10 +520,8 @@ class TestPowerQueryAsync(MAASTestCase):
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
         get_power_state = self.patch(power.query, 'get_power_state')
-        get_power_state.side_effect = [
-            succeed(power_state)
-            for power_state in power_states
-            ]
+        get_power_state.side_effect = imap(succeed, power_states)
+        suppress_reporting(self)
 
         yield power.query.query_all_nodes(nodes)
         self.assertThat(get_power_state, MockCallsMatch(*(
@@ -537,6 +543,7 @@ class TestPowerQueryAsync(MAASTestCase):
             fail(poweraction.PowerActionFail(error_msg)),
             succeed(new_state_2),
         ]
+        suppress_reporting(self)
 
         with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
             yield power.query.query_all_nodes([node1, node2])
@@ -554,7 +561,10 @@ class TestPowerQueryAsync(MAASTestCase):
         new_state_2 = self.pick_alternate_state(node2['power_state'])
         get_power_state = self.patch(power.query, 'get_power_state')
         get_power_state.side_effect = [
-            fail(exceptions.NoSuchNode()), succeed(new_state_2)]
+            fail(exceptions.NoSuchNode()),
+            succeed(new_state_2),
+        ]
+        suppress_reporting(self)
 
         with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
             yield power.query.query_all_nodes([node1, node2])
@@ -577,6 +587,7 @@ class TestPowerQueryAsync(MAASTestCase):
             fail(error_type(error_message)),
             succeed(new_state_2),
         ]
+        suppress_reporting(self)
 
         maaslog = FakeLogger("maas.power", level=logging.DEBUG)
         twistlog = TwistedLoggerFixture()
@@ -603,7 +614,10 @@ class TestPowerQueryAsync(MAASTestCase):
         node1, node2 = self.make_nodes(2)
         get_power_state = self.patch(power.query, 'get_power_state')
         get_power_state.side_effect = [
-            succeed(node1['power_state']), succeed(node2['power_state'])]
+            succeed(node1['power_state']),
+            succeed(node2['power_state']),
+        ]
+        suppress_reporting(self)
 
         results = yield power.query.query_all_nodes([node1, node2])
         self.assertEqual(

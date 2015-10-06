@@ -1809,6 +1809,7 @@ class Node(CleanSave, TimestampedModel):
         NodeResult.objects.filter(
             node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
 
+    @transactional
     def update_power_state(self, power_state):
         """Update a node's power state """
         self.power_state = power_state

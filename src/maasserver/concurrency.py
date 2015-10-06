@@ -33,14 +33,15 @@ from twisted.internet.defer import DeferredSemaphore
 # leave the database connection idle. Database connections are a limited
 # resource so this is bad for concurrency.
 #
-# It can even lead to deadlocks. For example, the cluster calls back to the
+# It can even lead to deadlocks. Previously the cluster called back to the
 # region with `UpdateNodePowerState` with the result of a `PowerQuery` RPC
-# call. Servicing `UpdateNodePowerState` requires a database connection. When
-# the region is busy and lots of RPC calls are being made from threads holding
-# database connections, this can result in the `UpdateNodePowerState` calls
-# waiting for a free database connection with no hope of ever receiving one.
+# call. Servicing `UpdateNodePowerState` required a database connection. When
+# the region was busy and lots of RPC calls were being made from threads
+# holding database connections, this could mean the `UpdateNodePowerState`
+# calls waited for a free database connection with no hope of ever receiving
+# one.
 #
-# This example can be fixed by changing the handler for `PowerQuery`, but
+# This example was fixed by changing the handler for `PowerQuery`, but
 # unfortunately this pattern is not confined to `PowerQuery`. It's also an
 # easy pattern to inadvertently reproduce, a hard one to diagnose, and not the
 # only way to create a deadlock.

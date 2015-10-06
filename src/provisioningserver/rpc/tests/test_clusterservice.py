@@ -1573,8 +1573,6 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
     @inlineCallbacks
     def test_returns_power_state(self):
         state = random.choice(['on', 'off'])
-        power_state_update = self.patch(
-            power_module, "power_state_update")
         perform_power_query = self.patch(
             power_module.query, "perform_power_query")
         perform_power_query.return_value = state
@@ -1584,6 +1582,10 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         self.patch(
             power_module.query, "perform_power_driver_query",
             perform_power_query)
+
+        # Intercept calls to report the status.
+        report_power_state = self.patch(
+            power_module.query, "report_power_state")
 
         arguments = {
             'system_id': factory.make_name('system'),
@@ -1599,9 +1601,8 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
             MockCalledOnceWith(
                 arguments['system_id'], arguments['hostname'],
                 arguments['power_type'], arguments['context']))
-        self.assertThat(
-            power_state_update,
-            MockCalledOnceWith(arguments['system_id'], state))
+        # The region is NOT told about the change.
+        self.assertThat(report_power_state, MockNotCalled())
 
 
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):

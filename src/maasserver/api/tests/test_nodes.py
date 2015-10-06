@@ -22,7 +22,10 @@ import crochet
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test import RequestFactory
-from maasserver import forms
+from maasserver import (
+    eventloop,
+    forms,
+)
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
@@ -31,6 +34,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     ClusterUnavailable,
@@ -50,6 +54,7 @@ from maasserver.models.user import (
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
     APITestCase,
+    APITransactionTestCase,
     MultipleUsersScenarios,
 )
 from maasserver.testing.architecture import make_usable_architecture
@@ -1842,15 +1847,18 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         self.assertEqual(node.status, parsed_result['substatus'])
 
 
-class TestPowerState(APITestCase):
+class TestPowerState(APITransactionTestCase):
+
+    def setUp(self):
+        super(TestPowerState, self).setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks", "rpc"))
+        self.useFixture(RunningEventLoopFixture())
 
     def get_node_uri(self, node):
         """Get the API URI for a node."""
         return reverse('node_handler', args=[node.system_id])
 
     def prepare_rpc(self, nodegroup, side_effect=None):
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
         self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         protocol = self.rpc_fixture.makeCluster(
             nodegroup, cluster_module.PowerQuery)
@@ -1859,45 +1867,79 @@ class TestPowerState(APITestCase):
         else:
             protocol.PowerQuery.side_effect = side_effect
 
+    def assertPowerState(self, node, state):
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        dbtasks.syncTask().wait()  # Wait for all pending tasks to run.
+        self.assertThat(reload_object(node).power_state, Equals(state))
+
     def test__catches_no_connection_error(self):
-        self.patch(
-            nodes_module,
-            'getClientFor').side_effect = NoConnectionsAvailable()
-        node = factory.make_Node()
+        getClientFor = self.patch(nodes_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        node = factory.make_Node(power_state=POWER_STATE.ON)
+
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
+
         self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
         self.assertIn(
             "Unable to connect to cluster controller", response.content)
+        # The node's power state is unchanged.
+        self.assertPowerState(node, POWER_STATE.ON)
 
     def test__catches_timeout_error(self):
         mock_client = Mock()
-        self.patch(
-            nodes_module, 'getClientFor').return_value = mock_client
         mock_client().wait.side_effect = crochet.TimeoutError("error")
-        node = factory.make_Node(power_type="ipmi")
+        getClientFor = self.patch(nodes_module, 'getClientFor')
+        getClientFor.return_value = mock_client
+        node = factory.make_Node(power_state=POWER_STATE.ON, power_type="ipmi")
+
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
+
         self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
         self.assertIn("Timed out waiting for power response", response.content)
+        # The node's power state is unchanged.
+        self.assertPowerState(node, POWER_STATE.ON)
 
     def test__catches_unknown_power_type(self):
         self.patch(nodes_module, 'getClientFor')
-        node = factory.make_Node(power_type="")
+        node = factory.make_Node(power_state=POWER_STATE.OFF, power_type="")
+
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
+
         self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
         self.assertIn("Power state is not queryable", response.content)
+        # The node's power state is now "unknown".
+        self.assertPowerState(node, POWER_STATE.UNKNOWN)
 
     def test__catches_poweraction_fail(self):
-        node = factory.make_Node(power_type="ipmi")
+        node = factory.make_Node(power_state=POWER_STATE.ON, power_type="ipmi")
         error_message = factory.make_name("error")
         self.prepare_rpc(
             node.nodegroup, side_effect=PowerActionFail(error_message))
+
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
+
         self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
         self.assertIn(error_message, response.content)
+        # The node's power state is now "error".
+        self.assertPowerState(node, POWER_STATE.ERROR)
+
+    def test__catches_operation_not_implemented(self):
+        node = factory.make_Node(power_state=POWER_STATE.ON, power_type="ipmi")
+        error_message = factory.make_name("error")
+        self.prepare_rpc(
+            node.nodegroup, side_effect=NotImplementedError(error_message))
+
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn(error_message, response.content)
+        # The node's power state is now "unknown".
+        self.assertPowerState(node, POWER_STATE.UNKNOWN)
 
     def test__returns_400_if_device(self):
         device = factory.make_Device()
@@ -1911,10 +1953,12 @@ class TestPowerState(APITestCase):
         self.prepare_rpc(
             node.nodegroup,
             side_effect=always_succeed_with({"state": random_state}))
+
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
+
         self.assertResponseCode(httplib.OK, response)
         response = json.loads(response.content)
-        self.assertEqual(
-            {"state": random_state},
-            response)
+        self.assertEqual({"state": random_state}, response)
+        # The node's power state is now `random_state`.
+        self.assertPowerState(node, random_state)
