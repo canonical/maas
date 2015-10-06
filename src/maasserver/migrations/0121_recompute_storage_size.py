@@ -94,6 +94,10 @@ def update_storage_details(node, xmlbytes):
 
 class Migration(DataMigration):
 
+    depends_on = (
+        ("metadataserver", "0015_rename_nodecommissionresult_add_result_type"),
+    )
+
     def forwards(self, orm):
         "Recompute storage size with the new commissioning results code."
         for node in orm['maasserver.node'].objects.all():
