@@ -239,6 +239,10 @@ table {
         background-color: #FFF;
         border-color: #D2D2D2;
         background-position: right 10px top 16px;
+
+        &.invalid {
+          border-color: #D90000;
+        }
       }
 
       .table__controls {
@@ -419,6 +423,19 @@ table {
     background-color: transparent;
     border-color: transparent;
     background-position: -9999px -9999px;
+
+    &.invalid {
+      border-color: transparent;
+
+      &:focus {
+        border-color: #D90000;
+      }
+    }
+
+    &:focus {
+      background-color: #FFF;
+      border-color: #D2D2D2;
+    }
   }
 
   label {
@@ -439,10 +456,10 @@ table {
 
     li {
       margin: 0;
-      margin-bottom: 14px;
+      margin-top: 14px;
 
-      &:last-of-type {
-        margin-bottom: 0;
+      &:first-of-type {
+        margin-top: 0;
       }
     }
   }
