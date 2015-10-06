@@ -40,8 +40,10 @@
                             <div class="table__header table__column--20">VLAN</div>
                             <div class="table__header table__column--15">Space</div>
                             <div class="table__header table__column--45">Subnet</div>
-                            <div class="table__header table__column--10">AVAILABLE free addresses</div>
-                            <div class="table__header table__column--10">INEFFICIENCY allocated, not used</div>
+                            <div class="table__header table__column--20">Available IP Addresses</div>
+                            <!--
+                            <div class="table__header table__column--10">IP Addresses allocated but not used</div>
+                            -->
                         </div>
                     </header>
                     <main class="table-body">
@@ -49,9 +51,11 @@
                              data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['vlan.vid','space.name','subnet.cidr'])">
                             <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
                             <div class="table__data table__column--15">{$ getSpaceName(row, data.sortedData) $}</div>
-                            <div class="table__data table__column--45">{$ getSubnetName(row.subnet) $}</div>
-                            <div class="table__data table__column--10">{$ row.subnet.statistics.available_string $}</div>
+                            <div class="table__data table__column--45"><a href="#/subnet/{$ row.subnet.id $}">{$ getSubnetName(row.subnet) $}</a></div>
+                            <div class="table__data table__column--20">{$ row.subnet.statistics.available_string $}</div>
+                            <!--
                             <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
+                            -->
                         </div>
                     </main>
                 </div>
@@ -72,8 +76,10 @@
                             <div class="table__header table__column--15">Fabric</div>
                             <div class="table__header table__column--20">VLAN</div>
                             <div class="table__header table__column--45">Subnet</div>
-                            <div class="table__header table__column--10">AVAILABLE free addresses</div>
+                            <div class="table__header table__column--20">Available IP Addresses</div>
+                            <!--
                             <div class="table__header table__column--10">INEFFICIENCY allocated, not used</div>
+                            -->
                         </div>
                     </header>
                     <main class="table-body">
@@ -84,9 +90,11 @@
                              data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['fabric.name','vlan.vid','subnet.cidr'])">
                             <div class="table__data table__column--15">{$ getFabricName(row, data.sortedData) $}</div>
                             <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
-                            <div class="table__data table__column--45">{$ getSubnetName(row.subnet) $}</div>
-                            <div class="table__data table__column--10">{$ row.subnet.statistics.available_string $}</div>
+                            <div class="table__data table__column--45"><a href="#/subnet/{$ row.subnet.id $}">{$ getSubnetName(row.subnet) $}</a></div>
+                            <div class="table__data table__column--20">{$ row.subnet.statistics.available_string $}</div>
+                            <!--
                             <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
+                            -->
                         </div>
                     </main>
                 </div>
