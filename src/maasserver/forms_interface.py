@@ -21,7 +21,12 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    BOND_LACP_RATE_CHOICES,
+    BOND_MODE_CHOICES,
+    BOND_XMIT_HASH_POLICY_CHOICES,
+    INTERFACE_TYPE,
+)
 from maasserver.forms import (
     MAASModelForm,
     set_form_error,
@@ -35,32 +40,6 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.utils.forms import compose_invalid_choice_text
-
-
-BOND_MODE_CHOICES = (
-    ("balance-rr", "balance-rr"),
-    ("active-backup", "active-backup"),
-    ("balance-xor", "balance-xor"),
-    ("broadcast", "broadcast"),
-    ("802.3ad", "802.3ad"),
-    ("balance-tlb", "balance-tlb"),
-    ("balance-alb", "balance-alb"),
-)
-
-
-BOND_LACP_RATE_CHOICES = (
-    ("slow", "slow"),
-    ("fast", "fast"),
-)
-
-
-BOND_XMIT_HASH_POLICY_CHOICES = (
-    ("layer2", "layer2"),
-    ("layer2+3", "layer2+3"),
-    ("layer3+4", "layer3+4"),
-    ("encap2+3", "encap2+3"),
-    ("encap3+4", "encap3+4"),
-)
 
 
 class InterfaceForm(MAASModelForm):

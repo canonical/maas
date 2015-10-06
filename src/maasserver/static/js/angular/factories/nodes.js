@@ -89,6 +89,17 @@ angular.module('MAAS').factory(
                     "node.create_vlan", params);
             };
 
+        // Create the bond interface on the node.
+        NodesManager.prototype.createBondInterface = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_bond", params);
+            };
+
         // Update the interface for the node.
         NodesManager.prototype.updateInterface = function(
             node, interface_id, params) {

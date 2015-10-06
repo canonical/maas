@@ -174,6 +174,45 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("createBondInterface", function() {
+
+        it("calls node.create_bond with system_id without params",
+            function(done) {
+                var node = makeNode();
+                webSocket.returnData.push(makeFakeResponse("created"));
+                NodesManager.createBondInterface(node).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_bond");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        done();
+                    });
+            });
+
+        it("calls node.create_bond with params",
+            function(done) {
+                var node = makeNode();
+                var params = {
+                    vlan: makeInteger(0, 100)
+                };
+                webSocket.returnData.push(makeFakeResponse("created"));
+                NodesManager.createBondInterface(node, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_bond");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.vlan).toBe(params.vlan);
+                        done();
+                    });
+            });
+    });
+
     describe("updateInterface", function() {
 
         it("calls node.update_interface with system_id and interface_id",

@@ -330,94 +330,94 @@
                         </header>
                         <main class="table-body">
                             <div class="table__row"
-                                data-ng-class="{ active: isInterfaceSelected(interface) }"
-                                data-ng-repeat="interface in interfaces">
-                                <div>
-                                    <div class="table__data table__column--3">
-                                        <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
-                                            data-ng-checked="isInterfaceSelected(interface)"
-                                            data-ng-click="toggleInterfaceSelect(interface)" />
-                                        <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
+                                data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled() }"
+                                data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
+                                        data-ng-checked="isInterfaceSelected(interface)"
+                                        data-ng-click="toggleInterfaceSelect(interface)"
+                                        data-ng-disabled="isDisabled()" />
+                                    <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
+                                </div>
+                                <div class="table__data table__column--15" data-ng-show="column == 'name'">
+                                    <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
+                                    <input type="text" class="table__input"
+                                        data-ng-show="interface.type != 'alias'"
+                                        data-ng-model="interface.name"
+                                        data-maas-enter-blur
+                                        data-ng-focus="setFocusInterface(interface)"
+                                        data-ng-blur="clearFocusInterface(interface)"
+                                        data-ng-class="{ invalid: isInterfaceNameInvalid(interface) }">
+                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                        <a data-ng-click="toggleMembers(interface)">
+                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
+                                    {$ interface.mac_address $}
+                                    <span class="table__label active ng-hide" data-ng-show="interface.members">
+                                        <a data-ng-click="toggleMembers(interface)">
+                                            <span data-ng-hide="isShowingMembers(interface)">Show members</span>
+                                            <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="fabric" id="fabric"
+                                        data-ng-model="interface.fabric"
+                                        data-ng-disabled="interface.type == 'alias'"
+                                        data-ng-change="fabricChanged(interface)"
+                                        data-ng-options="fabric as fabric.name for fabric in fabrics">
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="vlan" id="vlan"
+                                        data-ng-model="interface.vlan"
+                                        data-ng-disabled="interface.type == 'alias'"
+                                        data-ng-change="saveInterface(interface)"
+                                        data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--18">
+                                    <select class="table__input" name="subnet" id="subnet"
+                                        data-ng-model="interface.subnet"
+                                        data-ng-change="subnetChanged(interface)"
+                                        data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
+                                        <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <ul class="no-bullets">
+                                        <li>
+                                            <select class="table__input" name="link-mode" id="link-mode"
+                                                data-ng-model="interface.mode"
+                                                data-ng-change="saveInterfaceLink(interface)"
+                                                data-ng-disabled="isLinkModeDisabled(interface)"
+                                                data-ng-options="mode.mode as mode.text for mode in getLinkModes(interface)">
+                                            </select>
+                                        </li>
+                                        <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
+                                            <input type="text" class="table__input"
+                                                data-ng-model="interface.ip_address"
+                                                data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
+                                                data-maas-enter-blur
+                                                data-ng-focus="setFocusInterface(interface)"
+                                                data-ng-blur="clearFocusInterface(interface)"
+                                                data-ng-disabled="interface.mode != 'static'">
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="table__data table__column--13">
+                                    <div class="table__controls align-right">
+                                        <a class="icon add"
+                                            data-ng-click="quickAdd(interface)"
+                                            data-ng-show="canAddAlias(interface) || canAddVLAN(interface)"></a>
+                                        <a class="icon delete" data-ng-click="quickRemove(interface)"></a>
                                     </div>
-                                    <div class="table__data table__column--15" data-ng-show="column == 'name'">
-                                        <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
-                                        <input type="text" class="table__input"
-                                            data-ng-show="interface.type != 'alias'"
-                                            data-ng-model="interface.name"
-                                            data-maas-enter-blur
-                                            data-ng-focus="setFocusInterface(interface)"
-                                            data-ng-blur="clearFocusInterface(interface)"
-                                            data-ng-class="{ invalid: isInterfaceNameInvalid(interface) }">
-                                        <span class="table__label active ng-hide" data-ng-show="interface.members">
-                                            <a data-ng-click="toggleMembers(interface)">
-                                                <span data-ng-hide="isShowingMembers(interface)">Show members</span>
-                                                <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
-                                            </a>
-                                        </span>
-                                    </div>
-                                    <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
-                                        {$ interface.mac_address $}
-                                        <span class="table__label active ng-hide" data-ng-show="interface.members">
-                                            <a data-ng-click="toggleMembers(interface)">
-                                                <span data-ng-hide="isShowingMembers(interface)">Show members</span>
-                                                <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
-                                            </a>
-                                        </span>
-                                    </div>
-                                    <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
-                                    <div class="table__data table__column--14">
-                                        <select class="table__input" name="fabric" id="fabric"
-                                            data-ng-model="interface.fabric"
-                                            data-ng-disabled="interface.type == 'alias'"
-                                            data-ng-change="fabricChanged(interface)"
-                                            data-ng-options="fabric as fabric.name for fabric in fabrics">
-                                        </select>
-                                    </div>
-                                    <div class="table__data table__column--14">
-                                        <select class="table__input" name="vlan" id="vlan"
-                                            data-ng-model="interface.vlan"
-                                            data-ng-disabled="interface.type == 'alias'"
-                                            data-ng-change="saveInterface(interface)"
-                                            data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
-                                        </select>
-                                    </div>
-                                    <div class="table__data table__column--18">
-                                        <select class="table__input" name="subnet" id="subnet"
-                                            data-ng-model="interface.subnet"
-                                            data-ng-change="subnetChanged(interface)"
-                                            data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
-                                            <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
-                                        </select>
-                                    </div>
-                                    <div class="table__data table__column--14">
-                                        <ul class="no-bullets">
-                                            <li>
-                                                <select class="table__input" name="link-mode" id="link-mode"
-                                                    data-ng-model="interface.mode"
-                                                    data-ng-change="saveInterfaceLink(interface)"
-                                                    data-ng-disabled="isLinkModeDisabled(interface)"
-                                                    data-ng-options="mode.mode as mode.text for mode in getLinkModes(interface)">
-                                                </select>
-                                            </li>
-                                            <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
-                                                <input type="text" class="table__input"
-                                                    data-ng-model="interface.ip_address"
-                                                    data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
-                                                    data-maas-enter-blur
-                                                    data-ng-focus="setFocusInterface(interface)"
-                                                    data-ng-blur="clearFocusInterface(interface)"
-                                                    data-ng-disabled="interface.mode != 'static'">
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div class="table__data table__column--13">
-                                        <div class="table__controls align-right">
-                                            <a class="icon add"
-                                                data-ng-click="quickAdd(interface)"
-                                                data-ng-show="canAddAlias(interface) || canAddVLAN(interface)"></a>
-                                            <a class="icon delete" data-ng-click="quickRemove(interface)"></a>
-                                        </div>
-                                    </div>
+                                </div>
                                 <div class="table__dropdown--info ng-hide" data-ng-show="isShowingMembers(interface)">
                                     <div class="table__row" data-ng-repeat="member in interface.members">
                                             <div class="table__data no-padding-top table__column--3"></div>
@@ -514,13 +514,77 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="table__row active ng-hide" data-ng-show="isShowingCreateBond()">
+                                <div class="table__data table__column--3">
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input editible"
+                                        data-ng-class="{ invalid: isInterfaceNameInvalid(newBondInterface) }"
+                                        data-ng-model="newBondInterface.name">
+                                </div>
+                                <div class="table__data table__column--15">Bond</div>
+                                <div class="table__data table__column--67"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="table__data table__column--3">
+                                        </div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">Bond mode</label>
+                                            <select name="bond-mode" id="bond-mode"
+                                                data-ng-model="newBondInterface.mode"
+                                                data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--15">
+                                            <label for="mac">MAC address</label>
+                                            <input type="text" data-ng-model="newBondInterface.macAddress"
+                                                data-ng-class="{ invalid: isBondMACAddressInvalid() }"
+                                                data-ng-placeholder="getBondPlaceholderMACAddress()">
+                                        </div>
+                                        <div class="table__data table__column--15" data-ng-show="showLACPRate()">
+                                            <label for="rates">LACP rate</label>
+                                            <select name="bond-mode" id="bond-mode"
+                                                data-ng-model="newBondInterface.lacpRate"
+                                                data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--15" data-ng-show="showXMITHashPolicy()">
+                                            <label for="rates">XMIT hash policy</label>
+                                            <select name="xmit-hash-policy" id="xmit-hash-policy"
+                                                data-ng-model="newBondInterface.xmitHashPolicy"
+                                                data-ng-options="xmit[0] as xmit[1] for xmit in bondOptions.xmit_hash_policies">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                                        <div class="table__header table__column--3"></div>
+                                        <div class="table__header table__column--15">Name</div>
+                                        <div class="table__header table__column--15">Type</div>
+                                        <div class="table__header table__column--67">Primary</div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row no-border"
+                                        data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
+                                        <div class="table__data no-padding-top table__column--3"></div>
+                                        <div class="table__data no-padding-top table__column--15">{$ parent.name $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(parent) $}</div>
+                                        <div class="table__data no-padding-top table__column--67">
+                                            <input type="radio" name="bondPrimary" data-ng-model="newBondInterface.primary" data-ng-value="parent">
+                                        </div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                            <button class="cta-ubuntu" data-ng-click="addBond()">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </main>
                     </div>
-                    <!--
-                    TODO: Use when editing is done.
-                    <a class="link-cta-ubuntu secondary margin-right">Create Bond</a>
-                    <a class="link-cta-ubuntu secondary margin-right">Create Bridge</a>
-                    -->
+                    <a class="link-cta-ubuntu secondary margin-right"
+                        data-ng-class="{ disabled: !canCreateBond() }"
+                        data-ng-click="showCreateBond()"
+                        data-ng-hide="isShowingCreateBond()">Create Bond</a>
                 </div>
             </form>
 

@@ -37,6 +37,7 @@ from maasserver.forms import (
     MountPartitionForm,
 )
 from maasserver.forms_interface import (
+    BondInterfaceForm,
     InterfaceForm,
     VLANInterfaceForm,
 )
@@ -119,6 +120,7 @@ class NodeHandler(TimestampedModelHandler):
             'set_active',
             'check_power',
             'create_vlan',
+            'create_bond',
             'update_interface',
             'delete_interface',
             'link_subnet',
@@ -704,6 +706,20 @@ class NodeHandler(TimestampedModelHandler):
         node = self.get_object(params)
         params['parents'] = [params.pop('parent')]
         form = VLANInterfaceForm(node=node, data=params)
+        if form.is_valid():
+            interface = form.save()
+            self._create_link_on_interface(interface, params)
+        else:
+            raise ValidationError(form.errors)
+
+    def create_bond(self, params):
+        """Create bond interface."""
+        # Only admin users can perform create.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        form = BondInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
             self._create_link_on_interface(interface, params)

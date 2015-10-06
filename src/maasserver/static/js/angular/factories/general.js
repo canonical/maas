@@ -63,6 +63,16 @@ angular.module('MAAS').factory(
                     replaceData: function(oldData, newData) {
                         angular.copy(newData, oldData);
                     }
+                },
+                bond_options: {
+                    method: "general.bond_options",
+                    data: {},
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null,
+                    replaceData: function(oldData, newData) {
+                        angular.copy(newData, oldData);
+                    }
                 }
             };
 

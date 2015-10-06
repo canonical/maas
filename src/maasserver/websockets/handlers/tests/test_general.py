@@ -14,7 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    BOND_LACP_RATE_CHOICES,
+    BOND_MODE_CHOICES,
+    BOND_XMIT_HASH_POLICY_CHOICES,
+    NODE_PERMISSION,
+)
 from maasserver.models.config import Config
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
@@ -108,3 +113,11 @@ class TestGeneralHandler(MAASServerTestCase):
             lambda: iter(hostnames))
         handler = GeneralHandler(factory.make_User(), {})
         self.assertEqual("", handler.random_hostname({}))
+
+    def test_bond_options(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertEquals({
+            "modes": BOND_MODE_CHOICES,
+            "lacp_rates": BOND_LACP_RATE_CHOICES,
+            "xmit_hash_policies": BOND_XMIT_HASH_POLICY_CHOICES,
+            }, handler.bond_options({}))

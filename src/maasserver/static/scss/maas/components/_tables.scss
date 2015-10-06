@@ -254,6 +254,9 @@ table {
 
     &.active {
       background-color: #FFF;
+    }
+
+    &.active, &.disabled {
 
       &:hover {
 

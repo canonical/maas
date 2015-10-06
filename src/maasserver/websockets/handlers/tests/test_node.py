@@ -24,6 +24,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
+    BOND_MODE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     INTERFACE_LINK_TYPE,
@@ -1258,6 +1259,43 @@ class TestNodeHandler(MAASServerTestCase):
         link_up_ip = vlan_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=new_subnet)
         self.assertIsNotNone(link_up_ip)
+
+    def test_create_bond_creates_bond(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=nic1.vlan)
+        bond_mode = factory.pick_enum(BOND_MODE)
+        name = factory.make_name("bond")
+        handler.create_bond({
+            "system_id": node.system_id,
+            "name": name,
+            "parents": [nic1.id, nic2.id],
+            "mac_address": "%s" % nic1.mac_address,
+            "vlan": nic1.vlan.id,
+            "bond_mode": bond_mode
+            })
+        bond_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.BOND, parents=nic1,
+                name=name, vlan=nic1.vlan))
+        self.assertIsNotNone(bond_interface)
+        self.assertEquals(bond_mode, bond_interface.params["bond_mode"])
+
+    def test_create_bond_raises_ValidationError(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = NodeHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=nic1.vlan)
+        with ExpectedException(ValidationError):
+            handler.create_bond({
+                "system_id": node.system_id,
+                "parents": [nic1.id, nic2.id],
+                })
 
     def test_update_interface(self):
         user = factory.make_admin()

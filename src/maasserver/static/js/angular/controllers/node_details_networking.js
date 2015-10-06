@@ -33,12 +33,42 @@ angular.module('MAAS').filter('filterByUnusedForInterface', function() {
 });
 
 
+// Filter that is specific to the NodeNetworkingController. Filters the
+// list of interfaces to not include the current parent interfaces being
+// bonded together.
+angular.module('MAAS').filter('removeBondParents', function() {
+    return function(interfaces, bondInterface) {
+        if(!angular.isObject(bondInterface) ||
+            !angular.isArray(bondInterface.parents)) {
+            return interfaces;
+        }
+        var filtered = [];
+        angular.forEach(interfaces, function(nic) {
+            var i, parent, found = false;
+            for(i = 0; i < bondInterface.parents.length; i++) {
+                parent = bondInterface.parents[i];
+                if(parent.id === nic.id && parent.link_id === nic.link_id) {
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
+                filtered.push(nic);
+            }
+        });
+        return filtered;
+    };
+});
+
+
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
-    'NodesManager', 'ManagerHelperService', 'ValidationService',
+    'NodesManager', 'GeneralManager', 'ManagerHelperService',
+    'ValidationService',
     function(
         $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
-        NodesManager, ManagerHelperService, ValidationService) {
+        NodesManager, GeneralManager, ManagerHelperService,
+        ValidationService) {
 
         // Different interface types.
         var INTERFACE_TYPE = {
@@ -94,6 +124,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.selectedInterfaces = [];
         $scope.selectedMode = null;
         $scope.newInterface = {};
+        $scope.newBondInterface = {};
+        $scope.bondOptions = GeneralManager.getData("bond_options");
 
         // Give $parent which is the NodeDetailsController access to this scope
         // it will call `nodeLoaded` once the node has been fully loaded.
@@ -297,7 +329,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return VLANsManager.getItemFromList(fabric.vlan_ids[0]);
         }
 
-        // Return list of
+        // Return list of unused VLANs for an interface. Also remove the
+        // ignoreVLANs from the returned list.
         function getUnusedVLANs(nic, ignoreVLANs) {
             var vlans = $filter('filterByFabric')($scope.vlans, nic.fabric);
             vlans = $filter('filterByUnusedForInterface')(
@@ -318,6 +351,33 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 }
             });
             return vlans;
+        }
+
+        // Return the currently selected interface objects.
+        function getSelectedInterfaces() {
+            var interfaces = [];
+            angular.forEach($scope.selectedInterfaces, function(key) {
+                var splitKey = key.split('/');
+                var links = $scope.interfaceLinksMap[splitKey[0]];
+                if(angular.isObject(links)) {
+                    var nic = links[splitKey[1]];
+                    if(angular.isObject(nic)) {
+                        interfaces.push(nic);
+                    }
+                }
+            });
+            return interfaces;
+        }
+
+        // Get the next available bond name.
+        function getNextBondName() {
+            var idx = 0;
+            angular.forEach($scope.originalInterfaces, function(nic) {
+                if(nic.name === "bond" + idx) {
+                    idx++;
+                }
+            });
+            return "bond" + idx;
         }
 
         // Called by $parent when the node has been loaded.
@@ -439,7 +499,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return True if the interface name that the user typed is invalid.
         $scope.isInterfaceNameInvalid = function(nic) {
-            if(nic.name.length === 0) {
+            if(!angular.isString(nic.name) || nic.name.length === 0) {
                 return true;
             } else {
                 var i;
@@ -700,7 +760,12 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Cancel the current mode go back to sinle selection mode.
         $scope.cancel = function() {
             $scope.newInterface = {};
-            $scope.selectedMode = SELECTION_MODE.SINGLE;
+            $scope.newBondInterface = {};
+            if($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
+                $scope.selectedMode = SELECTION_MODE.MUTLI;
+            } else {
+                $scope.selectedMode = SELECTION_MODE.SINGLE;
+            }
         };
 
         // Confirm the removal of interface.
@@ -845,7 +910,137 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Load all the required managers.
+        // Return true if this interface should be disabled in the list. Only
+        // returns true when in create bond mode.
+        $scope.isDisabled = function() {
+            return (
+                $scope.selectedMode !== SELECTION_MODE.NONE &&
+                $scope.selectedMode !== SELECTION_MODE.SINGLE &&
+                $scope.selectedMode !== SELECTION_MODE.MUTLI);
+        };
+
+        // Return true when a bond can be created based on the current
+        // selection. Only can be done if no aliases are selected and all
+        // selected interfaces are on the same VLAN.
+        $scope.canCreateBond = function() {
+            if($scope.selectedMode !== SELECTION_MODE.MUTLI) {
+                return false;
+            }
+            var interfaces = getSelectedInterfaces();
+            var i, vlan;
+            for(i = 0; i < interfaces.length; i++) {
+                var nic = interfaces[i];
+                if(nic.type === INTERFACE_TYPE.ALIAS ||
+                    nic.type === INTERFACE_TYPE.BOND) {
+                    return false;
+                } else if(!angular.isObject(vlan)) {
+                    vlan = nic.vlan;
+                } else if(vlan !== nic.vlan) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        // Return true when the create bond view is being shown.
+        $scope.isShowingCreateBond = function() {
+            return $scope.selectedMode === SELECTION_MODE.CREATE_BOND;
+        };
+
+        // Show the create bond view.
+        $scope.showCreateBond = function() {
+            if($scope.selectedMode === SELECTION_MODE.MUTLI &&
+                $scope.canCreateBond()) {
+                $scope.selectedMode = SELECTION_MODE.CREATE_BOND;
+
+                var parents = getSelectedInterfaces();
+                $scope.newBondInterface = {
+                    name: getNextBondName(),
+                    parents: parents,
+                    primary: parents[0],
+                    macAddress: "",
+                    mode: "active-backup",
+                    lacpRate: "slow",
+                    xmitHashPolicy: "layer2"
+                };
+            }
+        };
+
+        // Return the MAC address that should be shown as a placeholder. This
+        // this is the MAC address of the primary interface.
+        $scope.getBondPlaceholderMACAddress = function() {
+            if(!angular.isObject($scope.newBondInterface.primary)) {
+                return "";
+            } else {
+                return $scope.newBondInterface.primary.mac_address;
+            }
+        };
+
+        // Return true if the user has inputed a value in the MAC address field
+        // but it is invalid.
+        $scope.isBondMACAddressInvalid = function() {
+            if(!angular.isString($scope.newBondInterface.macAddress) ||
+                $scope.newBondInterface.macAddress === "") {
+                return false;
+            }
+            return !ValidationService.validateMAC(
+                $scope.newBondInterface.macAddress);
+        };
+
+        // Return true when the LACR rate selection should be shown.
+        $scope.showLACPRate = function() {
+            return $scope.newBondInterface.mode === "802.3ad";
+        };
+
+        // Return true when the XMIT hash policy should be shown.
+        $scope.showXMITHashPolicy = function() {
+            return (
+                $scope.newBondInterface.mode === "balance-xor" ||
+                $scope.newBondInterface.mode === "802.3ad" ||
+                $scope.newBondInterface.mode === "balance-tlb");
+        };
+
+        // Actually add the bond.
+        $scope.addBond = function() {
+            var parents = $scope.newBondInterface.parents.map(
+                function(nic) { return nic.id; });
+            var macAddress = $scope.newBondInterface.macAddress;
+            if(macAddress === "") {
+                macAddress = $scope.newBondInterface.primary.mac_address;
+            }
+            var params = {
+                name: $scope.newBondInterface.name,
+                mac_address: macAddress,
+                parents: parents,
+                vlan: $scope.newBondInterface.primary.vlan.id,
+                bond_mode: $scope.newBondInterface.mode,
+                bond_lacp_rate: $scope.newBondInterface.lacpRate,
+                bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy
+            };
+            NodesManager.createBondInterface($scope.node, params).then(
+                null, function(error) {
+                    // Should do something better but for now just log
+                    // the error.
+                    console.log(error);
+                });
+
+            // Remove the parent interfaces so that they don't show up
+            // in the listing unti the new bond appears.
+            angular.forEach($scope.newBondInterface.parents, function(parent) {
+                var idx = $scope.interfaces.indexOf(parent);
+                if(idx > -1) {
+                    $scope.interfaces.splice(idx, 1);
+                }
+            });
+
+            // Clear the bond interface and reset the mode.
+            $scope.newBondInterface = {};
+            $scope.selectedInterfaces = [];
+            $scope.selectedMode = SELECTION_MODE.NONE;
+        };
+
+        // Load all the required managers. NodesManager and GeneralManager are
+        // loaded by the parent controller "NodeDetailsController".
         ManagerHelperService.loadManagers([
             FabricsManager,
             VLANsManager,

@@ -16,7 +16,12 @@ __all__ = [
     "GeneralHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    BOND_LACP_RATE_CHOICES,
+    BOND_MODE_CHOICES,
+    BOND_XMIT_HASH_POLICY_CHOICES,
+    NODE_PERMISSION,
+)
 from maasserver.models.bootresource import BootResource
 from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.config import Config
@@ -43,6 +48,7 @@ class GeneralHandler(Handler):
             'node_actions',
             'device_actions',
             'random_hostname',
+            'bond_options',
             ]
 
     def architectures(self, params):
@@ -112,3 +118,11 @@ class GeneralHandler(Handler):
             except Node.DoesNotExist:
                 return new_hostname
         return ""
+
+    def bond_options(self, params):
+        """Return all the possible bond options."""
+        return {
+            "modes": BOND_MODE_CHOICES,
+            "lacp_rates": BOND_LACP_RATE_CHOICES,
+            "xmit_hash_policies": BOND_XMIT_HASH_POLICY_CHOICES,
+        }

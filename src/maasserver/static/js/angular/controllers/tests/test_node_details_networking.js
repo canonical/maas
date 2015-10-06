@@ -77,6 +77,54 @@ describe("filterByUnusedForInterface", function() {
 });
 
 
+describe("removeBondParents", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the removeBondParents.
+    var removeBondParents;
+    beforeEach(inject(function($filter) {
+        removeBondParents = $filter("removeBondParents");
+    }));
+
+    it("returns empty if undefined bondInterface", function() {
+        var i, nic, interfaces = [];
+        for(i = 0; i < 3; i++) {
+            nic = {
+                id: i,
+                link_id: i
+            };
+            interfaces.push(nic);
+        }
+        expect(removeBondParents(interfaces)).toEqual(interfaces);
+    });
+
+    it("removes parents from interfaces", function() {
+        var vlan = {
+            id: makeInteger(0, 100)
+        };
+        var nic1 = {
+            id: makeInteger(0, 100),
+            link_id: makeInteger(0, 100),
+            type: "physical",
+            vlan: vlan
+        };
+        var nic2 = {
+            id: makeInteger(0, 100),
+            link_id: makeInteger(0, 100),
+            type: "physical",
+            vlan: vlan
+        };
+        var interfaces = [nic1, nic2];
+        var bondInterface = {
+            parents: interfaces
+        };
+        expect(removeBondParents(interfaces, bondInterface)).toEqual([]);
+    });
+});
+
+
 describe("NodeNetworkingController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -93,12 +141,13 @@ describe("NodeNetworkingController", function() {
 
     // Load the required dependencies for the NodeNetworkingController.
     var FabricsManager, VLANsManager, SubnetsManager, NodesManager;
-    var ManagerHelperService;
+    var GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         FabricsManager = $injector.get("FabricsManager");
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         NodesManager = $injector.get("NodesManager");
+        GeneralManager = $injector.get("GeneralManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
@@ -127,6 +176,7 @@ describe("NodeNetworkingController", function() {
             VLANsManager: VLANsManager,
             SubnetsManager: SubnetsManager,
             NodesManager: NodesManager,
+            GeneralManager: GeneralManager,
             ManagerHelperService: ManagerHelperService
         });
         return controller;
@@ -149,6 +199,9 @@ describe("NodeNetworkingController", function() {
         expect($scope.selectedInterfaces).toEqual([]);
         expect($scope.selectedMode).toBeNull();
         expect($scope.newInterface).toEqual({});
+        expect($scope.newBondInterface).toEqual({});
+        expect($scope.bondOptions).toBe(
+            GeneralManager.getData("bond_options"));
     });
 
     it("sets loaded once node loaded then managers loaded", function() {
@@ -2071,6 +2124,17 @@ describe("NodeNetworkingController", function() {
             expect($scope.newInterface).not.toBe(newInterface);
             expect($scope.selectedMode).toBe("single");
         });
+
+        it("clears newBondInterface and sets selectedMode to multi",
+            function() {
+                var controller = makeController();
+                var newBondInterface = {};
+                $scope.newBondInterface = newBondInterface;
+                $scope.selectedMode = "create-bond";
+                $scope.cancel();
+                expect($scope.newBondInterface).not.toBe(newBondInterface);
+                expect($scope.selectedMode).toBe("multi");
+            });
     });
 
     describe("confirmRemove", function() {
@@ -2508,6 +2572,331 @@ describe("NodeNetworkingController", function() {
             expect($scope.add).toHaveBeenCalledWith("alias", parent);
             expect($scope.selectedMode).toBe("add");
             expect($scope.selectedInterfaces).toBe(selection);
+        });
+    });
+
+    describe("isDisabled", function() {
+
+        it("returns false when in none, single, or multi mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = null;
+            expect($scope.isDisabled()).toBe(false);
+            $scope.selectedMode = "single";
+            expect($scope.isDisabled()).toBe(false);
+            $scope.selectedMode = "multi";
+            expect($scope.isDisabled()).toBe(false);
+        });
+
+        it("returns true when in delete, add, or create modes", function() {
+            var controller = makeController();
+            $scope.selectedMode = "create-bond";
+            expect($scope.isDisabled()).toBe(true);
+            $scope.selectedMode = "add";
+            expect($scope.isDisabled()).toBe(true);
+            $scope.selectedMode = "delete";
+            expect($scope.isDisabled()).toBe(true);
+        });
+    });
+
+    describe("canCreateBond", function() {
+
+        it("returns false if not in multi mode", function() {
+            var controller = makeController();
+            var modes = [null, "add", "delete", "single", "delete"];
+            angular.forEach(modes, function(mode) {
+                $scope.selectedMode = mode;
+                expect($scope.canCreateBond()).toBe(false);
+            });
+        });
+
+        it("returns false if selected interface is bond", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "bond"
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "bond"
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            expect($scope.canCreateBond()).toBe(false);
+        });
+
+        it("returns false if selected interface is alias", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "alias"
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "alias"
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            expect($scope.canCreateBond()).toBe(false);
+        });
+
+        it("returns false if not same selected vlan", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: {}
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: {}
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            expect($scope.canCreateBond()).toBe(false);
+        });
+
+        it("returns true if same selected vlan", function() {
+            var controller = makeController();
+            var vlan = {};
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            expect($scope.canCreateBond()).toBe(true);
+        });
+    });
+
+    describe("isShowingCreateBond", function() {
+
+        it("returns true in create-bond mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "create-bond";
+            expect($scope.isShowingCreateBond()).toBe(true);
+        });
+
+        it("returns false in multi mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "multi";
+            expect($scope.isShowingCreateBond()).toBe(false);
+        });
+    });
+
+    describe("showCreateBond", function() {
+
+        it("sets mode to create-bond", function() {
+            var controller = makeController();
+            $scope.selectedMode = "multi";
+            spyOn($scope, "canCreateBond").and.returnValue(true);
+            $scope.showCreateBond();
+            expect($scope.selectedMode).toBe("create-bond");
+        });
+
+        it("creates the newBondInterface", function() {
+            var controller = makeController();
+            var vlan = {};
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            $scope.showCreateBond();
+            expect($scope.newBondInterface).toEqual({
+                name: "bond0",
+                parents: [nic1, nic2],
+                primary: nic1,
+                macAddress: "",
+                mode: "active-backup",
+                lacpRate: "slow",
+                xmitHashPolicy: "layer2"
+            });
+        });
+    });
+
+    describe("getBondPlaceholderMACAddress", function() {
+
+        it("returns empty string if primary not set", function() {
+            var controller = makeController();
+            expect($scope.getBondPlaceholderMACAddress()).toBe("");
+        });
+
+        it("returns the MAC address of the primary interface", function() {
+            var controller = makeController();
+            var macAddress = makeName("mac");
+            $scope.newBondInterface.primary = {
+                mac_address: macAddress
+            };
+            expect($scope.getBondPlaceholderMACAddress()).toBe(macAddress);
+        });
+    });
+
+    describe("isBondMACAddressInvalid", function() {
+
+        it("returns false when the macAddress is blank", function() {
+            var controller = makeController();
+            $scope.newBondInterface.macAddress = "";
+            expect($scope.isBondMACAddressInvalid()).toBe(false);
+        });
+
+        it("returns false if valid macAddress", function() {
+            var controller = makeController();
+            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            expect($scope.isBondMACAddressInvalid()).toBe(false);
+        });
+
+        it("returns true if invalid macAddress", function() {
+            var controller = makeController();
+            $scope.newBondInterface.macAddress = "00:11:22:33:44";
+            expect($scope.isBondMACAddressInvalid()).toBe(true);
+        });
+    });
+
+    describe("showLACPRate", function() {
+
+        it("returns true if in 802.3ad mode", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = "802.3ad";
+            expect($scope.showLACPRate()).toBe(true);
+        });
+
+        it("returns false if not in 802.3ad mode", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = makeName("otherMode");
+            expect($scope.showLACPRate()).toBe(false);
+        });
+    });
+
+    describe("showXMITHashPolicy", function() {
+
+        it("returns true if in balance-xor mode", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = "balance-xor";
+            expect($scope.showXMITHashPolicy()).toBe(true);
+        });
+
+        it("returns true if in 802.3ad mode", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = "802.3ad";
+            expect($scope.showXMITHashPolicy()).toBe(true);
+        });
+
+        it("returns true if in balance-tlb mode", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = "balance-tlb";
+            expect($scope.showXMITHashPolicy()).toBe(true);
+        });
+
+        it("returns false if not in other modes", function() {
+            var controller = makeController();
+            $scope.newBondInterface.mode = makeName("otherMode");
+            expect($scope.showXMITHashPolicy()).toBe(false);
+        });
+    });
+
+    describe("addBond", function() {
+
+        it("calls createBondInterface and removes selection", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            var nic2 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            $scope.showCreateBond();
+
+            spyOn(NodesManager, "createBondInterface").and.returnValue(
+                $q.defer().promise);
+            $scope.newBondInterface.name = "bond0";
+            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            $scope.addBond();
+
+            expect(NodesManager.createBondInterface).toHaveBeenCalledWith(
+                node, {
+                    name: "bond0",
+                    mac_address: "00:11:22:33:44:55",
+                    parents: [nic1.id, nic2.id],
+                    vlan: vlan.id,
+                    bond_mode: "active-backup",
+                    bond_lacp_rate: "slow",
+                    bond_xmit_hash_policy: "layer2"
+                });
+            expect($scope.interfaces).toEqual([]);
+            expect($scope.newBondInterface).toEqual({});
+            expect($scope.selectedInterfaces).toEqual([]);
+            expect($scope.selectedMode).toBeNull();
         });
     });
 });
