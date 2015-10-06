@@ -197,14 +197,6 @@ angular.module('MAAS').controller('SubnetsListController', [
             return name;
         };
 
-        $scope.forceUpdateFabricsData = function() {
-            updateFabricsData();
-        };
-
-        $scope.forceUpdateSpacesData = function() {
-            updateSpacesData();
-        };
-
         ManagerHelperService.loadManagers([
             SubnetsManager, FabricsManager, SpacesManager, VLANsManager]).then(
             function() {
