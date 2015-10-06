@@ -274,7 +274,7 @@
                             '<span ng-repeat="error in getPowerError()">{$ error $}{$$last ? '' : ', '$}</span>'
                             package(s) on cluster '{$ node.nodegroup.name $}'
                         </li>
-                    </ul> 
+                    </ul>
                 </div>
                 <fieldset class="six-col"
                     data-ng-disabled="!power.editing"
@@ -299,13 +299,13 @@
     <div class="row">
         <div class="inner-wrapper" ng-controller="NodeNetworkingController">
             <div class="twelve-col" data-ng-hide="loaded">
-                <h3 class="title">Networking</h3>
+                <h2 class="title">Networking</h2>
                 <div class="twelve-col">Loading...</div>
             </div>
             <form class="ng-hide" data-ng-show="loaded">
                 <div class="twelve-col">
                     <h3 class="title">Networking</h3>
-                    <div class="table">
+                    <div class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
@@ -1093,7 +1093,6 @@
                                   <option value="raid5">RAID 5</option>
                               </select>
                           </div>
-                          <div class="table__data table__column--30"></div>
                           <div class="table__data table__column--15">
                               <label for="type">File system</label>
                               <select name="type" id="type">
@@ -1104,7 +1103,7 @@
                               <label for="mtPoint">Mount point</label>
                               <input type="text">
                           </div>
-                          <div class="table__data table__column--7"></div>
+                          <div class="table__data table__column--37"></div>
                         </div>
                         <div class="table__row table__dropdown-row table__dropdown-row--head">
                             <div class="table__header table__column--5"></div>
