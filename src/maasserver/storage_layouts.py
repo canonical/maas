@@ -31,6 +31,10 @@ from maasserver.fields_storage import (
     is_precentage,
 )
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.partition import (
+    MAX_PARTITION_SIZE_FOR_MBR,
+    MIN_PARTITION_SIZE,
+)
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
     set_form_error,
@@ -193,15 +197,29 @@ class StorageLayoutBase(Form):
                 label="boot",
                 mount_point="/boot")
         root_device = self.get_root_device()
+        root_size = self.get_root_size()
         if root_device is None or root_device == self.boot_disk:
+            # Fix the maximum root_size for MBR.
+            max_mbr_size = (
+                MAX_PARTITION_SIZE_FOR_MBR - self.boot_disk.block_size)
+            if (boot_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
+                    root_size is not None and root_size > max_mbr_size):
+                root_size = max_mbr_size
             root_partition = boot_partition_table.add_partition(
-                size=self.get_root_size())
+                size=root_size)
+            return root_partition, boot_partition_table
         else:
             root_partition_table = PartitionTable.objects.create(
                 block_device=root_device)
+            # Fix the maximum root_size for MBR.
+            max_mbr_size = (
+                MAX_PARTITION_SIZE_FOR_MBR - root_device.block_size)
+            if (root_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
+                    root_size is not None and root_size > max_mbr_size):
+                root_size = max_mbr_size
             root_partition = root_partition_table.add_partition(
-                size=self.get_root_size())
-        return root_partition
+                size=root_size)
+            return root_partition, root_partition_table
 
     def configure(self, allow_fallback=True):
         """Configure the storage for the node."""
@@ -231,7 +249,7 @@ class FlatStorageLayout(StorageLayoutBase):
         """Create the flat configuration."""
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
-        root_partition = self.create_basic_layout()
+        root_partition, _ = self.create_basic_layout()
         Filesystem.objects.create(
             partition=root_partition,
             fstype=FILESYSTEM_TYPE.EXT4,
@@ -320,9 +338,20 @@ class LVMStorageLayout(StorageLayoutBase):
         # Circular imports.
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.filesystemgroup import VolumeGroup
-        root_partition = self.create_basic_layout()
+        root_partition, root_partition_table = self.create_basic_layout()
+
+        # Add extra partitions if MBR and extra space.
+        partitions = [root_partition]
+        if root_partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
+            available_size = root_partition_table.get_available_size()
+            while available_size > MIN_PARTITION_SIZE:
+                part = root_partition_table.add_partition()
+                partitions.append(part)
+                available_size -= part.size
+
+        # Create the volume group and logical volume.
         volume_group = VolumeGroup.objects.create_volume_group(
-            self.get_vg_name(), block_devices=[], partitions=[root_partition])
+            self.get_vg_name(), block_devices=[], partitions=partitions)
         logical_volume = volume_group.create_logical_volume(
             self.get_lv_name(), self.get_calculated_lv_size(volume_group))
         Filesystem.objects.create(
@@ -488,7 +517,7 @@ class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
         boot_size = self.get_boot_size()
         if boot_size == 0:
             boot_size = 1 * 1024 ** 3
-        root_partition = self.create_basic_layout(boot_size=boot_size)
+        root_partition, _ = self.create_basic_layout(boot_size=boot_size)
         cache_set = self.create_cache_set()
         bcache = Bcache.objects.create_bcache(
             cache_mode=self.get_cache_mode(), cache_set=cache_set,

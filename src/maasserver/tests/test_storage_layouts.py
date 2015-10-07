@@ -25,6 +25,7 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
+from maasserver.models.partition import MAX_PARTITION_SIZE_FOR_MBR
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
@@ -474,6 +475,34 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(
             round_size_by_blocks(
                 boot_disk.size - PARTITION_TABLE_EXTRA_SPACE,
+                boot_disk.block_size),
+            root_partition.size)
+        self.assertThat(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+                ))
+
+    def test__creates_layout_with_maximum_mbr_partition_size(self):
+        node = factory.make_Node()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=3 * (1024 ** 4))
+        layout = FlatStorageLayout(node)
+        layout.configure()
+
+        # Validate partition table.
+        partition_table = boot_disk.get_partitiontable()
+        self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+
+        # Validate root partition.
+        partitions = partition_table.partitions.order_by('id').all()
+        root_partition = partitions[0]
+        self.assertIsNotNone(root_partition)
+        self.assertEquals(
+            round_size_by_blocks(
+                MAX_PARTITION_SIZE_FOR_MBR,
                 boot_disk.block_size),
             root_partition.size)
         self.assertThat(
@@ -960,6 +989,25 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 label="root",
                 mount_point="/",
                 ))
+
+    def test__creates_layout_with_multiple_mbr_partitions(self):
+        node = factory.make_Node()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=7 * (1024 ** 4))
+        layout = LVMStorageLayout(node)
+        layout.configure()
+
+        # Validate the volume group on root partition.
+        partition_table = boot_disk.get_partitiontable()
+        partitions = partition_table.partitions.order_by('id').all()
+        root_partition = partitions[0]
+        volume_group = VolumeGroup.objects.get(
+            filesystems__partition=root_partition)
+        self.assertIsNotNone(volume_group)
+        self.assertEquals(
+            4, partition_table.partitions.count(),
+            "Should have 4 partitions.")
+        self.assertEquals(MAX_PARTITION_SIZE_FOR_MBR, root_partition.size)
 
 
 class TestBcacheStorageLayoutBase(MAASServerTestCase):

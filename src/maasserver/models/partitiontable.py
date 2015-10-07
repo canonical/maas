@@ -29,7 +29,10 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.partition import Partition
+from maasserver.models.partition import (
+    MAX_PARTITION_SIZE_FOR_MBR,
+    Partition,
+)
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import round_size_to_nearest_block
 
@@ -109,8 +112,9 @@ class PartitionTable(CleanSave, TimestampedModel):
         """
         if size is None:
             size = self.get_available_size()
-        else:
-            size = round_size_to_nearest_block(size, self.get_block_size())
+            if self.table_type == PARTITION_TABLE_TYPE.MBR:
+                size = min(size, MAX_PARTITION_SIZE_FOR_MBR)
+        size = round_size_to_nearest_block(size, self.get_block_size())
         return Partition.objects.create(
             partition_table=self, size=size, uuid=uuid, bootable=bootable)
 

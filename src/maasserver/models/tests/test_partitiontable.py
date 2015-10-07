@@ -17,6 +17,7 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import MAX_PARTITION_SIZE_FOR_MBR
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -69,6 +70,17 @@ class TestPartitionTable(MAASServerTestCase):
         partition = partition_table.add_partition()
         self.assertEqual(
             partition.size, MIN_BLOCK_DEVICE_SIZE * 2)
+
+    def test_add_partition_no_size_sets_mbr_max(self):
+        block_size = 4096
+        device = factory.make_BlockDevice(
+            size=3 * (1024 ** 4),
+            block_size=block_size)
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=device)
+        partition = partition_table.add_partition()
+        self.assertEqual(
+            partition.size, MAX_PARTITION_SIZE_FOR_MBR)
 
     def test_add_second_partition_no_size(self):
         """Tests whether a second partition with no specified size starts from

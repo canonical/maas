@@ -44,6 +44,7 @@ from maasserver.utils.storage import (
 
 
 MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
+MAX_PARTITION_SIZE_FOR_MBR = 2 * (1024 ** 4)  # 2TiB
 
 
 class PartitionManager(Manager):
@@ -246,6 +247,24 @@ class Partition(CleanSave, TimestampedModel):
                             })
                 else:
                     self.size = adjusted_size
+
+            # Check that the size is not larger than MBR allows.
+            if (self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
+                    self.size > MAX_PARTITION_SIZE_FOR_MBR):
+                if self.id is not None:
+                    raise ValidationError({
+                        "size": [
+                            "Partition %s cannot be resized to fit on the "
+                            "block device; size is larger than the MBR "
+                            "2TiB maximum." % (
+                                self.id)],
+                        })
+                else:
+                    raise ValidationError({
+                        "size": [
+                            "Partition cannot be saved; size is larger than "
+                            "the MBR 2TiB maximum."],
+                        })
 
     def delete(self):
         """Delete the partition.

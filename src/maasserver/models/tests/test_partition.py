@@ -243,6 +243,41 @@ class TestPartition(MAASServerTestCase):
                 "block device; not enough free space." % partition.id],
             }, error.error_dict)
 
+    def test_test_cannot_create_mbr_partition_larger_than_2TiB(self):
+        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+        error = self.assertRaises(
+            ValidationError, factory.make_Partition,
+            partition_table=partition_table,
+            size=partition_table.get_available_size())
+        self.assertEquals({
+            "size": [
+                "Partition cannot be saved; size is larger than "
+                "the MBR 2TiB maximum."],
+            }, error.error_dict)
+
+    def test_test_cannot_resize_mbr_partition_to_more_than_2TiB(self):
+        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR)
+        partition = partition_table.add_partition(size=1 * (1024 ** 4))
+        partition.size = 2.5 * (1024 ** 4)
+        error = self.assertRaises(ValidationError, partition.save)
+        self.assertEquals({
+            "size": [
+                "Partition %s cannot be resized to fit on the "
+                "block device; size is larger than the MBR "
+                "2TiB maximum." % partition.id],
+            }, error.error_dict)
+
+    def test_validate_can_save_gpt_larger_than_2TiB(self):
+        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+        # Test is that an error is not raised.
+        partition_table.add_partition()
+
     def test_validate_enough_space_will_round_down_a_block(self):
         partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()

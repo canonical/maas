@@ -29,6 +29,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     NODE_PERMISSION,
+    PARTITION_TABLE_TYPE,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystem import Filesystem
@@ -1927,10 +1928,11 @@ class TestRAID(MAASServerTestCase):
         way as to make the RAID invalid (a 1-device RAID-0/1, a 2-device RAID-5
         etc). The goal is to make sure we trigger the RAID internal validation.
         """
-        node = factory.make_Node()
+        node = factory.make_Node(bios_boot_method="uefi")
         device_size = 10 * 1000 ** 4
         partitions = [
             factory.make_PartitionTable(
+                table_type=PARTITION_TABLE_TYPE.GPT,
                 block_device=factory.make_PhysicalBlockDevice(
                     node=node, size=device_size)).add_partition()
             for _ in range(4)
@@ -1997,10 +1999,11 @@ class TestRAID(MAASServerTestCase):
         self.assertEqual(6 * partition_size, raid.get_size())
 
     def test_remove_invalid_partition_from_array_fails(self):
-        node = factory.make_Node()
+        node = factory.make_Node(bios_boot_method="uefi")
         device_size = 10 * 1000 ** 4
         partitions = [
             factory.make_PartitionTable(
+                table_type=PARTITION_TABLE_TYPE.GPT,
                 block_device=factory.make_PhysicalBlockDevice(
                     node=node, size=device_size)).add_partition()
             for _ in range(10)
