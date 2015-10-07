@@ -40,16 +40,13 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
 )
 from maasserver.exceptions import (
-    ExternalComponentException,
     MAASAPIException,
     MAASAPINotFound,
-    MAASException,
 )
 from maasserver.middleware import (
     APIErrorsMiddleware,
     APIRPCErrorsMiddleware,
     DebuggingLoggerMiddleware,
-    ErrorsMiddleware,
     ExceptionMiddleware,
     ExternalComponentsMiddleware,
     RPCErrorsMiddleware,
@@ -278,39 +275,6 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         self.assertThat(
             logger.output,
             Contains("non-utf-8 (binary?) content"))
-
-
-class ErrorsMiddlewareTest(MAASServerTestCase):
-
-    def test_error_middleware_ignores_GET_requests(self):
-        self.client_log_in()
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        exception = MAASException()
-        error_middleware = ErrorsMiddleware()
-        response = error_middleware.process_exception(request, exception)
-        self.assertIsNone(response)
-
-    def test_error_middleware_ignores_non_ExternalComponentException(self):
-        self.client_log_in()
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        exception = ValueError()
-        error_middleware = ErrorsMiddleware()
-        response = error_middleware.process_exception(request, exception)
-        self.assertIsNone(response)
-
-    def test_error_middleware_handles_ExternalComponentException(self):
-        self.client_log_in()
-        url = factory.make_string()
-        request = factory.make_fake_request(url, 'POST')
-        error_message = factory.make_string()
-        exception = ExternalComponentException(error_message)
-        error_middleware = ErrorsMiddleware()
-        response = error_middleware.process_exception(request, exception)
-        # The response is a redirect.
-        self.assertEqual(request.path, extract_redirect(response))
-        # An error message has been published.
-        self.assertEqual(
-            [(constants.ERROR, error_message, '')], request._messages.messages)
 
 
 class RPCErrorsMiddlewareTest(MAASServerTestCase):

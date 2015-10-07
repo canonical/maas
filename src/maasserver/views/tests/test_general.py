@@ -26,7 +26,6 @@ from django.test.client import RequestFactory
 from django.utils.html import escape
 from lxml.html import fromstring
 from maasserver.components import register_persistent_error
-from maasserver.exceptions import ExternalComponentException
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -34,7 +33,6 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
 )
-from maasserver.views.clusters import ClusterEdit
 from testtools.matchers import ContainsAll
 
 
@@ -286,42 +284,6 @@ class PaginatedListViewTests(MAASServerTestCase):
         self.assertEqual("?lookup=value&page=2", context["previous_page_link"])
         self.assertEqual("?lookup=value&page=4", context["next_page_link"])
         self.assertEqual("?lookup=value&page=4", context["last_page_link"])
-
-
-class MAASExceptionHandledInView(MAASServerTestCase):
-
-    def test_raised_MAASException_redirects(self):
-        # When a ExternalComponentException is raised in a POST request, the
-        # response is a redirect to the same page.
-        self.client_log_in(as_admin=True)
-
-        # Patch ClusterEdit to error on post.
-        def post(self, request, *args, **kwargs):
-            raise ExternalComponentException()
-        self.patch(ClusterEdit, 'post', post)
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
-        response = self.client.post(nodegroup_edit_link, {})
-        self.assertEqual(nodegroup_edit_link, extract_redirect(response))
-
-    def test_raised_ExternalComponentException_publishes_message(self):
-        # When a ExternalComponentException is raised in a POST request, a
-        # message is published with the error message.
-        self.client_log_in(as_admin=True)
-        error_message = factory.make_string()
-
-        # Patch ClusterEdit to error on post.
-        def post(self, request, *args, **kwargs):
-            raise ExternalComponentException(error_message)
-        self.patch(ClusterEdit, 'post', post)
-        nodegroup = factory.make_NodeGroup()
-        nodegroup_edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
-        self.client.post(nodegroup_edit_link, {})
-        # Manually perform the redirect: i.e. get the same page.
-        response = self.client.get(nodegroup_edit_link, {})
-        self.assertEqual(
-            [error_message],
-            [message.message for message in response.context['messages']])
 
 
 class PermanentErrorDisplayTest(MAASServerTestCase):

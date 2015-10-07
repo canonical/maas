@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ClusterUnavailable",
-    "ExternalComponentException",
     "MAASException",
     "MAASAPIBadRequest",
     "MAASAPIException",
@@ -62,10 +61,6 @@ class MAASAPIException(Exception):
         return HttpResponse(
             status=self.api_error, content=unicode(self).encode(encoding),
             mimetype=b"text/plain; charset=%s" % encoding)
-
-
-class ExternalComponentException(MAASAPIException):
-    """An external component failed."""
 
 
 class MAASAPIBadRequest(MAASAPIException):

@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = [
     "AccessMiddleware",
     "APIErrorsMiddleware",
-    "ErrorsMiddleware",
     "ExceptionMiddleware",
     ]
 
@@ -56,10 +55,7 @@ from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
 )
-from maasserver.exceptions import (
-    ExternalComponentException,
-    MAASAPIException,
-)
+from maasserver.exceptions import MAASAPIException
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
@@ -263,24 +259,6 @@ class APIErrorsMiddleware(ExceptionMiddleware):
     """Report exceptions from API requests as HTTP error responses."""
 
     path_regex = settings.API_URL_REGEXP
-
-
-class ErrorsMiddleware:
-    """Handle ExternalComponentException exceptions in POST requests: add a
-    message with the error string and redirect to the same page (using GET).
-    """
-
-    def process_exception(self, request, exception):
-        should_process_exception = (
-            request.method == 'POST' and
-            isinstance(exception, ExternalComponentException))
-        if should_process_exception:
-            messages.error(request, unicode(exception))
-            return HttpResponseRedirect(request.path)
-        else:
-            # Not an ExternalComponentException or not a POST request: do not
-            # handle it.
-            return None
 
 
 class DebuggingLoggerMiddleware:
