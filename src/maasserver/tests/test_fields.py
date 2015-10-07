@@ -142,11 +142,37 @@ class TestNodeGroupFormField(MAASServerTestCase):
 class TestMAC(MAASServerTestCase):
 
     def test_conform_accepts_ISQLQuote(self):
-        mac = MAC(None)
+        mac = MAC(factory.make_mac_address())
         self.assertEqual(mac, mac.__conform__(ISQLQuote))
 
-    def test_get_raw_returns_wrapped_None(self):
-        self.assertIsNone(MAC(None).get_raw())
+    def test_new_MAC_with_None_is_None(self):
+        self.assertIsNone(MAC(None))
+
+    def test_new_MAC_with_empty_unicode_string_is_None(self):
+        self.assertIsNone(MAC(u""))
+
+    def test_new_MAC_with_empty_byte_string_is_None(self):
+        self.assertIsNone(MAC(b""))
+
+    def test_new_MAC_with_other_value_types_are_rejected(self):
+        self.assertRaises(TypeError, MAC, 1234)
+        self.assertRaises(TypeError, MAC, object())
+        self.assertRaises(TypeError, MAC, self)
+
+    def test_as_representation(self):
+        addr = factory.make_mac_address()
+        mac = MAC(addr)
+        self.assertEqual("<MAC " + addr + ">", repr(mac))
+
+    def test_as_unicode_string(self):
+        addr = factory.make_mac_address()
+        mac = MAC(addr)
+        self.assertEqual(addr, unicode(mac))
+
+    def test_as_byte_string(self):
+        addr = factory.make_mac_address()
+        mac = MAC(addr)
+        self.assertEqual(addr.encode("ascii"), bytes(mac))
 
     def test_get_raw_returns_wrapped_address(self):
         addr = factory.make_mac_address()
@@ -156,8 +182,9 @@ class TestMAC(MAASServerTestCase):
         addr = factory.make_mac_address()
         self.assertEqual(addr, MAC(MAC(addr)).get_raw())
 
-    def test_getquoted_returns_NULL_for_None(self):
-        self.assertEqual("NULL", MAC(None).getquoted())
+    def test_raw_property_is_the_address(self):
+        addr = factory.make_mac_address()
+        self.assertEqual(addr, MAC(addr).raw)
 
     def test_getquoted_returns_SQL_for_MAC(self):
         addr = factory.make_mac_address()
@@ -196,11 +223,6 @@ class TestMAC(MAASServerTestCase):
     def test_mac_does_not_differ_from_self(self):
         mac = factory.make_MAC()
         self.assertFalse(mac != mac)
-
-    def test_none_mac_equals_none(self):
-        # This is a special case that Django seems to need: it does
-        # "value in validators.EMPTY_VALUES".
-        self.assertEqual(None, MAC(None))
 
     def test_mac_address_does_not_equal_none(self):
         self.assertIsNotNone(factory.make_MAC())

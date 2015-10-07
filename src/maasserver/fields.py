@@ -233,14 +233,27 @@ class MACAddressField(Field):
     def db_type(self, *args, **kwargs):
         return "macaddr"
 
+    def to_python(self, value):
+        return MAC(value)
+
 
 class MAC:
     """A MAC address represented as a database value.
 
-    PostgreSQL supports MAC addresses as a native type.  They show up
-    client-side as this class.  It is essentially a wrapper for either a
-    string, or None.
+    PostgreSQL supports MAC addresses as a native type. They show up
+    client-side as this class. It is essentially a wrapper for a string.
+
+    This NEVER represents a null or empty MAC address.
     """
+
+    def __new__(cls, value):
+        """Return `None` if `value` is `None` or the empty string."""
+        if value is None:
+            return None
+        elif isinstance(value, (bytes, unicode)):
+            return None if len(value) == 0 else super(MAC, cls).__new__(cls)
+        else:
+            return super(MAC, cls).__new__(cls)
 
     def __init__(self, value):
         """Wrap a MAC address, or None, into a `MAC`.
@@ -248,18 +261,16 @@ class MAC:
         :param value: A MAC address, in the form of a string or a `MAC`;
             or None.
         """
-        if isinstance(value, MAC):
-            # Avoid double-wrapping.  It's the value that matters, not the
-            # MAC object that wraps it.
-            value = value.get_raw()
-        elif isinstance(value, bytes):
-            value = value.decode("ascii")
-        else:
-            # TODO bug=1215447: Remove this assertion.
-            assert value is None or isinstance(value, unicode)
         # The wrapped attribute is stored as self._wrapped, following
         # ISQLQuote's example.
-        self._wrapped = value
+        if isinstance(value, MAC):
+            self._wrapped = value._wrapped
+        elif isinstance(value, bytes):
+            self._wrapped = value.decode("ascii")
+        elif isinstance(value, unicode):
+            self._wrapped = value
+        else:
+            raise TypeError("expected MAC or string, got: %r" % (value,))
 
     def __conform__(self, protocol):
         """Tell psycopg2 that this type implements the adapter protocol."""
@@ -274,41 +285,51 @@ class MAC:
 
         This is part of psycopg2's adapter protocol.
         """
-        value = self.get_raw()
-        if value is None:
-            return 'NULL'
-        else:
-            return "'%s'::macaddr" % value
+        return "'%s'::macaddr" % self._wrapped
 
     def get_raw(self):
         """Return the wrapped value."""
         return self._wrapped
 
-    @staticmethod
-    def parse(value, cur):
+    @property
+    def raw(self):
+        """The MAC address as a string."""
+        return self._wrapped
+
+    @classmethod
+    def parse(cls, value, cur):
         """Turn a value as received from the database into a MAC."""
-        return MAC(value)
+        return cls(value)
 
     def __repr__(self):
-        """Represent the MAC as a string.
-        """
-        return self.get_raw()
+        """Represent the MAC as a string."""
+        return "<MAC %s>" % self._wrapped
+
+    def __unicode__(self):
+        """Represent the MAC as a Unicode string."""
+        return self._wrapped
+
+    def __str__(self):
+        """Represent the MAC as a byte string."""
+        return self._wrapped.encode("ascii")
 
     def __eq__(self, other):
-        # Two MACs are equal if they wrap the same value.
-        #
-        # Also, a MAC is equal to the value it wraps.  This is non-commutative,
-        # but it supports Django code that compares input values to various
-        # kinds of "null" or "empty."
+        """Two `MAC`s are equal if they wrap the same value.
+
+        A MAC is is also equal to the value it wraps. This is non-commutative,
+        but it supports Django code that compares input values to various
+        kinds of "null" or "empty."
+        """
         if isinstance(other, MAC):
-            other = other.get_raw()
-        return self.get_raw() == other
+            return self._wrapped == other._wrapped
+        else:
+            return self._wrapped == other
 
     def __ne__(self, other):
         return not (self == other)
 
     def __hash__(self):
-        return self.get_raw().__hash__()
+        return hash(self._wrapped)
 
 
 def register_mac_type(cursor):
