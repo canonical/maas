@@ -57,7 +57,6 @@ from maasserver.utils.osystems import (
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
 from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
 )
@@ -71,7 +70,6 @@ ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
 # A collection of errors that may be raised by RPC-based actions that
 # should be converted to NodeActionErrors.
 RPC_EXCEPTIONS = (
-    MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
     TimeoutError,

@@ -67,10 +67,8 @@ from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
 from mock import ANY
-from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
-from twisted.python.failure import Failure
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -819,10 +817,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
     ]
 
     def make_exception(self):
-        if self.exception_class is MultipleFailures:
-            exception = self.exception_class(
-                Failure(Exception(factory.make_name("exception"))))
-        elif self.exception_class is ExternalProcessError:
+        if self.exception_class is ExternalProcessError:
             exception = self.exception_class(
                 1, ["cmd"], factory.make_name("exception"))
         else:

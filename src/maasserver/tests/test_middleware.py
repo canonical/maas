@@ -30,7 +30,6 @@ from django.http import HttpResponse
 from django.http.request import build_request_repr
 from fixtures import FakeLogger
 from maasserver import middleware as middleware_module
-from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -63,7 +62,6 @@ from maastesting.matchers import (
 from maastesting.utils import sample_binary_data
 from mock import Mock
 from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
 )
@@ -73,7 +71,6 @@ from testtools.matchers import (
     Equals,
     Not,
 )
-from twisted.python.failure import Failure
 
 
 class ExceptionMiddlewareTest(MAASServerTestCase):
@@ -295,26 +292,6 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             [(constants.ERROR, "Error: %s" % error_message, '')],
             request._messages.messages)
 
-    def test_handles_MultipleFailures(self):
-        middleware = RPCErrorsMiddleware()
-        request = factory.make_fake_request(factory.make_string(), 'POST')
-        failures = []
-        for _ in range(3):
-            error_message = factory.make_name("error-")
-            exception_class = random.choice(
-                (NoConnectionsAvailable, PowerActionAlreadyInProgress))
-            failures.append(Failure(exception_class(error_message)))
-        exception = MultipleFailures(*failures)
-        response = middleware.process_exception(request, exception)
-
-        # The response is a redirect.
-        self.assertEqual(request.path, extract_redirect(response))
-        # An error message has been published for each exception.
-        self.assertEqual(
-            [(constants.ERROR, "Error: %s" % unicode(failure.value), '')
-                for failure in failures],
-            request._messages.messages)
-
     def test_handles_NoConnectionsAvailable(self):
         middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
@@ -353,33 +330,6 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             "but that's just peanuts to space!")
         response = middleware.process_exception(request, exception)
         self.assertIsNone(response)
-
-    def test_adds_message_for_unknown_errors_in_multiple_failures(self):
-        # If an exception has no message, the middleware will generate a
-        # useful one and display it to the user.
-        middleware = RPCErrorsMiddleware()
-        request = factory.make_fake_request(factory.make_string(), 'POST')
-        unknown_exception = ZeroDivisionError()
-        failures = [
-            Failure(unknown_exception),
-            Failure(PowerActionAlreadyInProgress("Unzip a banana!")),
-            ]
-        exception = MultipleFailures(*failures)
-        response = middleware.process_exception(request, exception)
-        self.assertEqual(request.path, extract_redirect(response))
-
-        expected_messages = [
-            (
-                constants.ERROR,
-                "Error: %s" % get_error_message_for_exception(
-                    unknown_exception),
-                '',
-            ),
-            (constants.ERROR, "Error: %s" % unicode(failures[1].value), ''),
-            ]
-        self.assertEqual(
-            expected_messages,
-            request._messages.messages)
 
     def test_ignores_error_on_API(self):
         middleware = RPCErrorsMiddleware()
@@ -475,39 +425,6 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
             (httplib.SERVICE_UNAVAILABLE, error_message),
             (response.status_code, response.content))
 
-    def test_multiple_failures_returned_as_500(self):
-        middleware = APIRPCErrorsMiddleware()
-        request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
-        failures = []
-        error_messages = []
-        for _ in range(3):
-            error_message = factory.make_name("error-")
-            error_messages.append(error_message)
-            exception_class = random.choice(
-                (NoConnectionsAvailable, PowerActionAlreadyInProgress))
-            failures.append(Failure(exception_class(error_message)))
-        exception = MultipleFailures(*failures)
-        response = middleware.process_exception(request, exception)
-
-        expected_error_message = "\n".join(error_messages)
-        self.assertEqual(
-            (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
-            (response.status_code, response.content))
-
-    def test_multiple_failures_with_one_exception(self):
-        middleware = APIRPCErrorsMiddleware()
-        request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
-        expected_error_message = factory.make_name("error")
-        unique_exception = PowerActionAlreadyInProgress(expected_error_message)
-        exception = MultipleFailures(Failure(unique_exception))
-        response = middleware.process_exception(request, exception)
-
-        self.assertEqual(
-            (httplib.SERVICE_UNAVAILABLE, expected_error_message),
-            (response.status_code, response.content))
-
     def test_handles_TimeoutError(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
@@ -518,28 +435,6 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
         self.assertEqual(
             (httplib.GATEWAY_TIMEOUT, error_message),
-            (response.status_code, response.content))
-
-    def test_adds_message_for_unknown_errors_in_multiple_failures(self):
-        # If an exception has no message, the middleware will generate a
-        # useful one and display it to the user.
-        middleware = APIRPCErrorsMiddleware()
-        request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
-        unknown_exception = ZeroDivisionError()
-        error_message = "It ain't 'alf 'ot mum!"
-        expected_error_message = "\n".join([
-            get_error_message_for_exception(unknown_exception),
-            error_message])
-        failures = [
-            Failure(unknown_exception),
-            Failure(PowerActionAlreadyInProgress(error_message)),
-            ]
-        exception = MultipleFailures(*failures)
-        response = middleware.process_exception(request, exception)
-
-        self.assertEqual(
-            (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
             (response.status_code, response.content))
 
     def test_ignores_non_rpc_errors(self):

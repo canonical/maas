@@ -60,7 +60,6 @@ from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
 from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
 )
@@ -294,7 +293,6 @@ class RPCErrorsMiddleware:
     """A middleware for handling RPC errors."""
 
     handled_exceptions = (
-        MultipleFailures,
         NoConnectionsAvailable,
         PowerActionAlreadyInProgress,
         TimeoutError,
@@ -316,16 +314,10 @@ class RPCErrorsMiddleware:
 
         if not isinstance(exception, self.handled_exceptions):
             # Nothing to do, since we don't care about anything other
-            # than MultipleFailures and handled_exceptions.
+            # than handled_exceptions.
             return None
 
-        if isinstance(exception, MultipleFailures):
-            exceptions = [
-                failure.value for failure in exception.args]
-            for exception in exceptions:
-                self._handle_exception(request, exception)
-        else:
-            self._handle_exception(request, exception)
+        self._handle_exception(request, exception)
         return HttpResponseRedirect(request.path)
 
 
@@ -335,7 +327,6 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
     handled_exceptions = {
         NoConnectionsAvailable: httplib.SERVICE_UNAVAILABLE,
         PowerActionAlreadyInProgress: httplib.SERVICE_UNAVAILABLE,
-        MultipleFailures: httplib.INTERNAL_SERVER_ERROR,
         TimeoutError: httplib.GATEWAY_TIMEOUT,
         }
 
@@ -353,21 +344,8 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             return None
 
         status = self.handled_exceptions[exception.__class__]
-        if isinstance(exception, MultipleFailures):
-            # If only one exception has been raised, process this exception:
-            # this allows MAAS to convert this exception into the proper
-            # type of response (e.g. 503) instead of the 500 response that
-            # MultipleFailures is transformed into.
-            if len(exception.args) == 1:
-                return self.process_exception(request, exception.args[0].value)
-            for failure in exception.args:
-                logging.exception(exception)
-            error_message = "\n".join(
-                get_error_message_for_exception(failure.value)
-                for failure in exception.args)
-        else:
-            logging.exception(exception)
-            error_message = get_error_message_for_exception(exception)
+        logging.exception(exception)
+        error_message = get_error_message_for_exception(exception)
 
         encoding = b'utf-8'
         response = HttpResponse(

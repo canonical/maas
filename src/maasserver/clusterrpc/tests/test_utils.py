@@ -24,11 +24,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import async
 from maastesting.matchers import MockCalledOnceWith
 from mock import sentinel
-from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
-    NoConnectionsAvailable,
-)
-from twisted.python.failure import Failure
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
 class TestCallClusters(MAASServerTestCase):
@@ -70,10 +66,7 @@ class TestGetErrorMessageForException(MAASServerTestCase):
             utils.get_error_message_for_exception(Exception(error_message)))
 
     def test_returns_message_if_exception_has_none(self):
-        # MultipleFailures is handled differently, so exclude it from
-        # the possible exceptions.
-        exception_class = random.choice(
-            [cls for cls in RPC_EXCEPTIONS if cls is not MultipleFailures])
+        exception_class = random.choice(RPC_EXCEPTIONS)
         error_message = (
             "Unexpected exception: %s. See "
             "/var/log/maas/regiond.log "
@@ -82,16 +75,6 @@ class TestGetErrorMessageForException(MAASServerTestCase):
         self.assertEqual(
             error_message,
             utils.get_error_message_for_exception(exception_class()))
-
-    def test_returns_single_message_for_multiple_failures(self):
-        failures = MultipleFailures(
-            *(Failure(cls()) for cls in RPC_EXCEPTIONS
-                if cls is not MultipleFailures))
-        error_message = (
-            "Multiple failures encountered. See /var/log/maas/regiond.log"
-            " on the region server for more information.")
-        self.assertEqual(
-            error_message, utils.get_error_message_for_exception(failures))
 
     def test_returns_cluster_name_in_no_connections_error_message(self):
         cluster = factory.make_NodeGroup()

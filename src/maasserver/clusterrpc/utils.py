@@ -26,10 +26,7 @@ from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import NodeGroup
 from maasserver.rpc import getClientFor
 from maasserver.utils import async
-from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
-    NoConnectionsAvailable,
-)
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from twisted.python.failure import Failure
 
 
@@ -88,13 +85,8 @@ def get_error_message_for_exception(exception):
     containing the cluster's name (as opposed to its UUID), which is
     more useful to users.
 
-    If `exception` is an instance of `MultipleFailures` a single error
-    message will be returned, explaining where to look for more
-    information.
-
-    Otherwise, if the exception has a message attached, return that.
-    If not, create meaningful error message for the exception and
-    return that instead.
+    If the exception has a message attached, return that. If not, create
+    meaningful error message for the exception and return that instead.
     """
     # If we've gt a NoConnectionsAvailable error, check it for a UUID
     # field. If it's got one, we can report the cluster details more
@@ -108,11 +100,6 @@ def get_error_message_for_exception(exception):
         return (
             "Unable to connect to cluster '%s' (%s); no connections "
             "available." % (cluster.cluster_name, cluster.uuid))
-
-    if isinstance(exception, MultipleFailures):
-        return (
-            "Multiple failures encountered. See /var/log/maas/regiond.log "
-            "on the region server for more information.")
 
     error_message = unicode(exception)
     if len(error_message) == 0:
