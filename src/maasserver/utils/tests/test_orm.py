@@ -31,13 +31,9 @@ from django.db.backends import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
-from maasserver.testing.testcase import (
-    MAASTransactionServerTestCase,
-    SerializationFailureTestCase,
-)
+from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import orm
 from maasserver.utils.orm import (
-    commit_within_atomic_block,
     disable_all_database_connections,
     DisabledDatabaseConnection,
     enable_all_database_connections,
@@ -52,7 +48,6 @@ from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
     make_serialization_failure,
-    outside_atomic_block,
     post_commit,
     post_commit_do,
     post_commit_hooks,
@@ -779,60 +774,6 @@ class TestSavepoint(DjangoTransactionTestCase):
                 # Post-commit hooks have been saved.
                 self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
             self.expectThat(connection.savepoint_ids, HasLength(0))
-
-
-class TestOutsideAtomicBlock(MAASTransactionServerTestCase):
-    """Tests for `outside_atomic_block`."""
-
-    def test__leaves_and_restores_atomic_block(self):
-        self.assertFalse(connection.in_atomic_block)
-        with transaction.atomic():
-            self.assertTrue(connection.in_atomic_block)
-            with outside_atomic_block():
-                self.assertFalse(connection.in_atomic_block)
-            self.assertTrue(connection.in_atomic_block)
-        self.assertFalse(connection.in_atomic_block)
-
-    def test__leaves_and_restores_multiple_levels_of_atomic_blocks(self):
-        self.assertFalse(connection.in_atomic_block)
-        with transaction.atomic():
-            with transaction.atomic():
-                with transaction.atomic():
-                    with transaction.atomic():
-                        with outside_atomic_block():
-                            # It leaves the multiple levels of atomic blocks,
-                            # but puts the same number of levels back in place
-                            # on exit.
-                            self.assertFalse(connection.in_atomic_block)
-                        self.assertTrue(connection.in_atomic_block)
-                    self.assertTrue(connection.in_atomic_block)
-                self.assertTrue(connection.in_atomic_block)
-            self.assertTrue(connection.in_atomic_block)
-        self.assertFalse(connection.in_atomic_block)
-
-    def test__restores_atomic_block_even_on_error(self):
-        with transaction.atomic():
-            exception_type = factory.make_exception_type()
-            try:
-                with outside_atomic_block():
-                    raise exception_type()
-            except exception_type:
-                self.assertTrue(connection.in_atomic_block)
-
-
-class TestCommitWithinAtomicBlock(MAASTransactionServerTestCase):
-    """Tests for `commit_within_atomic_block`."""
-
-    def test__relies_on_outside_atomic_block(self):
-        outside_atomic_block = self.patch(orm, "outside_atomic_block")
-        with transaction.atomic():
-            commit_within_atomic_block()
-        self.expectThat(outside_atomic_block, MockCalledOnceWith("default"))
-        context_manager = outside_atomic_block.return_value
-        self.expectThat(
-            context_manager.__enter__, MockCalledOnceWith())
-        self.expectThat(
-            context_manager.__exit__, MockCalledOnceWith(None, None, None))
 
 
 class TestInTransaction(DjangoTransactionTestCase):

@@ -31,7 +31,6 @@ from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
-from maasserver.utils.orm import commit_within_atomic_block
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -75,21 +74,6 @@ def get_Interface_from_list(interfaces, mac):
         if obj.mac_address == mac:
             return obj
     return None
-
-
-def delete_device_and_static_ip_addresses(
-        device, external_static_ips, assigned_sticky_ips):
-    """Delete the created external and sticky ips and the created device.
-
-    This function calls `commit_within_atomic_block` to force the transaction
-    to be saved.
-    """
-    for static_ip, _ in external_static_ips:
-        static_ip.deallocate()
-    for static_ip, _ in assigned_sticky_ips:
-        static_ip.deallocate()
-    device.delete()
-    commit_within_atomic_block()
 
 
 def log_static_allocations(device, external_static_ips, assigned_sticky_ips):

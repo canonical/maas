@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'commit_within_atomic_block',
     'disable_all_database_connections',
     'enable_all_database_connections',
     'ExclusivelyConnected',
@@ -59,7 +58,6 @@ from django.db import (
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
-from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
@@ -512,45 +510,6 @@ def savepoint():
     else:
         raise TransactionManagementError(
             "Savepoints cannot be created outside of a transaction.")
-
-
-def commit_within_atomic_block(using="default"):
-    """Exits an atomic block then immediately re-enters a new one.
-
-    This relies on the fact that an atomic block commits when exiting the
-    outer-most context.
-
-    :deprecated: Absolutely don't use this.
-    """
-    warn_deprecated("use post-commit hooks instead")
-    with outside_atomic_block(using):
-        pass  # We just want to exit and enter.
-
-
-@contextmanager
-def outside_atomic_block(using="default"):
-    """A context manager that guarantees to not contain an atomic block.
-
-    On entry into this context, this will exit all nested and unnested atomic
-    blocks until it reaches clear air.
-
-    On exit from this context, the same level of nesting will be
-    reestablished.
-    """
-    connection = transaction.get_connection(using)
-    atomic_context = transaction.atomic(using)
-    assert connection.in_atomic_block
-
-    depth = 0
-    while connection.in_atomic_block:
-        atomic_context.__exit__(None, None, None)
-        depth = depth + 1
-    try:
-        yield
-    finally:
-        while depth > 0:
-            atomic_context.__enter__()
-            depth = depth - 1
 
 
 def in_transaction(connection=connection):
