@@ -1,1 +1,0 @@
-../../../etc/maas/templates/deployment-user-data/maas_configure_interfaces.py
