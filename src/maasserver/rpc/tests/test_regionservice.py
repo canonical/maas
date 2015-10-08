@@ -146,7 +146,6 @@ from provisioningserver.rpc.testing import (
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import events
-from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
 from testtools.deferredruntest import (
     assert_fails_with,
@@ -2022,7 +2021,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def patch_port(self, port):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         getPort = getServiceNamed.return_value.getPort
-        getPort.side_effect = asynchronous(lambda: port)
+        getPort.return_value = port
 
     def patch_addresses(self, addresses):
         get_all_interface_addresses = self.patch(
@@ -2166,11 +2165,9 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test__get_addresses_when_rpc_down(self):
         service = RegionAdvertisingService()
 
-        getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         # getPort() returns None when the RPC service is not running or
         # not able to bind a port.
-        getPort = getServiceNamed.return_value.getPort
-        getPort.side_effect = asynchronous(lambda: None)
+        self.patch_port(None)
 
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")

@@ -77,6 +77,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    FOREVER,
     pause,
     synchronous,
 )
@@ -612,7 +613,7 @@ class RegionService(service.Service, object):
                     log.err()
         yield super(RegionService, self).stopService()
 
-    @asynchronous
+    @asynchronous(timeout=FOREVER)
     def getPort(self):
         """Return the TCP port number on which this service is listening.
 
@@ -641,7 +642,7 @@ class RegionService(service.Service, object):
         host, port = socket.getsockname()
         return port
 
-    @asynchronous
+    @asynchronous(timeout=FOREVER)
     def getClientFor(self, uuid, timeout=30):
         """Return a :class:`common.Client` for the specified cluster.
 
@@ -666,7 +667,7 @@ class RegionService(service.Service, object):
 
         return d.addCallbacks(common.Client, cancelled)
 
-    @asynchronous
+    @asynchronous(timeout=FOREVER)
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
         return [
@@ -844,7 +845,7 @@ class RegionAdvertisingService(TimerService, object):
         except KeyError:
             pass  # No RPC service yet.
         else:
-            port = service.getPort().wait(5)
+            port = service.getPort()
             if port is not None:
                 for addr in get_all_interface_addresses():
                     ipaddr = IPAddress(addr)
