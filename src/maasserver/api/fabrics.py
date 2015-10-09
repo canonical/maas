@@ -75,6 +75,11 @@ class FabricHandler(OperationsHandler):
         return ('fabric_handler', (fabric_id,))
 
     @classmethod
+    def name(cls, fabric):
+        """Return the name of the fabric."""
+        return fabric.get_name()
+
+    @classmethod
     def vlans(cls, fabric):
         """Return VLANs within the specified fabric."""
         return fabric.vlan_set.all()

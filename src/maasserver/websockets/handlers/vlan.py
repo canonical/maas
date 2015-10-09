@@ -36,6 +36,7 @@ class VLANHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, obj, data, for_list=False):
+        data["name"] = obj.get_name()
         data["subnet_ids"] = [
             subnet.id
             for subnet in obj.subnet_set.all()

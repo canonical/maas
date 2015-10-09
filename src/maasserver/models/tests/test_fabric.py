@@ -90,6 +90,15 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
 
 class TestFabric(MAASServerTestCase):
 
+    def test_get_name_for_empty_name(self):
+        fabric = factory.make_Fabric()
+        self.assertEquals("fabric-%s" % fabric.id, fabric.get_name())
+
+    def test_get_name_for_set_name(self):
+        name = factory.make_name('name')
+        fabric = factory.make_Fabric(name=name)
+        self.assertEquals(name, fabric.get_name())
+
     def test_creates_fabric_with_default_vlan(self):
         name = factory.make_name('name')
         fabric = factory.make_Fabric(name=name)

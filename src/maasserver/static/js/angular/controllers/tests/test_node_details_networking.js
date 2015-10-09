@@ -26,7 +26,7 @@ describe("filterByUnusedForInterface", function() {
         expect(filterByUnusedForInterface(vlans)).toEqual([]);
     });
 
-    it("returns empty if undefined originalInterfaces", function() {
+    it("returns only free vlans", function() {
         var i, vlan, used_vlans = [], free_vlans = [], all_vlans = [];
         for(i = 0; i < 3; i++) {
             vlan = {
@@ -121,6 +121,48 @@ describe("removeBondParents", function() {
             parents: interfaces
         };
         expect(removeBondParents(interfaces, bondInterface)).toEqual([]);
+    });
+});
+
+
+describe("removeDefaultVLANIfVLAN", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the removeDefaultVLANIfVLAN.
+    var removeDefaultVLANIfVLAN;
+    beforeEach(inject(function($filter) {
+        removeDefaultVLANIfVLAN = $filter("removeDefaultVLANIfVLAN");
+    }));
+
+    it("returns vlans if undefined type", function() {
+        var i, vlan, vlans = [];
+        for(i = 0; i < 3; i++) {
+            vlan = {
+                id: i,
+                vid: i,
+                fabric: 0
+            };
+            vlans.push(vlan);
+        }
+        expect(removeDefaultVLANIfVLAN(vlans)).toEqual(vlans);
+    });
+
+    it("removes default vlans from vlans", function() {
+        var i, vlan, vlans = [];
+        for(i = 0; i < 3; i++) {
+            vlan = {
+                id: i,
+                vid: i,
+                fabric: 0
+            };
+            vlans.push(vlan);
+        }
+
+        expect(
+            removeDefaultVLANIfVLAN(
+                vlans, "vlan")).toEqual([vlans[1], vlans[2]]);
     });
 });
 
@@ -2498,10 +2540,11 @@ describe("NodeNetworkingController", function() {
             var parent = {
                 id: makeInteger(0, 100)
             };
+            var subnet = {};
             $scope.newInterface = {
                 type: "alias",
                 mode: "auto",
-                subnet: {},
+                subnet: subnet,
                 parent: parent
             };
             $scope.selectedInterfaces = [{}];
@@ -2511,11 +2554,12 @@ describe("NodeNetworkingController", function() {
             expect($scope.saveInterfaceLink).toHaveBeenCalledWith({
                 id: parent.id,
                 mode: "auto",
-                subnet: $scope.newInterface.subnet,
+                subnet: subnet,
                 ip_address: ""
             });
             expect($scope.selectedMode).toBeNull();
             expect($scope.selectedInterfaces).toEqual([]);
+            expect($scope.newInterface).toEqual({});
         });
 
         it("calls createVLANInterface with correct params", function() {
@@ -2523,16 +2567,18 @@ describe("NodeNetworkingController", function() {
             var parent = {
                 id: makeInteger(0, 100)
             };
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
             $scope.newInterface = {
                 type: "vlan",
                 mode: "auto",
                 parent: parent,
-                vlan: {
-                    id: makeInteger(0, 100)
-                },
-                subnet: {
-                    id: makeInteger(0, 100)
-                }
+                vlan: vlan,
+                subnet: subnet
             };
             $scope.selectedInterfaces = [{}];
             $scope.selectedMode = "add";
@@ -2543,12 +2589,13 @@ describe("NodeNetworkingController", function() {
             expect(NodesManager.createVLANInterface).toHaveBeenCalledWith(
                 node, {
                     parent: parent.id,
-                    vlan: $scope.newInterface.vlan.id,
+                    vlan: vlan.id,
                     mode: "auto",
-                    subnet: $scope.newInterface.subnet.id
+                    subnet: subnet.id
                 });
             expect($scope.selectedMode).toBeNull();
             expect($scope.selectedInterfaces).toEqual([]);
+            expect($scope.newInterface).toEqual({});
         });
 
         it("calls add again with type", function() {

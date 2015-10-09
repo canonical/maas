@@ -66,19 +66,18 @@ class VLAN(CleanSave, TimestampedModel):
         verbose_name_plural = "VLANs"
         unique_together = (
             ('vid', 'fabric'),
-            ('name', 'fabric'),
         )
 
     name = CharField(
-        max_length=256, editable=True, validators=[VLAN_NAME_VALIDATOR])
+        max_length=256, editable=True, null=True, blank=True,
+        validators=[VLAN_NAME_VALIDATOR])
 
     vid = IntegerField(editable=True)
 
     fabric = ForeignKey('Fabric', blank=False, editable=True)
 
     def __unicode__(self):
-        return "name=%s, vid=%d, fabric=%s" % (
-            self.name, self.vid, self.fabric.name)
+        return "%s.%s" % (self.fabric.get_name(), self.get_name())
 
     def clean_vid(self):
         if self.vid < 0 or self.vid > 4095:
@@ -92,6 +91,13 @@ class VLAN(CleanSave, TimestampedModel):
     def is_fabric_default(self):
         """Is this the default VLAN in the fabric?"""
         return self.fabric.get_default_vlan() == self
+
+    def get_name(self):
+        """Return the name of the VLAN."""
+        if self.is_fabric_default():
+            return "untagged"
+        else:
+            return self.name
 
     def manage_connected_interfaces(self):
         """Deal with connected interfaces:

@@ -104,7 +104,9 @@ angular.module('MAAS').controller('SubnetsListController', [
         // Return the name name for the VLAN.
         function getVLANName(vlan) {
             var name = vlan.vid;
-            if(angular.isString(vlan.name) && vlan.name !== "") {
+            if(vlan.vid === 0) {
+                name = "untagged";
+            } else if(angular.isString(vlan.name) && vlan.name !== "") {
                 name += " (" + vlan.name + ")";
             }
             return name;

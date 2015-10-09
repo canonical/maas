@@ -26,7 +26,7 @@ class TestFabricHandler(MAASServerTestCase):
     def dehydrate_fabric(self, fabric):
         data = {
             "id": fabric.id,
-            "name": fabric.name,
+            "name": fabric.get_name(),
             "updated": dehydrate_datetime(fabric.updated),
             "created": dehydrate_datetime(fabric.created),
             "vlan_ids": [

@@ -22,13 +22,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestFabricForm(MAASServerTestCase):
 
-    def test__requires_name(self):
-        form = FabricForm({})
-        self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
-            "name": ["This field is required."]
-            }, form.errors)
-
     def test__creates_fabric(self):
         fabric_name = factory.make_name("fabric")
         form = FabricForm({

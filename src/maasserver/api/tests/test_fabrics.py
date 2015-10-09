@@ -82,16 +82,6 @@ class TestFabricsAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_requires_name(self):
-        self.become_admin()
-        uri = get_fabrics_uri()
-        response = self.client.post(uri, {})
-        self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual({
-            "name": ["This field is required."],
-            }, json.loads(response.content))
-
 
 class TestFabricAPI(APITestCase):
 
@@ -112,7 +102,7 @@ class TestFabricAPI(APITestCase):
         parsed_fabric = json.loads(response.content)
         self.assertThat(parsed_fabric, ContainsDict({
             "id": Equals(fabric.id),
-            "name": Equals(fabric.name),
+            "name": Equals(fabric.get_name()),
             }))
         self.assertItemsEqual([
             vlan.id

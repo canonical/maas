@@ -340,9 +340,9 @@
                                     <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
                                 </div>
                                 <div class="table__data table__column--15" data-ng-show="column == 'name'">
-                                    <span class="ng-hide" data-ng-show="interface.type == 'alias'">{$ interface.name $}</span>
+                                    <span class="ng-hide" data-ng-show="interface.type == 'alias' || interface.type == 'vlan'">{$ interface.name $}</span>
                                     <input type="text" class="table__input"
-                                        data-ng-show="interface.type != 'alias'"
+                                        data-ng-show="interface.type != 'alias' && interface.type != 'vlan'"
                                         data-ng-model="interface.name"
                                         data-maas-enter-blur
                                         data-ng-focus="setFocusInterface(interface)"
@@ -368,7 +368,7 @@
                                 <div class="table__data table__column--14">
                                     <select class="table__input" name="fabric" id="fabric"
                                         data-ng-model="interface.fabric"
-                                        data-ng-disabled="interface.type == 'alias'"
+                                        data-ng-disabled="interface.type == 'alias' || interface.type == 'vlan'"
                                         data-ng-change="fabricChanged(interface)"
                                         data-ng-options="fabric as fabric.name for fabric in fabrics">
                                     </select>
@@ -376,9 +376,9 @@
                                 <div class="table__data table__column--14">
                                     <select class="table__input" name="vlan" id="vlan"
                                         data-ng-model="interface.vlan"
-                                        data-ng-disabled="interface.type == 'alias'"
+                                        data-ng-disabled="interface.type == 'alias' || interface.vlan.vid === 0"
                                         data-ng-change="saveInterface(interface)"
-                                        data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:interface.fabric">
+                                        data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:interface.fabric">
                                     </select>
                                 </div>
                                 <div class="table__data table__column--18">
@@ -453,7 +453,7 @@
                                             <select class="table__input" name="vlan" id="vlan"
                                                 data-ng-model="newInterface.vlan"
                                                 data-ng-disabled="newInterface.type == 'alias'"
-                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces"
+                                                data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLAN | filterByFabric:newInterface.parent.fabric | filterByUnusedForInterface:newInterface.parent:originalInterfaces"
                                                 data-ng-show="newInterface.type === 'vlan'"
                                                 data-ng-change="addVLANChanged()">
                                             </select>

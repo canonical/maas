@@ -35,6 +35,7 @@ class FabricHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, obj, data, for_list=False):
+        data["name"] = obj.get_name()
         data["vlan_ids"] = [
             vlan.id
             for vlan in obj.vlan_set.all()

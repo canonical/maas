@@ -93,7 +93,7 @@ class TestVlansAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_requires_name_and_vid(self):
+    def test_create_requires_vid(self):
         self.become_admin()
         fabric = factory.make_Fabric()
         uri = get_vlans_uri(fabric)
@@ -101,7 +101,6 @@ class TestVlansAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual({
-            "name": ["This field is required."],
             "vid": [
                 "This field is required.",
                 "Vid must be between 0 and 4095."],
@@ -128,9 +127,9 @@ class TestVlanAPI(APITestCase):
         parsed_vlan = json.loads(response.content)
         self.assertThat(parsed_vlan, ContainsDict({
             "id": Equals(vlan.id),
-            "name": Equals(vlan.name),
+            "name": Equals(vlan.get_name()),
             "vid": Equals(vlan.vid),
-            "fabric": Equals(fabric.name),
+            "fabric": Equals(fabric.get_name()),
             "resource_uri": Equals(get_vlan_uri(vlan)),
             }))
 

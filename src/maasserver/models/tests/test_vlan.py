@@ -34,6 +34,15 @@ from testtools.testcase import ExpectedException
 
 class VLANTest(MAASServerTestCase):
 
+    def test_get_name_for_default_vlan_is_untagged(self):
+        fabric = factory.make_Fabric()
+        self.assertEquals("untagged", fabric.get_default_vlan().get_name())
+
+    def test_get_name_for_set_name(self):
+        name = factory.make_name('name')
+        vlan = factory.make_VLAN(name=name)
+        self.assertEquals(name, vlan.get_name())
+
     def test_creates_vlan(self):
         name = factory.make_name('name')
         vid = random.randint(3, 55)

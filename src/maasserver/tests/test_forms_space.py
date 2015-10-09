@@ -39,13 +39,13 @@ class TestSpaceForm(MAASServerTestCase):
         self.assertEquals(space_name, space.name)
 
     def test__doest_require_name_on_update(self):
-        space = factory.make_Fabric()
+        space = factory.make_Space()
         form = SpaceForm(instance=space, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
     def test__updates_space(self):
         new_name = factory.make_name("space")
-        space = factory.make_Fabric()
+        space = factory.make_Space()
         form = SpaceForm(instance=space, data={
             "name": new_name,
         })

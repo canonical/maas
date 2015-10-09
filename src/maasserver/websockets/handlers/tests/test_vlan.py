@@ -26,7 +26,7 @@ class TestVLANHandler(MAASServerTestCase):
     def dehydrate_vlan(self, vlan):
         data = {
             "id": vlan.id,
-            "name": vlan.name,
+            "name": vlan.get_name(),
             "vid": vlan.vid,
             "fabric": vlan.fabric_id,
             "updated": dehydrate_datetime(vlan.updated),

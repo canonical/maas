@@ -61,6 +61,26 @@ angular.module('MAAS').filter('removeBondParents', function() {
 });
 
 
+// Filter that is specific to the NodeNetworkingController. Remove the default
+// VLAN if the interface is a VLAN interface.
+angular.module('MAAS').filter('removeDefaultVLANIfVLAN', function() {
+    return function(vlans, interfaceType) {
+        if(!angular.isString(interfaceType)) {
+            return vlans;
+        }
+        var filtered = [];
+        angular.forEach(vlans, function(vlan) {
+            if(interfaceType !== "vlan") {
+                filtered.push(vlan);
+            } else if(vlan.vid !== 0) {
+                filtered.push(vlan);
+            }
+        });
+        return filtered;
+    };
+});
+
+
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
     'NodesManager', 'GeneralManager', 'ManagerHelperService',
@@ -332,7 +352,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Return list of unused VLANs for an interface. Also remove the
         // ignoreVLANs from the returned list.
         function getUnusedVLANs(nic, ignoreVLANs) {
-            var vlans = $filter('filterByFabric')($scope.vlans, nic.fabric);
+            var vlans = $filter('removeDefaultVLAN')($scope.vlans);
+            vlans = $filter('filterByFabric')(vlans, nic.fabric);
             vlans = $filter('filterByUnusedForInterface')(
                 vlans, nic, $scope.originalInterfaces);
 
@@ -413,7 +434,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return "";
             }
 
-            if(angular.isString(vlan.name) && vlan.name.length > 0) {
+            if(vlan.vid === 0) {
+                return "untagged";
+            } else if(angular.isString(vlan.name) && vlan.name.length > 0) {
                 return vlan.vid + " (" + vlan.name + ")";
             } else {
                 return vlan.vid;
@@ -624,7 +647,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Return True if the interface IP address that the user typed is
         // invalid.
         $scope.isIPAddressInvalid = function(nic) {
-            return (nic.ip_address.length === 0 ||
+            return (!angular.isString(nic.ip_address) ||
+                nic.ip_address.length === 0 ||
                 !ValidationService.validateIP(nic.ip_address) ||
                 !ValidationService.validateIPInNetwork(
                     nic.ip_address, nic.subnet.cidr));
@@ -907,6 +931,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             } else {
                 $scope.selectedMode = SELECTION_MODE.NONE;
                 $scope.selectedInterfaces = [];
+                $scope.newInterface = {};
             }
         };
 

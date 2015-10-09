@@ -101,7 +101,7 @@ class Fabric(CleanSave, TimestampedModel):
     objects = FabricManager()
 
     name = CharField(
-        max_length=256, unique=True, editable=True,
+        max_length=256, editable=True, null=True, blank=True,
         validators=[FABRIC_NAME_VALIDATOR])
 
     def __unicode__(self):
@@ -113,6 +113,13 @@ class Fabric(CleanSave, TimestampedModel):
 
     def get_default_vlan(self):
         return self.vlan_set.all().order_by('id').first()
+
+    def get_name(self):
+        """Return the name of the fabric."""
+        if self.name:
+            return self.name
+        else:
+            return "fabric-%s" % self.id
 
     def delete(self):
         if self.is_default():

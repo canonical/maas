@@ -9484,11 +9484,11 @@
     updated: ! '2015-09-18 15:38:26.981744'}
   model: maasserver.event
   pk: 236
-- fields: {created: ! '2015-09-18 15:14:45.727015', name: Default fabric, updated: ! '2015-09-18
+- fields: {created: ! '2015-09-18 15:14:45.727015', updated: ! '2015-09-18
       15:14:45.727015'}
   model: maasserver.fabric
   pk: 0
-- fields: {created: ! '2015-09-18 15:14:45.727015', name: Extra fabric, updated: ! '2015-09-18
+- fields: {created: ! '2015-09-18 15:14:45.727015', updated: ! '2015-09-18
       15:14:45.727015'}
   model: maasserver.fabric
   pk: 1
@@ -9512,11 +9512,11 @@
 - fields: {filesystem_group: 4, uuid: 3a140acf-6a98-4572-aa2f-3de2ba56b818}
   model: maasserver.virtualblockdevice
   pk: 12
-- fields: {created: ! '2015-09-18 15:14:45.727015', fabric: 0, name: Default VLAN,
+- fields: {created: ! '2015-09-18 15:14:45.727015', fabric: 0,
     updated: ! '2015-09-18 15:14:45.727015', vid: 0}
   model: maasserver.vlan
   pk: 0
-- fields: {created: ! '2015-09-18 15:14:45.727015', fabric: 1, name: Extra VLAN,
+- fields: {created: ! '2015-09-18 15:14:45.727015', fabric: 1,
     updated: ! '2015-09-18 15:14:45.727015', vid: 0}
   model: maasserver.vlan
   pk: 1

@@ -24,12 +24,11 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestVLANForm(MAASServerTestCase):
 
-    def test__requires_name(self):
+    def test__requires_vid(self):
         fabric = factory.make_Fabric()
         form = VLANForm(fabric=fabric, data={})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEquals({
-            "name": ["This field is required."],
             "vid": [
                 "This field is required.",
                 "Vid must be between 0 and 4095.",
@@ -54,6 +53,16 @@ class TestVLANForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         form = VLANForm(instance=vlan, data={})
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test__cannot_edit_default_vlan(self):
+        fabric = factory.make_Fabric()
+        form = VLANForm(instance=fabric.get_default_vlan(), data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals({
+            "__all__": [
+                "Cannot modify the default VLAN for a fabric.",
+                ],
+            }, form.errors)
 
     def test__updates_vlan(self):
         vlan = factory.make_VLAN()

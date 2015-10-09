@@ -16,6 +16,7 @@ __all__ = [
     "VLANForm",
 ]
 
+from django.core.exceptions import ValidationError
 from maasserver.forms import MAASModelForm
 from maasserver.models.vlan import VLAN
 
@@ -36,6 +37,13 @@ class VLANForm(MAASModelForm):
         instance = kwargs.get('instance')
         if instance is None and self.fabric is None:
             raise ValueError("Form requires either a instance or a fabric.")
+
+    def clean(self):
+        cleaned_data = super(VLANForm, self).clean()
+        if self.instance.id is not None and self.instance.is_fabric_default():
+            raise ValidationError(
+                "Cannot modify the default VLAN for a fabric.")
+        return cleaned_data
 
     def save(self):
         """Persist the interface into the database."""

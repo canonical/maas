@@ -709,8 +709,6 @@ class Factory(maastesting.factory.Factory):
         return fannetwork
 
     def make_Fabric(self, name=None):
-        if name is None:
-            name = self.make_name('fabric')
         fabric = Fabric(name=name)
         fabric.save()
         return fabric
@@ -727,8 +725,6 @@ class Factory(maastesting.factory.Factory):
 
     def make_VLAN(self, name=None, vid=None, fabric=None):
         assert vid != 0, "VID=0 VLANs are auto-created"
-        if name is None:
-            name = self.make_name('vlan')
         if fabric is None:
             fabric = Fabric.objects.get_default_fabric()
         if vid is None:

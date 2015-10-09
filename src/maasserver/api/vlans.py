@@ -90,7 +90,12 @@ class VlanHandler(OperationsHandler):
     @classmethod
     def fabric(cls, vlan):
         """Return fabric name."""
-        return vlan.fabric.name
+        return vlan.fabric.get_name()
+
+    @classmethod
+    def name(cls, vlan):
+        """Return the VLAN name."""
+        return vlan.get_name()
 
     def read(self, request, fabric_id, vlan_id):
         """Read VLAN on fabric.

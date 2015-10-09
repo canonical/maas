@@ -76,6 +76,7 @@ def static_resources(context):
             'js/angular/filters/by_fabric.js',
             'js/angular/filters/by_vlan.js',
             'js/angular/filters/by_space.js',
+            'js/angular/filters/remove_default_vlan.js',
             'js/angular/controllers/error.js',
             'js/angular/controllers/nodes_list.js',
             'js/angular/controllers/add_hardware.js',
