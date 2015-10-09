@@ -80,7 +80,8 @@ class TestPartitionTable(MAASServerTestCase):
             table_type=PARTITION_TABLE_TYPE.MBR, block_device=device)
         partition = partition_table.add_partition()
         self.assertEqual(
-            partition.size, MAX_PARTITION_SIZE_FOR_MBR)
+            partition.size, round_size_to_nearest_block(
+                MAX_PARTITION_SIZE_FOR_MBR, block_size))
 
     def test_add_second_partition_no_size(self):
         """Tests whether a second partition with no specified size starts from

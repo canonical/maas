@@ -375,7 +375,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 for filesystem in filesystems
                 )
             number_of_extents, _ = divmod(pv_total_size, LVM_PE_SIZE)
-            return number_of_extents * LVM_PE_SIZE
+            return (number_of_extents - 1) * LVM_PE_SIZE
 
     def get_smallest_filesystem_size(self):
         """Return the smallest filesystem size."""

@@ -1007,7 +1007,10 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals(
             4, partition_table.partitions.count(),
             "Should have 4 partitions.")
-        self.assertEquals(MAX_PARTITION_SIZE_FOR_MBR, root_partition.size)
+        self.assertEquals(
+            round_size_by_blocks(
+                MAX_PARTITION_SIZE_FOR_MBR, boot_disk.block_size),
+            root_partition.size)
 
 
 class TestBcacheStorageLayoutBase(MAASServerTestCase):

@@ -32,8 +32,8 @@ from maasserver.fields_storage import (
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.partition import (
-    MAX_PARTITION_SIZE_FOR_MBR,
     MIN_PARTITION_SIZE,
+    Partition,
 )
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -200,8 +200,8 @@ class StorageLayoutBase(Form):
         root_size = self.get_root_size()
         if root_device is None or root_device == self.boot_disk:
             # Fix the maximum root_size for MBR.
-            max_mbr_size = (
-                MAX_PARTITION_SIZE_FOR_MBR - self.boot_disk.block_size)
+            max_mbr_size = Partition._get_mbr_max_for_block_device(
+                self.boot_disk)
             if (boot_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
                     root_size is not None and root_size > max_mbr_size):
                 root_size = max_mbr_size
@@ -212,8 +212,8 @@ class StorageLayoutBase(Form):
             root_partition_table = PartitionTable.objects.create(
                 block_device=root_device)
             # Fix the maximum root_size for MBR.
-            max_mbr_size = (
-                MAX_PARTITION_SIZE_FOR_MBR - root_device.block_size)
+            max_mbr_size = Partition._get_mbr_max_for_block_device(
+                root_device)
             if (root_partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
                     root_size is not None and root_size > max_mbr_size):
                 root_size = max_mbr_size

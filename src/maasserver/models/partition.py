@@ -44,7 +44,7 @@ from maasserver.utils.storage import (
 
 
 MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
-MAX_PARTITION_SIZE_FOR_MBR = 2 * (1024 ** 4)  # 2TiB
+MAX_PARTITION_SIZE_FOR_MBR = (((2 ** 32) - 1) * 512) - (1024 ** 2)  # 2 TiB
 
 
 class PartitionManager(Manager):
@@ -219,6 +219,17 @@ class Partition(CleanSave, TimestampedModel):
             self.size = round_size_to_nearest_block(
                 self.size, self.partition_table.get_block_size())
 
+    @classmethod
+    def _get_mbr_max_for_block_device(self, block_device):
+        """Get the maximum partition size for MBR for this block device."""
+        return round_size_to_nearest_block(
+            MAX_PARTITION_SIZE_FOR_MBR, block_device.block_size)
+
+    def _get_mbr_max_for_partition(self):
+        """Get the maximum partition size for MBR for this partition."""
+        return self._get_mbr_max_for_block_device(
+            self.partition_table.block_device)
+
     def _validate_enough_space(self):
         """Validate that the partition table has enough space for this
         partition."""
@@ -250,7 +261,7 @@ class Partition(CleanSave, TimestampedModel):
 
             # Check that the size is not larger than MBR allows.
             if (self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR and
-                    self.size > MAX_PARTITION_SIZE_FOR_MBR):
+                    self.size > self._get_mbr_max_for_partition()):
                 if self.id is not None:
                     raise ValidationError({
                         "size": [
