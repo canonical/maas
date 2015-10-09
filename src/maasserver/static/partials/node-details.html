@@ -128,7 +128,7 @@
         <div class="inner-wrapper">
             <form>
                 <div class="twelve-col">
-                    <h3 class="title">Machine summary</h3>
+                    <h2 class="title">Machine summary</h2>
                 </div>
                 <fieldset class="six-col">
                     <div class="ng-hide" data-ng-show="isSuperUser()">
@@ -265,7 +265,7 @@
         <div class="inner-wrapper">
             <form class="disabled">
                 <div class="twelve-col">
-                    <h3 class="title">Power</h3>
+                    <h2 class="title">Power</h2>
                 </div>
                 <div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
                     <ul class="flash-messages">
@@ -299,12 +299,12 @@
     <div class="row">
         <div class="inner-wrapper" ng-controller="NodeNetworkingController">
             <div class="twelve-col" data-ng-hide="loaded">
-                <h2 class="title">Networking</h2>
+                <h2 class="title">Network</h2>
                 <div class="twelve-col">Loading...</div>
             </div>
             <form class="ng-hide" data-ng-show="loaded">
                 <div class="twelve-col">
-                    <h3 class="title">Networking</h3>
+                    <h2 class="title">Network</h2>
                     <div class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
@@ -668,13 +668,16 @@
     <div class="row">
         <div class="inner-wrapper" ng-controller="NodeStorageController">
             <form>
+                <div class="twleve-col">
+                    <h2>Storage</h2>
+                </div>
                 <div class="twelve-col" data-ng-hide="has_disks">
                     <h4>
                         No storage information. Commissioning this node will gather the storage information.
                     </h4>
                 </div>
                 <div class="twelve-col padding-bottom">
-                    <h4>File System</h4>
+                    <h3>File System</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
@@ -707,7 +710,7 @@
                     </section>
                 </div>
                 <div class="twelve-col padding-bottom">
-                    <h4>Available disks and partitions</h4>
+                    <h3>Available disks and partitions</h3>
                     <section class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
@@ -807,7 +810,7 @@
                     </div>
                 </div>
                 <div class="twelve-col padding-bottom">
-                    <h4>Used disks and partitions</h4>
+                    <h3>Used disks and partitions</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
@@ -1271,10 +1274,10 @@
     <div class="row">
         <div class="inner-wrapper">
             <div class="twelve-col">
-                <h3 class="title">Latest machine events</h3>
-                <h4 data-ng-hide="node.events.length">
+                <h2 class="title">Latest machine events</h2>
+                <h2 data-ng-hide="node.events.length">
                     No events.
-                </h4>
+                </h2>
                 <table class="table-listing no-hover" data-ng-show="node.events.length">
                     <thead>
                         <tr class="table-listing__row">
@@ -1307,7 +1310,7 @@
     <div class="row" data-ng-show="machine_output.viewable">
         <div class="inner-wrapper">
             <div class="twelve-col">
-                <h3 class="title">Machine output
+                <h2 class="title">Machine output
                     <span class="title__indicator" data-ng-show="machine_output.showSummaryToggle">
                         <a href="" class="title__link active"
                             data-ng-click="machine_output.summaryType = 'yaml'"
@@ -1317,7 +1320,7 @@
                             data-ng-click="machine_output.summaryType = 'xml'"
                             data-ng-class="{ active: machine_output.summaryType === 'xml' }">XML</a>
                     </span>
-                </h3>
+                </h2>
             </div>
             <div class="twelve-col" data-ng-show="machine_output.selectedView.name === 'summary'">
                 <pre>
