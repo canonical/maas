@@ -127,7 +127,7 @@
     &--five {
       margin-top: 5px;
     }
-    
+
     &--ten {
         margin-top: 10px;
     }
@@ -209,6 +209,14 @@
 %border-bottom,
 .border-bottom {
     border-bottom: 1px dotted #888;
+}
+
+.no-margin {
+  margin: 0;
+}
+
+.no-margin-top {
+  margin-top: 0 !important;
 }
 
 .no-padding {
