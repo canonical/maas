@@ -236,12 +236,12 @@
                             <dd class="four-col last-col">
                                 {$ node.storage $}GB over {$ node.physical_disk_count $} disks
                             </dd>
-                        <dt class="two-col">Operating System</dt>
-                            <dd class="four-col last-col">{$ getOSText() $}</dd>
-                        <dt class="two-col">Kernel</dt>
-                            <dd class="four-col last-col">{$ node.hwe_kernel $}</dd>
-                        <dt class="two-col ng-hide" data-ng-show="node.third_party_driver">Third Party Driver</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.third_party_driver">
+                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ getOSText() $}</dd>
+                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Kernel</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ node.hwe_kernel $}</dd>
+                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">Third Party Driver</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
                             </dd>
                     </dl>

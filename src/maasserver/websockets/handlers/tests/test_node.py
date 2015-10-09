@@ -176,6 +176,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "%s" % boot_interface.mac_address),
             "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
             "routers": handler.dehydrate_routers(node.routers),
+            "show_os_info": handler.dehydrate_show_os_info(node),
             "status": node.display_status(),
             "storage": "%3.1f" % (sum([
                 blockdevice.size
@@ -293,6 +294,18 @@ class TestNodeHandler(MAASServerTestCase):
             for _ in range(3)
         }
         self.assertEquals(params, handler.dehydrate_power_parameters(params))
+
+    def test_dehydrate_show_os_info_returns_true(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.DEPLOYED)
+        handler = NodeHandler(owner, {})
+        self.assertTrue(handler.dehydrate_show_os_info(node))
+
+    def test_dehydrate_show_os_info_returns_false(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.READY)
+        handler = NodeHandler(owner, {})
+        self.assertFalse(handler.dehydrate_show_os_info(node))
 
     def test_dehydrate_device(self):
         owner = factory.make_User()

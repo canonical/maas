@@ -27,6 +27,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
+    NODE_STATUS,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -242,6 +243,7 @@ class NodeHandler(TimestampedModelHandler):
             for tag in obj.tags.all()
         ]
         if not for_list:
+            data["show_os_info"] = self.dehydrate_show_os_info(obj)
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
             data["hwe_kernel"] = obj.hwe_kernel
@@ -290,6 +292,17 @@ class NodeHandler(TimestampedModelHandler):
                     }
 
         return data
+
+    def dehydrate_show_os_info(self, obj):
+        """Return True if OS information should show in the UI."""
+        return (
+            obj.status == NODE_STATUS.DEPLOYING or
+            obj.status == NODE_STATUS.FAILED_DEPLOYMENT or
+            obj.status == NODE_STATUS.DEPLOYED or
+            obj.status == NODE_STATUS.RELEASING or
+            obj.status == NODE_STATUS.FAILED_RELEASING or
+            obj.status == NODE_STATUS.DISK_ERASING or
+            obj.status == NODE_STATUS.FAILED_DISK_ERASING)
 
     def dehydrate_device(self, device):
         """Return the `Device` formatted for JSON encoding."""
