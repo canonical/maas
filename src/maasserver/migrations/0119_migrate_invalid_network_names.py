@@ -1,3 +1,5 @@
+import re
+
 from django.db import models
 from south.db import db
 # -*- coding: utf-8 -*-
