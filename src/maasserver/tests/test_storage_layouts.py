@@ -499,11 +499,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         # Validate root partition.
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[0]
+        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / boot_disk.block_size
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(
-                MAX_PARTITION_SIZE_FOR_MBR,
-                boot_disk.block_size),
+            (boot_disk.block_size * (number_of_blocks - 1)),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -1003,13 +1002,13 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[0]
         volume_group = VolumeGroup.objects.get(
             filesystems__partition=root_partition)
+        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / boot_disk.block_size
         self.assertIsNotNone(volume_group)
         self.assertEquals(
             4, partition_table.partitions.count(),
             "Should have 4 partitions.")
         self.assertEquals(
-            round_size_by_blocks(
-                MAX_PARTITION_SIZE_FOR_MBR, boot_disk.block_size),
+            boot_disk.block_size * (number_of_blocks - 1),
             root_partition.size)
 
 

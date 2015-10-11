@@ -222,8 +222,9 @@ class Partition(CleanSave, TimestampedModel):
     @classmethod
     def _get_mbr_max_for_block_device(self, block_device):
         """Get the maximum partition size for MBR for this block device."""
-        return round_size_to_nearest_block(
-            MAX_PARTITION_SIZE_FOR_MBR, block_device.block_size)
+        block_size = block_device.block_size
+        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / block_size
+        return block_size * (number_of_blocks - 1)
 
     def _get_mbr_max_for_partition(self):
         """Get the maximum partition size for MBR for this partition."""
