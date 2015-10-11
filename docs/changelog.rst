@@ -3,6 +3,32 @@ Changelog
 =========
 
 
+1.8.3
+=====
+
+See https://launchpad.net/maas/+milestone/1.8.3 for full details.
+
+Bug Fix Update
+--------------
+
+#1495064    Declare dependency on metadataserver migration 0015 by maasserver
+            migration 0121 to allow upgrades from 1.5.4 to 1.8 to work.
+
+#1484696    Fix the issue where the included ':', apache2 wont forward the
+            connection (LP: #1484696)
+
+#1489160    WebUI - Fixes autocomplete styling for tagging
+
+#1491898    Add HPDSA hardware drivers to the drivers config
+
+#1491822    Always invoke the init system using the C.UTF-8 locale.
+
+#1471946    Restart maas-clusterd in the event of startup failure due to
+            missing /var/lib/maas/secret
+
+#1483273    Use Cluster's name instead of DNS name for the WebUi.
+
+
 1.8.2
 =====
 
