@@ -163,6 +163,23 @@ def check_version(version):
         raise UnknownMetadataVersion("Unknown metadata version: %s" % version)
 
 
+def add_event_to_node_event_log(node, origin, action, description):
+    """Add an entry to the node's event log."""
+    if node.status == NODE_STATUS.COMMISSIONING:
+        type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
+    elif node.status == NODE_STATUS.DEPLOYING:
+        type_name = EVENT_TYPES.NODE_INSTALL_EVENT
+    else:
+        type_name = EVENT_TYPES.NODE_STATUS_EVENT
+
+    event_details = EVENT_DETAILS[type_name]
+    return Event.objects.register_event_and_event_type(
+        node.system_id, type_name, type_level=event_details.level,
+        type_description=event_details.description,
+        event_action=action,
+        event_description="'%s' %s" % (origin, description))
+
+
 class MetadataViewHandler(OperationsHandler):
     create = update = delete = None
 
@@ -239,21 +256,6 @@ class StatusHandler(MetadataViewHandler):
 
         """
 
-        def _add_event_to_node_event_log(node, origin, description):
-            """Add an entry to the node's event log."""
-            if node.status == NODE_STATUS.COMMISSIONING:
-                type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
-            elif node.status == NODE_STATUS.DEPLOYING:
-                type_name = EVENT_TYPES.NODE_INSTALL_EVENT
-            else:
-                type_name = EVENT_TYPES.NODE_STATUS_EVENT
-
-            event_details = EVENT_DETAILS[type_name]
-            return Event.objects.register_event_and_event_type(
-                node.system_id, type_name, type_level=event_details.level,
-                type_description=event_details.description,
-                event_description="'%s' %s" % (origin, description))
-
         def _retrieve_content(compression, encoding, content):
             """Extract the content of the sent file."""
             # Select the appropriate decompressor.
@@ -318,7 +320,7 @@ class StatusHandler(MetadataViewHandler):
         result = message.get('result')
 
         # Add this event to the node event log.
-        _add_event_to_node_event_log(node, origin, description)
+        add_event_to_node_event_log(node, origin, activity_name, description)
 
         # Save attached files, if any.
         for sent_file in message.get('files', []):

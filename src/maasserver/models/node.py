@@ -645,7 +645,8 @@ class Node(CleanSave, TimestampedModel):
         """
         return timedelta(minutes=5).total_seconds()
 
-    def _register_request_event(self, user, type_name, comment=None):
+    def _register_request_event(
+            self, user, type_name, action='', comment=None):
         """Register a node user request event."""
         # don't register system generated non-user requests
         if user is not None:
@@ -658,6 +659,7 @@ class Node(CleanSave, TimestampedModel):
             Event.objects.register_event_and_event_type(
                 self.system_id, type_name, type_level=event_details.level,
                 type_description=event_details.description,
+                event_action=action,
                 event_description=description)
 
     def _start_deployment(self):
@@ -957,7 +959,8 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.models import NodeResult
 
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING)
+            user, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING,
+            action='start commissioning')
 
         # Set the commissioning options on the node.
         self.enable_ssh = enable_ssh
@@ -1093,7 +1096,8 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING, comment)
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING,
+            action='abort commissioning', comment=comment)
 
         # Prepare a transition monitor for later.
         monitor = TransitionMonitor.fromNode(self)
@@ -1155,7 +1159,8 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT, comment)
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
+            action='abort deploying', comment=comment)
 
         # Prepare a transition monitor for later.
         monitor = TransitionMonitor.fromNode(self)
@@ -1456,7 +1461,8 @@ class Node(CleanSave, TimestampedModel):
 
         self._create_acquired_filesystems()
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, comment)
+            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, action='acquire',
+            comment=comment)
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
         self.agent_name = agent_name
@@ -1486,7 +1492,8 @@ class Node(CleanSave, TimestampedModel):
         disk_erase_user_data = generate_user_data(node=self)
 
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ERASE_DISK, comment)
+            user, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
+            action='start disk erasing', comment=comment)
 
         # Change the status of the node now to avoid races when starting
         # nodes in bulk.
@@ -1571,7 +1578,8 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK, comment)
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK,
+            action='abort disk erasing', comment=comment)
 
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
@@ -1647,7 +1655,8 @@ class Node(CleanSave, TimestampedModel):
 
     def release(self, user=None, comment=None):
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_RELEASE, comment)
+            user, EVENT_TYPES.REQUEST_NODE_RELEASE, action='release',
+            comment=comment)
         self._release(user)
 
     def _release(self, user=None):
@@ -1744,7 +1753,8 @@ class Node(CleanSave, TimestampedModel):
 
     def mark_failed(self, user, comment=None):
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, comment)
+            user, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, action='mark_failed',
+            comment=comment)
         self._mark_failed(user, comment)
 
     def _mark_failed(self, user, comment=None):
@@ -1778,7 +1788,8 @@ class Node(CleanSave, TimestampedModel):
         If the node is allocated, release it first.
         """
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_MARK_BROKEN, comment)
+            user, EVENT_TYPES.REQUEST_NODE_MARK_BROKEN, action='mark broken',
+            comment=comment)
         if self.status in RELEASABLE_STATUSES:
             self._release(user)
         # release() normally sets the status to RELEASING and leaves the
@@ -1791,7 +1802,8 @@ class Node(CleanSave, TimestampedModel):
     def mark_fixed(self, user, comment=None):
         """Mark a broken node as fixed and change its state to 'READY'."""
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_MARK_FIXED, comment)
+            user, EVENT_TYPES.REQUEST_NODE_MARK_FIXED, action='mark fixed',
+            comment=comment)
         if self.status != NODE_STATUS.BROKEN:
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
@@ -2220,6 +2232,31 @@ class Node(CleanSave, TimestampedModel):
                 interface.type == INTERFACE_TYPE.PHYSICAL)
         ]
 
+    def substatus_message(self):
+        """Returns a string representation of the most recent event description
+        (supplied through the status API) associated with this node, None if
+        there are no events."""
+        from maasserver.models.event import Event  # Avoid circular import.
+        # Id's have a lower (non-zero under heavy load) chance of being out of
+        # order than of two timestamps colliding.
+        event = Event.objects.filter(node=self).order_by('-id').first()
+        return event.description if event is not None else None
+
+    def substatus_action(self):
+        """Returns a string representation of the most recent event action name
+        (supplied through the status API) associated with this node, None if
+        there are no events."""
+        from maasserver.models.event import Event  # Avoid circular import.
+        # Id's have a lower (non-zero under heavy load) chance of being out of
+        # order than of two timestamps colliding.
+        event = Event.objects.filter(node=self).order_by('-id').first()
+        return event.action if event is not None else None
+
+    @property
+    def substatus_name(self):
+        """Returns the subtatus of the nome as a user-friendly string."""
+        return NODE_STATUS_CHOICES_DICT[self.status]
+
     def is_boot_interface_on_managed_interface(self):
         """Return True if the boot interface is attached to a managed cluster
         interface."""
@@ -2239,7 +2276,8 @@ class Node(CleanSave, TimestampedModel):
         # if status is ALLOCATED, this start is actually for a deplyment
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
-        self._register_request_event(user, event, comment)
+        self._register_request_event(
+            user, event, action='start', comment=comment)
         return self._start(user, user_data)
 
     @transactional
@@ -2315,7 +2353,8 @@ class Node(CleanSave, TimestampedModel):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
         self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_STOP, comment)
+            user, EVENT_TYPES.REQUEST_NODE_STOP, action='stop',
+            comment=comment)
         return self._stop(user, stop_mode)
 
     @transactional

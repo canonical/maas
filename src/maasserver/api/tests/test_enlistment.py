@@ -560,6 +560,9 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
+                'substatus_name',
+                'substatus_message',
+                'substatus_action',
             ],
             list(parsed_result))
 
@@ -666,6 +669,9 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
+                'substatus_action',
+                'substatus_message',
+                'substatus_name',
             ],
             list(parsed_result))
 
@@ -826,6 +832,9 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
+                'substatus_name',
+                'substatus_message',
+                'substatus_action'
             ],
             list(parsed_result))
 

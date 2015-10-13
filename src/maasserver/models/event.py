@@ -40,7 +40,7 @@ class EventManager(Manager):
 
     def register_event_and_event_type(
             self, system_id, type_name, type_description='',
-            type_level=logging.INFO, event_description=''):
+            type_level=logging.INFO, event_action='', event_description=''):
         """Register EventType if it does not exist, then register the Event."""
         node = Node.objects.get(system_id=system_id)
         try:
@@ -51,14 +51,18 @@ class EventManager(Manager):
             event_type = EventType.objects.register(
                 type_name, type_description, type_level)
         Event.objects.create(
-            node=node, type=event_type, description=event_description)
+            node=node, type=event_type, action=event_action,
+            description=event_description)
 
-    def create_node_event(self, system_id, event_type, event_description=''):
+    def create_node_event(
+            self, system_id, event_type, event_action='',
+            event_description=''):
         """Helper to register event and event type for the given node."""
         self.register_event_and_event_type(
             system_id=system_id, type_name=event_type,
             type_description=EVENT_DETAILS[event_type].description,
             type_level=EVENT_DETAILS[event_type].level,
+            event_action=event_action,
             event_description=event_description)
 
 
@@ -73,6 +77,8 @@ class Event(CleanSave, TimestampedModel):
     type = ForeignKey('EventType', null=False, editable=False)
 
     node = ForeignKey('Node', null=False, editable=False)
+
+    action = TextField(default='', blank=True, editable=False)
 
     description = TextField(default='', blank=True, editable=False)
 

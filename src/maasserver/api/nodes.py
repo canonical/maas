@@ -128,6 +128,9 @@ DISPLAYED_NODE_FIELDS = (
     'blockdevice_set',
     'physicalblockdevice_set',
     'virtualblockdevice_set',
+    'substatus_action',
+    'substatus_message',
+    'substatus_name',
 )
 
 

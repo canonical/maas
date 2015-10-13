@@ -651,7 +651,8 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.acquire(user, token, agent_name)
         self.assertThat(register_event, MockCalledOnceWith(
-            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, None))
+            user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, action='acquire',
+            comment=None))
 
     def test_set_default_storage_layout_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
@@ -771,7 +772,8 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             node_start, MockCalledOnceWith(owner, ANY))
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_ERASE_DISK, None))
+            owner, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
+            action='start disk erasing', comment=None))
 
     def test_abort_disk_erasing_changes_state_and_stops_node(self):
         agent_name = factory.make_name('agent-name')
@@ -807,7 +809,8 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.abort_disk_erasing(owner)
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK, None))
+            owner, EVENT_TYPES.REQUEST_NODE_ABORT_ERASE_DISK,
+            action='abort disk erasing', comment=None))
 
     def test_start_disk_erasing_reverts_to_sane_state_on_error(self):
         # If start_disk_erasing encounters an error when calling start(), it
@@ -919,7 +922,8 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.abort_deploying(admin)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT, None))
+            admin, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
+            action='abort deploying', comment=None))
 
     def test_abort_operation_raises_exception_for_unsupported_state(self):
         agent_name = factory.make_name('agent-name')
@@ -1241,7 +1245,8 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release(owner)
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_RELEASE, None))
+            owner, EVENT_TYPES.REQUEST_NODE_RELEASE, action='release',
+            comment=None))
 
     def test_release_clears_osystem_and_distro_series(self):
         node = factory.make_Node(
@@ -1621,7 +1626,8 @@ class TestNode(MAASServerTestCase):
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING))
+            admin, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING,
+            action='start commissioning'))
 
     def test_abort_commissioning_reverts_to_sane_state_on_error(self):
         # If abort commissioning hits an error when trying to stop the
@@ -1687,7 +1693,8 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.abort_commissioning(admin)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING, None))
+            admin, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING,
+            action='abort commissioning', comment=None))
 
     def test_abort_commissioning_logs_and_raises_errors_in_stopping(self):
         admin = factory.make_admin()
@@ -1906,7 +1913,8 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.mark_failed(owner, description)
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, description))
+            owner, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, action='mark_failed',
+            comment=description))
 
     def test_mark_failed_updates_error_description(self):
         self.disable_node_query()
@@ -1952,7 +1960,8 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.mark_broken(owner, description)
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_MARK_BROKEN, description))
+            owner, EVENT_TYPES.REQUEST_NODE_MARK_BROKEN, action='mark broken',
+            comment=description))
 
     def test_mark_broken_releases_allocated_node(self):
         user = factory.make_User()
@@ -1983,7 +1992,8 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.mark_fixed(owner)
         self.assertThat(register_event, MockCalledOnceWith(
-            owner, EVENT_TYPES.REQUEST_NODE_MARK_FIXED, None))
+            owner, EVENT_TYPES.REQUEST_NODE_MARK_FIXED, action='mark fixed',
+            comment=None))
 
     def test_mark_fixed_updates_error_description(self):
         description = factory.make_name('error-description')
@@ -2097,7 +2107,8 @@ class TestNode(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.start(admin)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT, None))
+            admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT, action='start',
+            comment=None))
 
     def test_handle_monitor_expired_marks_node_as_failed(self):
         self.disable_node_query()
@@ -2355,15 +2366,17 @@ class TestNode(MAASServerTestCase):
         log_mock = self.patch_autospec(
             Event.objects, 'register_event_and_event_type')
         event_name = EVENT_TYPES.REQUEST_NODE_START
+        event_action = factory.make_name('action')
         event_details = EVENT_DETAILS[event_name]
         comment = factory.make_name("comment")
         event_description = "(%s) - %s" % (user.username, comment)
-        node._register_request_event(user, event_name, comment)
+        node._register_request_event(user, event_name, event_action, comment)
         self.assertThat(log_mock, MockCalledOnceWith(
             node.system_id,
             EVENT_TYPES.REQUEST_NODE_START,
             type_level=event_details.level,
             type_description=event_details.description,
+            event_action=event_action,
             event_description=event_description))
 
     def test__register_request_event_with_none_user_saves_no_event(self):
@@ -2374,6 +2387,19 @@ class TestNode(MAASServerTestCase):
         comment = factory.make_name("comment")
         node._register_request_event(None, event_name, comment)
         self.assertThat(log_mock, MockNotCalled())
+
+    def test__substatus_message_returns_most_recent_event(self):
+        # The first event won't be returned.
+        event = factory.make_Event(description="Uninteresting event")
+        node = event.node
+        # The second (and last) event will be returned.
+        message = "Interesting event"
+        factory.make_Event(description=message, node=node)
+        self.assertEqual(message, node.substatus_message())
+
+    def test__substatus_message_returns_none_for_new_node(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.substatus_message())
 
 
 class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):
@@ -3456,7 +3482,8 @@ class TestNode_Start(MAASServerTestCase):
         register_event = self.patch(node, '_register_request_event')
         node.start(admin)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_START, None))
+            admin, EVENT_TYPES.REQUEST_NODE_START, action='start',
+            comment=None))
 
     def test__raises_failures_when_power_action_fails(self):
         class PraiseBeToJTVException(Exception):
@@ -3605,7 +3632,7 @@ class TestNode_Stop(MAASServerTestCase):
         with post_commit_hooks:
             node.stop(admin)
         self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_STOP, None))
+            admin, EVENT_TYPES.REQUEST_NODE_STOP, action='stop', comment=None))
 
     def test__allows_admin_to_stop_any_node(self):
         power_off_node = self.patch_autospec(node_module, "power_off_node")

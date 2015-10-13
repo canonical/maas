@@ -56,6 +56,7 @@ from maastesting.matchers import (
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
+    add_event_to_node_event_log,
     check_version,
     get_node_for_mac,
     get_node_for_request,
@@ -160,6 +161,43 @@ class TestHelpers(DjangoTestCase):
             HTTP_AUTHORIZATION=factory.make_oauth_header(
                 oauth_token=token.key))
         self.assertEqual(node, get_queried_node(request))
+
+    def test_add_event_to_node_event_log(self):
+        expected_type = {
+            # These statuses have specific event types.
+            NODE_STATUS.COMMISSIONING: EVENT_TYPES.NODE_COMMISSIONING_EVENT,
+            NODE_STATUS.DEPLOYING: EVENT_TYPES.NODE_INSTALL_EVENT,
+
+            # All other statuses generate NODE_STATUS_EVENT events.
+            NODE_STATUS.NEW: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.FAILED_COMMISSIONING: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.MISSING: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.READY: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.RESERVED: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.ALLOCATED: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.DEPLOYED: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.RETIRED: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.BROKEN: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.FAILED_DEPLOYMENT: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.RELEASING: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.FAILED_RELEASING: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.DISK_ERASING: EVENT_TYPES.NODE_STATUS_EVENT,
+            NODE_STATUS.FAILED_DISK_ERASING: EVENT_TYPES.NODE_STATUS_EVENT,
+        }
+
+        for status in expected_type:
+            node = factory.make_Node(status=status)
+            origin = factory.make_name('origin')
+            action = factory.make_name('action')
+            description = factory.make_name('description')
+            add_event_to_node_event_log(node, origin, action, description)
+            event = Event.objects.get(node=node)
+
+            self.assertEqual(node, event.node)
+            self.assertEqual(action, event.action)
+            self.assertIn(origin, event.description)
+            self.assertIn(description, event.description)
+            self.assertEqual(expected_type[node.status], event.type.name)
 
 
 def make_node_client(node=None):

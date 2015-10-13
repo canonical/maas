@@ -1079,15 +1079,17 @@ class Factory(maastesting.factory.Factory):
         return EventType.objects.create(
             name=name, description=description, level=level)
 
-    def make_Event(self, node=None, type=None, description=None):
+    def make_Event(self, node=None, type=None, action=None, description=None):
         if node is None:
             node = self.make_Node()
         if type is None:
             type = self.make_EventType()
+        if action is None:
+            action = self.make_name('action')
         if description is None:
             description = self.make_name('desc')
         return Event.objects.create(
-            node=node, type=type, description=description)
+            node=node, type=type, action=action, description=description)
 
     def make_LargeFile(self, content=None, size=512):
         """Create `LargeFile`.

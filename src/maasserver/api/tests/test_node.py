@@ -30,6 +30,7 @@ from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
+    NODE_STATUS_CHOICES_DICT,
     POWER_STATE,
 )
 from maasserver.fields import (
@@ -314,6 +315,28 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
+
+    def test_GET_returns_substatus_message_with_most_recent_event(self):
+        """Makes sure the most recent event from this node is shown in the
+        substatus_message attribute."""
+        # The first event won't be returned.
+        event = factory.make_Event(description="Uninteresting event")
+        node = event.node
+        # The second (and last) event will be returned.
+        message = "Interesting event"
+        factory.make_Event(description=message, node=node)
+        response = self.client.get(self.get_node_uri(node))
+        parsed_result = json.loads(response.content)
+        self.assertEqual(message, parsed_result['substatus_message'])
+
+    def test_GET_returns_substatus_name(self):
+        """GET should display the node status as a user-friendly string."""
+        for status in NODE_STATUS_CHOICES_DICT:
+            node = factory.make_Node(status=status)
+            response = self.client.get(self.get_node_uri(node))
+            parsed_result = json.loads(response.content)
+            self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
+                             parsed_result['substatus_name'])
 
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()

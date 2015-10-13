@@ -42,6 +42,7 @@ class TestEventHandler(MAASServerTestCase):
         data = {
             "id": event.id,
             "node_id": event.node.id,
+            "action": event.action,
             "description": event.description,
             "type": {
                 "level": dehydrate_event_type_level(event.type.level),

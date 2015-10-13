@@ -41,19 +41,47 @@ class EventTest(MAASServerTestCase):
             system_id=node.system_id, type_name=event_type.name)
         self.assertIsNotNone(Event.objects.get(node=node))
 
-    def test_register_event_and_event_type_registers_event_type(self):
+    def test_register_event_and_event_type_registers_event_for_new_type(self):
         # EventType does not exist
         node = factory.make_Node()
         type_name = factory.make_name('type_name')
         description = factory.make_name('description')
+        action = factory.make_name('action')
+
         Event.objects.register_event_and_event_type(
             system_id=node.system_id, type_name=type_name,
             type_description=description,
             type_level=random.choice(
                 [logging.ERROR, logging.WARNING, logging.INFO]),
+            event_action=action,
             event_description=description)
+
+        # Since this is a new node, it can have only this one event.
+        event = Event.objects.get(node=node)
+
+        # Check if all parameters were correctly saved.
+        self.assertEqual(node, event.node)
+        self.assertEqual(type_name, event.type.name)
+        self.assertEqual(description, event.description)
+        self.assertEqual(action, event.action)
+
+    def test_register_event_and_event_type_registers_event_type(self):
+        # EventType does not exist
+        node = factory.make_Node()
+        type_name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        action = factory.make_name('action')
+
+        Event.objects.register_event_and_event_type(
+            system_id=node.system_id, type_name=type_name,
+            type_description=description,
+            type_level=random.choice(
+                [logging.ERROR, logging.WARNING, logging.INFO]),
+            event_action=action,
+            event_description=description)
+
+        # Check whether we created the event type.
         self.assertIsNotNone(EventType.objects.get(name=type_name))
-        self.assertIsNotNone(Event.objects.get(node=node))
 
     def test_create_node_event_creates_event(self):
         # EventTypes that are currently being used for
@@ -74,12 +102,14 @@ class EventTest(MAASServerTestCase):
         node = factory.make_Node()
         type_name = factory.make_name('type_name')
         description = factory.make_name('description')
+        action = factory.make_name('action')
 
         Event.objects.register_event_and_event_type(
             system_id=node.system_id, type_name=type_name,
             type_description=description,
             type_level=random.choice(
                 [logging.ERROR, logging.WARNING, logging.INFO]),
+            event_action=action,
             event_description=description)
 
         # Patch EventTypes.object.get() so that it raises DoesNotExist.
@@ -91,6 +121,7 @@ class EventTest(MAASServerTestCase):
             type_description=description,
             type_level=random.choice(
                 [logging.ERROR, logging.WARNING, logging.INFO]),
+            event_action=action,
             event_description=description)
 
         # If we get this far then we have the event type and the
