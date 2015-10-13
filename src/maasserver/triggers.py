@@ -261,12 +261,14 @@ PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node, maasserver_blockdevice
       WHERE maasserver_node.id = maasserver_blockdevice.node_id
       AND maasserver_blockdevice.id = %s;
 
-      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -280,12 +282,14 @@ PARTITIONTABLE_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node, maasserver_blockdevice
         WHERE maasserver_node.id = maasserver_blockdevice.node_id
         AND maasserver_blockdevice.id = %s;
 
-      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -298,7 +302,7 @@ PARTITION_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partitiontable
@@ -306,7 +310,9 @@ PARTITION_NODE_NOTIFY = dedent("""\
       AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
       AND maasserver_partitiontable.id = %s;
 
-      PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      IF node.installable THEN
+        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -319,7 +325,7 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -332,7 +338,7 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
               maasserver_partition.partition_table_id
           AND maasserver_partition.id = %s);
 
-      IF node.system_id != '' THEN
+      IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -347,7 +353,7 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -361,7 +367,7 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
       AND (maasserver_filesystem.filesystem_group_id = %s
           OR maasserver_filesystem.cache_set_id = %s);
 
-      IF node.system_id != '' THEN
+      IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -376,7 +382,7 @@ CACHESET_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id INTO node
+      SELECT system_id, installable INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -389,7 +395,7 @@ CACHESET_NODE_NOTIFY = dedent("""\
       AND maasserver_partition.id = maasserver_filesystem.partition_id
       AND maasserver_filesystem.cache_set_id = %s;
 
-      IF node.system_id != '' THEN
+      IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
