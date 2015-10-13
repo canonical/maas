@@ -239,22 +239,22 @@
         <div data-ng-show="currentpage === 'devices'">
             <div class="page-header__actions">
                 <div class="page-header__cta" data-ng-hide="tabs.devices.selectedItems.length">
-                    <button class="cta-ubuntu"
-                        data-ng-click="addDevice()"
-                        data-ng-hide="addDeviceScope.viewable">Add Device</button>
-                    <button class="cta-ubuntu secondary ng-hide"
-                        data-ng-click="cancelAddDevice()"
-                        data-ng-show="addDeviceScope.viewable">Cancel add device</button>
+                    <div class="right">
+                        <button class="cta-ubuntu"
+                            data-ng-click="addDevice()"
+                            data-ng-hide="addDeviceScope.viewable">Add Device</button>
+                        <button class="cta-ubuntu secondary ng-hide"
+                            data-ng-click="cancelAddDevice()"
+                            data-ng-show="addDeviceScope.viewable">Cancel add device</button>
+                    </div>
                 </div>
-                <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.devices.selectedItems.length">
-                    <span class="page-header__cta-feedback two-col no-margin-bottom" data-ng-click="showSelected('devices')">
+                <div class="page-header__cta ng-hide" data-ng-show="tabs.devices.selectedItems.length">
+                    <span class="page-header__cta-feedback" data-ng-click="showSelected('devices')">
                         {$ tabs.devices.selectedItems.length $} Selected
                     </span>
-                    <div class="two-col no-margin-bottom last-col">
-                        <div data-maas-cta="tabs.devices.takeActionOptions"
-                            data-ng-model="tabs.devices.actionOption"
-                            data-ng-change="actionOptionSelected('devices')">
-                        </div>
+                    <div data-maas-cta="tabs.devices.takeActionOptions"
+                        data-ng-model="tabs.devices.actionOption"
+                        data-ng-change="actionOptionSelected('devices')">
                     </div>
                 </div>
             </div>
