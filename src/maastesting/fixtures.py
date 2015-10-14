@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "CaptureStandardIO",
+    "DetectLeakedFileDescriptors",
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
@@ -23,6 +24,7 @@ __all__ = [
 
 import __builtin__
 import codecs
+from errno import ENOENT
 from io import BytesIO
 import logging
 import os
@@ -361,3 +363,44 @@ class CaptureStandardIO(Fixture):
         self.clearInput()
         self.clearOutput()
         self.clearError()
+
+
+class DetectLeakedFileDescriptors(fixtures.Fixture):
+    """Detect FDs that have leaked during the lifetime of this fixture.
+
+    Raises `AssertionError` with details if anything has leaked.
+
+    It does this by referring to the listing of ``/proc/self/fd``, a "magic"
+    directory that the kernel populates with details of open file-descriptors.
+    It captures this list during fixture set-up and compares against it at
+    fixture tear-down.
+    """
+
+    def setUp(self):
+        super(DetectLeakedFileDescriptors, self).setUp()
+        self.fdpath = "/proc/%d/fd" % os.getpid()
+        self.addCleanup(self.check, os.listdir(self.fdpath))
+
+    def check(self, fds_ref):
+        fds_now = os.listdir(self.fdpath)
+        fds_new = {}
+
+        for fd in set(fds_now) - set(fds_ref):
+            try:
+                fds_new[fd] = os.readlink(os.path.join(self.fdpath, fd))
+            except OSError as error:
+                if error.errno == ENOENT:
+                    # The FD has been closed since listing the directory,
+                    # presumably by another thread in this process. Twisted's
+                    # reactor is likely. In any case, this is not a leak,
+                    # though it may indicate a somewhat racy test.
+                    pass
+                else:
+                    raise
+
+        if len(fds_new) != 0:
+            message = ["File descriptor(s) leaked:"]
+            message.extend(
+                "* %s --> %s" % (fd, desc)
+                for (fd, desc) in fds_new.viewitems())
+            raise AssertionError("\n".join(message))

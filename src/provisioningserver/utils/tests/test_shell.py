@@ -22,6 +22,7 @@ from subprocess import CalledProcessError
 import time
 
 from maastesting.factory import factory
+from maastesting.fixtures import DetectLeakedFileDescriptors
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
@@ -188,6 +189,10 @@ class TestExternalProcessError(MAASTestCase):
 
 class TestPipeFork(MAASTestCase):
 
+    def setUp(self):
+        super(TestPipeFork, self).setUp()
+        self.useFixture(DetectLeakedFileDescriptors())
+
     def test__forks(self):
         with pipefork() as (pid, fin, fout):
             if pid == 0:
@@ -211,6 +216,18 @@ class TestPipeFork(MAASTestCase):
             with pipefork() as (pid, fin, fout):
                 if pid == 0:
                     # Child.
+                    raise ZeroDivisionError()
+
+    def test__raises_parents_exception_when_parent_crashes(self):
+        # If the parent raises an exception, it is propagated. During
+        # tear-down of the pipefork's context the child is reaped, but any
+        # exceptions (via the crash file, or raised on behalf of the child
+        # because of a non-zero exit code or non-zero signal) propagating back
+        # from the child are masked by the exception in the parent.
+        with ExpectedException(ZeroDivisionError):
+            with pipefork() as (pid, fin, fout):
+                if pid != 0:
+                    # Parent.
                     raise ZeroDivisionError()
 
     def test__raises_exception_when_child_killed_by_signal(self):
@@ -246,6 +263,10 @@ class TestPipeFork(MAASTestCase):
 
 
 class TestObjectFork(MAASTestCase):
+
+    def setUp(self):
+        super(TestObjectFork, self).setUp()
+        self.useFixture(DetectLeakedFileDescriptors())
 
     def test__can_send_and_receive_objects(self):
 
