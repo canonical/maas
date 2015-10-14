@@ -28,6 +28,9 @@ Bug Fix Update
 
 #1483273    Use Cluster's name instead of DNS name for the WebUi.
 
+#1504971    Internal Server Error when trying to configure a cluster interface
+            in wily.
+
 
 1.8.2
 =====
