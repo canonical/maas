@@ -142,7 +142,8 @@ def atomic_delete(filename):
     will be on the same filesystem as the destination) and then deletes the
     temporary file. Such a rename is atomic in POSIX.
     """
-    del_filename = ".%s.del" % os.path.basename(filename)
+    del_filename = "%s/.%s.del" % (
+        os.path.dirname(filename), os.path.basename(filename))
     rename(filename, del_filename)
     os.remove(del_filename)
 

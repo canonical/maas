@@ -190,7 +190,8 @@ class TestAtomicDelete(MAASTestCase):
 
     def test_renames_file_before_deleting(self):
         filename = self.make_file()
-        del_filename = ".%s.del" % os.path.basename(filename)
+        del_filename = "%s/.%s.del" % (
+            os.path.dirname(filename), os.path.basename(filename))
         self.addCleanup(os.remove, del_filename)
         mock_remove = self.patch(fs_module.os, "remove")
         atomic_delete(filename)
