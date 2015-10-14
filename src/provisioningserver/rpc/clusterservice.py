@@ -105,6 +105,15 @@ import twisted.web.client
 from twisted.web.client import getPage
 from zope.interface import implementer
 
+# XXX lamont 2015-10-13 LP:1504971 aka 1372767 revisited aka 1505748.
+# Twisted 15+ changes the name of web.client._URI class to web.client.URI.
+# Once we can require a new enough twisted to have the fix for 1505748, we
+# can drop the entire patch to twisted.
+try:
+    from twisted.web.client import _URI as URI
+except ImportError:
+    from twisted.web.client import URI
+
 
 maaslog = get_maas_logger("rpc.cluster")
 
@@ -601,7 +610,7 @@ class ClusterClient(Cluster):
         log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
-class PatchedURI(twisted.web.client._URI):
+class PatchedURI(URI):
 
     @classmethod
     def fromBytes(cls, uri, defaultPort=None):
@@ -676,7 +685,10 @@ class ClusterClientService(TimerService, object):
         # URL with an IPv6 address, at the point where `_makeGetterFactory`
         # calls `fromBytes`.  That last function assumes that a colon can only
         # occur in the URL's netloc portion as part of a port specification.
-        twisted.web.client._URI = PatchedURI
+        if hasattr(twisted.web.client, "_URI"):
+            twisted.web.client._URI = PatchedURI
+        else:
+            twisted.web.client.URI = PatchedURI
 
     def startService(self):
         self.time_started = self.clock.seconds()
