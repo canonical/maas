@@ -33,13 +33,13 @@ __all__ = [
     'record_lease_state',
     ]
 
-
 from collections import defaultdict
 import errno
 from os import (
     fstat,
     stat,
 )
+import sys
 
 from provisioningserver.dhcp.leases_parser_fast import parse_leases
 from provisioningserver.logger import get_maas_logger
@@ -116,13 +116,28 @@ def check_lease_changes():
     if get_leases_timestamp() == previous_leases_time:
         return None
 
+    exc_info = None  # Keep track of exceptions in the *parent*.
+
     with objectfork() as (pid, recv, send):
         if pid == 0:
             # Child, where we'll do the parsing.
             send(parse_leases_file())
         else:
             # Parent, where we'll receive the results.
-            parse_result = recv()
+            try:
+                parse_result = recv()
+            except:
+                # This probably means that the child has crashed, but keep
+                # hold of this exception for later in case it is a problem
+                # only in the parent.
+                exc_info = sys.exc_info()
+
+    # On exit from the objectfork() context above the child process will be
+    # terminated and any errors it encountered will be propagated into the
+    # parent process; this block will not be reached. However it's possible
+    # that the parent alone has crashed, and we propagate its error now.
+    if exc_info is not None:
+        raise exc_info
 
     if parse_result is not None:
         timestamp, leases = parse_result
