@@ -184,22 +184,55 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 MIDDLEWARE_CLASSES = (
+
+    # Used to append trailing slashes to URLs (APPEND_SLASH defaults on).
     'django.middleware.common.CommonMiddleware',
+
+    # Used for session and cookies.
     'django.contrib.sessions.middleware.SessionMiddleware',
+
+    # Used for rendering API exceptions for maasserver Web API.
     'maasserver.middleware.APIErrorsMiddleware',
+
+    # Used to display errors about disconnected clusters. FIXME: This should
+    # not be done on every request!
     'maasserver.middleware.ExternalComponentsMiddleware',
+
+    # Handle errors that should really be handled in application code:
+    # NoConnectionsAvailable, PowerActionAlreadyInProgress, TimeoutError.
+    # FIXME.
     'maasserver.middleware.RPCErrorsMiddleware',
+
+    # Same as RPCErrorsMiddleware but for the Web API. FIXME.
     'maasserver.middleware.APIRPCErrorsMiddleware',
+
+    # Used for rendering API exceptions for metadataserver Web API.
     'metadataserver.middleware.MetadataErrorsMiddleware',
+
+    # Sets X-Frame-Options header to SAMEORIGIN.
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # Cookies to prevent CSRF.
     'django.middleware.csrf.CsrfViewMiddleware',
+
+    # Creates request.user.
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    # Temporary messages. FIXME: Not sure if it's used.
     'django.contrib.messages.middleware.MessageMiddleware',
+
+    # Demands a user for most web pages. The equivalent for the Web API is
+    # handled by Piston.
     'maasserver.middleware.AccessMiddleware',
+
+    # Compress responses.
     'django.middleware.gzip.GZipMiddleware',
-    # Keep DebuggingLoggerMiddleware underneath GZipMiddleware
-    # so that it deals with un-compressed responses.
+
+    # Prints request & response to the logs. FIXME: Do we use this? Keep
+    # DebuggingLoggerMiddleware underneath GZipMiddleware so that it deals
+    # with un-compressed responses.
     'maasserver.middleware.DebuggingLoggerMiddleware',
+
 )
 
 ROOT_URLCONF = 'maas.urls'
