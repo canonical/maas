@@ -29,6 +29,7 @@ from maasserver.enum import (
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from netaddr import IPNetwork
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -311,3 +312,23 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
+
+
+class TestDHCPNetworkLayout(MAASServerTestCase,
+                            AssertNetworkConfigMixin):
+
+    def test__dhcp_configurations_rendered(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(
+            ip=None,
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            interface=iface,
+            subnet=subnet)
+        config = compose_curtin_network_config(node)
+        config_yaml = yaml.load(config[0])
+        self.assertThat(
+            config_yaml['network']['config'][0]['subnets'][0]['type'],
+            Equals('dhcp' + unicode(IPNetwork(subnet.cidr).version))
+        )

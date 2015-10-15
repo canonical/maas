@@ -224,7 +224,8 @@ class CurtinNetworkGenerator:
                     IPADDRESS_TYPE.DISCOVERED,
                     IPADDRESS_TYPE.DHCP,
                 ]).order_by('id'))
-        if self._is_link_up(addresses):
+        dhcp_type = self._get_dhcp_type(iface)
+        if self._is_link_up(addresses) and not dhcp_type:
             addrs.append({"type": "manual"})
         else:
             for address in addresses:
@@ -240,7 +241,6 @@ class CurtinNetworkGenerator:
                         subnet_operation["dns_nameservers"] = (
                             subnet.dns_servers)
                     addrs.append(subnet_operation)
-            dhcp_type = self._get_dhcp_type(iface)
             if dhcp_type:
                 addrs.append(
                     {"type": dhcp_type}
