@@ -1230,6 +1230,16 @@ class TestNode(MAASServerTestCase):
         self.assertEquals('eth12', node.get_next_ifname(
             ifnames=['eth10', 'eth11']))
 
+    def test_get_next_ifname_ignores_vlans_in_names(self):
+        node = factory.make_Node()
+        self.assertEquals('eth12', node.get_next_ifname(
+            ifnames=['eth10.1', 'eth11.2']))
+
+    def test_get_next_ifname_ignores_aliases_in_names(self):
+        node = factory.make_Node()
+        self.assertEquals('eth12', node.get_next_ifname(
+            ifnames=['eth10:5', 'eth11:bob']))
+
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())

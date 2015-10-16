@@ -768,12 +768,15 @@ class Node(CleanSave, TimestampedModel):
             ifnames = self.get_interface_names()
         used_ethX = []
         for ifname in ifnames:
-            if re.match('eth[0-9]+', ifname):
-                used_ethX.append(int(ifname[3:]))
+            match = re.match('eth([0-9]+)', ifname)
+            if match is not None:
+                ifnum = int(match.group(1))
+                used_ethX.append(ifnum)
         if len(used_ethX) == 0:
             return "eth0"
         else:
-            return "eth" + unicode(used_ethX[-1] + 1)
+            ifnum = max(used_ethX) + 1
+            return "eth%d" % ifnum
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
