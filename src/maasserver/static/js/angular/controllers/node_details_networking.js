@@ -524,7 +524,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.isInterfaceNameInvalid = function(nic) {
             if(!angular.isString(nic.name) || nic.name.length === 0) {
                 return true;
-            } else {
+            } else if(angular.isArray($scope.node.interfaces)) {
                 var i;
                 for(i = 0; i < $scope.node.interfaces.length; i++) {
                     var otherNic = $scope.node.interfaces[i];

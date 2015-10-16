@@ -18,7 +18,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             'release[0] as release[1] for release in releases">',
         '</select>',
         '<select name="hwe_kernel" data-ng-model="ngModel.hwe_kernel" ',
-            'data-ng-show="ngModel.osystem == \'ubuntu\'"',
+            'data-ng-show="hwe_kernels.length"',
             'data-ng-options="',
             'hwe_kernel for hwe_kernel in hwe_kernels">',
             '<option value="">Default kernel</option>',
@@ -62,7 +62,10 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     angular.isString($scope.ngModel.release)) {
                     var os = $scope.ngModel.osystem;
                     var release = $scope.ngModel.release.split('/')[1];
-                    return $scope.maasOsSelect.kernels[os][release];
+                    var osKernels = $scope.maasOsSelect.kernels[os];
+                    if(angular.isObject(osKernels)) {
+                        return osKernels[release];
+                    }
                 }
                 return [];
             }

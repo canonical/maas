@@ -27,6 +27,7 @@ from maasserver.enum import (
     BOND_MODE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    FILESYSTEM_GROUP_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -37,6 +38,7 @@ from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import interface as interface_module
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.config import Config
+from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
@@ -113,6 +115,15 @@ class TestNodeHandler(MAASServerTestCase):
             for blockdevice in node.blockdevice_set.all()
             ]
         driver = get_third_party_driver(node)
+        disks = [
+            handler.dehydrate_blockdevice(blockdevice)
+            for blockdevice in blockdevices
+        ]
+        disks = disks + [
+            handler.dehydrate_volume_group(volume_group)
+            for volume_group in VolumeGroup.objects.filter_by_node(node)
+        ]
+        disks = sorted(disks, key=itemgetter("name"))
         data = {
             "actions": compile_node_actions(node, handler.user).keys(),
             "architecture": node.architecture,
@@ -136,10 +147,7 @@ class TestNodeHandler(MAASServerTestCase):
             ], key=itemgetter('fqdn')),
             "disable_ipv4": node.disable_ipv4,
             "physical_disk_count": node.physicalblockdevice_set.count(),
-            "disks": [
-                handler.dehydrate_blockdevice(blockdevice)
-                for blockdevice in blockdevices
-            ],
+            "disks": disks,
             "supported_filesystems": [
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES],
@@ -405,7 +413,41 @@ class TestNodeHandler(MAASServerTestCase):
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
+            "parent": {
+                "id": blockdevice.filesystem_group.id,
+                "type": blockdevice.filesystem_group.group_type,
+                "uuid": blockdevice.filesystem_group.uuid,
+                },
             }, handler.dehydrate_blockdevice(blockdevice))
+
+    def test_dehydrate_volume_group(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
+        self.assertEquals({
+            "id": volume_group.id,
+            "name": volume_group.name,
+            "tags": [],
+            "type": volume_group.group_type,
+            "path": "",
+            "size": volume_group.get_size(),
+            "size_human": human_readable_bytes(volume_group.get_size()),
+            "used_size": volume_group.get_lvm_allocated_size(),
+            "used_size_human": human_readable_bytes(
+                volume_group.get_lvm_allocated_size()),
+            "available_size": volume_group.get_lvm_free_space(),
+            "available_size_human": human_readable_bytes(
+                volume_group.get_lvm_free_space()),
+            "block_size": volume_group.get_virtual_block_device_block_size(),
+            "model": "",
+            "serial": "",
+            "partition_table_type": "",
+            "used_for": "volume group",
+            "filesystem": None,
+            "partitions": None,
+            }, handler.dehydrate_volume_group(volume_group))
 
     def test_dehydrate_partitions_returns_None(self):
         owner = factory.make_User()
@@ -1112,6 +1154,43 @@ class TestNodeHandler(MAASServerTestCase):
             })
         self.assertEquals(
             None, partition.get_effective_filesystem())
+
+    def test_delete_disk(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        handler.delete_disk({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            })
+        self.assertIsNone(reload_object(block_device))
+
+    def test_delete_partition(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        partition = factory.make_Partition(node=node)
+        handler.delete_partition({
+            'system_id': node.system_id,
+            'partition_id': partition.id,
+            })
+        self.assertIsNone(reload_object(partition))
+
+    def test_delete_volume_group(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        volume_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        handler.delete_volume_group({
+            'system_id': node.system_id,
+            'volume_group_id': volume_group.id,
+            })
+        self.assertIsNone(reload_object(volume_group))
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

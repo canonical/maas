@@ -349,7 +349,7 @@ describe("NodesManager", function() {
             var fakeNode = makeNode();
             webSocket.returnData.push(makeFakeResponse(null));
             NodesManager.updateFilesystem(
-                    makeName("system_id"), makeName("block_id"),
+                    fakeNode.system_id, makeName("block_id"),
                     makeName("partition_id"), makeName("fstype"),
                     makeName("mount_point")).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
@@ -366,7 +366,7 @@ describe("NodesManager", function() {
             var mount_point = makeName("mount_point");
             webSocket.returnData.push(makeFakeResponse(null));
             NodesManager.updateFilesystem(
-                    fakeNode.system_id, block_id, partition_id,
+                    fakeNode, block_id, partition_id,
                     fstype, mount_point).then(
                         function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
@@ -387,7 +387,7 @@ describe("NodesManager", function() {
             var fakeNode = makeNode();
             webSocket.returnData.push(makeFakeResponse(null));
             NodesManager.updateDiskTags(
-                    makeName("system_id"), makeName("block_id"),
+                    fakeNode, makeName("block_id"),
                     [ makeName("tag") ]).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
                 expect(sentObject.method).toBe("node.update_disk_tags");
@@ -401,7 +401,7 @@ describe("NodesManager", function() {
             var tags = [ makeName("tag") ];
             webSocket.returnData.push(makeFakeResponse(null));
             NodesManager.updateDiskTags(
-                    fakeNode.system_id, block_id, tags).then(
+                    fakeNode, block_id, tags).then(
                         function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
                 expect(sentObject.method).toBe("node.update_disk_tags");
@@ -411,5 +411,68 @@ describe("NodesManager", function() {
                 done();
             });
         });
+    });
+
+    describe("deleteDisk", function() {
+
+        it("calls node.delete_disk with correct params",
+            function(done) {
+                var node = makeNode(), block_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.deleteDisk(node, block_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.delete_disk");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.block_id).toBe(
+                            block_id);
+                        done();
+                    });
+            });
+    });
+
+    describe("deletePartition", function() {
+
+        it("calls node.delete_partition with correct params",
+            function(done) {
+                var node = makeNode(), partition_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.deletePartition(node, partition_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.delete_partition");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.partition_id).toBe(
+                            partition_id);
+                        done();
+                    });
+            });
+    });
+
+    describe("deleteVolumeGroup", function() {
+
+        it("calls node.delete_volume_group with correct params",
+            function(done) {
+                var node = makeNode(), volume_group_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.deleteVolumeGroup(node, volume_group_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.delete_volume_group");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.volume_group_id).toBe(
+                            volume_group_id);
+                        done();
+                    });
+            });
     });
 });

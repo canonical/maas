@@ -331,12 +331,14 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
            maasserver_partition,
            maasserver_partitiontable
       WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND maasserver_blockdevice.id = %s
-      OR (maasserver_blockdevice.id =
+      AND (
+        maasserver_blockdevice.id = %s
+        OR (
+          maasserver_blockdevice.id =
               maasserver_partitiontable.block_device_id
           AND maasserver_partitiontable.id =
               maasserver_partition.partition_table_id
-          AND maasserver_partition.id = %s);
+          AND maasserver_partition.id = %s));
 
       IF node.installable THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));

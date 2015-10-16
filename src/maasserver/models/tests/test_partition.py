@@ -340,3 +340,19 @@ class TestPartition(MAASServerTestCase):
         partition = factory.make_Partition()
         partition.delete()
         self.assertIsNone(reload_object(partition))
+
+    def test_delete_removes_partition_table_if_last_partition(self):
+        partition_table = factory.make_PartitionTable()
+        partition = factory.make_Partition(partition_table=partition_table)
+        partition.delete()
+        self.assertIsNone(reload_object(partition))
+        self.assertIsNone(reload_object(partition_table))
+
+    def test_delete_doesnt_remove_partition_table_if_not_last_partition(self):
+        partition_table = factory.make_PartitionTable()
+        partition1 = factory.make_Partition(partition_table=partition_table)
+        partition2 = factory.make_Partition(partition_table=partition_table)
+        partition2.delete()
+        self.assertIsNotNone(reload_object(partition1))
+        self.assertIsNotNone(reload_object(partition_table))
+        self.assertIsNone(reload_object(partition2))

@@ -46,6 +46,7 @@ from maasserver.forms_interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.config import Config
 from maasserver.models.event import Event
+from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
@@ -54,6 +55,7 @@ from maasserver.models.partition import Partition
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc import getClientFor
 from maasserver.third_party_drivers import get_third_party_driver
@@ -128,6 +130,9 @@ class NodeHandler(TimestampedModelHandler):
             'unlink_subnet',
             'update_filesystem',
             'update_disk_tags',
+            'delete_disk',
+            'delete_partition',
+            'delete_volume_group',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -267,10 +272,15 @@ class NodeHandler(TimestampedModelHandler):
                 self.dehydrate_blockdevice(blockdevice)
                 for blockdevice in blockdevices
             ]
-
+            data["disks"] = data["disks"] + [
+                self.dehydrate_volume_group(volume_group)
+                for volume_group in VolumeGroup.objects.filter_by_node(obj)
+            ]
+            data["disks"] = sorted(data["disks"], key=itemgetter("name"))
             data["supported_filesystems"] = [
                 {'key': key, 'ui': ui}
-                for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES]
+                for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES
+            ]
 
             # Events
             data["events"] = self.dehydrate_events(obj)
@@ -328,7 +338,7 @@ class NodeHandler(TimestampedModelHandler):
             partition_table_type = partition_table.table_type
         else:
             partition_table_type = ""
-        return {
+        data = {
             "id": blockdevice.id,
             "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
@@ -351,6 +361,39 @@ class NodeHandler(TimestampedModelHandler):
                 blockdevice.get_effective_filesystem()),
             "partitions": self.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
+        }
+        if isinstance(blockdevice, VirtualBlockDevice):
+            data["parent"] = {
+                "id": blockdevice.filesystem_group.id,
+                "uuid": blockdevice.filesystem_group.uuid,
+                "type": blockdevice.filesystem_group.group_type,
+            }
+        return data
+
+    def dehydrate_volume_group(self, volume_group):
+        """Return `BlockDevice` formatted for JSON encoding."""
+        size = volume_group.get_size()
+        available_size = volume_group.get_lvm_free_space()
+        used_size = volume_group.get_lvm_allocated_size()
+        return {
+            "id": volume_group.id,
+            "name": volume_group.name,
+            "tags": [],
+            "type": volume_group.group_type,
+            "path": "",
+            "size": size,
+            "size_human": human_readable_bytes(size),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
+            "block_size": volume_group.get_virtual_block_device_block_size(),
+            "model": "",
+            "serial": "",
+            "partition_table_type": "",
+            "used_for": "volume group",
+            "filesystem": None,
+            "partitions": None,
         }
 
     def dehydrate_partitions(self, partition_table):
@@ -680,6 +723,42 @@ class NodeHandler(TimestampedModelHandler):
         disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
         disk_obj.tags = params['tags']
         disk_obj.save(update_fields=['tags'])
+
+    def delete_disk(self, params):
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        block_id = params.get('block_id')
+        if block_id is not None:
+            block_device = BlockDevice.objects.get(id=block_id, node=node)
+            block_device.delete()
+
+    def delete_partition(self, params):
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        partition_id = params.get('partition_id')
+        if partition_id is not None:
+            partition = Partition.objects.get(
+                id=partition_id, partition_table__block_device__node=node)
+            partition.delete()
+
+    def delete_volume_group(self, params):
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        volume_group_id = params.get('volume_group_id')
+        if volume_group_id is not None:
+            volume_group = VolumeGroup.objects.get(id=volume_group_id)
+            if volume_group.get_node() != node:
+                raise VolumeGroup.DoesNotExist()
+            volume_group.delete()
 
     def action(self, params):
         """Perform the action on the object."""

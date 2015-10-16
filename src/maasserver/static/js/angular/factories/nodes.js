@@ -149,11 +149,11 @@ angular.module('MAAS').factory(
 
         // Send the update information to the region.
         NodesManager.prototype.updateFilesystem = function(
-            system_id, block_id, partition_id, fstype, mount_point) {
+            node, block_id, partition_id, fstype, mount_point) {
                 var self = this;
                 var method = this._handler + ".update_filesystem";
                 var params = {
-                    system_id: system_id,
+                    system_id: node.system_id,
                     block_id: block_id,
                     partition_id: partition_id,
                     fstype: fstype,
@@ -162,14 +162,51 @@ angular.module('MAAS').factory(
                 return RegionConnection.callMethod(method, params);
             };
 
+        // Update the tags on a disk.
         NodesManager.prototype.updateDiskTags = function(
-            system_id, block_id, tags) {
+            node, block_id, tags) {
                 var self = this;
                 var method = this._handler + ".update_disk_tags";
                 var params = {
-                    system_id: system_id,
+                    system_id: node.system_id,
                     block_id: block_id,
                     tags: tags
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Delete the disk.
+        NodesManager.prototype.deleteDisk = function(
+            node, block_id) {
+                var self = this;
+                var method = this._handler + ".delete_disk";
+                var params = {
+                    system_id: node.system_id,
+                    block_id: block_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Delete the partition.
+        NodesManager.prototype.deletePartition = function(
+            node, partition_id) {
+                var self = this;
+                var method = this._handler + ".delete_partition";
+                var params = {
+                    system_id: node.system_id,
+                    partition_id: partition_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Delete the disk or partition.
+        NodesManager.prototype.deleteVolumeGroup = function(
+            node, volume_group_id) {
+                var self = this;
+                var method = this._handler + ".delete_volume_group";
+                var params = {
+                    system_id: node.system_id,
+                    volume_group_id: volume_group_id
                 };
                 return RegionConnection.callMethod(method, params);
             };
