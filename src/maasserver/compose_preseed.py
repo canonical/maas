@@ -55,6 +55,10 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         "manage_etc_hosts": False,
         "apt_preserve_sources_list": True,
         "apt_proxy": get_apt_proxy_for_node(node),
+        # Prevent the node from requesting cloud-init data on every reboot.
+        # This is done so a machine does not need to contact MAAS every time
+        # it reboots.
+        "manual_cache_clean": True,
         # This is used as preseed for a node that's been installed.
         # This will allow cloud-init to be configured with reporting for
         # a node that has already been installed.

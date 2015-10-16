@@ -141,6 +141,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertIn("apt_preserve_sources_list", data)
         self.assertTrue(data["apt_preserve_sources_list"])
         self.assertEqual(apt_proxy, data["apt_proxy"])
+        self.assertTrue(data["manual_cache_clean"])
 
     def test_compose_preseed_with_curtin_installer(self):
         node = factory.make_Node(
