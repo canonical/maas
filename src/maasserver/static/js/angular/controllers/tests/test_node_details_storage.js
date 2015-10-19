@@ -227,6 +227,7 @@ describe("NodeStorageController", function() {
                 block_id: 0,
                 partition_id: null,
                 has_partitions: false,
+                original: disks[0],
                 $selected: false,
                 $options: {}
             },
@@ -243,13 +244,14 @@ describe("NodeStorageController", function() {
                 block_id: 1,
                 partition_id: null,
                 has_partitions: false,
+                original: disks[1],
                 $selected: false,
                 $options: {}
             },
             {
                 name: disks[3].partitions[0].name,
-                size_human: disks[3].size_human,
-                used_size_human: disks[3].used_size_human,
+                size_human: disks[3].partitions[0].size_human,
+                used_size_human: disks[3].partitions[0].used_size_human,
                 type: disks[3].partitions[0].type,
                 model: "",
                 serial: "",
@@ -259,6 +261,7 @@ describe("NodeStorageController", function() {
                 block_id: 3,
                 partition_id: 0,
                 has_partitions: false,
+                original: disks[3].partitions[0],
                 $selected: false,
                 $options: {}
             }
@@ -1003,12 +1006,48 @@ describe("NodeStorageController", function() {
             })).toBe(false);
         });
 
+        it("returns false if available_size is less than partition size " +
+            "and partition table extra space", function() {
+                var controller = makeController();
+                var disk = {
+                    type: "physical",
+                    fstype: "",
+                    original: {
+                        partition_table_type: null,
+                        available_size: 2.5 * 1024 * 1024,
+                        block_size: 1024
+                    }
+                };
+                expect($scope.canAddPartition(disk)).toBe(false);
+            });
+
+        it("returns false if available_size is less than partition size ",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    type: "physical",
+                    fstype: "",
+                    original: {
+                        partition_table_type: "mbr",
+                        available_size: 1024 * 1024,
+                        block_size: 1024
+                    }
+                };
+                expect($scope.canAddPartition(disk)).toBe(false);
+            });
+
         it("returns true otherwise", function() {
             var controller = makeController();
-            expect($scope.canAddPartition({
+            var disk = {
                 type: "physical",
-                fstype: ""
-            })).toBe(true);
+                fstype: "",
+                original: {
+                    partition_table_type: null,
+                    available_size: 10 * 1024 * 1024,
+                    block_size: 1024
+                }
+            };
+            expect($scope.canAddPartition(disk)).toBe(true);
         });
     });
 
@@ -1312,16 +1351,23 @@ describe("NodeStorageController", function() {
 
         it("returns true if fstype is null", function() {
             var controller = makeController();
-            var disk = { fstype: null };
+            var disk = { fstype: null, has_partitions: false };
 
             expect($scope.canDelete(disk)).toBe(true);
         });
 
         it("returns true if fstype is empty", function() {
             var controller = makeController();
-            var disk = { fstype: "" };
+            var disk = { fstype: "", has_partitions: false };
 
             expect($scope.canDelete(disk)).toBe(true);
+        });
+
+        it("returns false if has_partitions is true", function() {
+            var controller = makeController();
+            var disk = { fstype: "", has_partitions: true };
+
+            expect($scope.canDelete(disk)).toBe(false);
         });
 
         it("returns false if fstype is not empty", function() {
@@ -1503,6 +1549,289 @@ describe("NodeStorageController", function() {
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
+    });
+
+    describe("availablePartiton", function() {
+
+        it("sets availableMode to 'partition'", function() {
+            var controller = makeController();
+            var disk = {
+                size_human: "10 GB"
+            };
+            $scope.availableMode = "other";
+            $scope.availablePartiton(disk);
+            expect($scope.availableMode).toBe("partition");
+        });
+
+        it("sets $options to values from size_human", function() {
+            var controller = makeController();
+            var disk = {
+                size_human: "10 GB"
+            };
+            $scope.availablePartiton(disk);
+            expect(disk.$options).toEqual({
+                size: "10",
+                sizeUnits: "GB"
+            });
+        });
+    });
+
+    describe("availableQuickPartition", function() {
+
+        it("selects disks and deselects others", function() {
+            var controller = makeController();
+            var available = [{ $selected: false }, { $selected: true }];
+            $scope.available = available;
+            spyOn($scope, "updateAvailableSelection");
+            spyOn($scope, "availablePartiton");
+
+            $scope.availableQuickPartition(available[0]);
+
+            expect(available[0].$selected).toBe(true);
+            expect(available[1].$selected).toBe(false);
+        });
+
+        it("calls updateAvailableSelection with force true", function() {
+            var controller = makeController();
+            var available = [{ $selected: false }, { $selected: true }];
+            spyOn($scope, "updateAvailableSelection");
+            spyOn($scope, "availablePartiton");
+
+            $scope.availableQuickPartition(available[0]);
+
+            expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
+                true);
+        });
+
+        it("calls availablePartiton", function() {
+            var controller = makeController();
+            var available = [{ $selected: false }, { $selected: true }];
+            spyOn($scope, "updateAvailableSelection");
+            spyOn($scope, "availablePartiton");
+
+            $scope.availableQuickPartition(available[0]);
+
+            expect($scope.availablePartiton).toHaveBeenCalledWith(
+                available[0]);
+        });
+    });
+
+    describe("getAddPartitionName", function() {
+
+        it("returns disk.name with -part#", function() {
+            var controller = makeController();
+            var name = makeName("sda");
+            var disk = {
+                name: name,
+                original: {
+                    partition_table_type: "gpt",
+                    partitions: [{}, {}]
+                }
+            };
+
+            expect($scope.getAddPartitionName(disk)).toBe(name + "-part3");
+        });
+
+        it("returns disk.name with -part3 for MBR", function() {
+            var controller = makeController();
+            var name = makeName("sda");
+            var disk = {
+                name: name,
+                original: {
+                    partition_table_type: "mbr",
+                    partitions: [{}, {}]
+                }
+            };
+
+            expect($scope.getAddPartitionName(disk)).toBe(name + "-part3");
+        });
+
+        it("returns disk.name with -part5 for MBR", function() {
+            var controller = makeController();
+            var name = makeName("sda");
+            var disk = {
+                name: name,
+                original: {
+                    partition_table_type: "mbr",
+                    partitions: [{}, {}, {}]
+                }
+            };
+
+            expect($scope.getAddPartitionName(disk)).toBe(name + "-part5");
+        });
+    });
+
+    describe("isAddPartitionSizeInvalid", function() {
+
+        it("returns true if blank", function() {
+            var controller = makeController();
+            var disk = {
+                $options: {
+                    size: "",
+                    sizeUnits: "GB"
+                }
+            };
+
+            expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
+        });
+
+        it("returns true if not numbers", function() {
+            var controller = makeController();
+            var disk = {
+                $options: {
+                    size: makeName("invalid"),
+                    sizeUnits: "GB"
+                }
+            };
+
+            expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
+        });
+
+        it("returns true if smaller than MIN_PARTITION_SIZE", function() {
+            var controller = makeController();
+            var disk = {
+                $options: {
+                    size: "1",
+                    sizeUnits: "MB"
+                }
+            };
+
+            expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
+        });
+
+        it("returns true if larger than available_size more than tolerance",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    original: {
+                        available_size: 2 * 1000 * 1000 * 1000
+                    },
+                    $options: {
+                        size: "4",
+                        sizeUnits: "GB"
+                    }
+                };
+
+                expect($scope.isAddPartitionSizeInvalid(disk)).toBe(true);
+            });
+
+        it("returns false if larger than available_size in tolerance",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    original: {
+                        available_size: 2.6 * 1000 * 1000 * 1000
+                    },
+                    $options: {
+                        size: "2.62",
+                        sizeUnits: "GB"
+                    }
+                };
+
+                expect($scope.isAddPartitionSizeInvalid(disk)).toBe(false);
+            });
+
+        it("returns false if less than available_size",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    original: {
+                        available_size: 2.6 * 1000 * 1000 * 1000
+                    },
+                    $options: {
+                        size: "1.6",
+                        sizeUnits: "GB"
+                    }
+                };
+
+                expect($scope.isAddPartitionSizeInvalid(disk)).toBe(false);
+            });
+    });
+
+    describe("availableConfirmPartition", function() {
+
+        it("does nothing if invalid", function() {
+            var controller = makeController();
+            var disk = {
+                $options: {
+                    size: "",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createPartition");
+
+            $scope.availableConfirmPartition(disk);
+
+            expect(NodesManager.createPartition).not.toHaveBeenCalled();
+        });
+
+        it("calls createPartition with bytes", function() {
+            var controller = makeController();
+            var disk = {
+                block_id: makeInteger(0, 100),
+                original: {
+                    partition_table_type: "mbr",
+                    available_size: 4 * 1000 * 1000 * 1000,
+                    block_size: 512
+                },
+                $options: {
+                    size: "2",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createPartition");
+
+            $scope.availableConfirmPartition(disk);
+
+            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                node, disk.block_id, 2 * 1000 * 1000 * 1000);
+        });
+
+        it("calls createPartition with available_size bytes", function() {
+            var controller = makeController();
+            var disk = {
+                block_id: makeInteger(0, 100),
+                original: {
+                    partition_table_type: "mbr",
+                    available_size: 2.6 * 1000 * 1000 * 1000,
+                    block_size: 512
+                },
+                $options: {
+                    size: "2.62",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createPartition");
+
+            $scope.availableConfirmPartition(disk);
+
+            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                node, disk.block_id, 2.6 * 1000 * 1000 * 1000);
+        });
+
+        it("calls createPartition with bytes minus partition table extra",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    block_id: makeInteger(0, 100),
+                    original: {
+                        partition_table_type: "",
+                        available_size: 2.6 * 1000 * 1000 * 1000,
+                        block_size: 512
+                    },
+                    $options: {
+                        size: "2.62",
+                        sizeUnits: "GB"
+                    }
+                };
+                spyOn(NodesManager, "createPartition");
+
+                $scope.availableConfirmPartition(disk);
+
+                expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                    node, disk.block_id,
+                    (2.6 * 1000 * 1000 * 1000) - (3 * 1024 * 1024));
+            });
     });
 
     describe("editTags", function() {

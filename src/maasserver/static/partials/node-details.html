@@ -738,8 +738,12 @@
                                     </div>
                                     <div class="table__data table__column--7">
                                         <div class="table__controls">
-                                            <a class="icon partition ng-hide" data-ng-show="canAddPartition(item)">Partition</a>
-                                            <a class="icon delete" data-ng-click="availableQuickDelete(item)">Delete</a>
+                                            <a class="icon partition ng-hide"
+                                                data-ng-show="canAddPartition(item)"
+                                                data-ng-click="availableQuickPartition(item)">Partition</a>
+                                            <a class="icon delete"
+                                                data-ng-show="canDelete(item)"
+                                                data-ng-click="availableQuickDelete(item)">Delete</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -762,6 +766,32 @@
                                                 <div class="table__data table__column--52"></div>
                                             </div>
                                         </div>
+                                        <div class="ng-hide" data-ng-show="availableMode === 'partition'">
+                                            <div class="table__row table__dropdown-row">
+                                                <div class="table__data table__column--3"></div>
+                                                <div class="table__data table__column--15">
+                                                    {$ getAddPartitionName(item) $}
+                                                </div>
+                                                <div class="table__data table__column--15">
+                                                    <div class="inline">
+                                                        <input type="text" id="mountpoint" class="seven-col"
+                                                            ng-model="item.$options.size"
+                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                        <select name="size-units" class="five-col"
+                                                            ng-model="item.$options.sizeUnits"
+                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                            <option value="MB">MB</option>
+                                                            <option value="GB">GB</option>
+                                                            <option value="TB">TB</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="table__data table__column--15">
+                                                    Partition
+                                                </div>
+                                                <div class="table__data table__column--52"></div>
+                                            </div>
+                                        </div>
                                         <div class="table__row table__dropdown-row">
                                             <div class="ng-hide" data-ng-show="availableMode === 'single'">
                                                 <div class="table__data left">
@@ -770,7 +800,7 @@
                                                         data-ng-click="availableFormatAndMount(item)">{$ getFormatAndMountButtonText (item) $}</button>
                                                     <button class="cta-ubuntu"
                                                         data-ng-show="canAddPartition(item)"
-                                                        data-ng-click="availableAddPartition(item)">{$ getPartitionButtonText(item) $}</button>
+                                                        data-ng-click="availablePartiton(item)">{$ getPartitionButtonText(item) $}</button>
                                                     <a class="link-cta-ubuntu text-button"
                                                         data-ng-show="hasUnmountedFilesystem(item)"
                                                         data-ng-click="availableUnformat()">Unformat</a>
@@ -803,6 +833,14 @@
                                                 <div class="table__data right">
                                                     <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
                                                     <button class="cta-ubuntu" data-ng-click="availableConfirmDelete(item)">Remove</button>
+                                                </div>
+                                            </div>
+                                            <div class="ng-hide" data-ng-show="availableMode === 'partition'">
+                                                <div class="table__data right">
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <button class="cta-ubuntu"
+                                                        data-ng-disabled="isAddPartitionSizeInvalid(item)"
+                                                        data-ng-click="availableConfirmPartition(item)">Add Partition</button>
                                                 </div>
                                             </div>
                                         </div>

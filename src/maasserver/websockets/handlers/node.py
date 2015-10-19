@@ -31,6 +31,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
+    AddPartitionForm,
     AdminNodeWithMACAddressesForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
@@ -133,6 +134,7 @@ class NodeHandler(TimestampedModelHandler):
             'delete_disk',
             'delete_partition',
             'delete_volume_group',
+            'create_partition',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -759,6 +761,19 @@ class NodeHandler(TimestampedModelHandler):
             if volume_group.get_node() != node:
                 raise VolumeGroup.DoesNotExist()
             volume_group.delete()
+
+    def create_partition(self, params):
+        """Create a partition."""
+        node = self.get_object(params)
+        disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
+        form = AddPartitionForm(
+            disk_obj, {
+                'size': params['partition_size'],
+            })
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
 
     def action(self, params):
         """Perform the action on the object."""

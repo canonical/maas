@@ -5,8 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodeStorageController', [
-    '$scope', 'NodesManager', function($scope, NodesManager) {
+    '$scope', 'NodesManager', 'ConverterService',
+    function($scope, NodesManager, ConverterService) {
         var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
+        var PARTITION_TABLE_EXTRA_SPACE = 3 * 1024 * 1024;
 
         // Different selection modes.
         var SELECTION_MODE = {
@@ -16,7 +18,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             UNMOUNT: "unmount",
             UNFORMAT: "unformat",
             DELETE: "delete",
-            FORMAT_AND_MOUNT: "format-mount"
+            FORMAT_AND_MOUNT: "format-mount",
+            PARTITION: "partition"
         };
 
         $scope.editing = false;
@@ -155,7 +158,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "mount_point": null,
                         "block_id": disk.id,
                         "partition_id": null,
-                        "has_partitions": has_partitions
+                        "has_partitions": has_partitions,
+                        "original": disk
                     };
                     if(disk.type === "virtual") {
                         data.parent_type = disk.parent.type;
@@ -166,8 +170,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                     if(!isInUse(partition)) {
                         available.push({
                             "name": partition.name,
-                            "size_human": disk.size_human,
-                            "used_size_human": disk.used_size_human,
+                            "size_human": partition.size_human,
+                            "used_size_human": partition.used_size_human,
                             "type": "partition",
                             "model": "",
                             "serial": "",
@@ -177,7 +181,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "mount_point": null,
                             "block_id": disk.id,
                             "partition_id": partition.id,
-                            "has_partitions": false
+                            "has_partitions": false,
+                            "original": partition
                         });
                     }
                 });
@@ -269,6 +274,24 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Capitalize the first letter of the string.
         function capitalizeFirstLetter(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        // Return true if the string is a number.
+        function isNumber(string) {
+            var pattern = /^-?\d+\.?\d*$/;
+            return pattern.test(string);
+        }
+
+        // Convert the string to a byte.
+        function convertToBytes(string, units) {
+            var value = parseFloat(string);
+            if(units === "mb") {
+                return value * 1000 * 1000;
+            } else if(units === "gb") {
+                return value * 1000 * 1000 * 1000;
+            } else if(units === "tb") {
+                return value * 1000 * 1000 * 1000 * 1000;
+            }
         }
 
         // Called by $parent when the node has been loaded.
@@ -499,8 +522,28 @@ angular.module('MAAS').controller('NodeStorageController', [
             } else if(disk.type === "virtual" &&
                 disk.parent_type === "lvm-vg") {
                 return false;
-            } else if(!angular.isString(disk.fstype) || disk.fstype !== "") {
+            } else if(angular.isString(disk.fstype) && disk.fstype !== "") {
                 return false;
+            } else if(!angular.isString(disk.original.partition_table_type)
+                || disk.original.partition_table_type === "") {
+                // Has no partition table on the disk, so the available size
+                // needs to be able to hold both the partition and partition
+                // table extra space.
+                if(disk.original.available_size <
+                    ConverterService.roundByBlockSize(
+                        PARTITION_TABLE_EXTRA_SPACE + MIN_PARTITION_SIZE,
+                        disk.original.block_size)) {
+                    return false;
+                }
+            } else {
+                // Needs to have enough space for one partition. The extra
+                // partition header space is already being taken into account.
+                if(disk.original.available_size <
+                    ConverterService.roundByBlockSize(
+                        MIN_PARTITION_SIZE,
+                        disk.original.block_size)) {
+                    return false;
+                }
             }
             return true;
         };
@@ -609,7 +652,8 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
-            if(!angular.isString(disk.fstype) || disk.fstype === "") {
+            if(!disk.has_partitions && (
+                    !angular.isString(disk.fstype) || disk.fstype === "")) {
                 return true;
             } else {
                 return false;
@@ -670,6 +714,109 @@ angular.module('MAAS').controller('NodeStorageController', [
             // Remove the selected disk from available.
             var idx = $scope.available.indexOf(disk);
             $scope.available.splice(idx, 1);
+            $scope.updateAvailableSelection(true);
+        };
+
+        // Enter partition mode.
+        $scope.availablePartiton = function(disk) {
+            $scope.availableMode = SELECTION_MODE.PARTITION;
+            // Set starting size to the maximum available space.
+            var size_and_units = disk.size_human.split(" ");
+            disk.$options = {
+                size: size_and_units[0],
+                sizeUnits: size_and_units[1]
+            };
+        };
+
+        // Quickly enter partition mode.
+        $scope.availableQuickPartition = function(disk) {
+            deselectAll($scope.available);
+            disk.$selected = true;
+            $scope.updateAvailableSelection(true);
+            $scope.availablePartiton(disk);
+        };
+
+        // Get the new name of the partition.
+        $scope.getAddPartitionName = function(disk) {
+            var length, partitions = disk.original.partitions;
+            if(angular.isArray(partitions)) {
+                length = partitions.length;
+            } else {
+                length = 0;
+            }
+            if(disk.original.partition_table_type === "mbr" &&
+                length > 2) {
+                return disk.name + "-part" + (length + 2);
+            } else {
+                return disk.name + "-part" + (length + 1);
+            }
+        };
+
+        // Return true if the size is invalid.
+        $scope.isAddPartitionSizeInvalid = function(disk) {
+            if(disk.$options.size === "" || !isNumber(disk.$options.size)) {
+                return true;
+            } else {
+                var bytes = ConverterService.unitsToBytes(
+                    disk.$options.size, disk.$options.sizeUnits);
+                if(bytes < MIN_PARTITION_SIZE) {
+                    return true;
+                } else if(bytes > disk.original.available_size) {
+                    // Round the size down to the lowest tolerance for that
+                    // to see if it now fits.
+                    var rounded = ConverterService.roundUnits(
+                        disk.$options.size, disk.$options.sizeUnits);
+                    if(rounded > disk.original.available_size) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        $scope.availableConfirmPartition = function(disk) {
+            // Do nothing if not valid.
+            if($scope.isAddPartitionSizeInvalid(disk)) {
+                return;
+            }
+
+            // Get the bytes to create the partition. Round down to the
+            // total available on the disk.
+            var removeDisk = false;
+            var bytes = ConverterService.unitsToBytes(
+                disk.$options.size, disk.$options.sizeUnits);
+            if(bytes > disk.original.available_size) {
+                bytes = disk.original.available_size;
+
+                // Remove the disk as its going to use all the remaining space.
+                removeDisk = true;
+            }
+
+            // If the disk does not have any partition table yet the extra
+            // partition table space needs to be removed from the size if the
+            // remaining space is less than the required extra.
+            if(!angular.isString(disk.original.partition_table_type) ||
+                disk.original.partition_table_type === "") {
+                var diff = disk.original.available_size - bytes;
+                diff -= ConverterService.roundByBlockSize(
+                    PARTITION_TABLE_EXTRA_SPACE, disk.original.block_size);
+                if(diff < 0) {
+                    // Add because diff is a negative number.
+                    bytes += diff;
+                }
+            }
+
+            // Create the partition.
+            NodesManager.createPartition($scope.node, disk.block_id, bytes);
+
+            // Remove the disk if needed.
+            if(removeDisk) {
+                var idx = $scope.available.indexOf(disk);
+                $scope.available.splice(idx, 1);
+            }
             $scope.updateAvailableSelection(true);
         };
 

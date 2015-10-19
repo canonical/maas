@@ -89,7 +89,8 @@ class PartitionTable(CleanSave, TimestampedModel):
         if used_size is None:
             used_size = 0
         # The extra space taken by the partition table header is used space.
-        used_size += self.block_device.size - self.get_size()
+        used_size += round_size_to_nearest_block(
+            PARTITION_TABLE_EXTRA_SPACE, self.get_block_size())
         return round_size_to_nearest_block(
             used_size, self.get_block_size())
 

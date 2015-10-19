@@ -211,5 +211,17 @@ angular.module('MAAS').factory(
                 return RegionConnection.callMethod(method, params);
             };
 
+        NodesManager.prototype.createPartition = function(
+            node, block_id, size) {
+                var self = this;
+                var method = this._handler + ".create_partition";
+                var params = {
+                    system_id: node.system_id,
+                    block_id: block_id,
+                    partition_size: size
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
         return new NodesManager();
     }]);

@@ -41,6 +41,7 @@ from maasserver.models.config import Config
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.partition import Partition
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -1191,6 +1192,24 @@ class TestNodeHandler(MAASServerTestCase):
             'volume_group_id': volume_group.id,
             })
         self.assertIsNone(reload_object(volume_group))
+
+    def test_create_partition(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        partition_table = factory.make_PartitionTable(node=node)
+        size = partition_table.block_device.size / 2
+        handler.create_partition({
+            'system_id': node.system_id,
+            'block_id': partition_table.block_device_id,
+            'partition_size': size
+            })
+        self.assertEquals(
+            1, Partition.objects.count())
+        self.assertEquals(
+            human_readable_bytes(size),
+            human_readable_bytes(Partition.objects.first().size))
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

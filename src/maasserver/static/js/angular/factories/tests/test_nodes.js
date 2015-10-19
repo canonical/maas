@@ -475,4 +475,28 @@ describe("NodesManager", function() {
                     });
             });
     });
+
+    describe("createPartition", function() {
+
+        it("calls node.create_partition with correct params",
+            function(done) {
+                var node = makeNode(), block_id = makeInteger(0, 100);
+                var size = makeInteger(1024 * 1024, 1024 * 1024 * 1024);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.createPartition(node, block_id, size).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_partition");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.block_id).toBe(
+                            block_id);
+                        expect(sentObject.params.partition_size).toBe(
+                            size);
+                        done();
+                    });
+            });
+    });
 });

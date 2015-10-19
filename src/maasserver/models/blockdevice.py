@@ -243,7 +243,13 @@ class BlockDevice(CleanSave, TimestampedModel):
     @property
     def available_size(self):
         """Return the available size on the block device."""
-        return self.size - self.used_size
+        filesystem = self.get_effective_filesystem()
+        if filesystem is not None:
+            return 0
+        partitiontable = self.get_partitiontable()
+        if partitiontable is not None:
+            return partitiontable.get_available_size()
+        return self.size
 
     @property
     def used_for(self):
