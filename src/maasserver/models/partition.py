@@ -300,7 +300,14 @@ class Partition(CleanSave, TimestampedModel):
 def delete_partition_table(sender, instance, **kwargs):
     """Delete the partition table if this is the last partition on the
     partition table."""
+    # Circular imports.
+    from maasserver.models.partitiontable import PartitionTable
     if sender == Partition:
-        partition_table = instance.partition_table
-        if partition_table.partitions.count() == 0:
-            partition_table.delete()
+        try:
+            partition_table = instance.partition_table
+        except PartitionTable.DoesNotExist:
+            # Partition table has already been removed nothing to do.
+            return
+        else:
+            if partition_table.partitions.count() == 0:
+                partition_table.delete()

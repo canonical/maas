@@ -34,7 +34,7 @@ class SubnetHandler(TimestampedModelHandler):
                   .prefetch_related('nodegroupinterface_set__nodegroup')
                   .prefetch_related('staticipaddress_set__user')
                   .prefetch_related(
-                      'staticipaddress_set__user__interface_set__node'))
+                      'staticipaddress_set__interface_set__node'))
         pk = 'id'
         allowed_methods = ['list', 'get', 'set_active']
         listen_channels = [

@@ -356,3 +356,9 @@ class TestPartition(MAASServerTestCase):
         self.assertIsNotNone(reload_object(partition1))
         self.assertIsNotNone(reload_object(partition_table))
         self.assertIsNone(reload_object(partition2))
+
+    def test_delete_partitiontable_before_partition_doesnt_raise_error(self):
+        partition_table = factory.make_PartitionTable()
+        factory.make_Partition(partition_table=partition_table)
+        # Test is that no error is raised.
+        partition_table.delete()
