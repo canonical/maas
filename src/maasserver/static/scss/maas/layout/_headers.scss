@@ -24,6 +24,10 @@ header.banner {
     position: fixed;
     top: 0;
 
+    .logo {
+      padding-left: 15px;
+    }
+    
     nav.nav-primary {
         border-bottom: none;
     }
