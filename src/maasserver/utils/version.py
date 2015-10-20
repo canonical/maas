@@ -27,6 +27,8 @@ try:
 except ImportError:
     Branch = None
 
+from maasserver.api.logger import maaslog
+
 # Initialize apt_pkg.
 apt_pkg.init()
 
@@ -35,17 +37,22 @@ REGION_PACKAGE_NAME = "maas-region-controller-min"
 
 
 def get_version_from_apt(package):
-    """Return the version output from `apt_pkg.Cache` for the given package."""
-    cache = apt_pkg.Cache(None)
+    """Return the version output from `apt_pkg.Cache` for the given package or
+    an error message if the package data is not valid."""
+    try:
+        cache = apt_pkg.Cache(None)
+    except SystemError:
+        maaslog.error(
+            'Installed version could not be determined. Ensure '
+            '/var/lib/dpkg/status is valid.')
+        return ""
+
     version = None
     if package in cache:
         apt_package = cache[package]
         version = apt_package.current_ver
 
-    if version is not None:
-        return version.ver_str
-    else:
-        return ""
+    return version.ver_str if version is not None else ""
 
 
 def extract_version_subversion(version):
