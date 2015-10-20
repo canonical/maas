@@ -28,8 +28,8 @@ administrator to make the decision on which layout will be the default.
 
 The users deploying nodes are not limited by the default. They can set an
 explicit storage layout when they acquire a node or after they have acquried a
-node with the set_storage_layout API. The user acquiring a node or performing
-the set_storage_layout API calls can also customize the layout generation. Each
+node with the set-storage-layout API. The user acquiring a node or performing
+the set-storage-layout API calls can also customize the layout generation. Each
 layout has a set of options that can be set to adjust the generated layout.
 
 Below list all the available storage layouts and the available options for
@@ -148,29 +148,6 @@ not adjust the layout of any node that is already passed the acquire stage.`::
 
   $ maas my-maas-session maas set_config name=default_storage_layout value=flat
 
-Acquire
-^^^^^^^
-
-When a node is acquired over the API the user can request a different storage
-layout. This will ensure the acquired node will get that requested storage
-layout.::
-
-  $ maas my-maas-session nodes acquire storage_layout=bcache
-
-Options for the storage layout can also be passed with the acquire API call.
-These options must be prefixed with `storage_layout_` so the acquire API call
-knows its an option for the storage layout and not a constraint.::
-
-  $ maas my-maas-session nodes acquire storage_layout=lvm storage_layout_lv_size=50%
-
-.. note::
-
-  Some options for the storage layouts are not safe to pass during the acquire
-  call. Any option that requires specific knowledge of the acquired node should
-  not be passed using the acquire call. E.g. You wont know what other
-  block devices are available on the acquired node until you have acquired it,
-  so passing cache_device=1 for bcache should not be used.
-
 Set Storage Layout
 ^^^^^^^^^^^^^^^^^^
 
@@ -178,7 +155,7 @@ If a node is already acquired and you want to adjust the storage layout the
 set_storage_layout API call can be used. The options for this API call do not
 require the `storage_layout_` prefix.::
 
-  $ maas my-maas-session node set_storage_layout <system-id> storage_layout=lvm lv_size=50%
+  $ maas my-maas-session node set-storage-layout <system-id> storage_layout=lvm lv_size=50%
 
 .. note::
 
