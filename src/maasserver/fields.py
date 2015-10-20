@@ -200,6 +200,14 @@ class NodeGroupFormField(ModelChoiceField):
         return nodegroup
 
 
+class StrippedCharField(CharField):
+    """A CharField that will strip surrounding whitespace before validation."""
+
+    def clean(self, value):
+        value = self.to_python(value).strip()
+        return super(CharField, self).clean(value)
+
+
 class VerboseRegexField(CharField):
 
     def __init__(self, regex, message, *args, **kwargs):

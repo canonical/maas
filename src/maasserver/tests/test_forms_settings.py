@@ -16,6 +16,7 @@ __all__ = []
 
 
 from django import forms
+from maasserver.forms import BootSourceSettingsForm
 from maasserver.forms_settings import (
     CONFIG_ITEMS,
     get_config_doc,
@@ -78,3 +79,41 @@ class TestSpecificConfigSettings(MAASServerTestCase):
         ips2 = [factory.make_ip_address() for _ in range(3)]
         input = ' '.join(ips1) + ' ' + ','.join(ips2)
         self.assertEqual(' '.join(ips1 + ips2), field.clean(input))
+
+
+class TestBootSourceSettingsForm(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestBootSourceSettingsForm, self).setUp()
+        self.form_data = {
+            'boot_source_url': 'http://example.com/good',
+            'boot_source_keyring': '/a/path'}
+
+    def test_happy_with_good_data(self):
+        form = BootSourceSettingsForm(data=self.form_data)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            "http://example.com/good",
+            form.cleaned_data['boot_source_url'])
+        self.assertEqual("/a/path", form.cleaned_data['boot_source_keyring'])
+
+    def test_unhappy_by_default(self):
+        form = BootSourceSettingsForm()
+        self.assertFalse(form.is_valid())
+
+    def test_reject_leading_spaces_in_boot_source_url(self):
+        # https://bugs.launchpad.net/maas/+bug/1499062
+        self.form_data['boot_source_url'] = ' http://example.com/leadingspace'
+        form = BootSourceSettingsForm(data=self.form_data)
+        self.assertFalse(form.is_valid())
+
+    def test_reject_non_url_in_boot_source_url(self):
+        self.form_data['boot_source_url'] = 'not_a_URL'
+        form = BootSourceSettingsForm(data=self.form_data)
+        self.assertFalse(form.is_valid())
+
+    def test_strips_boot_source_keyring(self):
+        self.form_data['boot_source_keyring'] = ' /a/path '
+        form = BootSourceSettingsForm(data=self.form_data)
+        self.assertTrue(form.is_valid())
+        self.assertEqual("/a/path", form.cleaned_data['boot_source_keyring'])

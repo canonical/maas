@@ -105,6 +105,7 @@ from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
     NodeGroupFormField,
+    StrippedCharField,
 )
 from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
@@ -1380,7 +1381,7 @@ class BootSourceSettingsForm(ConfigForm):
     config_fields = ['boot_images_auto_import']
 
     boot_images_auto_import = get_config_field('boot_images_auto_import')
-    boot_source_url = forms.CharField(
+    boot_source_url = forms.URLField(
         label="Sync URL", required=True,
         help_text=(
             "URL to sync boot image from. E.g. "
@@ -1396,7 +1397,7 @@ class BootSourceSettingsForm(ConfigForm):
         keyring_data."""
         boot_source = BootSource.objects.first()
         if boot_source is None or len(boot_source.keyring_data) == 0:
-            self.fields['boot_source_keyring'] = forms.CharField(
+            self.fields['boot_source_keyring'] = StrippedCharField(
                 label="Keyring Path", required=True,
                 help_text=(
                     "Path to the keyring to validate the sync URL. E.g. "
