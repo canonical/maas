@@ -54,6 +54,7 @@ import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import remove_host_maps
 from maasserver.clusterrpc.power import (
+    power_driver_check,
     power_off_node,
     power_on_node,
 )
@@ -132,7 +133,10 @@ from provisioningserver.events import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.poweraction import UnknownPowerType
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+)
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -1456,6 +1460,23 @@ class Node(CleanSave, TimestampedModel):
                 power_type, power_params,
             )
 
+    def confirm_power_driver_operable(self):
+        power_type = self.get_effective_power_type()
+        missing_packages = power_driver_check(self.nodegroup.uuid, power_type)
+        if len(missing_packages) > 0:
+            missing_packages = sorted(missing_packages)
+            if len(missing_packages) > 2:
+                missing_packages = [", ".join(
+                    missing_packages[:-1]), missing_packages[-1]]
+            package_list = " and ".join(missing_packages)
+            raise PowerActionFail(
+                "Power control software is missing from the cluster "
+                "controller. To proceed, "
+                "install the %s package%s on the %s cluster." % (
+                    package_list,
+                    "s" if len(missing_packages) > 1 else "",
+                    self.nodegroup.cluster_name))
+
     def acquire(
             self, user, token=None, agent_name='', comment=None):
         """Mark commissioned node as acquired by the given user and token."""
@@ -2276,7 +2297,7 @@ class Node(CleanSave, TimestampedModel):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
         event = EVENT_TYPES.REQUEST_NODE_START
-        # if status is ALLOCATED, this start is actually for a deplyment
+        # if status is ALLOCATED, this start is actually for a deployment
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
         self._register_request_event(
@@ -2336,6 +2357,7 @@ class Node(CleanSave, TimestampedModel):
             # Everything we've done up to this point is still valid;
             # this is not an error state.
             return None
+        self.confirm_power_driver_operable()
 
         def pc_power_on_node(system_id, hostname, nodegroup_uuid, power_info):
             d = power_on_node(system_id, hostname, nodegroup_uuid, power_info)
@@ -2389,6 +2411,7 @@ class Node(CleanSave, TimestampedModel):
             # node we don't know how to stop isn't an error state, but
             # it's a no-op.
             return None
+        self.confirm_power_driver_operable()
 
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode

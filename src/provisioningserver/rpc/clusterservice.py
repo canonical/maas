@@ -41,9 +41,11 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
+from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.network import discover_networks
 from provisioningserver.power.change import maybe_change_power_state
+from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.query import get_power_state
 from provisioningserver.rpc import (
     cluster,
@@ -271,6 +273,15 @@ class Cluster(RPCProtocol):
             system_id, hostname, power_type, context=context)
         d.addCallback(lambda x: {'state': x})
         return d
+
+    @cluster.PowerDriverCheck.responder
+    def power_driver_check(self, power_type):
+        """Return a list of missing power driver packages, if any."""
+        driver = power_drivers_by_name.get(power_type)
+        if driver is None:
+            raise UnknownPowerType(
+                "No driver found for power type '%s'" % power_type)
+        return {"missing_packages": driver.detect_missing_packages()}
 
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(self, omapi_key, subnet_configs):

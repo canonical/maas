@@ -29,6 +29,7 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
+    "PowerDriverCheck",
     "ValidateLicenseKey",
 ]
 
@@ -184,6 +185,26 @@ class ValidateLicenseKey(amp.Command):
     errors = {
         exceptions.NoSuchOperatingSystem: (
             b"NoSuchOperatingSystem"),
+    }
+
+
+class PowerDriverCheck(amp.Command):
+    """Check power driver on cluster for missing packages
+
+    :since: 1.9
+    """
+
+    arguments = [
+        (b"power_type", amp.Unicode()),
+    ]
+    response = [
+        (b"missing_packages", amp.ListOf(amp.Unicode())),
+    ]
+    errors = {
+        UnknownPowerType: (
+            b"UnknownPowerType"),
+        NotImplementedError: (
+            b"NotImplementedError"),
     }
 
 

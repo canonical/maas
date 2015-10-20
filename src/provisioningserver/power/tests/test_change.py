@@ -41,6 +41,7 @@ from provisioningserver import power
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
     get_error_message as get_driver_error_message,
+    power_drivers_by_name,
     PowerDriverRegistry,
     PowerError,
 )
@@ -553,6 +554,9 @@ class TestMaybeChangePowerState(MAASTestCase):
     def setUp(self):
         super(TestMaybeChangePowerState, self).setUp()
         self.patch(power, 'power_action_registry', {})
+        for power_driver in power_drivers_by_name.values():
+            self.patch(
+                power_driver, "detect_missing_packages").return_value = []
         self.useFixture(EventTypesAllRegistered())
         do_not_pause(self)
 
@@ -566,8 +570,9 @@ class TestMaybeChangePowerState(MAASTestCase):
 
     def test_always_returns_deferred(self):
         clock = Clock()
+        power_type = random.choice(power.QUERY_POWER_TYPES)
         d = power.change.maybe_change_power_state(
-            sentinel.system_id, sentinel.hostname, sentinel.power_type,
+            sentinel.system_id, sentinel.hostname, power_type,
             random.choice(("on", "off")), sentinel.context, clock=clock)
         self.assertThat(d, IsInstance(Deferred))
 
@@ -590,6 +595,46 @@ class TestMaybeChangePowerState(MAASTestCase):
             power.power_action_registry)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertEqual({}, power.power_action_registry)
+
+    @inlineCallbacks
+    def test_checks_missing_packages(self):
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        power_driver = power_drivers_by_name.get(power_type)
+        detect_packages = self.patch_autospec(
+            power_driver, "detect_missing_packages")
+        detect_packages.return_value = []
+        yield power.change.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertThat(detect_packages, MockCalledOnceWith())
+
+    @inlineCallbacks
+    def test_errors_when_missing_packages(self):
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        power_driver = power_drivers_by_name.get(power_type)
+        detect_packages = self.patch_autospec(
+            power_driver, "detect_missing_packages")
+        detect_packages.return_value = ['gone']
+        with ExpectedException(poweraction.PowerActionFail):
+            yield power.change.maybe_change_power_state(
+                system_id, hostname, power_type, power_change, context)
+        self.assertThat(detect_packages, MockCalledOnceWith())
 
     @inlineCallbacks
     def test_errors_when_change_conflicts_with_in_progress_change(self):
@@ -673,7 +718,7 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
-        power_type = sentinel.power_type
+        power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = random.choice(['on', 'off'])
         context = sentinel.context
 
@@ -702,7 +747,7 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
-        power_type = sentinel.power_type
+        power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = random.choice(['on', 'off'])
         context = sentinel.context
 

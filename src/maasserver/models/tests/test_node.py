@@ -142,6 +142,10 @@ from twisted.protocols import amp
 
 class TestNode(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestNode, self).setUp()
+        self.patch_autospec(node_module, 'power_driver_check')
+
     def disable_node_query(self):
         self.addCleanup(node_query.enable)
         node_query.disable()
@@ -3378,6 +3382,7 @@ class TestNode_Start(MAASServerTestCase):
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        self.patch_autospec(node_module, 'power_driver_check')
 
     def prepare_rpc_to_cluster(self, nodegroup):
         protocol = self.rpc_fixture.makeCluster(
@@ -3485,7 +3490,17 @@ class TestNode_Start(MAASServerTestCase):
             node._start_transition_monitor_async,
             MockCalledOnceWith(ANY, node.hostname))
 
-    def test_start_logs_user_request(self):
+    def test__node_start_checks_power_driver(self):
+        self.patch_autospec(node_module, "power_on_node")
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(user)
+        driver_check = self.patch_autospec(node_module, "power_driver_check")
+        with post_commit_hooks:
+            node.start(user)
+        self.expectThat(driver_check, MockCalledOnceWith(
+            node.nodegroup.uuid, node.get_effective_power_type()))
+
+    def test__start_logs_user_request(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW, owner=admin)
         self.patch(node, '_start')
@@ -3597,6 +3612,10 @@ class TestNode_Start(MAASServerTestCase):
 class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
 
+    def setUp(self):
+        super(TestNode_Stop, self).setUp()
+        self.patch_autospec(node_module, 'power_driver_check')
+
     def make_node_with_interface(
             self, user, nodegroup=None, power_type="virsh"):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -3624,6 +3643,16 @@ class TestNode_Stop(MAASServerTestCase):
             power_off_node, MockCalledOnceWith(
                 node.system_id, node.hostname, node.nodegroup.uuid,
                 expected_power_info))
+
+    def test__node_stop_checks_power_driver(self):
+        self.patch_autospec(node_module, "power_off_node")
+        user = factory.make_User()
+        node = self.make_node_with_interface(user)
+        driver_check = self.patch_autospec(node_module, "power_driver_check")
+        with post_commit_hooks:
+            node.stop(user, factory.make_name('stop-mode'))
+        self.expectThat(driver_check, MockCalledOnceWith(
+            node.nodegroup.uuid, node.get_effective_power_type()))
 
     def test__does_not_stop_nodes_the_user_cannot_edit(self):
         power_off_node = self.patch_autospec(node_module, "power_off_node")

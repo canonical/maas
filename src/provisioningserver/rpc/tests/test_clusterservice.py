@@ -63,6 +63,7 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
 )
+from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.network import discover_networks
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import (
@@ -1587,12 +1588,20 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         report_power_state = self.patch(
             power_module.query, "report_power_state")
 
+        power_type = random.choice(QUERY_POWER_TYPES)
         arguments = {
             'system_id': factory.make_name('system'),
             'hostname': factory.make_name('hostname'),
-            'power_type': random.choice(QUERY_POWER_TYPES),
+            'power_type': power_type,
             'context': factory.make_name('context'),
         }
+
+        # Make sure power driver doesn't check for installed packages.
+        power_driver = power_drivers_by_name.get(power_type)
+        if power_driver:
+            self.patch_autospec(
+                power_driver, "detect_missing_packages").return_value = []
+
         observed = yield call_responder(
             Cluster(), cluster.PowerQuery, arguments)
         self.assertEqual({'state': state}, observed)

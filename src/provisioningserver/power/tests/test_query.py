@@ -48,6 +48,7 @@ from mock import (
 from provisioningserver import power
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
+    power_drivers_by_name,
     PowerDriverRegistry,
 )
 from provisioningserver.events import EVENT_TYPES
@@ -127,7 +128,7 @@ class TestPowerHelpers(MAASTestCase):
         protocol, io = self.patch_rpc_methods()
         d = power.query.power_query_failure(
             system_id, hostname, Failure(Exception(message)))
-        # This blocks until the deferred is complete
+        # This blocks until the deferred is complete.
         io.flush()
         self.assertIsNone(extract_result(d))
         self.assertThat(
@@ -145,6 +146,9 @@ class TestPowerQuery(MAASTestCase):
         super(TestPowerQuery, self).setUp()
         self.useFixture(EventTypesAllRegistered())
         self.patch(power.query, "deferToThread", maybeDeferred)
+        for power_driver in power_drivers_by_name.values():
+            self.patch(
+                power_driver, "detect_missing_packages").return_value = []
 
     def patch_rpc_methods(self, return_value={}, side_effect=None):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
@@ -164,6 +168,12 @@ class TestPowerQuery(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'is_driver_available').return_value = False
+
+        power_driver = power_drivers_by_name.get(power_type)
+        detect_packages = self.patch_autospec(
+            power_driver, "detect_missing_packages")
+        detect_packages.return_value = []
+
         # Patch the power action utility so that it says the node is
         # in on/off power state.
         power_action, execute = patch_PowerAction(
@@ -172,9 +182,10 @@ class TestPowerQuery(MAASTestCase):
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
-        # This blocks until the deferred is complete
+        # This blocks until the deferred is complete.
         io.flush()
         self.assertEqual(power_state, extract_result(d))
+        self.assertThat(detect_packages, MockCalledOnceWith())
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -182,6 +193,32 @@ class TestPowerQuery(MAASTestCase):
                 call(power_change='query', **context),
             ),
         )
+
+    def test_get_power_state_fails_for_missing_packages(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_state = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_driver_available').return_value = False
+        # Patch the power action utility so that it says the node is
+        # in on/off power state.
+        power_action, execute = patch_PowerAction(
+            self, return_value=power_state)
+        _, markNodeBroken, io = self.patch_rpc_methods()
+
+        power_driver = power_drivers_by_name.get(power_type)
+        detect_packages = self.patch_autospec(
+            power_driver, "detect_missing_packages")
+        detect_packages.return_value = ['gone']
+
+        d = power.query.get_power_state(
+            system_id, hostname, power_type, context)
+
+        self.assertThat(detect_packages, MockCalledOnceWith())
+        return assert_fails_with(d, poweraction.PowerActionFail)
 
     def test_get_power_state_returns_unknown_for_certain_power_types(self):
         system_id = factory.make_name('system_id')
@@ -217,7 +254,7 @@ class TestPowerQuery(MAASTestCase):
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
-        # This blocks until the deferred is complete
+        # This blocks until the deferred is complete.
         io.flush()
         self.assertEqual(power_state, extract_result(d))
         self.assertThat(
@@ -320,7 +357,7 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context, clock=clock)
         for newcalls, waiting_time in calls_and_pause:
             calls.extend(newcalls)
-            # This blocks until the deferred is complete
+            # This blocks until the deferred is complete.
             io.flush()
             self.assertThat(execute, MockCallsMatch(*calls))
             clock.advance(waiting_time)
@@ -332,6 +369,7 @@ class TestPowerQueryExceptions(MAASTestCase):
     scenarios = tuple(
         (power_type, {
             "power_type": power_type,
+            "power_driver": power_drivers_by_name.get(power_type),
             "func": (  # Function to invoke driver.
                 "perform_power_driver_query"
                 if power_type in PowerDriverRegistry
@@ -366,6 +404,9 @@ class TestPowerQueryExceptions(MAASTestCase):
         power_state_update.return_value = succeed(None)
         send_event_node = self.patch_autospec(power.query, "send_event_node")
         send_event_node.return_value = succeed(None)
+
+        self.patch(
+            self.power_driver, "detect_missing_packages").return_value = []
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')

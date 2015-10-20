@@ -18,16 +18,20 @@ __all__ = [
 ]
 
 from functools import partial
+import logging
 
 from maasserver.rpc import getClientFor
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
+    PowerDriverCheck,
     PowerOff,
     PowerOn,
 )
 from provisioningserver.utils.twisted import asynchronous
+from twisted.protocols.amp import UnhandledCommand
 
 
+logger = logging.getLogger(__name__)
 maaslog = get_maas_logger("power")
 
 
@@ -52,7 +56,7 @@ def power_node(command, system_id, hostname, cluster_uuid, power_info):
     def call_power_command(client, **kwargs):
         return client(command, **kwargs)
 
-    maaslog.debug("%s: Asking cluster to power on node.", hostname)
+    maaslog.debug("%s: Asking cluster to power on/off node.", hostname)
     d = getClientFor(cluster_uuid).addCallback(
         call_power_command, system_id=system_id, hostname=hostname,
         power_type=power_info.power_type,
@@ -73,3 +77,41 @@ def power_node(command, system_id, hostname, cluster_uuid, power_info):
 
 power_off_node = partial(power_node, PowerOff)
 power_on_node = partial(power_node, PowerOn)
+
+
+@asynchronous(timeout=30)
+def power_driver_check(cluster_uuid, power_type):
+    """Call PowerDriverCheck on the given cluster and wait for response.
+
+    :param cluster-uuid: The UUID of the cluster to check.
+    :param power_type: The power type to check.
+    :return: A list of missing power drivers for the power_type, if any.
+
+    :raises NoConnectionsAvailable: When no connections to the node's
+        cluster are available for use.
+    :raises UnknownPowerType: When the requested power type is not known
+        to the cluster.
+    :raises NotImplementedError: When the power driver hasn't implemented
+        the missing packages check.
+    :raises TimeoutError: If a response has not been received within 30
+        seconds.
+    """
+    def get_missing_packages(client):
+        d = client(PowerDriverCheck, power_type=power_type)
+        d.addCallbacks(extract_missing_packages, ignore_unhandled_command)
+        return d
+
+    def extract_missing_packages(response):
+        return response["missing_packages"]
+
+    def ignore_unhandled_command(failure):
+        failure.trap(UnhandledCommand)
+        # The region hasn't been upgraded to support this method yet, so give
+        # up. Returning an empty list indicates that the power driver is OK, so
+        # the power attempt will continue and any errors will be caught later.
+        logger.warn(
+            "Unable to query cluster for power packages. Cluster does not"
+            "support the PowerDriverCheck RPC method. Returning OK.")
+        return []
+
+    return getClientFor(cluster_uuid).addCallback(get_missing_packages)

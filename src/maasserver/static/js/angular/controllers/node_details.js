@@ -903,6 +903,25 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
+        // true if power error prevents the provided action
+        $scope.hasActionPowerError = function(actionName) {
+            if(!$scope.hasPowerError()) {
+                return false; // no error, no need to check state
+            }
+            // these states attempt to manipulate power
+            var powerChangingStates = [
+                'commission',
+                'deploy',
+                'on',
+                'off',
+                'release'
+            ];
+            if(actionName && powerChangingStates.indexOf(actionName) > -1) {
+                return true;
+            }
+            return false;
+        };
+
         // Check to see if the power type has any missing system packages.
         $scope.hasPowerError = function() {
             if(angular.isObject($scope.power.type)) {
@@ -912,13 +931,25 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
-        // Returns an array of missing system packages.
-        $scope.getPowerError = function() {
+        // Returns a formatted string of missing system packages.
+        $scope.getPowerErrors = function() {
+            var i;
+            var result = "";
             if(angular.isObject($scope.power.type)) {
-                return $scope.power.type.missing_packages;
-            } else {
-                return false;
+                var packages = $scope.power.type.missing_packages;
+                packages.sort();
+                for(i = 0; i < packages.length; i++) {
+                    result += packages[i];
+                    if(i+2 < packages.length) {
+                        result += ", ";
+                    }
+                    else if(i+1 < packages.length) {
+                        result += " and ";
+                    }
+                }
+                result += packages.length > 1 ? " packages" : " package";
             }
+            return result;
         };
 
         // Load all the required managers.

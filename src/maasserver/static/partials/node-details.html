@@ -48,7 +48,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <div class="page-header__feedback ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError()">
+                    <div class="page-header__feedback ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name)">
                         <form class="form-inline">
                             <div class="eight-col no-margin-bottom ng-hide" data-ng-show="actionOption.name === 'commission'">
                                 <div class="inline four-col">
@@ -98,6 +98,17 @@
                     <div class="page-header__feedback ng-hide" data-ng-show="isDeployError()">
                         <p class="page-header__feedback-message info">
                             Node cannot be {$ actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                        </p>
+                        <div class="right">
+                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                        </div>
+                    </div>
+
+                    <div class="page-header__feedback ng-hide" data-ng-show="hasActionPowerError(actionOption.name)">
+                        <p class="page-header__feedback-message info">
+                            Node cannot be {$ actionOption.sentence $}, because power control software for the 
+                            node is missing from its cluster controller. To proceed, install the
+                            {$ getPowerErrors() $} on the {$ node.nodegroup.cluster_name $} cluster.
                         </p>
                         <div class="right">
                             <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
@@ -270,9 +281,9 @@
                 <div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
                     <ul class="flash-messages">
                         <li class="flash-messages__item error">
-                            To control power with this power type, install the
-                            '<span ng-repeat="error in getPowerError()">{$ error $}{$$last ? '' : ', '$}</span>'
-                            package(s) on cluster '{$ node.nodegroup.name $}'
+                            Power control software for this power type is missing from the
+                            cluster controller.  To proceed, install the {$ getPowerErrors() $}
+                            on the {$ node.nodegroup.cluster_name $} cluster.
                         </li>
                     </ul>
                 </div>

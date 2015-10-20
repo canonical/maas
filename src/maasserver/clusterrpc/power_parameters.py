@@ -99,6 +99,8 @@ def add_power_type_parameters(
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
         POWER_TYPE_PARAMETER_FIELD_SCHEMA.
+    :param missing_packages: System packages that must be installed on
+        the cluster before the power type can be used.
     :type fields: list of `make_json_field` results.
     :param parameters_set: An existing list of power type parameters to
         mutate.

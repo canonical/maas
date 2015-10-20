@@ -91,6 +91,7 @@ class NodeAnonAPITest(MAASServerTestCase):
         super(NodeAnonAPITest, self).setUp()
         self.patch(node_module, 'power_on_node')
         self.patch(node_module, 'power_off_node')
+        self.patch(node_module, 'power_driver_check')
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
@@ -140,6 +141,7 @@ class TestNodeAPI(APITestCase):
         super(TestNodeAPI, self).setUp()
         self.patch(node_module, 'power_on_node')
         self.patch(node_module, 'power_off_node')
+        self.patch(node_module, 'power_driver_check')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -1619,6 +1621,7 @@ class TestNodeAPITransactional(APITransactionTestCase):
     '''
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
+        self.patch(node_module, 'power_driver_check')
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
             architecture=make_usable_architecture(self))

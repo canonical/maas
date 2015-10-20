@@ -22,6 +22,7 @@ from provisioningserver import power
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
     get_error_message,
+    power_drivers_by_name,
     PowerDriverRegistry,
 )
 from provisioningserver.events import (
@@ -199,6 +200,16 @@ def maybe_change_power_state(
     """
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
+
+    power_driver = power_drivers_by_name.get(power_type)
+    if power_driver is None:
+        raise poweraction.PowerActionFail(
+            "Unknown power_type '%s'" % power_type)
+    missing_packages = power_driver.detect_missing_packages()
+    if len(missing_packages):
+        raise poweraction.PowerActionFail(
+            "'%s' package(s) are not installed" % " ".join(
+                missing_packages))
 
     # There should be one and only one power change for each system ID.
     if system_id in power.power_action_registry:

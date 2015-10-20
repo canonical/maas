@@ -23,6 +23,7 @@ import sys
 from provisioningserver import power
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
+    power_drivers_by_name,
     PowerDriverRegistry,
 )
 from provisioningserver.events import (
@@ -106,6 +107,16 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
 
     # Capture errors as we go along.
     exc_info = None, None, None
+
+    power_driver = power_drivers_by_name.get(power_type)
+    if power_driver is None:
+        raise poweraction.PowerActionFail(
+            "Unknown power_type '%s'" % power_type)
+    missing_packages = power_driver.detect_missing_packages()
+    if len(missing_packages):
+        raise poweraction.PowerActionFail(
+            "'%s' package(s) are not installed" % ", ".join(
+                missing_packages))
 
     if power.is_driver_available(power_type):
         # New-style power drivers handle retries for themselves, so we only
