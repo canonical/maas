@@ -225,11 +225,11 @@ def remove_host_maps(mac_addresses, shared_key):
             omshell.nullify_lease(mac_address)
         except ExternalProcessError as e:
             maaslog.error(
-                "Could not remove host map for %s: %s",
+                "Could not remove host map for %s: %s.",
                 mac_address, unicode(e))
             if 'not connected.' in e.output_as_unicode:
                 raise CannotRemoveHostMap(
                     "The DHCP server could not be reached.")
             else:
-                raise CannotRemoveHostMap("%s: %s" % (
+                raise CannotRemoveHostMap("%s: %s." % (
                     mac_address, e.output_as_unicode))

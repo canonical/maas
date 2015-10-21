@@ -137,6 +137,7 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
 )
+from provisioningserver.rpc.exceptions import CannotRemoveHostMap
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -1701,24 +1702,25 @@ class Node(CleanSave, TimestampedModel):
                     unicode(ex))
                 raise
 
-        release_auto_ips = True
         if self.power_state == POWER_STATE.OFF:
-            # Node is already off.
-            self.status = NODE_STATUS.READY
-            self.owner = None
+            # The node is already powered off; we can deallocate all attached
+            # resources and mark the node READY without delay.
+            release_to_ready = True
         elif self.get_effective_power_info().can_be_queried:
             # Controlled power type (one for which we can query the power
             # state): update_power_state() will take care of making the node
-            # READY, remove the owned, and release the assigned auto IP
+            # READY, remove the owner, and release the assigned auto IP
             # addresses when the power is finally off.
-            release_auto_ips = False
-            self.status = NODE_STATUS.RELEASING
             self.start_transition_monitor(self.get_releasing_time())
+            release_to_ready = False
         else:
-            # Uncontrolled power type (one for which we can't query the power
-            # state): mark the node ready.
-            self.status = NODE_STATUS.READY
-            self.owner = None
+            # The node's power cannot be reliably controlled. Frankly, this
+            # node is not suitable for use with MAAS. Deallocate all attached
+            # resources and mark the node READY without delay because there's
+            # not much else we can do.
+            release_to_ready = True
+
+        self.status = NODE_STATUS.RELEASING
         self.token = None
         self.agent_name = ''
         self.set_netboot()
@@ -1734,16 +1736,39 @@ class Node(CleanSave, TimestampedModel):
         NodeResult.objects.filter(
             node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
 
-        # Do these after updating the node to avoid creating deadlocks with
-        # other node editing operations.
-        if release_auto_ips:
-            self.release_auto_ips_later()
-
         # Clear the nodes acquired filesystems.
         self._clear_acquired_filesystems()
 
         # If this node has non-installable children, remove them.
         self.children.all().delete()
+
+        if release_to_ready:
+            # Release IP addresses later to avoid creating deadlocks with
+            # other node editing operations (it can be slow).
+            post_commit_do(
+                reactor.callLater, 0, deferToDatabase,
+                self._release_to_ready)
+
+    @transactional
+    def _release_to_ready(self):
+        """Release all remaining resources and mark the node `READY`.
+
+        Releasing a node can be straightforward or it can be a multi-step
+        operation, which can include a reboot in order to erase disks, then a
+        final power-down. This method should be the absolute last method
+        called.
+        """
+        try:
+            # XXX: This should be a 2-step process: update the database, then
+            # perform RPC to mutate DHCP servers. Presently it does everything
+            # from within a single database transaction.
+            self.release_auto_ips()
+        except CannotRemoveHostMap:
+            self.mark_failed(None, "Could not release IP addresses")
+        else:
+            self.status = NODE_STATUS.READY
+            self.owner = None
+            self.save()
 
     def release_or_erase(self, user, comment=None):
         """Either release the node or erase the node then release it, depending
@@ -1854,12 +1879,9 @@ class Node(CleanSave, TimestampedModel):
             self.status == NODE_STATUS.RELEASING and
             power_state == POWER_STATE.OFF)
         if mark_ready:
-            # Ensure the node is fully released after a successful power
-            # down.
-            self.status = NODE_STATUS.READY
-            self.owner = None
+            # Ensure the node is released when it powers down.
             self.stop_transition_monitor()
-            self.release_auto_ips_later()
+            self._release_to_ready()
         self.save()
 
     def is_in_allocated_state(self):
@@ -1982,17 +2004,6 @@ class Node(CleanSave, TimestampedModel):
         """Release IP addresses on all interface links set to AUTO."""
         for interface in self.interface_set.all():
             interface.release_auto_ips()
-
-    def release_auto_ips_later(self):
-        """Schedule for `release_auto_ips` to be called later.
-
-        This prevents the running task from blocking waiting for this task to
-        finish. This can cause blocking and thread starvation inside the
-        reactor threadpool.
-        """
-        post_commit_do(
-            reactor.callLater, 0, deferToDatabase,
-            self.release_auto_ips)
 
     def _clear_networking_configuration(self):
         """Clear the networking configuration for this node.

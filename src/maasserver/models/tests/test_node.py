@@ -1029,8 +1029,8 @@ class TestNode(MAASServerTestCase):
         node.power_state = POWER_STATE.ON
         node.release()
         self.expectThat(node.start_transition_monitor, MockNotCalled())
-        self.expectThat(node.status, Equals(NODE_STATUS.READY))
-        self.expectThat(node.owner, Is(None))
+        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
+        self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
@@ -1049,7 +1049,7 @@ class TestNode(MAASServerTestCase):
                 # Also a call to deallocate AUTO IP addresses.
                 call(
                     reactor.callLater, 0, deferToDatabase,
-                    node.release_auto_ips),
+                    node._release_to_ready),
             ))
 
     def test_release_node_that_has_power_off(self):
@@ -1064,8 +1064,8 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.expectThat(node._stop, MockNotCalled())
         self.expectThat(node.start_transition_monitor, MockNotCalled())
-        self.expectThat(node.status, Equals(NODE_STATUS.READY))
-        self.expectThat(node.owner, Is(None))
+        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
+        self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
@@ -1294,42 +1294,44 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertThat(node_stop, MockNotCalled())
 
-    def test_release_releases_auto_ips_when_node_is_off(self):
+    def test_release_does_not_release_ips_when_node_is_off(self):
+        """Releasing a powered down node does not call `release_auto_ips`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.OFF)
-        release_auto_ips_later = self.patch_autospec(
-            node, "release_auto_ips_later")
+        release_auto_ips = self.patch_autospec(
+            node, "release_auto_ips")
         self.patch(node, 'start_transition_monitor')
-        node.release()
-        self.assertThat(
-            release_auto_ips_later, MockCalledOnceWith())
+        with post_commit_hooks:
+            node.release()
+        self.assertThat(release_auto_ips, MockNotCalled())
 
-    def test_release_release_auto_ips_when_node_cannot_be_queried(self):
+    def test_release_does_not_release_ips_when_node_cant_be_queried(self):
+        """Releasing a node that can't be queried does not call
+        `release_auto_ips`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='ether_wake')
-        release_auto_ips_later = self.patch_autospec(
-            node, "release_auto_ips_later")
+        release = self.patch_autospec(
+            node, "release_auto_ips")
         self.patch(node, 'start_transition_monitor')
-        node.release()
-        self.assertThat(
-            release_auto_ips_later, MockCalledOnceWith())
+        with post_commit_hooks:
+            node.release()
+        self.assertThat(release, MockNotCalled())
 
     def test_release_doesnt_release_auto_ips_when_node_releasing(self):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='virsh')
-        release_auto_ips_later = self.patch_autospec(
-            node, "release_auto_ips_later")
+        release = self.patch_autospec(node, "release_auto_ips")
         self.patch_autospec(node, '_stop')
         self.patch(node, 'start_transition_monitor')
-        node.release()
-        self.assertThat(
-            release_auto_ips_later, MockNotCalled())
+        with post_commit_hooks:
+            node.release()
+        self.assertThat(release, MockNotCalled())
 
     def test_release_logs_and_raises_errors_in_stopping(self):
         node = factory.make_Node(
@@ -2089,20 +2091,17 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
-        release_auto_ips_later = self.patch_autospec(
-            node, 'release_auto_ips_later')
+        release = self.patch_autospec(node, 'release_auto_ips')
         self.patch(node, 'stop_transition_monitor')
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(
-            release_auto_ips_later, MockCalledOnceWith())
+        self.assertThat(release, MockCalledOnceWith())
 
     def test_update_power_state_doesnt_release_auto_ips_if_not_off(self):
         node = factory.make_Node(
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
-        release_auto_ips_later = self.patch_autospec(
-            node, 'release_auto_ips_later')
+        release = self.patch_autospec(node, 'release_auto_ips')
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(release_auto_ips_later, MockNotCalled())
+        self.assertThat(release, MockNotCalled())
 
     def test_end_deployment_changes_state(self):
         self.disable_node_query()
@@ -2883,17 +2882,6 @@ class TestNodeNetworking(MAASServerTestCase):
             for call in mock_release_auto_ips.call_args_list
         ]
         self.assertItemsEqual(interfaces, observed_interfaces)
-
-    def test_release_auto_ips_later_calls_with_post_commit_do(self):
-        mock_post_commit_do = self.patch_autospec(
-            node_module, "post_commit_do")
-        node = factory.make_Node()
-        node.release_auto_ips_later()
-        self.assertThat(
-            mock_post_commit_do,
-            MockCalledOnceWith(
-                reactor.callLater, 0,
-                deferToDatabase, node.release_auto_ips))
 
     def test__clear_networking_configuration(self):
         node = factory.make_Node()

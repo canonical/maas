@@ -1078,7 +1078,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            NODE_STATUS.READY, reload_object(node).status)
+            NODE_STATUS.RELEASING, reload_object(node).status)
 
 
 class TestByMACMetadataAPI(DjangoTestCase):
