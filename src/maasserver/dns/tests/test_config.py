@@ -694,4 +694,6 @@ class TestGetTrustedNetworks(MAASServerTestCase):
     def test__returns_many_networks(self):
         subnets = [factory.make_Subnet() for _ in xrange(random.randint(1, 5))]
         expected = [unicode(subnet.cidr) for subnet in subnets]
-        self.assertEqual(expected, get_trusted_networks())
+        # Note: This test was seen randomly failing because the networks were
+        # in an unexpected order...
+        self.assertItemsEqual(expected, get_trusted_networks())

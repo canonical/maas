@@ -221,6 +221,60 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         self.assertEqual(
             len(interfaces), nodegroup.nodegroupinterface_set.count())
 
+    def test_filters_interface_by_type_when_json_provided(self):
+        name = factory.make_name('name')
+        uuid = factory.make_UUID()
+        interfaces = [
+            {u'interface': 'pci0',
+             u'ip': u'92.140.219.3',
+             u'subnet_mask': u'255.255.255.255'},
+            {u'interface': u'eth0',
+             u'ip': u'78.146.80.12',
+             u'subnet_mask': u'255.255.255.255'}
+        ]
+        input_json = {
+            "pci0": {"type": "ethernet.physical"},
+        }
+        form = NodeGroupDefineForm(
+            data={
+                'name': name,
+                'uuid': uuid,
+                'interfaces': json.dumps(interfaces),
+                'ip_addr_json': json.dumps(input_json),
+                })
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        self.assertEqual(
+            1, nodegroup.nodegroupinterface_set.count())
+        ngi = nodegroup.nodegroupinterface_set.first()
+        self.assertEqual('pci0', ngi.interface)
+
+    def test_filters_interface_by_name_when_json_not_provided(self):
+        name = factory.make_name('name')
+        uuid = factory.make_UUID()
+        interfaces = [
+            {u'interface': 'pci0',
+             u'ip': u'92.140.219.3',
+             u'subnet_mask': u'255.255.255.255'},
+            {u'interface': u'eth0',
+             u'ip': u'78.146.80.12',
+             u'subnet_mask': u'255.255.255.255'}
+        ]
+        form = NodeGroupDefineForm(
+            data={
+                'name': name,
+                'uuid': uuid,
+                'interfaces': json.dumps(interfaces),
+                })
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        self.assertEqual(
+            1, nodegroup.nodegroupinterface_set.count())
+        ngi = nodegroup.nodegroupinterface_set.first()
+        self.assertEqual('eth0', ngi.interface)
+
     def test_populates_cluster_name_default(self):
         name = factory.make_name('name')
         uuid = factory.make_UUID()

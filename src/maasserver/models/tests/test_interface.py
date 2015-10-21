@@ -54,7 +54,6 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.ipaddr import get_first_and_last_usable_host_in_network
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -69,6 +68,9 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
+)
+from provisioningserver.utils.ipaddr import (
+    get_first_and_last_usable_host_in_network,
 )
 from testtools import ExpectedException
 from testtools.matchers import (

@@ -103,7 +103,6 @@ from mock import (
 )
 import netaddr
 from netaddr.ip import IPNetwork
-from provisioningserver.network import discover_networks
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc import (
     cluster,
@@ -265,7 +264,13 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
     @inlineCallbacks
     def test__registers_cluster_with_uuid_and_networks(self):
         uuid = factory.make_UUID()
-        networks = discover_networks()
+        networks = [
+            {"interface": "eth0", "ip": "192.168.0.0",
+             "subnet_mask": "255.255.255.0"},
+            {"interface": "eth1", "ip": "192.168.1.0",
+             "subnet_mask": "255.255.255.0"},
+        ]
+
         args = {"uuid": uuid, "networks": networks}
         response = yield call_responder(Region(), Register, args)
         self.assertEqual({}, response)

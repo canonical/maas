@@ -64,7 +64,10 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.drivers.power import power_drivers_by_name
-from provisioningserver.network import discover_networks
+from provisioningserver.network import (
+    discover_networks,
+    get_ip_addr_json,
+)
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -1235,7 +1238,7 @@ class TestClusterClient(MAASTestCase):
         self.assertThat(
             protocol.Register, MockCalledOnceWith(
                 protocol, uuid=cluster_uuid, networks=discover_networks(),
-                url=urlparse(maas_url)))
+                url=urlparse(maas_url), ip_addr_json=get_ip_addr_json()))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

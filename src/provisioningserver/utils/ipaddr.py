@@ -62,10 +62,10 @@ __all__ = [
     'get_first_and_last_usable_host_in_network',
 ]
 
+import os
 import re
 import string
 
-from maasserver.enum import IPADDRESS_FAMILY
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -107,7 +107,7 @@ def _parse_interface_definition(line):
         string.strip, line.split(':'))
 
     interface['index'] = int(index)
-    interface['name'] = name
+    interface['name'] = name.split('@')[0]
 
     # Now parse the <properties> part from above.
     # This will be in the form "<FLAG1,FLAG2> key1 value1 key2 value2 ..."
@@ -118,7 +118,7 @@ def _parse_interface_definition(line):
             flags = flags.split(',')
         else:
             flags = []
-        interface['flags'] = set(flags)
+        interface['flags'] = flags
         interface['settings'] = _get_settings_dict(matches.group(2))
     else:
         raise ValueError("Malformed 'ip addr' line (%s)" % line)
@@ -177,15 +177,105 @@ def parse_ip_addr(output):
 
 def get_first_and_last_usable_host_in_network(network):
     """Return the first and last usable host in network."""
-    if network.version == IPADDRESS_FAMILY.IPv4:
+    if network.version == 4:
+        # IPv4 networks reserve the first address inside a CIDR for the
+        # network address, and the last address for the broadcast address.
         return (
             IPAddress(network.first + 1, network.version),
             IPAddress(network.last - 1, network.version),
         )
-    elif network.version == IPADDRESS_FAMILY.IPv6:
+    elif network.version == 6:
+        # IPv6 networks reserve the first address inside a CIDR for the
+        # network address, but do not have the notion of a broadcast address.
         return (
             IPAddress(network.first + 1, network.version),
             IPAddress(network.last, network.version),
         )
     else:
         raise ValueError("Unknown IP address family: %s" % network.version)
+
+
+def get_interface_type(
+        ifname, sys_class_net="/sys/class/net",
+        proc_net_vlan='/proc/net/vlan'):
+    """Heuristic to return the type of the given interface.
+
+    The given interface must be able to be found in /sys/class/net/ifname.
+    Otherwise, it will be reported as 'missing'.
+
+    If an interface can be determined to be Ethernet, its type will begin
+    with 'ethernet'. If a subtype can be determined, 'ethernet.subtype'
+    will be returned.
+
+    If a file named /proc/net/vlan/ifname can be found, the interface will
+    be reported as 'ethernet.vlan'.
+
+    If a directory named /sys/class/net/ifname/bridge can be found, the
+    interface will be reported as 'ethernet.bridge'.
+
+    If a directory named /sys/class/net/ifname/bonding can be found, the
+    interface will be reported as 'ethernet.bond'.
+
+    If a symbolic link named /sys/class/net/ifname/device/driver/module is
+    found, the device will be assumed to be backed by real hardware.
+
+    If /sys/class/net/ifname/device/ieee80211 exists, the hardware-backed
+    interface will be reported as 'ethernet.wireless'.
+
+    If an interface is assumed to be hardware-backed and cannot be determined
+    to be a wireless interface, it will be reported as 'ethernet.physical'.
+
+    If the interface can be determined to be a non-Ethernet type, the type
+    that is found will be returned. (For example, 'loopback' or 'ipip'.)
+    """
+    sys_path = '%s/%s' % (sys_class_net, ifname)
+    if not os.path.isdir(sys_path):
+        return 'missing'
+
+    sys_type_path = '%s/type' % sys_path
+    with open(sys_type_path) as f:
+        iftype = int(f.read().strip())
+
+    # The iftype value here is defined in linux/if_arp.h.
+    # The important thing here is that Ethernet maps to 1.
+    # Currently, MAAS only runs on Ethernet interfaces.
+    if iftype == 1:
+        bridge_dir = os.path.join(sys_path, 'bridge')
+        if os.path.isdir(bridge_dir):
+            return 'ethernet.bridge'
+        bond_dir = os.path.join(sys_path, 'bonding')
+        if os.path.isdir(bond_dir):
+            return 'ethernet.bond'
+        if os.path.isfile('%s/%s' % (proc_net_vlan, ifname)):
+            return 'ethernet.vlan'
+        module_name_link = os.path.join(sys_path, 'device', 'driver', 'module')
+        if not os.path.islink(module_name_link):
+            return 'ethernet'
+        module_name = os.readlink(module_name_link).split('/')[-1]
+        if module_name:
+            device_80211 = os.path.join(sys_path, 'device', 'ieee80211')
+            if os.path.isdir(device_80211):
+                return 'ethernet.wireless'
+            else:
+                return 'ethernet.physical'
+        else:
+            return 'ethernet'
+    # ... however, we'll include some other commonly-seen interface types,
+    # just for completeness.
+    elif iftype == 772:
+        return 'loopback'
+    elif iftype == 768:
+        return 'ipip'
+    else:
+        return 'unknown-%d' % iftype
+
+
+def annotate_with_driver_information(interfaces):
+    """Determines driver information for each of the given interfaces.
+
+    Annotates the given dictionary to update it with driver information
+    (if found) for each interface.
+    """
+    for name in interfaces:
+        interfaces[name]['type'] = get_interface_type(name)
+    return interfaces

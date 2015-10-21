@@ -94,6 +94,18 @@ class TestRegister(MAASServerTestCase):
         networks_observed = self.get_cluster_networks(cluster)
         self.assertItemsEqual(networks, networks_observed)
 
+    def test__filters_interfaces_during_cluster_registration(self):
+        networks = [
+            {"interface": "eth0", "ip": factory.make_ipv4_address(),
+             "subnet_mask": "255.255.255.255"},
+            {"interface": "br0", "ip": factory.make_ipv4_address(),
+             "subnet_mask": "255.255.255.255"},
+        ]
+        cluster = register_cluster(factory.make_UUID())
+        cluster = register_cluster(cluster.uuid, networks=networks)
+        networks_observed = self.get_cluster_networks(cluster)
+        self.assertItemsEqual([networks[0]], networks_observed)
+
     def test__does_NOT_update_networks_when_some_exist(self):
         networks = [
             {"interface": "eth0", "ip": factory.make_ipv4_address(),

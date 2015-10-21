@@ -43,7 +43,10 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.network import discover_networks
+from provisioningserver.network import (
+    discover_networks,
+    get_ip_addr_json,
+)
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.query import get_power_state
@@ -81,6 +84,7 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
 )
 from provisioningserver.utils.network import find_ip_via_arp
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import DeferredValue
 from twisted import web
 from twisted.application.internet import TimerService
@@ -521,6 +525,12 @@ class ClusterClient(Cluster):
 
         networks = discover_networks()
 
+        try:
+            ip_addr_json = get_ip_addr_json()
+        except ExternalProcessError as epe:
+            log.msg(
+                "Warning: Could not gather IP address information: %s" % epe)
+
         def cb_register(_):
             log.msg(
                 "Cluster '%s' registered (via %s)."
@@ -536,7 +546,7 @@ class ClusterClient(Cluster):
 
         d = self.callRemote(
             region.Register, uuid=uuid, networks=networks,
-            url=urlparse(url))
+            url=urlparse(url), ip_addr_json=ip_addr_json)
         return d.addCallbacks(cb_register, eb_register)
 
     @inlineCallbacks

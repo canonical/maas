@@ -32,7 +32,9 @@ maaslog = get_maas_logger('rpc.clusters')
 
 @synchronous
 @transactional
-def register_cluster(uuid, name=None, domain=None, networks=None, url=None):
+def register_cluster(
+        uuid, name=None, domain=None, networks=None, url=None,
+        ip_addr_json=None):
     """Register a new cluster, if not already registered.
 
     If the master has not been configured yet, this nodegroup becomes the
@@ -70,11 +72,14 @@ def register_cluster(uuid, name=None, domain=None, networks=None, url=None):
         data["name"] = domain
 
     # Populate networks when there are no preexisting networks.
-    if networks is not None:
+    if networks is not None or ip_addr_json is not None:
         if cluster is None or not cluster.nodegroupinterface_set.exists():
-            # I can't figure out how to get something other than a string
-            # through Django's form machinery, hence the hoop-jumping below.
-            data["interfaces"] = json.dumps(networks)
+            if ip_addr_json is not None:
+                data["ip_addr_json"] = ip_addr_json
+            if networks is not None:
+                # Convert this data structure to a string so that it works
+                # inside the Django form.
+                data["interfaces"] = json.dumps(networks)
 
     form = NodeGroupDefineForm(
         data=data, status=NODEGROUP_STATUS.ENABLED,

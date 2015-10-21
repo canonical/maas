@@ -192,7 +192,10 @@ from netaddr import (
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.network import REVEAL_IPv6
+from provisioningserver.network import (
+    filter_likely_unmanaged_networks,
+    REVEAL_IPv6,
+)
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -1899,7 +1902,7 @@ DEFAULT_DNS_ZONE_NAME = 'maas'
 
 
 def validate_nodegroupinterfaces_json(interfaces):
-    """Check `NodeGroupInterface` definitions as found in a requst.
+    """Check `NodeGroupInterface` definitions as found in a request.
 
     This validates that the `NodeGroupInterface` definitions found in a
     request to `NodeGroupDefineForm` conforms to the expected basic structure:
@@ -2013,6 +2016,11 @@ class NodeGroupDefineForm(MAASModelForm):
             raise forms.ValidationError("Invalid json value.")
 
         validate_nodegroupinterfaces_json(interfaces)
+
+        # Try to only manage physical Ethernet interfaces.
+        ip_addr_json = self.data.get('ip_addr_json', None)
+        interfaces = filter_likely_unmanaged_networks(interfaces, ip_addr_json)
+
         for interface in interfaces:
             validate_nodegroupinterface_definition(interface)
 

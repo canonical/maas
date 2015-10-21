@@ -47,7 +47,6 @@ from maasserver.models import Fabric
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
-from maasserver.utils.ipaddr import parse_ip_addr
 from metadataserver import DefaultMeta
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import (
@@ -55,6 +54,7 @@ from metadataserver.fields import (
     BinaryField,
 )
 from metadataserver.models.noderesult import NodeResult
+from provisioningserver.utils.ipaddr import parse_ip_addr
 
 
 logger = logging.getLogger(__name__)

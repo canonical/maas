@@ -127,9 +127,10 @@ class Region(RPCProtocol):
         return d.addCallback(got_secret)
 
     @region.Register.responder
-    def register(self, uuid, networks, url):
+    def register(self, uuid, networks, url, ip_addr_json):
         d = deferToDatabase(
-            clusters.register_cluster, uuid, networks=networks, url=url)
+            clusters.register_cluster, uuid, networks=networks, url=url,
+            ip_addr_json=ip_addr_json)
 
         def cb_cluster_registered(cluster):
             return {}

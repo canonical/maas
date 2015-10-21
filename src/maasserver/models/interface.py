@@ -64,7 +64,9 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.space import Space
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.ipaddr import get_first_and_last_usable_host_in_network
+from provisioningserver.utils.ipaddr import (
+    get_first_and_last_usable_host_in_network
+)
 from netaddr import (
     IPAddress,
     IPNetwork,

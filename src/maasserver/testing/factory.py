@@ -379,7 +379,12 @@ class Factory(maastesting.factory.Factory):
         if management is None:
             management = factory.pick_enum(NODEGROUPINTERFACE_MANAGEMENT)
         if interface is None:
-            interface = self.make_name('netinterface')
+            # Make the name start with something sane, because we have code
+            # that [falls back to] filtering based on interface name that
+            # runs when we register a new cluster. (in other words, tests
+            # will fail if this doesn't look like it should be a physical
+            # Ethernet card.)
+            interface = self.make_name('eth')
         return dict(
             name=name,
             subnet=subnet,

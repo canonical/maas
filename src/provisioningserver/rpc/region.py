@@ -80,6 +80,7 @@ class Register(amp.Command):
         ], optional=True)),
         # The URL for the region as seen by the cluster.
         (b"url", ParsedURL(optional=True)),
+        (b"ip_addr_json", amp.Unicode(optional=True)),
     ]
     response = []
     errors = {
