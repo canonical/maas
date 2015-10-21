@@ -51,7 +51,7 @@ describe("GeneralManager", function() {
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
             ["node_actions", "device_actions", "architectures", "hwe_kernels",
-             "osinfo", "bond_options"]);
+             "osinfo", "bond_options", "version"]);
     });
 
     it("_data.node_actions has correct data", function() {
@@ -111,6 +111,16 @@ describe("GeneralManager", function() {
         expect(angular.isFunction(bond_options.replaceData)).toBe(true);
     });
 
+    it("_data.version has correct data", function() {
+        var version = GeneralManager._data.version;
+        expect(version.method).toBe("general.version");
+        expect(version.data).toEqual({ text: null });
+        expect(version.loaded).toBe(false);
+        expect(version.polling).toBe(false);
+        expect(version.nextPromise).toBeNull();
+        expect(angular.isFunction(version.replaceData)).toBe(true);
+    });
+
     describe("_getInternalData", function() {
 
         it("raises error for unknown data", function() {
@@ -146,7 +156,8 @@ describe("GeneralManager", function() {
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
-            GeneralManager._data.bond_options.loaded = false;
+            GeneralManager._data.bond_options.loaded = true;
+            GeneralManager._data.version.loaded = false;
             expect(GeneralManager.isLoaded()).toBe(false);
         });
 
@@ -157,6 +168,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             GeneralManager._data.bond_options.loaded = true;
+            GeneralManager._data.version.loaded = true;
             expect(GeneralManager.isLoaded()).toBe(true);
         });
     });
@@ -404,11 +416,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(6);
+            expect(GeneralManager._loadData.calls.count()).toBe(7);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

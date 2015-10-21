@@ -27,6 +27,7 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
+from mock import sentinel
 
 
 class TestGeneralHandler(MAASServerTestCase):
@@ -121,3 +122,9 @@ class TestGeneralHandler(MAASServerTestCase):
             "lacp_rates": BOND_LACP_RATE_CHOICES,
             "xmit_hash_policies": BOND_XMIT_HASH_POLICY_CHOICES,
             }, handler.bond_options({}))
+
+    def test_version(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.patch_autospec(
+            general, "get_maas_version_ui").return_value = sentinel.version
+        self.assertEquals(sentinel.version, handler.version({}))

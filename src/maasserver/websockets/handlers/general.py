@@ -34,6 +34,7 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
 )
+from maasserver.utils.version import get_maas_version_ui
 from maasserver.websockets.base import Handler
 
 
@@ -49,6 +50,7 @@ class GeneralHandler(Handler):
             'device_actions',
             'random_hostname',
             'bond_options',
+            'version',
             ]
 
     def architectures(self, params):
@@ -126,3 +128,7 @@ class GeneralHandler(Handler):
             "lacp_rates": BOND_LACP_RATE_CHOICES,
             "xmit_hash_policies": BOND_XMIT_HASH_POLICY_CHOICES,
         }
+
+    def version(self, params):
+        """Return the MAAS version."""
+        return get_maas_version_ui()
