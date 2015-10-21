@@ -18,16 +18,17 @@ import logging
 from operator import itemgetter
 import random
 import re
-from unittest import skip
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
     BOND_MODE,
+    CACHE_MODE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -37,8 +38,12 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import interface as interface_module
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
-from maasserver.models.filesystemgroup import VolumeGroup
+from maasserver.models.filesystemgroup import (
+    Bcache,
+    VolumeGroup,
+)
 from maasserver.models.interface import Interface
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.partition import Partition
@@ -123,6 +128,9 @@ class TestNodeHandler(MAASServerTestCase):
         disks = disks + [
             handler.dehydrate_volume_group(volume_group)
             for volume_group in VolumeGroup.objects.filter_by_node(node)
+        ] + [
+            handler.dehydrate_cache_set(cache_set)
+            for cache_set in CacheSet.objects.get_cache_sets_for_node(node)
         ]
         disks = sorted(disks, key=itemgetter("name"))
         data = {
@@ -450,20 +458,62 @@ class TestNodeHandler(MAASServerTestCase):
             "partitions": None,
             }, handler.dehydrate_volume_group(volume_group))
 
+    def test_dehydrate_cache_set(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner)
+        handler = NodeHandler(owner, {})
+        cache_set = factory.make_CacheSet(node=node)
+        backings = []
+        for _ in range(3):
+            backing = factory.make_PhysicalBlockDevice(node=node)
+            fs = factory.make_Filesystem(
+                block_device=backing, fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+            backings.append(
+                factory.make_FilesystemGroup(
+                    group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                    filesystems=[fs], cache_set=cache_set))
+        self.assertEquals({
+            "id": cache_set.id,
+            "name": cache_set.name,
+            "tags": [],
+            "type": "cache-set",
+            "path": "",
+            "size": cache_set.get_device().size,
+            "size_human": human_readable_bytes(
+                cache_set.get_device().size),
+            "used_size": cache_set.get_device().get_used_size(),
+            "used_size_human": human_readable_bytes(
+                cache_set.get_device().get_used_size()),
+            "available_size": cache_set.get_device().get_available_size(),
+            "available_size_human": human_readable_bytes(
+                cache_set.get_device().get_available_size()),
+            "block_size": cache_set.get_device().get_block_size(),
+            "model": "",
+            "serial": "",
+            "partition_table_type": "",
+            "used_for": ", ".join(sorted([
+                backing_device.name
+                for backing_device in backings
+                ])),
+            "filesystem": None,
+            "partitions": None,
+            }, handler.dehydrate_cache_set(cache_set))
+
     def test_dehydrate_partitions_returns_None(self):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
         self.assertIsNone(handler.dehydrate_partitions(None))
 
-    @skip("XXX: GavinPanella 2015-10-01 bug=1501753: Fails spuriously")
     def test_dehydrate_partitions_returns_list_of_partitions(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
-        blockdevice = factory.make_PhysicalBlockDevice(node=node)
+        blockdevice = factory.make_PhysicalBlockDevice(
+            node=node, size=10 * 1024 ** 3, block_size=512)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
         partitions = [
-            factory.make_Partition(partition_table=partition_table)
+            factory.make_Partition(
+                partition_table=partition_table, size=1 * 1024 ** 3)
             for _ in range(3)
         ]
         expected = []
@@ -1193,6 +1243,18 @@ class TestNodeHandler(MAASServerTestCase):
             })
         self.assertIsNone(reload_object(volume_group))
 
+    def test_delete_cache_set(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        cache_set = factory.make_CacheSet(node=node)
+        handler.delete_cache_set({
+            'system_id': node.system_id,
+            'cache_set_id': cache_set.id,
+            })
+        self.assertIsNone(reload_object(cache_set))
+
     def test_create_partition(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
@@ -1210,6 +1272,155 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             human_readable_bytes(size),
             human_readable_bytes(Partition.objects.first().size))
+
+    def test_create_cache_set_for_partition(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        partition = factory.make_Partition(node=node)
+        handler.create_cache_set({
+            'system_id': node.system_id,
+            'partition_id': partition.id
+            })
+        cache_set = CacheSet.objects.get_cache_sets_for_node(node).first()
+        self.assertIsNotNone(cache_set)
+        self.assertEquals(partition, cache_set.get_filesystem().partition)
+
+    def test_create_cache_set_for_block_device(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        handler.create_cache_set({
+            'system_id': node.system_id,
+            'block_id': block_device.id
+            })
+        cache_set = CacheSet.objects.get_cache_sets_for_node(node).first()
+        self.assertIsNotNone(cache_set)
+        self.assertEquals(
+            block_device.id, cache_set.get_filesystem().block_device.id)
+
+    def test_create_bcache_for_partition(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        partition = factory.make_Partition(node=node)
+        name = factory.make_name("bcache")
+        cache_set = factory.make_CacheSet(node=node)
+        cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        handler.create_bcache({
+            'system_id': node.system_id,
+            'partition_id': partition.id,
+            'block_id': partition.partition_table.block_device.id,
+            'name': name,
+            'cache_set': cache_set.id,
+            'cache_mode': cache_mode,
+            })
+        bcache = Bcache.objects.filter_by_node(node).first()
+        self.assertIsNotNone(bcache)
+        self.assertEquals(name, bcache.name)
+        self.assertEquals(cache_set, bcache.cache_set)
+        self.assertEquals(cache_mode, bcache.cache_mode)
+        self.assertEquals(
+            partition, bcache.get_bcache_backing_filesystem().partition)
+
+    def test_create_bcache_for_partition_with_filesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        partition = factory.make_Partition(node=node)
+        name = factory.make_name("bcache")
+        cache_set = factory.make_CacheSet(node=node)
+        cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        mount_point = factory.make_absolute_path()
+        handler.create_bcache({
+            'system_id': node.system_id,
+            'partition_id': partition.id,
+            'block_id': partition.partition_table.block_device.id,
+            'name': name,
+            'cache_set': cache_set.id,
+            'cache_mode': cache_mode,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            })
+        bcache = Bcache.objects.filter_by_node(node).first()
+        self.assertIsNotNone(bcache)
+        self.assertEquals(name, bcache.name)
+        self.assertEquals(cache_set, bcache.cache_set)
+        self.assertEquals(cache_mode, bcache.cache_mode)
+        self.assertEquals(
+            partition, bcache.get_bcache_backing_filesystem().partition)
+        self.assertEquals(
+            fstype,
+            bcache.virtual_device.get_effective_filesystem().fstype)
+        self.assertEquals(
+            mount_point,
+            bcache.virtual_device.get_effective_filesystem().mount_point)
+
+    def test_create_bcache_for_block_device(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        name = factory.make_name("bcache")
+        cache_set = factory.make_CacheSet(node=node)
+        cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        handler.create_bcache({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': name,
+            'cache_set': cache_set.id,
+            'cache_mode': cache_mode,
+            })
+        bcache = Bcache.objects.filter_by_node(node).first()
+        self.assertIsNotNone(bcache)
+        self.assertEquals(name, bcache.name)
+        self.assertEquals(cache_set, bcache.cache_set)
+        self.assertEquals(cache_mode, bcache.cache_mode)
+        self.assertEquals(
+            block_device.id,
+            bcache.get_bcache_backing_filesystem().block_device.id)
+
+    def test_create_bcache_for_block_device_with_filesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        name = factory.make_name("bcache")
+        cache_set = factory.make_CacheSet(node=node)
+        cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        mount_point = factory.make_absolute_path()
+        handler.create_bcache({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': name,
+            'cache_set': cache_set.id,
+            'cache_mode': cache_mode,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            })
+        bcache = Bcache.objects.filter_by_node(node).first()
+        self.assertIsNotNone(bcache)
+        self.assertEquals(name, bcache.name)
+        self.assertEquals(cache_set, bcache.cache_set)
+        self.assertEquals(cache_mode, bcache.cache_mode)
+        self.assertEquals(
+            block_device.id,
+            bcache.get_bcache_backing_filesystem().block_device.id)
+        self.assertEquals(
+            fstype,
+            bcache.virtual_device.get_effective_filesystem().fstype)
+        self.assertEquals(
+            mount_point,
+            bcache.virtual_device.get_effective_filesystem().mount_point)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

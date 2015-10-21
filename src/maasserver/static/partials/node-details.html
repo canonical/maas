@@ -106,7 +106,7 @@
 
                     <div class="page-header__feedback ng-hide" data-ng-show="hasActionPowerError(actionOption.name)">
                         <p class="page-header__feedback-message info">
-                            Node cannot be {$ actionOption.sentence $}, because power control software for the 
+                            Node cannot be {$ actionOption.sentence $}, because power control software for the
                             node is missing from its cluster controller. To proceed, install the
                             {$ getPowerErrors() $} on the {$ node.nodegroup.cluster_name $} cluster.
                         </p>
@@ -681,6 +681,70 @@
                         </main>
                     </section>
                 </div>
+                <div class="twelve-col padding-bottom" data-ng-show="cachesets.length">
+                    <h3>Available cache sets</h3>
+                    <section class="table">
+                        <header class="table__head">
+                            <div class="table__row">
+                                <div class="table__header table__column--3">
+                                    <input class="checkbox" type="checkbox" id="cachesets-check-all"
+                                        data-ng-checked="cachesetsAllSelected"
+                                        data-ng-click="toggleCacheSetAllSelect()"
+                                        data-ng-disabled="isCacheSetsDisabled()" />
+                                    <label class="checkbox-label" for="cachesets-check-all"></label>
+                                </div>
+                                <div class="table__header table__column--15">Name</div>
+                                <div class="table__header table__column--27">Size</div>
+                                <div class="table__header table__column--55">Used by</div>
+                            </div>
+
+                        </header>
+                        <main class="table__body">
+                            <div data-ng-repeat="cacheset in cachesets">
+                                <div class="table__row"
+                                    data-ng-class="{ active: cacheset.$selected }">
+                                    <div class="table__data table__column--3">
+                                        <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
+                                            data-ng-checked="cacheset.$selected"
+                                            data-ng-click="toggleCacheSetSelect(cacheset)"
+                                            data-ng-disabled="isCacheSetsDisabled()" />
+                                        <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
+                                    </div>
+                                    <div class="table__data table__column--15">{$ cacheset.name $}</div>
+                                    <div class="table__data table__column--27">{$ cacheset.size_human $}</div>
+                                    <div class="table__data table__column--45">{$ cacheset.used_by $}</div>
+                                    <div class="table__data table__column--10">
+                                        <div class="table__controls">
+                                            <a class="icon delete"
+                                                data-ng-show="canDeleteCacheSet(cacheset)"
+                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove</a>
+                                        </div>
+                                    </div>
+                                    <div class="table__dropdown">
+                                        <div class="table__row table__dropdown-row">
+                                            <div class="ng-hide" data-ng-show="cachesetsMode === 'single' && canDeleteCacheSet(cacheset)">
+                                                <div class="table__data left">
+                                                      <a class="link-cta-ubuntu text-button"
+                                                        data-ng-show="canDeleteCacheSet(cacheset)"
+                                                        data-ng-click="cacheSetDelete()">Remove</a>
+                                                </div>
+                                            </div>
+                                            <div class="ng-hide" data-ng-show="cachesetsMode === 'delete'">
+                                                <div class="table__data left margin-top--five">
+                                                      <p><span class="icon warning margin-right--ten"></span> Are you sure you want to delete this cache set?</p>
+                                                </div>
+                                                <div class="table__data right">
+                                                      <a class="link-cta-ubuntu text-button" data-ng-click="cacheSetCancel()">Cancel</a>
+                                                      <button class="cta-ubuntu" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </section>
+                </div>
                 <div class="twelve-col padding-bottom">
                     <h3>Available disks and partitions</h3>
                     <section class="table margin-bottom">
@@ -712,7 +776,7 @@
                                     No available disks or partitions.
                                 </div>
                             </div>
-                            <div data-ng-repeat="item in available">
+                            <div data-ng-repeat="item in available | removeAvailableByNew:availableNew">
                                 <div class="table__row"
                                     data-ng-class="{ active: item.$selected }">
                                     <div class="table__data table__column--3">
@@ -753,8 +817,8 @@
                                                 data-ng-show="canAddPartition(item)"
                                                 data-ng-click="availableQuickPartition(item)">Partition</a>
                                             <a class="icon delete"
-                                                data-ng-show="canDelete(item)"
-                                                data-ng-click="availableQuickDelete(item)">Delete</a>
+                                                data-ng-show="hasUnmountedFilesystem(item) || canDelete(item)"
+                                                data-ng-click="availableQuickDelete(item)">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -806,10 +870,10 @@
                                         <div class="table__row table__dropdown-row">
                                             <div class="ng-hide" data-ng-show="availableMode === 'single'">
                                                 <div class="table__data left">
-                                                    <button class="cta-ubuntu"
+                                                    <button class="cta-ubuntu secondary"
                                                         data-ng-show="canFormatAndMount(item)"
                                                         data-ng-click="availableFormatAndMount(item)">{$ getFormatAndMountButtonText (item) $}</button>
-                                                    <button class="cta-ubuntu"
+                                                    <button class="cta-ubuntu secondary"
                                                         data-ng-show="canAddPartition(item)"
                                                         data-ng-click="availablePartiton(item)">{$ getPartitionButtonText(item) $}</button>
                                                     <a class="link-cta-ubuntu text-button"
@@ -858,13 +922,91 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="table__row active" data-ng-show="availableMode === 'bcache'">
+                                <div class="table__data table__column--3">
+                                  <input class="checkbox" type="checkbox" id="bcache-create" disabled="disabled" checked />
+                                  <label class="checkbox-label" for="bcache-create"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input"
+                                        data-ng-class="{ invalid: isNewDiskNameInvalid() }"
+                                        data-ng-model="availableNew.name">
+                                </div>
+                                <div class="table__data table__column--15">{$ availableNew.device.size_human $}</div>
+                                <div class="table__data table__column--15">Bcache</div>
+                                <div class="table__data table__column--45"></div>
+                                <div class="table__data table__column--7"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row padding-bottom--ten">
+                                        <div class="table__data table__column--3"></div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">Cache set</label>
+                                            <select name="cache-set" id="cache-set"
+                                                data-ng-model="availableNew.cacheset"
+                                                data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">Cache mode</label>
+                                            <select name="cache-mode" id="cache-mode"
+                                                data-ng-model="availableNew.cacheMode">
+                                                <option value="writeback">writeback</option>
+                                                <option value="writethrough">writethrough</option>
+                                                <option value="writearound">writearound</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--15"></div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">File system</label>
+                                            <select name="filesys"
+                                                data-ng-model="availableNew.fstype"
+                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                <option value="">Unformatted</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--30">
+                                            <label for="mountpoint">Mount point</label>
+                                            <input type="text" id="mountpoint"
+                                                ng-model="availableNew.mountPoint"
+                                                ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                        </div>
+                                        <div class="table__data table__column--7"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                                        <div class="table__header table__column--5"></div>
+                                        <div class="table__header table__column--15">Name</div>
+                                        <div class="table__header table__column--15">Size</div>
+                                        <div class="table__header table__column--15">Device type</div>
+                                        <div class="table__header table__column--40"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row no-border">
+                                        <div class="table__data no-padding-top table__column--5"></div>
+                                        <div class="table__data no-padding-top table__column--15">{$ availableNew.device.name $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ availableNew.device.size_human $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(availableNew.device) $}</div>
+                                        <div class="table__data no-padding-top table__column--40"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button"
+                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="cta-ubuntu"
+                                                data-ng-disabled="!createBcacheCanSave()"
+                                                data-ng-click="availableConfirmCreateBcache()">Create Bcache</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </main>
                     </section>
-                    <div class="ng-hide">
-                        <a class="link-cta-ubuntu secondary margin-right">Create RAID</a>
-                        <a class="link-cta-ubuntu secondary margin-right">Create BCache</a>
-                        <a class="link-cta-ubuntu secondary">Create LVM</a>
-                    </div>
+                    <a class="link-cta-ubuntu secondary margin-right ng-hide">Create RAID</a>
+                    <a class="link-cta-ubuntu secondary margin-right ng-hide">Create LVM</a>
+                    <a class="link-cta-ubuntu secondary margin-right"
+                        data-ng-disabled="!canCreateCacheSet()"
+                        data-ng-click="createCacheSet()">Create Cache Set</a>
+                    <a class="link-cta-ubuntu secondary"
+                        data-ng-disabled="!canCreateBcache()"
+                        data-ng-click="createBcache()">Create Bcache</a>
                 </div>
                 <div class="twelve-col padding-bottom">
                     <h3>Used disks and partitions</h3>
@@ -901,68 +1043,6 @@
                         </main>
                     </section>
                 </div>
-
-                <!--
-
-                // XXX ltrager 2015-09-16 - Mock static storage, to be transformed into
-                //                          something more angular friendly
-
-                // Available disks & Block devices (CREATE PARTITION ROW)
-
-                // Markup for a row when create a partition has been clicked. All
-                // Form elements creating the partition will be in table__dropdown
-                // and the original table__row has a class of active applied
-
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                        <input class="checkbox" type="checkbox" id="sdb" />
-                        <label class="checkbox-label" for="sdb"></label>
-                    </div>
-                    <div class="table__data table__column--15">
-                        <input type="text" value="sdb" class="table__input">
-                    </div>
-                    <div class="table__data table__column--15">8.5 G</div>
-                    <div class="table__data table__column--15">Physical</div>
-                    <div class="table__data table__column--15">
-                        fat32 <a class="table__controls table__controls--secondary margin-left--ten">Mount</a>
-                    </div>
-                    <div class="table__data table__column--15">QEMU HARDDISK</div>
-                    <div class="table__data table__column--15 ng-hide">937368252</div>
-                    <div class="table__data table__column--15">
-                        <div class="table__tags">rotary, storage, test, hp, machine<span class="table__controls table__controls--secondary">, <a>edit</a></span></div>
-                    </div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a class="icon partition">Partition</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row padding-bottom--ten">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15">
-                                <label for="filesys">Filesystem</label>
-                                <select name="filesys" id="filesys">
-                                    <option value="fat32">fat32</option>
-                                </select>
-                            </div>
-                            <div class="table__data table__column--30">
-                                <label for="mountpoint">Mountpoint</label>
-                                <input type="text" id="mountpoint">
-                            </div>
-                            <div class="table__data table__column--52">
-                            </div>
-                        </div>
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data right">
-                                  <a class="link-cta-ubuntu text-button">Cancel</a>
-                                  <button class="cta-ubuntu">Mount</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                -->
 
                 <!--
 
@@ -1235,95 +1315,6 @@
                     </div>
                 </div>
 
-                -->
-
-                <!--
-
-                // Create Bchache
-
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                      <input class="checkbox" type="checkbox" id="check-all" />
-                      <label class="checkbox-label" for="check-all"></label>
-                    </div>
-                    <div class="table__data table__column--15">
-                        <input type="text" value="BChache0" class="table__input">
-                    </div>
-                    <div class="table__data table__column--15">34 G</div>
-                    <div class="table__data table__column--15">BChache</div>
-                    <div class="table__data table__column--45"></div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a class="icon partition">Partition</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row padding-bottom--ten">
-                          <div class="table__data table__column--3">
-                          </div>
-                          <div class="table__data table__column--15">
-                              <label for="type">BCache setting</label>
-                              <select name="type" id="type">
-                                  <option value="raid5">Setting</option>
-                              </select>
-                          </div>
-                          <div class="table__data table__column--30"></div>
-                          <div class="table__data table__column--15">
-                              <label for="type">File system</label>
-                              <select name="type" id="type">
-                                  <option value="raid5">fat32</option>
-                              </select>
-                          </div>
-                          <div class="table__data table__column--30">
-                              <label for="mtPoint">Mount point</label>
-                              <input type="text">
-                          </div>
-                          <div class="table__data table__column--7"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row table__dropdown-row--head">
-                            <div class="table__header table__column--5"></div>
-                            <div class="table__header table__column--15">Name</div>
-                            <div class="table__header table__column--15">Size</div>
-                            <div class="table__header table__column--15">Device type</div>
-                            <div class="table__header table__column--10">Caching</div>
-                            <div class="table__header table__column--15">Backing</div>
-                            <div class="table__header table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sda</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare">
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sdb</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare" selected>
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data right">
-                                <a href="" class="link-cta-ubuntu text-button">Cancel</a>
-                                <button class="cta-ubuntu">Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 -->
             </form>
         </div>

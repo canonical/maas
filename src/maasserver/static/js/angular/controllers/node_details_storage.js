@@ -4,6 +4,44 @@
  * MAAS Node Storage Controller
  */
 
+
+// Filter that is specific to the NodeStorageController. Remove the available
+// disks from the list if being used in the availableNew.
+angular.module('MAAS').filter('removeAvailableByNew', function() {
+    return function(disks, availableNew) {
+        if(!angular.isObject(availableNew) || (
+            !angular.isObject(availableNew.device) &&
+            !angular.isArray(availableNew.devices))) {
+            return disks;
+        }
+
+        var filtered = [];
+        var single = true;
+        if(angular.isArray(availableNew.devices)) {
+            single = false;
+        }
+        angular.forEach(disks, function(disk) {
+            if(single) {
+                if(disk !== availableNew.device) {
+                    filtered.push(disk);
+                }
+            } else {
+                var i, found = false;
+                for(i = 0; i < availableNew.devices.length; i++) {
+                    if(disk === availableNew.devices[i]) {
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) {
+                    filtered.push(disk);
+                }
+            }
+        });
+        return filtered;
+    };
+});
+
 angular.module('MAAS').controller('NodeStorageController', [
     '$scope', 'NodesManager', 'ConverterService',
     function($scope, NodesManager, ConverterService) {
@@ -19,7 +57,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             UNFORMAT: "unformat",
             DELETE: "delete",
             FORMAT_AND_MOUNT: "format-mount",
-            PARTITION: "partition"
+            PARTITION: "partition",
+            BCACHE: "bcache"
         };
 
         $scope.editing = false;
@@ -30,10 +69,15 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.filesystemsMap = {};
         $scope.filesystemMode = SELECTION_MODE.NONE;
         $scope.filesystemAllSelected = false;
+        $scope.cachesets = [];
+        $scope.cachesetsMap = {};
+        $scope.cachesetsMode = SELECTION_MODE.NONE;
+        $scope.cachesetsAllSelected = false;
         $scope.available = [];
         $scope.availableMap = {};
         $scope.availableMode = SELECTION_MODE.NONE;
         $scope.availableAllSelected = false;
+        $scope.availableNew = {};
         $scope.used = [];
 
         // Give $parent which is the NodeDetailsController access to this scope
@@ -62,7 +106,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return True if the item is in use.
         function isInUse(item) {
-            if(angular.isObject(item.filesystem)) {
+            if(item.type === "cache-set") {
+                return true;
+            } else if(angular.isObject(item.filesystem)) {
                 if(item.filesystem.is_format_fstype &&
                     angular.isString(item.filesystem.mount_point) &&
                     item.filesystem.mount_point !== "") {
@@ -84,6 +130,19 @@ angular.module('MAAS').controller('NodeStorageController', [
             return tags;
         }
 
+        // Return a unique key that will never change.
+        function getUniqueKey(disk) {
+            if(disk.type === "cache-set") {
+                return "cache-set-" + disk.cache_set_id;
+            } else {
+                var key = disk.type + "-" + disk.block_id;
+                if(angular.isNumber(disk.partition_id)) {
+                    key += "-" + disk.partition_id;
+                }
+                return key;
+            }
+        }
+
         // Update the list of filesystems. Only filesystems with a mount point
         // set go here. If no mount point is set, it goes in available.
         function updateFilesystems() {
@@ -92,6 +151,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             angular.forEach($scope.node.disks, function(disk) {
                 if(hasMountedFilesystem(disk)) {
                     filesystems.push({
+                        "type": "filesystem",
                         "name": disk.name,
                         "size_human": disk.size_human,
                         "fstype": disk.filesystem.fstype,
@@ -103,6 +163,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 angular.forEach(disk.partitions, function(partition) {
                     if(hasMountedFilesystem(partition)) {
                         filesystems.push({
+                            "type": "filesystem",
                             "name": partition.name,
                             "size_human": partition.size_human,
                             "fstype": partition.filesystem.fstype,
@@ -117,7 +178,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             // Update the selected filesystems with the currently selected
             // filesystems.
             angular.forEach(filesystems, function(filesystem) {
-                var oldFilesystem = $scope.filesystemsMap[filesystem.name];
+                var key = getUniqueKey(filesystem);
+                var oldFilesystem = $scope.filesystemsMap[key];
                 if(angular.isObject(oldFilesystem)) {
                     filesystem.$selected = oldFilesystem.$selected;
                 } else {
@@ -129,11 +191,50 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.filesystems = filesystems;
             $scope.filesystemsMap = {};
             angular.forEach(filesystems, function(filesystem) {
-                $scope.filesystemsMap[filesystem.name] = filesystem;
+                $scope.filesystemsMap[getUniqueKey(filesystem)] = filesystem;
             });
 
             // Update the selection mode.
             $scope.updateFilesystemSelection(false);
+        }
+
+        // Update the list of cache sets.
+        function updateCacheSets() {
+            // Create the new list of cache sets.
+            var cachesets = [];
+            angular.forEach($scope.node.disks, function(disk) {
+                if(disk.type === "cache-set") {
+                    cachesets.push({
+                        "type": "cache-set",
+                        "name": disk.name,
+                        "size_human": disk.size_human,
+                        "cache_set_id": disk.id,
+                        "used_by": disk.used_for
+                    });
+                }
+            });
+
+            // Update the selected cache sets with the currently selected
+            // cache sets.
+            angular.forEach(cachesets, function(cacheset) {
+                var key = getUniqueKey(cacheset);
+                var oldCacheSet = $scope.cachesetsMap[key];
+                if(angular.isObject(oldCacheSet)) {
+                    cacheset.$selected = oldCacheSet.$selected;
+                } else {
+                    cacheset.$selected = false;
+                }
+            });
+
+            // Update the cachesets and cachesetsMap on the scope.
+            $scope.cachesets = cachesets;
+            $scope.cachesetsMap = {};
+            angular.forEach(cachesets, function(cacheset) {
+                $scope.cachesetsMap[getUniqueKey(cacheset)] = cacheset;
+            });
+
+            // Update the selection mode.
+            $scope.updateCacheSetsSelection(false);
         }
 
         // Update list of all available disks.
@@ -192,7 +293,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             // available disks. Also copy the $options so they are not lost
             // for the current action.
             angular.forEach(available, function(disk) {
-                var oldDisk = $scope.availableMap[disk.name];
+                var key = getUniqueKey(disk);
+                var oldDisk = $scope.availableMap[key];
                 if(angular.isObject(oldDisk)) {
                     disk.$selected = oldDisk.$selected;
                     disk.$options = oldDisk.$options;
@@ -206,8 +308,30 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.available = available;
             $scope.availableMap = {};
             angular.forEach(available, function(disk) {
-                $scope.availableMap[disk.name] = disk;
+                $scope.availableMap[getUniqueKey(disk)] = disk;
             });
+
+            // Update device or devices on the availableNew object to be
+            // there new objects.
+            if(angular.isObject($scope.availableNew)) {
+                // Update device.
+                if(angular.isObject($scope.availableNew.device)) {
+                    var key = getUniqueKey($scope.availableNew.device);
+                    $scope.availableNew.device = $scope.availableMap[key];
+                // Update devices.
+                } else if(angular.isArray($scope.availableNew.devices)) {
+                    var newDevices = [];
+                    angular.forEach(
+                        $scope.availableNew.devices, function(device) {
+                            var key = getUniqueKey(device);
+                            var newDevice = $scope.availableMap[key];
+                            if(angular.isObject(newDevice)) {
+                                newDevices.push(newDevice);
+                            }
+                        });
+                    $scope.availableNew.devices = newDevices;
+                }
+            }
 
             // Update the selection mode.
             $scope.updateAvailableSelection(false);
@@ -217,18 +341,22 @@ angular.module('MAAS').controller('NodeStorageController', [
         function updateUsed() {
             var used = [];
             angular.forEach($scope.node.disks, function(disk) {
-                if(isInUse(disk)) {
-                    used.push({
+                if(isInUse(disk) && disk.type !== "cache-set") {
+                    var data = {
                         "name": disk.name,
                         "type": disk.type,
                         "model": disk.model,
                         "serial": disk.serial,
                         "tags": getTags(disk),
                         "used_for": disk.used_for
-                    });
+                    };
+                    if(disk.type === "virtual") {
+                        data.parent_type = disk.parent.type;
+                    }
+                    used.push(data);
                 }
                 angular.forEach(disk.partitions, function(partition) {
-                    if(isInUse(partition)) {
+                    if(isInUse(partition) && partition.type !== "cache-set") {
                         used.push({
                             "name": partition.name,
                             "type": "partition",
@@ -248,6 +376,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             if(angular.isArray($scope.node.disks)) {
                 $scope.has_disks = $scope.node.disks.length > 0;
                 updateFilesystems();
+                updateCacheSets();
                 updateAvailable();
                 updateUsed();
             } else {
@@ -256,10 +385,15 @@ angular.module('MAAS').controller('NodeStorageController', [
                 $scope.filesystemsMap = {};
                 $scope.filesystemMode = SELECTION_MODE.NONE;
                 $scope.filesystemAllSelected = false;
+                $scope.cachesets = [];
+                $scope.cachesetsMap = {};
+                $scope.cachesetsMode = SELECTION_MODE.NONE;
+                $scope.cachesetsAllSelected = false;
                 $scope.available = [];
                 $scope.availableMap = {};
                 $scope.availableMode = SELECTION_MODE.NONE;
                 $scope.availableAllSelected = false;
+                $scope.availableNew = {};
                 $scope.used = [];
             }
         }
@@ -282,16 +416,31 @@ angular.module('MAAS').controller('NodeStorageController', [
             return pattern.test(string);
         }
 
-        // Convert the string to a byte.
-        function convertToBytes(string, units) {
-            var value = parseFloat(string);
-            if(units === "mb") {
-                return value * 1000 * 1000;
-            } else if(units === "gb") {
-                return value * 1000 * 1000 * 1000;
-            } else if(units === "tb") {
-                return value * 1000 * 1000 * 1000 * 1000;
+        // Extract the index from the bcache name.
+        function getBcacheIndexFromName(name) {
+            var pattern = /^bcache([0-9]+)$/;
+            var match = pattern.exec(name);
+            if(angular.isArray(match) && match.length === 2) {
+                return parseInt(match[1], 10);
             }
+        }
+
+        // Get the next bcache device name.
+        function getNextBcacheName() {
+            var idx = -1;
+            angular.forEach($scope.node.disks, function(disk) {
+                var bcacheIdx = getBcacheIndexFromName(disk.name);
+                if(angular.isNumber(bcacheIdx)) {
+                    idx = Math.max(idx, bcacheIdx);
+                }
+                angular.forEach(disk.partitions, function(partition) {
+                    bcacheIdx = getBcacheIndexFromName(partition.name);
+                    if(angular.isNumber(bcacheIdx)) {
+                        idx = Math.max(idx, bcacheIdx);
+                    }
+                });
+            });
+            return "bcache" + (idx + 1);
         }
 
         // Called by $parent when the node has been loaded.
@@ -413,6 +562,10 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return the device type for the disk.
         $scope.getDeviceType = function(disk) {
+            if(angular.isUndefined(disk)) {
+                return "";
+            }
+
             if(disk.type === "virtual") {
                 if(disk.parent_type === "lvm-vg") {
                     return "Logical Volume";
@@ -551,6 +704,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Cancel the current available operation.
         $scope.availableCancel = function() {
             $scope.updateAvailableSelection(true);
+            $scope.availableNew = {};
         };
 
         // Enter unformat mode.
@@ -653,7 +807,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
             if(!disk.has_partitions && (
-                    !angular.isString(disk.fstype) || disk.fstype === "")) {
+                !angular.isString(disk.fstype) || disk.fstype === "")) {
                 return true;
             } else {
                 return false;
@@ -777,6 +931,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         };
 
+        // Confirm the partition creation.
         $scope.availableConfirmPartition = function(disk) {
             // Do nothing if not valid.
             if($scope.isAddPartitionSizeInvalid(disk)) {
@@ -817,6 +972,231 @@ angular.module('MAAS').controller('NodeStorageController', [
                 var idx = $scope.available.indexOf(disk);
                 $scope.available.splice(idx, 1);
             }
+            $scope.updateAvailableSelection(true);
+        };
+
+        // Return array of selected cache sets.
+        $scope.getSelectedCacheSets = function() {
+            var cachesets = [];
+            angular.forEach($scope.cachesets, function(cacheset) {
+                if(cacheset.$selected) {
+                    cachesets.push(cacheset);
+                }
+            });
+            return cachesets;
+        };
+
+        // Update the currect mode for the cache sets section and the all
+        // selected value.
+        $scope.updateCacheSetsSelection = function(force) {
+            if(angular.isUndefined(force)) {
+                force = false;
+            }
+            var cachesets = $scope.getSelectedCacheSets();
+            if(cachesets.length === 0) {
+                $scope.cachesetsMode = SELECTION_MODE.NONE;
+            } else if(cachesets.length === 1 && force) {
+                $scope.cachesetsMode = SELECTION_MODE.SINGLE;
+            } else if(force) {
+                $scope.cachesetsMode = SELECTION_MODE.MUTLI;
+            }
+
+            if($scope.cachesets.length === 0) {
+                $scope.cachesetsAllSelected = false;
+            } else if(cachesets.length === $scope.cachesets.length) {
+                $scope.cachesetsAllSelected = true;
+            } else {
+                $scope.cachesetsAllSelected = false;
+            }
+        };
+
+        // Toggle the selection of the filesystem.
+        $scope.toggleCacheSetSelect = function(cacheset) {
+            cacheset.$selected = !cacheset.$selected;
+            $scope.updateCacheSetsSelection(true);
+        };
+
+        // Toggle the selection of all filesystems.
+        $scope.toggleCacheSetAllSelect = function() {
+            angular.forEach($scope.cachesets, function(cacheset) {
+                if($scope.cachesetsAllSelected) {
+                    cacheset.$selected = false;
+                } else {
+                    cacheset.$selected = true;
+                }
+            });
+            $scope.updateCacheSetsSelection(true);
+        };
+
+        // Return true if checkboxes in the cache sets section should be
+        // disabled.
+        $scope.isCacheSetsDisabled = function() {
+            return (
+                $scope.cachesetsMode !== SELECTION_MODE.NONE &&
+                $scope.cachesetsMode !== SELECTION_MODE.SINGLE &&
+                $scope.cachesetsMode !== SELECTION_MODE.MUTLI);
+        };
+
+        // Cancel the current cache set operation.
+        $scope.cacheSetCancel = function() {
+            $scope.updateCacheSetsSelection(true);
+        };
+
+        // Can delete the cache set.
+        $scope.canDeleteCacheSet = function(cacheset) {
+            return cacheset.used_by === "";
+        };
+
+        // Enter delete mode.
+        $scope.cacheSetDelete = function() {
+            $scope.cachesetsMode = SELECTION_MODE.DELETE;
+        };
+
+        // Quickly enter delete by selecting the cache set first.
+        $scope.quickCacheSetDelete = function(cacheset) {
+            deselectAll($scope.cachesets);
+            cacheset.$selected = true;
+            $scope.updateCacheSetsSelection(true);
+            $scope.cacheSetDelete();
+        };
+
+        // Confirm the delete action for cache set.
+        $scope.cacheSetConfirmDelete = function(cacheset) {
+            NodesManager.deleteCacheSet(
+                $scope.node, cacheset.cache_set_id);
+
+            var idx = $scope.cachesets.indexOf(cacheset);
+            $scope.cachesets.splice(idx, 1);
+            $scope.updateCacheSetsSelection();
+        };
+
+        // Return true if a cache set can be created.
+        $scope.canCreateCacheSet = function() {
+            if($scope.isAvailableDisabled()) {
+                return false;
+            }
+
+            var selected = $scope.getSelectedAvailable();
+            if(selected.length === 1) {
+                return !$scope.hasUnmountedFilesystem(selected[0]);
+            }
+            return false;
+        };
+
+        // Called to create a cache set.
+        $scope.createCacheSet = function() {
+            if(!$scope.canCreateCacheSet()) {
+                return;
+            }
+
+            // Create cache set.
+            var disk = $scope.getSelectedAvailable()[0];
+            NodesManager.createCacheSet(
+                $scope.node, disk.block_id, disk.partition_id);
+
+            // Remove from available.
+            var idx = $scope.available.indexOf(disk);
+            $scope.available.splice(idx, 1);
+        };
+
+        // Return true if a bcache can be created.
+        $scope.canCreateBcache = function() {
+            if($scope.isAvailableDisabled()) {
+                return false;
+            }
+
+            var selected = $scope.getSelectedAvailable();
+            if(selected.length === 1) {
+                var allowed = !$scope.hasUnmountedFilesystem(selected[0]);
+                return allowed && $scope.cachesets.length > 0;
+            }
+            return false;
+        };
+
+        // Enter bcache mode.
+        $scope.createBcache = function() {
+            if(!$scope.canCreateBcache()) {
+                return;
+            }
+            $scope.availableMode = SELECTION_MODE.BCACHE;
+            $scope.availableNew = {
+                name: getNextBcacheName(),
+                device: $scope.getSelectedAvailable()[0],
+                cacheset: $scope.cachesets[0],
+                cacheMode: "writeback",
+                fstype: null,
+                mountPoint: ""
+            };
+        };
+
+        // Return true when the name of the new disk is invalid.
+        $scope.isNewDiskNameInvalid = function() {
+            if(!angular.isObject($scope.node) ||
+                !angular.isArray($scope.node.disks)) {
+                return true;
+            }
+
+            if($scope.availableNew.name === "") {
+                return true;
+            } else {
+                var i, j;
+                for(i = 0; i < $scope.node.disks.length; i++) {
+                    var disk = $scope.node.disks[i];
+                    if($scope.availableNew.name === disk.name) {
+                        return true;
+                    }
+                    if(angular.isArray(disk.partitions)) {
+                        for(j = 0; j < disk.partitions.length; j++) {
+                            var partition = disk.partitions[j];
+                            if($scope.availableNew.name === partition.name) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        };
+
+        // Return true if bcache can be saved.
+        $scope.createBcacheCanSave = function() {
+            return (
+                !$scope.isNewDiskNameInvalid() &&
+                !$scope.isMountPointInvalid($scope.availableNew.mountPoint));
+        };
+
+        // Confirm and create the bcache device.
+        $scope.availableConfirmCreateBcache = function() {
+            if(!$scope.createBcacheCanSave()) {
+                return;
+            }
+
+            // Create the bcache.
+            var params = {
+                name: $scope.availableNew.name,
+                cache_set: $scope.availableNew.cacheset.cache_set_id,
+                cache_mode: $scope.availableNew.cacheMode
+            };
+            if($scope.availableNew.device.type === "partition") {
+                params.partition_id = $scope.availableNew.device.partition_id;
+            } else {
+                params.block_id = $scope.availableNew.device.block_id;
+            }
+            if(angular.isString($scope.availableNew.fstype) &&
+                $scope.availableNew.fstype !== "") {
+                params.fstype = $scope.availableNew.fstype;
+                if($scope.availableNew.mountPoint !== "") {
+                    params.mount_point = $scope.availableNew.mountPoint;
+                }
+            }
+            NodesManager.createBcache($scope.node, params);
+
+            // Remove device from available.
+            var idx = $scope.available.indexOf($scope.availableNew.device);
+            $scope.available.splice(idx, 1);
+            $scope.availableNew = {};
+
+            // Update the selection.
             $scope.updateAvailableSelection(true);
         };
 

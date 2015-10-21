@@ -33,6 +33,8 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AddPartitionForm,
     AdminNodeWithMACAddressesForm,
+    CreateBcacheForm,
+    CreateCacheSetForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
     MountBlockDeviceForm,
@@ -45,6 +47,7 @@ from maasserver.forms_interface import (
 )
 from maasserver.forms_interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
@@ -134,7 +137,10 @@ class NodeHandler(TimestampedModelHandler):
             'delete_disk',
             'delete_partition',
             'delete_volume_group',
+            'delete_cache_set',
             'create_partition',
+            'create_cache_set',
+            'create_bcache',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -277,6 +283,9 @@ class NodeHandler(TimestampedModelHandler):
             data["disks"] = data["disks"] + [
                 self.dehydrate_volume_group(volume_group)
                 for volume_group in VolumeGroup.objects.filter_by_node(obj)
+            ] + [
+                self.dehydrate_cache_set(cache_set)
+                for cache_set in CacheSet.objects.get_cache_sets_for_node(obj)
             ]
             data["disks"] = sorted(data["disks"], key=itemgetter("name"))
             data["supported_filesystems"] = [
@@ -373,7 +382,7 @@ class NodeHandler(TimestampedModelHandler):
         return data
 
     def dehydrate_volume_group(self, volume_group):
-        """Return `BlockDevice` formatted for JSON encoding."""
+        """Return `VolumeGroup` formatted for JSON encoding."""
         size = volume_group.get_size()
         available_size = volume_group.get_lvm_free_space()
         used_size = volume_group.get_lvm_allocated_size()
@@ -394,6 +403,36 @@ class NodeHandler(TimestampedModelHandler):
             "serial": "",
             "partition_table_type": "",
             "used_for": "volume group",
+            "filesystem": None,
+            "partitions": None,
+        }
+
+    def dehydrate_cache_set(self, cache_set):
+        """Return `CacheSet` formatted for JSON encoding."""
+        device = cache_set.get_device()
+        used_size = device.get_used_size()
+        available_size = device.get_available_size()
+        bcache_devices = sorted([
+            bcache.name
+            for bcache in cache_set.filesystemgroup_set.all()
+        ])
+        return {
+            "id": cache_set.id,
+            "name": cache_set.name,
+            "tags": [],
+            "type": "cache-set",
+            "path": "",
+            "size": device.size,
+            "size_human": human_readable_bytes(device.size),
+            "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
+            "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
+            "block_size": device.get_block_size(),
+            "model": "",
+            "serial": "",
+            "partition_table_type": "",
+            "used_for": ", ".join(bcache_devices),
             "filesystem": None,
             "partitions": None,
         }
@@ -762,6 +801,19 @@ class NodeHandler(TimestampedModelHandler):
                 raise VolumeGroup.DoesNotExist()
             volume_group.delete()
 
+    def delete_cache_set(self, params):
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        cache_set_id = params.get('cache_set_id')
+        if cache_set_id is not None:
+            cache_set = CacheSet.objects.get(id=cache_set_id)
+            if cache_set.get_node() != node:
+                raise CacheSet.DoesNotExist()
+            cache_set.delete()
+
     def create_partition(self, params):
         """Create a partition."""
         node = self.get_object(params)
@@ -774,6 +826,58 @@ class NodeHandler(TimestampedModelHandler):
             raise HandlerError(form.errors)
         else:
             form.save()
+
+    def create_cache_set(self, params):
+        """Create a cache set."""
+        node = self.get_object(params)
+        block_id = params.get('block_id')
+        partition_id = params.get('partition_id')
+
+        data = {}
+        if partition_id is not None:
+            data["cache_partition"] = partition_id
+        elif block_id is not None:
+            data["cache_device"] = block_id
+        else:
+            raise HandlerError(
+                "Either block_id or partition_id is required.")
+
+        form = CreateCacheSetForm(node=node, data=data)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
+
+    def create_bcache(self, params):
+        """Create a bcache."""
+        node = self.get_object(params)
+        block_id = params.get('block_id')
+        partition_id = params.get('partition_id')
+
+        data = {
+            "name": params["name"],
+            "cache_set": params["cache_set"],
+            "cache_mode": params["cache_mode"],
+        }
+
+        if partition_id is not None:
+            data["backing_partition"] = partition_id
+        elif block_id is not None:
+            data["backing_device"] = block_id
+        else:
+            raise HandlerError(
+                "Either block_id or partition_id is required.")
+
+        form = CreateBcacheForm(node=node, data=data)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            bcache = form.save()
+
+        if 'fstype' in params:
+            self.update_blockdevice_filesystem(
+                node, bcache.virtual_device.id,
+                params.get("fstype"), params.get("mount_point"))
 
     def action(self, params):
         """Perform the action on the object."""

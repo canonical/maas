@@ -4,6 +4,79 @@
  * Unit tests for NodeStorageController.
  */
 
+describe("removeAvailableByNew", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the removeAvailableByNew.
+    var removeAvailableByNew;
+    beforeEach(inject(function($filter) {
+        removeAvailableByNew = $filter("removeAvailableByNew");
+    }));
+
+    it("returns disks if undefined availableNew", function() {
+        var i, disk, disks = [];
+        for(i = 0; i < 3; i++) {
+            disk = {
+                id: i
+            };
+            disks.push(disk);
+        }
+        expect(removeAvailableByNew(disks)).toBe(disks);
+    });
+
+    it("returns disks if undefined device(s) in availableNew", function() {
+        var i, disk, disks = [];
+        for(i = 0; i < 3; i++) {
+            disk = {
+                id: i
+            };
+            disks.push(disk);
+        }
+        var availableNew = {};
+        expect(removeAvailableByNew(disks, availableNew)).toBe(disks);
+    });
+
+    it("removes availableNew.device from disks", function() {
+        var i, disk, disks = [];
+        for(i = 0; i < 3; i++) {
+            disk = {
+                id: i
+            };
+            disks.push(disk);
+        }
+
+        var availableNew = {
+            device: disks[0]
+        };
+        var expectedDisks = angular.copy(disks);
+        expectedDisks.splice(0, 1);
+
+        expect(removeAvailableByNew(disks, availableNew)).toEqual(
+            expectedDisks);
+    });
+
+    it("removes availableNew.devices from disks", function() {
+        var i, disk, disks = [];
+        for(i = 0; i < 6; i++) {
+            disk = {
+                id: i
+            };
+            disks.push(disk);
+        }
+
+        var availableNew = {
+            devices: [disks[0], disks[1]]
+        };
+        var expectedDisks = angular.copy(disks);
+        expectedDisks.splice(0, 2);
+
+        expect(removeAvailableByNew(disks, availableNew)).toEqual(
+            expectedDisks);
+    });
+});
+
 describe("NodeStorageController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -154,6 +227,25 @@ describe("NodeStorageController", function() {
                         used_for: "ext4 formatted filesystem mounted at /mnt."
                     }
                 ]
+            },
+            {
+                // Disk that is a cache set.
+                id: 4,
+                name: "cache0",
+                model: "",
+                serial: "",
+                tags: [],
+                type: "cache-set",
+                size: Math.pow(1024, 4),
+                size_human: "1024 GB",
+                available_size: 0,
+                available_size_human: "0 GB",
+                used_size: Math.pow(1024, 4),
+                used_size_human: "1024 GB",
+                partition_table_type: null,
+                used_for: "",
+                filesystem: null,
+                partitions: null
             }
         ];
     }
@@ -171,6 +263,10 @@ describe("NodeStorageController", function() {
         expect($scope.availableMap).toEqual({});
         expect($scope.availableMode).toBeNull();
         expect($scope.availableAllSelected).toBe(false);
+        expect($scope.cachesets).toEqual([]);
+        expect($scope.cachesetsMap).toEqual({});
+        expect($scope.cachesetsMode).toBeNull();
+        expect($scope.cachesetsAllSelected).toBe(false);
         expect($scope.used).toEqual([]);
     });
 
@@ -195,6 +291,7 @@ describe("NodeStorageController", function() {
 
         var filesystems = [
             {
+                type: "filesystem",
                 name: disks[2].name,
                 size_human: disks[2].size_human,
                 fstype: disks[2].filesystem.fstype,
@@ -204,12 +301,23 @@ describe("NodeStorageController", function() {
                 $selected: false
             },
             {
+                type: "filesystem",
                 name: disks[3].partitions[1].name,
                 size_human: disks[3].partitions[1].size_human,
                 fstype: disks[3].partitions[1].filesystem.fstype,
                 mount_point: disks[3].partitions[1].filesystem.mount_point,
                 block_id: disks[3].id,
                 partition_id: disks[3].partitions[1].id,
+                $selected: false
+            }
+        ];
+        var cachesets = [
+            {
+                type: "cache-set",
+                name: disks[4].name,
+                size_human: disks[4].size_human,
+                cache_set_id: disks[4].id,
+                used_by: disks[4].used_for,
                 $selected: false
             }
         ];
@@ -297,6 +405,7 @@ describe("NodeStorageController", function() {
         $rootScope.$digest();
         expect($scope.has_disks).toEqual(true);
         expect($scope.filesystems).toEqual(filesystems);
+        expect($scope.cachesets).toEqual(cachesets);
         expect($scope.available).toEqual(available);
         expect($scope.used).toEqual(used);
     });
@@ -306,13 +415,16 @@ describe("NodeStorageController", function() {
         var disks = makeDisks();
         node.disks = disks;
 
-        // Load the filesystems, available, and used once.
+        // Load the filesystems, cachesets, available, and used once.
         $scope.nodeLoaded();
         $rootScope.$digest();
 
-        // Set all filesystems and available to selected.
+        // Set all filesystems, cachesets, and available to selected.
         angular.forEach($scope.filesystems, function(filesystem) {
             filesystem.$selected = true;
+        });
+        angular.forEach($scope.cachesets, function(cacheset) {
+            cacheset.$selected = true;
         });
         angular.forEach($scope.available, function(disk) {
             disk.$selected = true;
@@ -324,17 +436,20 @@ describe("NodeStorageController", function() {
             options.push(disk.$options);
         });
 
-        // Force the disks to change so the filesystems, available, and used
-        // are reloaded.
+        // Force the disks to change so the filesystems, cachesets, available,
+        // and used are reloaded.
         var firstFilesystem = $scope.filesystems[0];
         node.disks = angular.copy(node.disks);
         $rootScope.$digest();
         expect($scope.filesystems[0]).not.toBe(firstFilesystem);
         expect($scope.filesystems[0]).toEqual(firstFilesystem);
 
-        // All filesystems and available should be selected.
+        // All filesystems, cachesets and available should be selected.
         angular.forEach($scope.filesystems, function(filesystem) {
             expect(filesystem.$selected).toBe(true);
+        });
+        angular.forEach($scope.cachesets, function(cacheset) {
+            expect(cacheset.$selected).toBe(true);
         });
         angular.forEach($scope.available, function(disk) {
             expect(disk.$selected).toBe(true);
@@ -344,6 +459,51 @@ describe("NodeStorageController", function() {
         angular.forEach($scope.available, function(disk, idx) {
             expect(disk.$options).toBe(options[idx]);
         });
+    });
+
+    it("availableNew.device object is updated", function() {
+        var controller = makeController();
+        var disks = makeDisks();
+        node.disks = disks;
+
+        // Load the filesystems, cachesets, available, and used once.
+        $scope.nodeLoaded();
+        $rootScope.$digest();
+
+        // Set availableNew.device to a disk from available.
+        var disk = $scope.available[0];
+        $scope.availableNew.device = disk;
+
+        // Force the update. The device should be the same value but
+        // a new object.
+        node.disks = angular.copy(node.disks);
+        $rootScope.$digest();
+        expect($scope.availableNew.device).toEqual(disk);
+        expect($scope.availableNew.device).not.toBe(disk);
+    });
+
+    it("availableNew.devices array is updated", function() {
+        var controller = makeController();
+        var disks = makeDisks();
+        node.disks = disks;
+
+        // Load the filesystems, cachesets, available, and used once.
+        $scope.nodeLoaded();
+        $rootScope.$digest();
+
+        // Set availableNew.device to a disk from available.
+        var disk0 = $scope.available[0];
+        var disk1 = $scope.available[1];
+        $scope.availableNew.devices = [disk0, disk1];
+
+        // Force the update. The devices should be the same values but
+        // a new objects.
+        node.disks = angular.copy(node.disks);
+        $rootScope.$digest();
+        expect($scope.availableNew.devices[0]).toEqual(disk0);
+        expect($scope.availableNew.devices[0]).not.toBe(disk0);
+        expect($scope.availableNew.devices[1]).toEqual(disk1);
+        expect($scope.availableNew.devices[1]).not.toBe(disk1);
     });
 
     describe("getSelectedFilesystems", function() {
@@ -1832,6 +1992,644 @@ describe("NodeStorageController", function() {
                     node, disk.block_id,
                     (2.6 * 1000 * 1000 * 1000) - (3 * 1024 * 1024));
             });
+    });
+
+    describe("getSelectedCacheSets", function() {
+
+        it("returns selected cachesets", function() {
+            var controller = makeController();
+            var cachesets = [
+                { $selected: true },
+                { $selected: true },
+                { $selected: false },
+                { $selected: false }
+            ];
+            $scope.cachesets = cachesets;
+            expect($scope.getSelectedCacheSets()).toEqual(
+                [cachesets[0], cachesets[1]]);
+        });
+    });
+
+    describe("updateCacheSetsSelection", function() {
+
+        it("sets cachesetsMode to NONE when none selected", function() {
+            var controller = makeController();
+            spyOn($scope, "getSelectedCacheSets").and.returnValue([]);
+            $scope.cachesetsMode = "other";
+
+            $scope.updateCacheSetsSelection();
+
+            expect($scope.cachesetsMode).toBeNull();
+        });
+
+        it("doesn't sets cachesetsMode to SINGLE when not force", function() {
+            var controller = makeController();
+            spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
+            $scope.cachesetsMode = "other";
+
+            $scope.updateCacheSetsSelection();
+
+            expect($scope.cachesetsMode).toBe("other");
+        });
+
+        it("sets cachesetsMode to SINGLE when force", function() {
+            var controller = makeController();
+            spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
+            $scope.cachesetsMode = "other";
+
+            $scope.updateCacheSetsSelection(true);
+
+            expect($scope.cachesetsMode).toBe("single");
+        });
+
+        it("doesn't sets cachesetsMode to MUTLI when not force", function() {
+            var controller = makeController();
+            spyOn($scope, "getSelectedCacheSets").and.returnValue([{}, {}]);
+            $scope.cachesetsMode = "other";
+
+            $scope.updateCacheSetsSelection();
+
+            expect($scope.cachesetsMode).toBe("other");
+        });
+
+        it("sets cachesetsMode to MULTI when force", function() {
+            var controller = makeController();
+            spyOn($scope, "getSelectedCacheSets").and.returnValue([{}, {}]);
+            $scope.cachesetsMode = "other";
+
+            $scope.updateCacheSetsSelection(true);
+
+            expect($scope.cachesetsMode).toBe("multi");
+        });
+
+        it("sets cachesetsAllSelected to false when none selected",
+            function() {
+                var controller = makeController();
+                spyOn($scope, "getSelectedCacheSets").and.returnValue([]);
+                $scope.cachesetsAllSelected = true;
+
+                $scope.updateCacheSetsSelection();
+
+                expect($scope.cachesetsAllSelected).toBe(false);
+            });
+
+        it("sets cachesetsAllSelected to false when not all selected",
+            function() {
+                var controller = makeController();
+                $scope.cachesets = [{}, {}];
+                spyOn($scope, "getSelectedCacheSets").and.returnValue([{}]);
+                $scope.cachesetsAllSelected = true;
+
+                $scope.updateCacheSetsSelection();
+
+                expect($scope.cachesetsAllSelected).toBe(false);
+            });
+
+        it("sets cachesetsAllSelected to true when all selected",
+            function() {
+                var controller = makeController();
+                $scope.cachesets = [{}, {}];
+                spyOn($scope, "getSelectedCacheSets").and.returnValue(
+                    [{}, {}]);
+                $scope.cachesetsAllSelected = false;
+
+                $scope.updateCacheSetsSelection();
+
+                expect($scope.cachesetsAllSelected).toBe(true);
+            });
+    });
+
+    describe("toggleCacheSetSelect", function() {
+
+        it("inverts $selected", function() {
+            var controller = makeController();
+            var cacheset = { $selected: true };
+            spyOn($scope, "updateCacheSetsSelection");
+
+            $scope.toggleCacheSetSelect(cacheset);
+
+            expect(cacheset.$selected).toBe(false);
+            $scope.toggleCacheSetSelect(cacheset);
+            expect(cacheset.$selected).toBe(true);
+            expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith(
+                true);
+        });
+    });
+
+    describe("toggleCacheSetAllSelect", function() {
+
+        it("sets all to true if not all selected", function() {
+            var controller = makeController();
+            var cachesets = [{ $selected: true }, { $selected: false }];
+            $scope.cachesets = cachesets;
+            $scope.cachesetsAllSelected = false;
+            spyOn($scope, "updateCacheSetsSelection");
+
+            $scope.toggleCacheSetAllSelect();
+
+            expect(cachesets[0].$selected).toBe(true);
+            expect(cachesets[1].$selected).toBe(true);
+            expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith(
+                true);
+        });
+
+        it("sets all to false if all selected", function() {
+            var controller = makeController();
+            var cachesets = [{ $selected: true }, { $selected: true }];
+            $scope.cachesets = cachesets;
+            $scope.cachesetsAllSelected = true;
+            spyOn($scope, "updateCacheSetsSelection");
+
+            $scope.toggleCacheSetAllSelect();
+
+            expect(cachesets[0].$selected).toBe(false);
+            expect(cachesets[1].$selected).toBe(false);
+            expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith(
+                true);
+        });
+    });
+
+    describe("isCacheSetsDisabled", function() {
+
+        it("returns false for NONE", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = null;
+
+            expect($scope.isCacheSetsDisabled()).toBe(false);
+        });
+
+        it("returns false for SINGLE", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "single";
+
+            expect($scope.isCacheSetsDisabled()).toBe(false);
+        });
+
+        it("returns false for MULTI", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "multi";
+
+            expect($scope.isCacheSetsDisabled()).toBe(false);
+        });
+
+        it("returns true for DELETE", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "delete";
+
+            expect($scope.isCacheSetsDisabled()).toBe(true);
+        });
+    });
+
+    describe("cacheSetCancel", function() {
+
+        it("calls updateCacheSetsSelection with force true", function() {
+            var controller = makeController();
+            spyOn($scope, "updateCacheSetsSelection");
+
+            $scope.cacheSetCancel();
+
+            expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith(
+                true);
+        });
+    });
+
+    describe("canDeleteCacheSet", function() {
+
+        it("returns true when not being used", function() {
+            var controller = makeController();
+            var cacheset = { used_by: "" };
+
+            expect($scope.canDeleteCacheSet(cacheset)).toBe(true);
+        });
+
+        it("returns false when being used", function() {
+            var controller = makeController();
+            var cacheset = { used_by: "bcache0" };
+
+            expect($scope.canDeleteCacheSet(cacheset)).toBe(false);
+        });
+    });
+
+    describe("cacheSetDelete", function() {
+
+        it("sets cachesetsMode to DELETE", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "other";
+
+            $scope.cacheSetDelete();
+
+            expect($scope.cachesetsMode).toBe("delete");
+        });
+    });
+
+    describe("quickCacheSetDelete", function() {
+
+        it("selects cacheset and calls cacheSetDelete", function() {
+            var controller = makeController();
+            var cachesets = [{ $selected: true }, { $selected: false }];
+            $scope.cachesets = cachesets;
+            spyOn($scope, "updateCacheSetsSelection");
+            spyOn($scope, "cacheSetDelete");
+
+            $scope.quickCacheSetDelete(cachesets[1]);
+
+            expect(cachesets[0].$selected).toBe(false);
+            expect(cachesets[1].$selected).toBe(true);
+            expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith(
+                true);
+            expect($scope.cacheSetDelete).toHaveBeenCalled();
+        });
+    });
+
+    describe("cacheSetConfirmDelete", function() {
+
+        it("calls NodesManager.deleteCacheSet and removes from list",
+            function() {
+                var controller = makeController();
+                var cacheset = {
+                    cache_set_id: makeInteger(0, 100)
+                };
+                $scope.cachesets = [cacheset];
+                spyOn(NodesManager, "deleteCacheSet");
+                spyOn($scope, "updateCacheSetsSelection");
+
+                $scope.cacheSetConfirmDelete(cacheset);
+
+                expect(NodesManager.deleteCacheSet).toHaveBeenCalledWith(
+                    node, cacheset.cache_set_id);
+                expect($scope.cachesets).toEqual([]);
+                expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith();
+            });
+    });
+
+    describe("canCreateCacheSet", function() {
+
+        it("returns false if isAvailableDisabled returns true", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+
+            expect($scope.canCreateCacheSet()).toBe(false);
+        });
+
+        it("returns false if two selected", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [ { $selected: true }, { $selected: true }];
+
+            expect($scope.canCreateCacheSet()).toBe(false);
+        });
+
+        it("returns false if selected has fstype", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    fstype: "ext4",
+                    $selected: true
+                }
+            ];
+
+            expect($scope.canCreateCacheSet()).toBe(false);
+        });
+
+        it("returns true if selected has no fstype", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    fstype: null,
+                    $selected: true
+                }
+            ];
+
+            expect($scope.canCreateCacheSet()).toBe(true);
+        });
+    });
+
+    describe("createCacheSet", function() {
+
+        it("does nothing if canCreateCacheSet returns false", function() {
+            var controller = makeController();
+            var disk = {
+                block_id: makeInteger(0, 100),
+                partition_id: makeInteger(0, 100),
+                $selected: true
+            };
+            $scope.available = [disk];
+            spyOn($scope, "canCreateCacheSet").and.returnValue(false);
+            spyOn(NodesManager, "createCacheSet");
+
+            $scope.createCacheSet();
+            expect(NodesManager.createCacheSet).not.toHaveBeenCalled();
+        });
+
+        it("calls NodesManager.createCacheSet and removes from available",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    block_id: makeInteger(0, 100),
+                    partition_id: makeInteger(0, 100),
+                    $selected: true
+                };
+                $scope.available = [disk];
+                spyOn($scope, "canCreateCacheSet").and.returnValue(true);
+                spyOn(NodesManager, "createCacheSet");
+
+                $scope.createCacheSet();
+                expect(NodesManager.createCacheSet).toHaveBeenCalledWith(
+                    node, disk.block_id, disk.partition_id);
+                expect($scope.available).toEqual([]);
+            });
+    });
+
+    describe("canCreateBcache", function() {
+
+        it("returns false when isAvailableDisabled is true", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+
+            expect($scope.canCreateBcache()).toBe(false);
+        });
+
+        it("returns false if two selected", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [ { $selected: true }, { $selected: true }];
+
+            expect($scope.canCreateBcache()).toBe(false);
+        });
+
+        it("returns false if selected has fstype", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    fstype: "ext4",
+                    $selected: true
+                }
+            ];
+            $scope.cachesets = [{}];
+
+            expect($scope.canCreateBcache()).toBe(false);
+        });
+
+        it("returns false if selected has no fstype but not cachesets ",
+            function() {
+                var controller = makeController();
+                spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+                $scope.available = [
+                    {
+                        fstype: null,
+                        $selected: true
+                    }
+                ];
+                $scope.cachesets = [];
+
+                expect($scope.canCreateBcache()).toBe(false);
+            });
+
+        it("returns true if selected has no fstype but has cachesets ",
+            function() {
+                var controller = makeController();
+                spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+                $scope.available = [
+                    {
+                        fstype: null,
+                        $selected: true
+                    }
+                ];
+                $scope.cachesets = [{}];
+
+                expect($scope.canCreateBcache()).toBe(true);
+            });
+    });
+
+    describe("createBcache", function() {
+
+        it("does nothing if canCreateBcache returns false", function() {
+            var controller = makeController();
+            $scope.availableMode = "other";
+            spyOn($scope, "canCreateBcache").and.returnValue(false);
+
+            $scope.createBcache();
+            expect($scope.availableMode).toBe("other");
+        });
+
+        it("sets availableMode and availableNew", function() {
+            var controller = makeController();
+            $scope.availableMode = "other";
+            spyOn($scope, "canCreateBcache").and.returnValue(true);
+
+            // Add bcache name to create a name after that index.
+            var otherBcache = {
+                name: "bcache4"
+            };
+            node.disks = [otherBcache];
+
+            // Will be set as the device.
+            var disk = {
+                $selected: true
+            };
+            $scope.available = [disk];
+
+            // Will be set as the cacheset.
+            var cacheset = {};
+            $scope.cachesets = [cacheset];
+
+            $scope.createBcache();
+            expect($scope.availableMode).toBe("bcache");
+            expect($scope.availableNew).toEqual({
+                name: "bcache5",
+                device: disk,
+                cacheset: cacheset,
+                cacheMode: "writeback",
+                fstype: null,
+                mountPoint: ""
+            });
+            expect($scope.availableNew.device).toBe(disk);
+            expect($scope.availableNew.cacheset).toBe(cacheset);
+        });
+    });
+
+    describe("isNewDiskNameInvalid", function() {
+
+        it("returns true if blank name", function() {
+            var controller = makeController();
+            $scope.node.disks = [];
+            $scope.availableNew.name = "";
+
+            expect($scope.isNewDiskNameInvalid()).toBe(true);
+        });
+
+        it("returns true if name used by disk", function() {
+            var controller = makeController();
+            var name = makeName("disk");
+            $scope.node.disks = [{
+                name: name
+            }];
+            $scope.availableNew.name = name;
+
+            expect($scope.isNewDiskNameInvalid()).toBe(true);
+        });
+
+        it("returns true if name used by partition", function() {
+            var controller = makeController();
+            var name = makeName("disk");
+            $scope.node.disks = [{
+                name: makeName("other"),
+                partitions: [
+                    {
+                        name: name
+                    }
+                ]
+            }];
+            $scope.availableNew.name = name;
+
+            expect($scope.isNewDiskNameInvalid()).toBe(true);
+        });
+
+        it("returns false if the name is not already used", function() {
+            var controller = makeController();
+            var name = makeName("disk");
+            $scope.node.disks = [{
+                name: makeName("other"),
+                partitions: [
+                    {
+                        name: makeName("part")
+                    }
+                ]
+            }];
+            $scope.availableNew.name = name;
+
+            expect($scope.isNewDiskNameInvalid()).toBe(false);
+        });
+    });
+
+    describe("createBcacheCanSave", function() {
+
+        it("returns false if isNewDiskNameInvalid returns true", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "/";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
+
+            expect($scope.createBcacheCanSave()).toBe(false);
+        });
+
+        it("returns false if isMountPointInvalid returns true", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "not/absolute";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
+
+            expect($scope.createBcacheCanSave()).toBe(false);
+        });
+
+        it("returns true if both return false", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "/";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
+
+            expect($scope.createBcacheCanSave()).toBe(true);
+        });
+    });
+
+    describe("availableConfirmCreateBcache", function() {
+
+        it("does nothing if createBcacheCanSave returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "createBcacheCanSave").and.returnValue(false);
+            var availableNew = {
+                name: makeName("bcache"),
+                cacheset: {
+                    cache_set_id: makeInteger(0, 100)
+                },
+                cacheMode: "writearound",
+                device: {
+                    type: "partition",
+                    partition_id: makeInteger(0, 100)
+                },
+                fstype: null,
+                mountPoint: ""
+            };
+            $scope.availableNew = availableNew;
+            spyOn(NodesManager, "createBcache");
+
+            $scope.availableConfirmCreateBcache();
+            expect(NodesManager.createBcache).not.toHaveBeenCalled();
+        });
+
+        it("calls NodesManager.createBcache for partition", function() {
+            var controller = makeController();
+            spyOn($scope, "createBcacheCanSave").and.returnValue(true);
+            var device = {
+                type: "partition",
+                partition_id: makeInteger(0, 100),
+                $selected: true
+            };
+            var availableNew = {
+                name: makeName("bcache"),
+                cacheset: {
+                    cache_set_id: makeInteger(0, 100)
+                },
+                cacheMode: "writearound",
+                device: device,
+                fstype: "ext4",
+                mountPoint: "/"
+            };
+            $scope.available = [device];
+            $scope.availableNew = availableNew;
+            spyOn(NodesManager, "createBcache");
+            spyOn($scope, "updateAvailableSelection");
+
+            $scope.availableConfirmCreateBcache();
+            expect(NodesManager.createBcache).toHaveBeenCalledWith(
+                node, {
+                    name: availableNew.name,
+                    cache_set: availableNew.cacheset.cache_set_id,
+                    cache_mode: "writearound",
+                    partition_id: device.partition_id,
+                    fstype: "ext4",
+                    mount_point: "/"
+                });
+            expect($scope.available).toEqual([]);
+            expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
+                true);
+        });
+
+        it("calls NodesManager.createBcache for block device", function() {
+            var controller = makeController();
+            spyOn($scope, "createBcacheCanSave").and.returnValue(true);
+            var device = {
+                type: "physical",
+                block_id: makeInteger(0, 100),
+                $selected: true
+            };
+            var availableNew = {
+                name: makeName("bcache"),
+                cacheset: {
+                    cache_set_id: makeInteger(0, 100)
+                },
+                cacheMode: "writearound",
+                device: device,
+                fstype: null,
+                mountPoint: "/"
+            };
+            $scope.available = [device];
+            $scope.availableNew = availableNew;
+            spyOn(NodesManager, "createBcache");
+            spyOn($scope, "updateAvailableSelection");
+
+            $scope.availableConfirmCreateBcache();
+            expect(NodesManager.createBcache).toHaveBeenCalledWith(
+                node, {
+                    name: availableNew.name,
+                    cache_set: availableNew.cacheset.cache_set_id,
+                    cache_mode: "writearound",
+                    block_id: device.block_id
+                });
+            expect($scope.available).toEqual([]);
+            expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
+                true);
+        });
     });
 
     describe("editTags", function() {

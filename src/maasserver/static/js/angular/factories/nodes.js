@@ -211,6 +211,19 @@ angular.module('MAAS').factory(
                 return RegionConnection.callMethod(method, params);
             };
 
+        // Delete a cache set.
+        NodesManager.prototype.deleteCacheSet = function(
+            node, cache_set_id) {
+                var self = this;
+                var method = this._handler + ".delete_cache_set";
+                var params = {
+                    system_id: node.system_id,
+                    cache_set_id: cache_set_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Create a new partition.
         NodesManager.prototype.createPartition = function(
             node, block_id, size) {
                 var self = this;
@@ -221,6 +234,30 @@ angular.module('MAAS').factory(
                     partition_size: size
                 };
                 return RegionConnection.callMethod(method, params);
+            };
+
+        // Create a new cache set.
+        NodesManager.prototype.createCacheSet = function(
+            node, block_id, partition_id) {
+                var self = this;
+                var method = this._handler + ".create_cache_set";
+                var params = {
+                    system_id: node.system_id,
+                    block_id: block_id,
+                    partition_id: partition_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Create a new bcache device.
+        NodesManager.prototype.createBcache = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_bcache", params);
             };
 
         return new NodesManager();

@@ -476,6 +476,27 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("deleteCacheSet", function() {
+
+        it("calls node.delete_cache_set with correct params",
+            function(done) {
+                var node = makeNode(), cache_set_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.deleteCacheSet(node, cache_set_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.delete_cache_set");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.cache_set_id).toBe(
+                            cache_set_id);
+                        done();
+                    });
+            });
+    });
+
     describe("createPartition", function() {
 
         it("calls node.create_partition with correct params",
@@ -498,5 +519,70 @@ describe("NodesManager", function() {
                         done();
                     });
             });
+    });
+
+    describe("createCacheSet", function() {
+
+        it("calls node.create_cache_set", function(done) {
+            var fakeNode = makeNode();
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createCacheSet(
+                    fakeNode, "", "").then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_cache_set");
+                done();
+            });
+        });
+
+        it("calls node.create_cache_set with params", function(done) {
+            var fakeNode = makeNode();
+            var block_id = makeName("block_id");
+            var partition_id = makeName("block_id");
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createCacheSet(
+                    fakeNode, block_id, partition_id).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_cache_set");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(block_id);
+                expect(sentObject.params.partition_id).toBe(partition_id);
+                done();
+            });
+        });
+    });
+
+    describe("createBcache", function() {
+
+        it("calls node.create_bcache", function(done) {
+            var fakeNode = makeNode();
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createBcache(
+                    fakeNode, {}).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_bcache");
+                done();
+            });
+        });
+
+        it("calls node.create_bcache with params", function(done) {
+            var fakeNode = makeNode();
+            var params = {
+                block_id: makeName("block_id"),
+                partition_id: makeName("block_id")
+            };
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createBcache(
+                    fakeNode, params).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_bcache");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(params.block_id);
+                expect(sentObject.params.partition_id).toBe(
+                    params.partition_id);
+                done();
+            });
+        });
     });
 });

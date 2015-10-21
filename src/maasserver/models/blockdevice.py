@@ -232,24 +232,12 @@ class BlockDevice(CleanSave, TimestampedModel):
     @property
     def used_size(self):
         """Return the used size on the block device."""
-        filesystem = self.get_effective_filesystem()
-        if filesystem is not None:
-            return self.size
-        partitiontable = self.get_partitiontable()
-        if partitiontable is not None:
-            return partitiontable.get_used_size()
-        return 0
+        return self.get_used_size()
 
     @property
     def available_size(self):
         """Return the available size on the block device."""
-        filesystem = self.get_effective_filesystem()
-        if filesystem is not None:
-            return 0
-        partitiontable = self.get_partitiontable()
-        if partitiontable is not None:
-            return partitiontable.get_available_size()
-        return self.size
+        return self.get_available_size()
 
     @property
     def used_for(self):
@@ -260,6 +248,30 @@ class BlockDevice(CleanSave, TimestampedModel):
         return '{size} attached to {node}'.format(
             size=human_readable_bytes(self.size),
             node=self.node)
+
+    def get_block_size(self):
+        """Return the block size for the block device."""
+        return self.block_size
+
+    def get_used_size(self):
+        """Return the used size on the block device."""
+        filesystem = self.get_effective_filesystem()
+        if filesystem is not None:
+            return self.size
+        partitiontable = self.get_partitiontable()
+        if partitiontable is not None:
+            return partitiontable.get_used_size()
+        return 0
+
+    def get_available_size(self):
+        """Return the available size on the block device."""
+        filesystem = self.get_effective_filesystem()
+        if filesystem is not None:
+            return 0
+        partitiontable = self.get_partitiontable()
+        if partitiontable is not None:
+            return partitiontable.get_available_size()
+        return self.size
 
     def delete(self):
         """Delete the block device.

@@ -2687,7 +2687,7 @@ describe("NodeNetworkingController", function() {
                 type: "alias"
             };
             var nic2 = {
-                id: makeInteger(0, 100),
+                id: makeInteger(101, 200),
                 link_id: makeInteger(0, 100),
                 type: "alias"
             };
@@ -2711,7 +2711,7 @@ describe("NodeNetworkingController", function() {
                 vlan: {}
             };
             var nic2 = {
-                id: makeInteger(0, 100),
+                id: makeInteger(101, 200),
                 link_id: makeInteger(0, 100),
                 type: "physical",
                 vlan: {}
@@ -2737,7 +2737,7 @@ describe("NodeNetworkingController", function() {
                 vlan: vlan
             };
             var nic2 = {
-                id: makeInteger(0, 100),
+                id: makeInteger(101, 200),
                 link_id: makeInteger(0, 100),
                 type: "physical",
                 vlan: vlan
