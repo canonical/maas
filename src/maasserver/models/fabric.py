@@ -15,7 +15,7 @@ __metaclass__ = type
 __all__ = [
     "DEFAULT_FABRIC_NAME",
     "Fabric",
-    "FABRIC_NAME_VALIDATOR",
+    "NAME_VALIDATOR",
     ]
 
 import datetime
@@ -36,7 +36,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-FABRIC_NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
+NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
 
 # Name of the special, default fabric.  This fabric cannot be deleted.
 DEFAULT_FABRIC_NAME = 'Default fabric'
@@ -102,7 +102,11 @@ class Fabric(CleanSave, TimestampedModel):
 
     name = CharField(
         max_length=256, editable=True, null=True, blank=True,
-        validators=[FABRIC_NAME_VALIDATOR])
+        validators=[NAME_VALIDATOR])
+
+    class_type = CharField(
+        max_length=256, editable=True, null=True, blank=True,
+        validators=[NAME_VALIDATOR])
 
     def __unicode__(self):
         return "name=%s" % self.name

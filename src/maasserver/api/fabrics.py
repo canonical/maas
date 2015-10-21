@@ -27,6 +27,7 @@ from piston.utils import rc
 DISPLAYED_FABRIC_FIELDS = (
     'id',
     'name',
+    'class_type',
     'vlans',
 )
 
@@ -51,6 +52,7 @@ class FabricsHandler(OperationsHandler):
         """Create a fabric.
 
         :param name: Name of the fabric.
+        :param class_type: Class type of the fabric.
         """
         form = FabricForm(data=request.data)
         if form.is_valid():
@@ -96,6 +98,7 @@ class FabricHandler(OperationsHandler):
         """Update fabric.
 
         :param name: Name of the fabric.
+        :param class_type: Class type of the fabric.
 
         Returns 404 if the fabric is not found.
         """

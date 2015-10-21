@@ -713,8 +713,8 @@ class Factory(maastesting.factory.Factory):
         fannetwork.save()
         return fannetwork
 
-    def make_Fabric(self, name=None):
-        fabric = Fabric(name=name)
+    def make_Fabric(self, name=None, class_type=None):
+        fabric = Fabric(name=name, class_type=class_type)
         fabric.save()
         return fabric
 

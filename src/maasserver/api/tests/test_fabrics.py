@@ -92,7 +92,8 @@ class TestFabricAPI(APITestCase):
             get_fabric_uri(fabric))
 
     def test_read(self):
-        fabric = factory.make_Fabric()
+        class_type = factory.make_name("class")
+        fabric = factory.make_Fabric(class_type=class_type)
         for vid in range(1, 4):
             factory.make_VLAN(fabric=fabric, vid=vid).id
         uri = get_fabric_uri(fabric)
@@ -103,6 +104,7 @@ class TestFabricAPI(APITestCase):
         self.assertThat(parsed_fabric, ContainsDict({
             "id": Equals(fabric.id),
             "name": Equals(fabric.get_name()),
+            "class_type": Equals(class_type),
             }))
         self.assertItemsEqual([
             vlan.id
