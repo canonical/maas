@@ -269,20 +269,6 @@ table {
 
       &:hover {
 
-        .table__input {
-          background-color: transparent;
-          border-color: transparent;
-          pointer-events: none;
-          background-position: -9999px -9999px;
-
-          &.editible {
-            pointer-events: all;
-            background-color: #FFF;
-            border-color: #D2D2D2;
-            background-position: right 10px top 16px;
-          }
-        }
-
         .table__controls {
           opacity: 0;
           z-index: -1000;
@@ -306,8 +292,56 @@ table {
         }
       }
 
+      .table__input {
+        background-color: #FFF;
+        border-color: #D2D2D2;
+        background-position: right 10px top 16px;
+
+        &.editible {
+          pointer-events: all;
+          background-color: #FFF;
+          border-color: #D2D2D2;
+          background-position: right 10px top 16px;
+        }
+      }
+
       .table__dropdown {
         max-height: 3000px;
+      }
+    }
+
+    &.selected {
+
+      .table__input {
+        background-color: transparent;
+        border-color: transparent;
+        background-position: right -9999em top -9999em;
+        pointer-events: none;
+      }
+
+      &:hover {
+
+        .table__controls {
+          opacity: 0;
+          z-index: -1000;
+          pointer-events: none;
+
+          &--secondary {
+            z-index: -1000;
+            opacity: 0;
+            pointer-events: none;
+          }
+        }
+
+        .table__dropdown {
+
+          .table__input {
+            pointer-events: all;
+            background-color: #FFF;
+            border-color: #D2D2D2;
+            background-position: right 10px top 16px;
+          }
+        }
       }
     }
 
@@ -320,14 +354,6 @@ table {
       }
 
       &:hover {
-
-        .table__input {
-          background-color: transparent;
-          border-color: transparent;
-          pointer-events: none;
-          background-position: -9999px -9999px;
-          color: #888;
-        }
 
         .table__controls {
           opacity: 0;

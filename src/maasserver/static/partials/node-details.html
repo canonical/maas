@@ -341,7 +341,7 @@
                         </header>
                         <main class="table__body">
                             <div class="table__row"
-                                data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled() }"
+                                data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), selected: !isOnlyInterfaceSelected(interface) }"
                                 data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
                                 <div class="table__data table__column--3">
                                     <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
