@@ -3,6 +3,177 @@ Changelog
 =========
 
 
+1.9.0 (alpha5)
+==============
+
+Major New Features
+------------------
+
+**Storage Configuration: Partitioning and Bcache UI**
+ Starting from MAAS 1.9.0 (alpha5), MAAS now exposes storage custom
+ storage configuration in the WebUI for the following:
+
+  * Partitioning: Ability to create and delete partitions.
+  * Bcache: Ability to create cache sets and bcache devices, allowing
+    multiple bcache devices to use the same cache set.
+
+Minor notable changes
+---------------------
+
+**Warn users about missing power control tools**
+ MAAS now warns users about the missing power control tools. Each MAAS
+ power driver use a set of power tools that may or may not be installed
+ by default. If these power tools are missing from the system, MAAS will
+ warn users.
+
+Known Problems & Workarounds
+----------------------------
+
+**CentOS fails to deploy with LVM Storage layout**
+ CentOS fails to deploy when deploying with an LVM storage layout.
+ Provided that LVM is the default storage layout, every CentOS deployment
+ will fail, unless this layout is changed to 'Flat' storage.
+
+ To work around the problem, the default storage layout can be changed from
+ `LVM` to `Flat` in MAAS' Networks page, under `Storage Layout` section.
+
+ See bug `1499558`_ for more information.
+
+.. _1499558:
+  https://launchpad.net/bugs/1499558
+
+
+**Juju 1.24.6 bootstrap failure - Changing MAAS configured /etc/network/interfaces**
+ Juju 1.24.6 (or less), assumes that it can manage the MAAS deployed node's
+ network configuration. Juju changes /etc/network/interfaces and disables
+ bringing up eth0 on boot, to create a bridge to support LXC. However,
+ provided that MAAS / curtin now writes the node's network configuration,
+ Juju is unable to successfully finish the creation of the bridge, but in
+ the process, it disables auto bring up of eth0.
+
+ Starting from Juju 1.24.7+, Juju has grown support to correctly manage a
+ /etc/network/interfaces that has been created after deployment with MAAS 1.9.0.
+
+ See bug `1494476`_ for more information.
+
+.. _1494476:
+  https://launchpad.net/bugs/1494476
+
+
+1.9.0 (alpha4)
+==============
+
+Minor notable changes
+---------------------
+
+ * Various UI cosmetic fixes and improvements.
+ * Do not create MBR larger than 2TiB for LVM.
+ * Various concurrency fixes and improvements to robustness.
+
+Known Problems & Workarounds
+----------------------------
+
+**CentOS fails to deploy with LVM Storage layout**
+ CentOS fails to deploy when deploying with an LVM storage layout.
+ Provided that LVM is the default storage layout, every CentOS deployment
+ will fail, unless this layout is changed to 'Flat' storage.
+
+ To work around the problem, the default storage layout can be changed from
+ `LVM` to `Flat` in MAAS' Networks page, under `Storage Layout` section.
+
+ See bug `1499558`_ for more information.
+
+.. _1499558:
+  https://launchpad.net/bugs/1499558
+
+**Juju 1.24+ bootstrap failure - Changing MAAS configured /etc/network/interfaces**
+ Juju 1.24+, by default, assumes that it can manage the MAAS deployed node's
+ network configuration. Juju changes /etc/network/interfaces and disables
+ bringing up eth0 on boot, to create a bridge to support LXC. However,
+ provided that MAAS / curtin now write the node's network configuration,
+ Juju is unable to successfully finish the creation of the bridge, but in
+ the process, it disables auto bring up of eth0.
+
+ The machine will deploy successfully, however, after a reboot eth0 will
+ never be brought back up due to the changes made by Juju. This will prevent
+ Juju from SSH'ing into the machine and finishing the boostrap.
+
+ To prevent this from happening, `disable-network-management: true` needs
+ to be used. Note that this will prevent the deployment of LXC containers
+ as they have to DHCP.
+
+ See bug `1494476`_ for more information.
+
+.. _1494476:
+  https://launchpad.net/bugs/1494476
+
+
+1.9.0 (alpha3)
+==============
+
+
+Major New Features
+------------------
+
+**Advanced Node Network Configuration UI**
+ Starting from MAAS 1.9.0 (alpha3), MAAS can now do the Node's Network
+ configuration. Doing such configuration will result in having
+ `/etc/network/interfaces` writen.
+
+ Advanced configuration UI includes:
+
+  * Create VLAN interfaces.
+  * Create bond interfaces.
+  * Create Alias interfaces.
+  * Change interface names.
+
+**Subnetworks page UI**
+ Starting from MAAS 1.9.0 (alpha3), MAAS can now show the new Subnets
+ tab in the UI. This allow users to view:
+
+  * Fabrics
+  * Spaces
+  * VLANs in fabrics.
+  * Subnets in Spaces.
+
+Known Problems & Workarounds
+----------------------------
+
+**CentOS fails to deploy with LVM Storage layout**
+ CentOS fails to deploy when deploying with an LVM storage layout.
+ Provided that LVM is the default storage layout, every CentOS deployment
+ will fail, unless this layout is changed to 'Flat' storage.
+
+ To work around the problem, the default storage layout can be changed from
+ `LVM` to `Flat` in MAAS' Networks page, under `Storage Layout` section.
+
+ See bug `1499558`_ for more information.
+
+.. _1499558:
+  https://launchpad.net/bugs/1499558
+
+**Juju 1.24+ bootstrap failure - Changing MAAS configured /etc/network/interfaces**
+ Juju 1.24+, by default, assumes that it can manage the MAAS deployed node's
+ network configuration. Juju changes /etc/network/interfaces and disables
+ bringing up eth0 on boot, to create a bridge to support LXC. However,
+ provided that MAAS / curtin now write the node's network configuration,
+ Juju is unable to successfully finish the creation of the bridge, but in
+ the process, it disables auto bring up of eth0.
+
+ The machine will deploy successfully, however, after a reboot eth0 will
+ never be brought back up due to the changes made by Juju. This will prevent
+ Juju from SSH'ing into the machine and finishing the boostrap.
+
+ To prevent this from happening, `disable-network-management: true` needs
+ to be used. Note that this will prevent the deployment of LXC containers
+ as they have to DHCP.
+
+ See bug `1494476`_ for more information.
+
+.. _1494476:
+  https://launchpad.net/bugs/1494476
+
+
 1.9.0 (alpha2)
 ==============
 
