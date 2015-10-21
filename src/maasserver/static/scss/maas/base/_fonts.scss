@@ -1,10 +1,10 @@
-@include font-face('Ubuntu', '../fonts/ubuntu-l-webfont', 300, normal);
+@include font-face('Ubuntu', '../fonts/ubuntu-l-webfont', 300, normal, $exts: eot woff ttf svg);
 
 @include font-face('Ubuntu', '../fonts/ubuntu-li-webfont', 300, italic);
 
-@include font-face('Ubuntu', '../fonts/ubuntu-r-webfont', 400, normal);
+@include font-face('Ubuntu', '../fonts/ubuntu-r-webfont', 400, normal, $exts: eot woff ttf svg);
 
-@include font-face('Ubuntu', '../fonts/ubuntu-m-webfont', 500, normal);
+@include font-face('Ubuntu', '../fonts/ubuntu-m-webfont', 500, normal, $exts: eot woff ttf svg);
 
 @include font-face('Ubuntu', '../fonts/ubuntu-mi-webfont', 500, italic);
 
