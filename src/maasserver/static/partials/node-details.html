@@ -1016,14 +1016,14 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--30">Name</div>
-                                <div class="table__header table__column--30">Device type</div>
-                                <div class="table__header table__column--15" colspan="2">
+                                <div class="table__header table__column--15">Name</div>
+                                <div class="table__header table__column--15">Device type</div>
+                                <div class="table__header table__column--30" colspan="2">
                                     <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__header table__column--22">Used for</div>
+                                <div class="table__header table__column--37">Used for</div>
                             </div>
                         </header>
                         <main class="table-body">
@@ -1035,11 +1035,11 @@
                             <div data-ng-repeat="item in used">
                                 <div class="table__row details__used">
                                     <div class="table__data table__column--3"></div>
-                                    <div class="table__data table__column--30">{$ item.name $}</div>
-                                    <div class="table__data table__column--30">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__column--22">{$ item.used_for $}</div>
+                                    <div class="table__data table__column--15">{$ item.name $}</div>
+                                    <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
+                                    <div class="table__data table__column--30" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--30" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--37">{$ item.used_for $}</div>
                                 </div>
                             </div>
                         </main>
