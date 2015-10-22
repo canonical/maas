@@ -16,7 +16,10 @@ __metaclass__ = type
 __all__ = []
 
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import ProtectedError
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.space import (
@@ -92,8 +95,20 @@ class SpaceTest(MAASServerTestCase):
 
     def test_get_default_space_creates_default_space(self):
         default_space = Space.objects.get_default_space()
-        self.assertThat(default_space, MatchesStructure.byEquality(
-            id=0, name=DEFAULT_SPACE_NAME))
+        self.assertEqual(0, default_space.id)
+        self.assertEqual(DEFAULT_SPACE_NAME, default_space.get_name())
+
+    def test_invalid_name_raises_exception(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Space,
+            name='invalid*name')
+
+    def test_reserved_name_raises_exception(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Space,
+            name='space-1999')
 
     def test_get_default_space_is_idempotent(self):
         default_space = Space.objects.get_default_space()

@@ -9,7 +9,7 @@ class Migration(DataMigration):
 
     def forwards(self, orm):
         now = datetime.datetime.now()
-        orm['maasserver.Fabric'](name="Default fabric", id=0, created=now,
+        orm['maasserver.Fabric'](name="fabric-0", id=0, created=now,
                                  updated=now).save()
         orm['maasserver.VLAN'](name="Default VLAN", id=0, fabric_id=0, vid=0, created=now, updated=now).save()
 

@@ -26,7 +26,7 @@ class TestSpaceHandler(MAASServerTestCase):
     def dehydrate_space(self, space):
         data = {
             "id": space.id,
-            "name": space.name,
+            "name": space.get_name(),
             "updated": dehydrate_datetime(space.updated),
             "created": dehydrate_datetime(space.created),
             "subnet_ids": [

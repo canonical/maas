@@ -82,15 +82,14 @@ class TestSpacesAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_requires_name(self):
+    def test_create_does_not_require_name(self):
         self.become_admin()
         uri = get_spaces_uri()
         response = self.client.post(uri, {})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual({
-            "name": ["This field is required."],
-            }, json.loads(response.content))
+            httplib.OK, response.status_code, response.content)
+        data = json.loads(response.content)
+        self.assertEqual("space-%d" % data['id'], data['name'])
 
 
 class TestSpaceAPI(APITestCase):
@@ -114,7 +113,7 @@ class TestSpaceAPI(APITestCase):
         parsed_space = json.loads(response.content)
         self.assertThat(parsed_space, ContainsDict({
             "id": Equals(space.id),
-            "name": Equals(space.name),
+            "name": Equals(space.get_name()),
             }))
         parsed_subnets = [
             subnet["id"]

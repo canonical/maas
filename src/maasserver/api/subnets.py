@@ -103,7 +103,7 @@ class SubnetHandler(OperationsHandler):
         a list of all subnets in that space. If this returned the subnet
         object then it would be an infinite loop.
         """
-        return subnet.space.name
+        return subnet.space.get_name()
 
     def read(self, request, subnet_id):
         """Read subnet.

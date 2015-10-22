@@ -24,10 +24,7 @@ class TestSpaceForm(MAASServerTestCase):
 
     def test__requires_name(self):
         form = SpaceForm({})
-        self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
-            "name": ["This field is required."]
-            }, form.errors)
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test__creates_space(self):
         space_name = factory.make_name("space")
@@ -36,7 +33,7 @@ class TestSpaceForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         space = form.save()
-        self.assertEquals(space_name, space.name)
+        self.assertEquals(space_name, space.get_name())
 
     def test__doest_require_name_on_update(self):
         space = factory.make_Space()

@@ -64,7 +64,7 @@ def get_or_create_default_fabric(Fabric):
         id=0,
         defaults={
             'id': 0,
-            'name': 'Default fabric',
+            'name': 'fabric-0',
             'created': now,
             'updated': now,
         }

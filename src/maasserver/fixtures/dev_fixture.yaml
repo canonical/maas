@@ -7781,11 +7781,11 @@
     vlan: 0}
   model: maasserver.nodegroupinterface
   pk: 1
-- fields: {created: ! '2015-09-18 15:14:45.978368', name: Default space, updated: ! '2015-09-18
+- fields: {created: ! '2015-09-18 15:14:45.978368', name: space-0, updated: ! '2015-09-18
       15:14:45.978368'}
   model: maasserver.space
   pk: 0
-- fields: {created: ! '2015-09-18 15:14:45.978368', name: Extra space, updated: ! '2015-09-18
+- fields: {created: ! '2015-09-18 15:14:45.978368', name: space-1, updated: ! '2015-09-18
       15:14:45.978368'}
   model: maasserver.space
   pk: 1
@@ -9485,11 +9485,11 @@
   model: maasserver.event
   pk: 236
 - fields: {created: ! '2015-09-18 15:14:45.727015', updated: ! '2015-09-18
-      15:14:45.727015'}
+      15:14:45.727015', name: 'fabric-0'}
   model: maasserver.fabric
   pk: 0
 - fields: {created: ! '2015-09-18 15:14:45.727015', updated: ! '2015-09-18
-      15:14:45.727015'}
+      15:14:45.727015', name: 'fabric-1'}
   model: maasserver.fabric
   pk: 1
 - fields: {created: ! '2015-09-18 15:34:42.455912', key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDKVmvvkb+TN6NjJxbgIZdK2Zasc3VjP4cXdcXWABIkQNYqFDuK78NBVz/pQpq6exRFPgMsm0L9Xkp6F8udw19VjGZGaPaCacJ9Wt8LcrH7puRAfwf27tBdkZxndu9KcMvT+ydzCMeGrJ+TTYYsMSfQEV5yYfIOhWQG5RkInMLoFocZXYnU9GPtjqL3BdP19eZSps/wUZn8Iy0xefja/6Q/3gatYZnQW+2qnbYdvv55gwQ/Wa+Xdf94wyHAig/qc89jUkpgylUIee0/UqoWf+3slFc4e/cWoSYHBudQparJJioSq2XO5+RJB4PFd9Pf20zNsa360lPKe6bB247kReTH

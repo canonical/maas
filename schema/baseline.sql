@@ -800,7 +800,7 @@ CREATE TABLE maasserver_fabric (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    name character varying(256) NOT NULL
+    name character varying(256)
 );
 
 
@@ -1488,7 +1488,7 @@ CREATE TABLE maasserver_space (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    name character varying(256) NOT NULL
+    name character varying(256)
 );
 
 
@@ -5351,7 +5351,7 @@ SELECT pg_catalog.setval('maasserver_eventtype_id_seq', 1, false);
 --
 
 COPY maasserver_fabric (id, created, updated, name) FROM stdin;
-0	2015-08-07 15:29:47.254454+01	2015-08-07 15:29:47.254454+01	Default fabric
+0	2015-08-07 15:29:47.254454+01	2015-08-07 15:29:47.254454+01	fabric-0
 \.
 
 
@@ -5645,7 +5645,7 @@ COPY maasserver_physicalblockdevice (blockdevice_ptr_id, model, serial) FROM std
 --
 
 COPY maasserver_space (id, created, updated, name) FROM stdin;
-0	2015-08-07 15:29:47.87024+01	2015-08-07 15:29:47.87024+01	Default space
+0	2015-08-07 15:29:47.87024+01	2015-08-07 15:29:47.87024+01	space-0
 \.
 
 

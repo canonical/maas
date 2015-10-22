@@ -75,6 +75,11 @@ class SpaceHandler(OperationsHandler):
         return ('space_handler', (space_id,))
 
     @classmethod
+    def name(cls, space):
+        """Return the name of the space."""
+        return space.get_name()
+
+    @classmethod
     def subnets(cls, space):
         """Return all subnets in this space."""
         return space.subnet_set.all()
@@ -103,7 +108,7 @@ class SpaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, space_id):
-        """Delete subnet.
+        """Delete space.
 
         Returns 404 if the space is not found.
         """

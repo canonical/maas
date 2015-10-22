@@ -85,7 +85,7 @@ For example, you may have a "DMZ" space in both your London and San Francisco
 fabrics, and a "Storage" space to indicate subnets attached to your storage
 network.
 
-A "Default space" is created when MAAS is installed (or upgraded), which
+A "space-0" is created when MAAS is installed (or upgraded), which
 every subnet will belong to by default (unless otherwise specified).
 
 Interfaces
@@ -139,7 +139,7 @@ Use the ``node-interfaces create-bond`` API to create a bond. For example::
             "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/0/",
             "name": "Default VLAN",
             "vid": 0,
-            "fabric": "Default fabric"
+            "fabric": "fabric-0"
         },
         "enabled": true,
         "id": 41,
@@ -174,7 +174,7 @@ associate it with the interface. For example::
         "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/1/",
         "name": "Storage network",
         "vid": 100,
-        "fabric": "Default fabric"
+        "fabric": "fabric-0"
     }
 
 Note that the ``0`` in the command above indicates the ``fabric_id``. If you
@@ -195,7 +195,7 @@ Now that a VLAN is created, it may be associated with a new interface::
             "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/1/",
             "name": "Storage network",
             "vid": 100,
-            "fabric": "Default fabric"
+            "fabric": "fabric-0"
         },
         "enabled": true,
         "id": 44,

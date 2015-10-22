@@ -103,7 +103,7 @@ class TestSubnetsAPI(APITestCase):
         created_subnet = json.loads(response.content)
         self.assertEqual(subnet_name, created_subnet['name'])
         self.assertEqual(vlan.id, created_subnet['vlan']['id'])
-        self.assertEqual(space.name, created_subnet['space'])
+        self.assertEqual(space.get_name(), created_subnet['space'])
         self.assertEqual(cidr, created_subnet['cidr'])
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
@@ -149,7 +149,7 @@ class TestSubnetAPI(APITestCase):
             "vlan": ContainsDict({
                 "id": Equals(subnet.vlan.id),
                 }),
-            "space": Equals(subnet.space.name),
+            "space": Equals(subnet.space.get_name()),
             "cidr": Equals(subnet.cidr),
             "gateway_ip": Equals(subnet.gateway_ip),
             "dns_servers": Equals(subnet.dns_servers),

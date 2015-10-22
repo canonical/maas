@@ -94,6 +94,18 @@ class TestFabric(MAASServerTestCase):
         fabric = factory.make_Fabric()
         self.assertEquals("fabric-%s" % fabric.id, fabric.get_name())
 
+    def test_invalid_name_raises_exception(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Fabric,
+            name='invalid*name')
+
+    def test_reserved_name_raises_exception(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Fabric,
+            name='fabric-33')
+
     def test_get_name_for_set_name(self):
         name = factory.make_name('name')
         fabric = factory.make_Fabric(name=name)
@@ -109,8 +121,8 @@ class TestFabric(MAASServerTestCase):
 
     def test_get_default_fabric_creates_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
-        self.assertThat(default_fabric, MatchesStructure.byEquality(
-            id=0, name=DEFAULT_FABRIC_NAME))
+        self.assertEqual(0, default_fabric.id)
+        self.assertEqual(DEFAULT_FABRIC_NAME, default_fabric.get_name())
 
     def test_get_default_fabric_is_idempotent(self):
         default_fabric = Fabric.objects.get_default_fabric()

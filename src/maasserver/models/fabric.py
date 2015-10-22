@@ -19,6 +19,7 @@ __all__ = [
     ]
 
 import datetime
+import re
 
 from django.core.exceptions import (
     PermissionDenied,
@@ -36,10 +37,18 @@ from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
+def validate_fabric_name(value):
+    """Django validator: `value` must be either `None`, or valid."""
+    if value is None:
+        return
+    namespec = re.compile('^[ \w-]+$')
+    if not namespec.search(value):
+        raise ValidationError("Invalid fabric name: %s." % value)
+
 NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
 
 # Name of the special, default fabric.  This fabric cannot be deleted.
-DEFAULT_FABRIC_NAME = 'Default fabric'
+DEFAULT_FABRIC_NAME = 'fabric-0'
 
 
 class FabricManager(Manager):
@@ -52,7 +61,7 @@ class FabricManager(Manager):
             id=0,
             defaults={
                 'id': 0,
-                'name': DEFAULT_FABRIC_NAME,
+                'name': None,
                 'created': now,
                 'updated': now,
             }
@@ -101,15 +110,15 @@ class Fabric(CleanSave, TimestampedModel):
     objects = FabricManager()
 
     name = CharField(
-        max_length=256, editable=True, null=True, blank=True,
-        validators=[NAME_VALIDATOR])
+        max_length=256, editable=True, null=True, blank=True, unique=False,
+        validators=[validate_fabric_name])
 
     class_type = CharField(
         max_length=256, editable=True, null=True, blank=True,
         validators=[NAME_VALIDATOR])
 
     def __unicode__(self):
-        return "name=%s" % self.name
+        return "name=%s" % self.get_name()
 
     def is_default(self):
         """Is this the default fabric?"""
@@ -155,3 +164,14 @@ class Fabric(CleanSave, TimestampedModel):
         # Create default VLAN if this is a fabric creation.
         if created:
             self._create_default_vlan()
+
+    def clean_name(self):
+        reserved = re.compile('fabric-\d+$')
+        if self.name is not None and reserved.search(self.name):
+            if (self.id is None or self.name != 'fabric-%d' % self.id):
+                raise ValidationError(
+                    {'name': ["Reserved fabric name."]})
+
+    def clean(self, *args, **kwargs):
+        super(Fabric, self).clean(*args, **kwargs)
+        self.clean_name()
