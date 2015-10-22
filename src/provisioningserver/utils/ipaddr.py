@@ -81,11 +81,12 @@ def _get_settings_dict(settings_line):
     :return: dict
     """
     settings = settings_line.strip().split()
-    if len(settings) > 0 and settings[0] == "inet":
-        settings = settings[:-1]
+    # Some of the tokens on this line aren't key/value pairs, but we don't
+    # care about those, so strip them off if we see an odd number.
+    # This will avoid an index out of bounds error below.
     num_tokens = len(settings)
-    assert num_tokens % 2 == 0, \
-        "Unexpected number of params in '%s'" % settings_line
+    if num_tokens % 2 != 0:
+        settings = settings[:-1]
     return {
         settings[2 * i]: settings[2 * i + 1] for i in range(num_tokens / 2)
         }
@@ -137,8 +138,8 @@ def _add_additional_interface_properties(interface, line):
     mac = settings.get('link/ether')
     if mac is not None:
         interface['mac'] = mac
-    cumul_settings = ['inet', 'inet6']
-    for name in cumul_settings:
+    address_types = ['inet', 'inet6']
+    for name in address_types:
         value = settings.get(name)
         if value is not None:
             if not IPNetwork(value).is_link_local():

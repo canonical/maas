@@ -43,11 +43,10 @@ class TestHelperFunctions(MAASTestCase):
         settings = _get_settings_dict("")
         self.assertEqual({}, settings)
 
-    def test_get_settings_dict_asserts_for_odd_number_of_tokens(self):
-        with ExpectedException(AssertionError):
-            _get_settings_dict("mtu")
-        with ExpectedException(AssertionError):
-            _get_settings_dict("mtu 1500 qdisc")
+    def test_get_settings_dict_handles_odd_number_of_tokens(self):
+        self.assertThat(_get_settings_dict("mtu"), Equals({}))
+        self.assertThat(
+            _get_settings_dict("mtu 1500 qdisc"), Equals({"mtu": "1500"}))
 
     def test_get_settings_dict_creates_correct_dictionary(self):
         settings = _get_settings_dict("mtu 1073741824 state AWESOME")
@@ -260,6 +259,20 @@ state UP mode DEFAULT group default qlen 1000
         ip_link = parse_ip_addr(testdata)
         self.assertIsNone(ip_link['eth0'].get('inet6'))
 
+    def test_handles_wlan_flags(self):
+        testdata = dedent("""
+        2: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
+state UP mode DEFAULT group default qlen 1000
+            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
+            inet6 fe80::3e97:eff:fe0e:56dc/64 scope link
+                valid_lft forever preferred_lft forever
+            inet 192.168.2.112/24 brd 192.168.2.255 scope global dynamic wlan0
+                valid_lft forever preferred_lft forever
+        """)
+        ip_link = parse_ip_addr(testdata)
+        inet = ip_link['wlan0'].get('inet')
+        self.assertEqual(['192.168.2.112/24'], inet)
+
     def test_parses_multiple_interfaces(self):
         testdata = dedent("""
         2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
@@ -276,6 +289,10 @@ mode DORMANT group default qlen 1000
                 valid_lft forever preferred_lft forever
             inet6 2001:db8:85a3:8d3:1319:8a2e:370:7348/64 scope link
                 valid_lft forever preferred_lft forever
+            inet6 2001:db8:85a3:8d3:1319:8a2e:370:3645/64 scope global dynamic
+                valid_lft forever preferred_lft forever
+            inet6 2001:db8:85a3:8d3::1111/64 scope global tentative dynamic
+                valid_lft forever preferred_lft forever
             inet6 2620:1:260::1/64 scope global
                 valid_lft forever preferred_lft forever
         """)
@@ -290,7 +307,10 @@ mode DORMANT group default qlen 1000
         self.assertEquals('48:51:bb:7a:d5:e2', ip_link['eth1']['mac'])
         self.assertEquals(['192.168.0.5/24'], ip_link['eth1']['inet'])
         self.assertEquals(
-            ['2001:db8:85a3:8d3:1319:8a2e:370:7348/64', '2620:1:260::1/64'],
+            ['2001:db8:85a3:8d3:1319:8a2e:370:7348/64',
+             '2001:db8:85a3:8d3:1319:8a2e:370:3645/64',
+             '2001:db8:85a3:8d3::1111/64',
+             '2620:1:260::1/64'],
             ip_link['eth1']['inet6'])
 
 
