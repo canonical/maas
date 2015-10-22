@@ -192,10 +192,7 @@ from netaddr import (
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.network import (
-    filter_likely_unmanaged_networks,
-    REVEAL_IPv6,
-)
+from provisioningserver.network import filter_likely_unmanaged_networks
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -411,11 +408,7 @@ class NodeForm(MAASModelForm):
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
 
-        if not REVEAL_IPv6:
-            # We're not showing the IPv6 feature to the user.  Hide the ability
-            # to disable IPv4 on a node.
-            allow_disable_ipv4 = False
-        elif self.new_node:
+        if self.new_node:
             # Permit disabling of IPv4 if at least one cluster supports IPv6.
             allow_disable_ipv4 = contains_managed_ipv6_interface(
                 NodeGroupInterface.objects.all())

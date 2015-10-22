@@ -35,7 +35,6 @@ from maasserver.forms import (
     NodeForm,
     pick_default_architecture,
 )
-import maasserver.forms as forms_module
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -440,8 +439,7 @@ class TestNodeForm(MAASServerTestCase):
         node = form.save()
         self.assertEqual(setting, node.disable_ipv4)
 
-    def test_shows_disable_ipv4_if_IPv6_revealed_and_configured(self):
-        self.patch(forms_module, 'REVEAL_IPv6', True)
+    def test_shows_disable_ipv4_if_IPv6_configured(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             cidr=unicode(factory.make_ipv6_network().cidr))
         form = NodeForm(
@@ -450,17 +448,7 @@ class TestNodeForm(MAASServerTestCase):
         self.assertIsInstance(
             form.fields['disable_ipv4'].widget, CheckboxInput)
 
-    def test_hides_disable_ipv4_if_IPv6_not_revealed(self):
-        self.patch(forms_module, 'REVEAL_IPv6', False)
-        node = factory.make_Node_with_Interface_on_Subnet(
-            cidr=unicode(factory.make_ipv6_network().cidr))
-        form = NodeForm(
-            instance=node,
-            data={'architecture': make_usable_architecture(self)})
-        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
-
     def test_hides_disable_ipv4_if_IPv6_not_configured(self):
-        self.patch(forms_module, 'REVEAL_IPv6', True)
         node = factory.make_Node_with_Interface_on_Subnet(
             cidr=unicode(factory.make_ipv4_network().cidr))
         form = NodeForm(
@@ -469,7 +457,6 @@ class TestNodeForm(MAASServerTestCase):
         self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
 
     def test_shows_disable_ipv4_on_new_node_if_any_cluster_supports_it(self):
-        self.patch(forms_module, 'REVEAL_IPv6', True)
         factory.make_Node_with_Interface_on_Subnet(
             cidr=unicode(factory.make_ipv6_network().cidr))
         form = NodeForm(data={'architecture': make_usable_architecture(self)})
@@ -477,7 +464,6 @@ class TestNodeForm(MAASServerTestCase):
             form.fields['disable_ipv4'].widget, CheckboxInput)
 
     def test_hides_disable_ipv4_on_new_node_if_no_cluster_supports_it(self):
-        self.patch(forms_module, 'REVEAL_IPv6', True)
         factory.make_NodeGroupInterface(
             factory.make_NodeGroup(), network=factory.make_ipv6_network(),
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)

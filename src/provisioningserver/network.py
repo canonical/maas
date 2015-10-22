@@ -93,19 +93,10 @@ class AttachedNetwork:
         return IPNetwork('%s/%s' % (self.ip, self.subnet_mask)).cidr
 
 
-# Feature flag: reveal IPv6 capabilities to the user?
-#
-# While this is set to False, MAAS will not auto-detect IPv6 networks.
-REVEAL_IPv6 = True
-
-
 def get_interface_info(interface):
     """Return a list of `AttachedNetwork` for the named `interface`."""
     ipv4_addrs = ifaddresses(interface).get(AF_INET, [])
-    if REVEAL_IPv6:
-        ipv6_addrs = ifaddresses(interface).get(AF_INET6, [])
-    else:
-        ipv6_addrs = []
+    ipv6_addrs = ifaddresses(interface).get(AF_INET6, [])
     return [
         AttachedNetwork.from_address(interface, address)
         for address in ipv4_addrs + ipv6_addrs

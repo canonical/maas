@@ -72,10 +72,6 @@ class TestNetworks(MAASTestCase):
         self.patch(
             network, 'ifaddresses', lambda interface: interfaces[interface])
 
-    def reveal_IPv6(self, reveal=True):
-        """Enable or disable IPv6 discovery."""
-        self.patch(network, 'REVEAL_IPv6', reveal)
-
     def test_discover_networks_ignores_interface_without_IP_address(self):
         self.patch_netifaces({factory.make_name('eth'): {}})
         self.assertEqual([], network.discover_networks())
@@ -85,7 +81,6 @@ class TestNetworks(MAASTestCase):
         self.assertEqual([], network.discover_networks())
 
     def test_discover_networks_ignores_IPv6_loopback(self):
-        self.reveal_IPv6(True)
         self.patch_netifaces(
             {'lo': make_interface(make_inet_address('::1/128'))})
         self.assertEqual([], network.discover_networks())
@@ -101,8 +96,7 @@ class TestNetworks(MAASTestCase):
             }],
             network.discover_networks())
 
-    def test_discover_networks_discovers_IPv6_network_if_revealed(self):
-        self.reveal_IPv6(True)
+    def test_discover_networks_discovers_IPv6_network(self):
         eth = factory.make_name('eth')
         addr = make_inet_address(factory.make_ipv6_network())
         interface = make_interface(addr)
@@ -113,13 +107,6 @@ class TestNetworks(MAASTestCase):
             'subnet_mask': addr['netmask'],
             }],
             network.discover_networks())
-
-    def test_discover_networks_ignores_IPv6_network_if_not_revealed(self):
-        self.reveal_IPv6(False)
-        addr = make_inet_address(factory.make_ipv6_network())
-        interface = make_interface(addr)
-        self.patch_netifaces({factory.make_name('eth'): interface})
-        self.assertEqual([], network.discover_networks())
 
     def test_discover_networks_returns_suitable_interfaces(self):
         eth = factory.make_name('eth')
@@ -134,7 +121,6 @@ class TestNetworks(MAASTestCase):
                 for interface in network.discover_networks()])
 
     def test_discover_networks_coalesces_networks_on_interface(self):
-        self.reveal_IPv6(True)
         eth = factory.make_name('eth')
         net = factory.make_ipv6_network()
         self.patch_netifaces({
@@ -152,7 +138,6 @@ class TestNetworks(MAASTestCase):
         self.assertIn(IPAddress(interface['ip']), net)
 
     def test_discover_networks_discovers_multiple_networks_per_interface(self):
-        self.reveal_IPv6(True)
         eth = factory.make_name('eth')
         net1 = factory.make_ipv6_network()
         net2 = factory.make_ipv6_network(disjoint_from=[net1])
@@ -176,7 +161,6 @@ class TestNetworks(MAASTestCase):
             [interface['ip'] for interface in interfaces])
 
     def test_discover_networks_discovers_IPv4_and_IPv6_on_same_interface(self):
-        self.reveal_IPv6(True)
         eth = factory.make_name('eth')
         ipv4_net = factory.make_ipv4_network()
         ipv6_net = factory.make_ipv6_network()
@@ -206,12 +190,10 @@ class TestNetworks(MAASTestCase):
     def test_discover_networks_ignores_link_local_IPv6_addresses(self):
         interface = factory.make_name('eth')
         ip = factory.pick_ip_in_network(IPNetwork('fe80::/10'))
-        self.patch(network, 'REVEAL_IPv6', True)
         self.patch_netifaces({interface: {AF_INET6: [make_inet_address(ip)]}})
         self.assertEqual([], network.discover_networks())
 
     def test_discover_networks_runs_in_real_life(self):
-        self.reveal_IPv6(True)
         interfaces = network.discover_networks()
         self.assertIsInstance(interfaces, list)
 
