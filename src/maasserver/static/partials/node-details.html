@@ -796,9 +796,11 @@
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table__column--15">
                                         {$ item.fstype $}
-                                        <a class="table__controls table__controls--secondary" data-ng-show="canFormatAndMount(item)"
-                                            data-ng-click="availableQuickFormatAndMount(item)"
-                                            data-ng-class="{ 'margin-left--ten': item.fstype }">{$ getFormatAndMountButtonText (item) $}</a>
+                                        <span class="table__controls table__controls--secondary">
+                                            <a data-ng-show="canFormatAndMount(item)"
+                                                data-ng-click="availableQuickFormatAndMount(item)"
+                                                data-ng-class="{ 'margin-left--ten': item.fstype }">{$ getFormatAndMountButtonText (item) $}</a>
+                                        </span>
                                     </div>
                                     <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table__column--15 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
