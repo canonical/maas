@@ -93,16 +93,16 @@ class TestReload(MAASTestCase):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
-            self.assertRaises(CalledProcessError, actions.bind_reload)
+            self.assertFalse(actions.bind_reload())
         self.assertDocTestMatches(
-            "Reloading BIND failed: "
+            "Reloading BIND failed (is it running?): "
             "Command ... returned non-zero exit status ...",
             logger.output)
 
-    def test__upgrades_subprocess_error(self):
+    def test__false_on_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
-        self.assertRaises(ExternalProcessError, actions.bind_reload)
+        self.assertFalse(actions.bind_reload())
 
 
 class TestReloadWithRetries(MAASTestCase):
@@ -111,11 +111,9 @@ class TestReloadWithRetries(MAASTestCase):
     def test__calls_bind_reload_count_times(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch_autospec(actions, "bind_reload")
-        bind_reload.side_effect = factory.make_CalledProcessError()
+        bind_reload.return_value = False
         attempts = randint(3, 13)
-        self.assertRaises(
-            CalledProcessError, actions.bind_reload_with_retries,
-            attempts=attempts)
+        actions.bind_reload_with_retries(attempts=attempts)
         expected_calls = [call()] * attempts
         self.assertThat(
             actions.bind_reload,
@@ -124,11 +122,10 @@ class TestReloadWithRetries(MAASTestCase):
     def test__returns_on_success(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch(actions, "bind_reload")
-        bind_reload.side_effect = [
-            factory.make_CalledProcessError(),
-            factory.make_CalledProcessError(),
-            None,  # Success
-        ]
+        bind_reload_return_values = [False, False, True, ]
+        bind_reload.side_effect = lambda: (
+            bind_reload_return_values.pop(0))
+
         actions.bind_reload_with_retries(attempts=5)
         expected_calls = [call(), call(), call()]
         self.assertThat(
@@ -138,10 +135,9 @@ class TestReloadWithRetries(MAASTestCase):
     def test__sleeps_interval_seconds_between_attempts(self):
         self.patch_autospec(actions, "sleep")  # Disable.
         bind_reload = self.patch_autospec(actions, "bind_reload")
-        bind_reload.side_effect = factory.make_CalledProcessError()
+        bind_reload.return_value = False
         attempts = randint(3, 13)
-        self.assertRaises(
-            CalledProcessError, actions.bind_reload_with_retries,
+        actions.bind_reload_with_retries(
             attempts=attempts, interval=sentinel.interval)
         expected_sleep_calls = [call(sentinel.interval)] * (attempts - 1)
         self.assertThat(actions.sleep, MockCallsMatch(*expected_sleep_calls))
@@ -152,7 +148,7 @@ class TestReloadZone(MAASTestCase):
 
     def test__executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
-        actions.bind_reload_zone(sentinel.zone)
+        self.assertTrue(actions.bind_reload_zone(sentinel.zone))
         self.assertThat(
             actions.execute_rndc_command,
             MockCalledOnceWith(("reload", sentinel.zone)))
@@ -161,18 +157,16 @@ class TestReloadZone(MAASTestCase):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
-            self.assertRaises(
-                CalledProcessError, actions.bind_reload_zone, sentinel.zone)
+            self.assertFalse(actions.bind_reload_zone(sentinel.zone))
         self.assertDocTestMatches(
-            "Reloading BIND zone ... failed: "
+            "Reloading BIND zone ... failed (is it running?): "
             "Command ... returned non-zero exit status ...",
             logger.output)
 
-    def test__upgrades_subprocess_error(self):
+    def test__false_on_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
-        self.assertRaises(
-            ExternalProcessError, actions.bind_reload_zone, sentinel.zone)
+        self.assertFalse(actions.bind_reload_zone(sentinel.zone))
 
 
 class TestConfiguration(PservTestCase):

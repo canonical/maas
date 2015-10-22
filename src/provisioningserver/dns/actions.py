@@ -58,14 +58,18 @@ def bind_reconfigure():
 
 
 def bind_reload():
-    """Ask BIND to reload its configuration and all zone files."""
+    """Ask BIND to reload its configuration and all zone files.  This operation
+    is 'best effort' (with logging) as the server may not be running, and there
+    is often no context for reporting.
+
+    :return: True if success, False otherwise.
+    """
     try:
         execute_rndc_command(("reload",))
+        return True
     except CalledProcessError as exc:
-        maaslog.error("Reloading BIND failed: %s", exc)
-        # Log before upgrade so that the output does not go to maaslog.
-        ExternalProcessError.upgrade(exc)
-        raise
+        maaslog.error("Reloading BIND failed (is it running?): %s", exc)
+        return False
 
 
 def bind_reload_with_retries(attempts=10, interval=2):
@@ -75,29 +79,29 @@ def bind_reload_with_retries(attempts=10, interval=2):
     :param interval: The time in seconds to sleep between each attempt.
     """
     for countdown in xrange(attempts - 1, -1, -1):
-        try:
-            bind_reload()
-        except CalledProcessError:
-            if countdown == 0:
-                raise
-            else:
-                sleep(interval)
-        else:
+        if bind_reload():
             break
+        if countdown == 0:
+            break
+        else:
+            sleep(interval)
 
 
 def bind_reload_zone(zone_name):
     """Ask BIND to reload the zone file for the given zone.
 
     :param zone_name: The name of the zone to reload.
+    :return: True if success, False otherwise.
     """
     try:
         execute_rndc_command(("reload", zone_name))
+        return True
     except CalledProcessError as exc:
-        maaslog.error("Reloading BIND zone %r failed: %s", zone_name, exc)
-        # Log before upgrade so that the output does not go to maaslog.
-        ExternalProcessError.upgrade(exc)
-        raise
+        maaslog.error(
+            "Reloading BIND zone %r failed (is it running?): %s",
+            zone_name,
+            exc)
+        return False
 
 
 def bind_write_configuration(zones, trusted_networks):
