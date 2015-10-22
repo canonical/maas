@@ -906,7 +906,7 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
-    def test_update_returns_409_for_none_ready_node(self):
+    def test_update_returns_409_for_non_ready_node(self):
         """Check update block device with a virtual one fails for a normal
         user."""
         self.become_admin()

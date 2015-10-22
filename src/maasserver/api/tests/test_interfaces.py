@@ -23,6 +23,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_STATUS,
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -97,7 +98,7 @@ class TestNodeInterfacesAPI(APITestCase):
 
     def test_create_physical(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         mac = factory.make_mac_address()
         name = factory.make_name("eth")
         vlan = factory.make_VLAN()
@@ -128,7 +129,7 @@ class TestNodeInterfacesAPI(APITestCase):
 
     def test_create_physical_disabled(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         mac = factory.make_mac_address()
         name = factory.make_name("eth")
         vlan = factory.make_VLAN()
@@ -173,9 +174,42 @@ class TestNodeInterfacesAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_create_physical_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(status=status)
+            mac = factory.make_mac_address()
+            name = factory.make_name("eth")
+            vlan = factory.make_VLAN()
+            uri = get_node_interfaces_uri(node)
+            response = self.client.post(uri, {
+                "op": "create_physical",
+                "mac_address": mac,
+                "name": name,
+                "vlan": vlan.id,
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_create_physical_requires_mac_name_and_vlan(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_node_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_physical",
@@ -190,7 +224,7 @@ class TestNodeInterfacesAPI(APITestCase):
 
     def test_create_physical_doesnt_allow_mac_already_register(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface_on_other_node = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL)
         name = factory.make_name("eth")
@@ -212,7 +246,7 @@ class TestNodeInterfacesAPI(APITestCase):
 
     def test_create_bond(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         vlan = factory.make_VLAN()
         parent_1_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
@@ -268,9 +302,46 @@ class TestNodeInterfacesAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_create_bond_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(status=status)
+            vlan = factory.make_VLAN()
+            parent_1_iface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+            parent_2_iface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+            name = factory.make_name("bond")
+            uri = get_node_interfaces_uri(node)
+            response = self.client.post(uri, {
+                "op": "create_bond",
+                "mac": "%s" % parent_1_iface.mac_address,
+                "name": name,
+                "vlan": vlan.id,
+                "parents": [parent_1_iface.id, parent_2_iface.id],
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_create_bond_requires_name_vlan_and_parents(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_node_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_bond",
@@ -453,7 +524,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_update_physical_interface(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
         new_vlan = factory.make_VLAN()
@@ -469,7 +540,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_update_bond_interface(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(node)
         uri = get_node_interface_uri(bond)
         response = self.client.put(uri, {
@@ -481,7 +552,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_update_vlan_interface(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         bond, [nic_0, nic_1], [vlan_10, vlan_11] = make_complex_interface(node)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
@@ -505,9 +576,39 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_read_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(interface=True, status=status)
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node)
+            new_name = factory.make_name("name")
+            uri = get_node_interface_uri(interface)
+            response = self.client.put(uri, {
+                "name": new_name,
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_delete_deletes_interface(self):
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         uri = get_node_interface_uri(interface)
         response = self.client.delete(uri)
@@ -533,12 +634,38 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
+    def test_delete_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            uri = get_node_interface_uri(interface)
+            response = self.client.delete(uri)
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_link_subnet_creates_link(self):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         uri = get_node_interface_uri(interface)
         response = self.client.post(uri, {
@@ -554,7 +681,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_link_subnet_raises_error(self):
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         uri = get_node_interface_uri(interface)
         response = self.client.post(uri, {
@@ -576,12 +703,41 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_link_subnet_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            uri = get_node_interface_uri(interface)
+            response = self.client.post(uri, {
+                "op": "link_subnet",
+                "mode": INTERFACE_LINK_TYPE.DHCP,
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_unlink_subnet_deletes_link(self):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the updated interface
         # is returned.
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         subnet = factory.make_Subnet()
         dhcp_ip = factory.make_StaticIPAddress(
@@ -597,7 +753,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_unlink_subnet_raises_error(self):
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         uri = get_node_interface_uri(interface)
         response = self.client.post(uri, {
@@ -619,11 +775,39 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
+    def test_unlink_subnet_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            uri = get_node_interface_uri(interface)
+            response = self.client.post(uri, {
+                "op": "unlink_subnet",
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)
+
     def test_set_default_gateway_sets_gateway_link_ipv4_on_node(self):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
@@ -643,7 +827,7 @@ class TestNodeInterfaceAPI(APITestCase):
         # The form that is used is fully tested in test_forms_interface_link.
         # This just tests that the form is saved and the node link is created.
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(
@@ -661,7 +845,7 @@ class TestNodeInterfaceAPI(APITestCase):
 
     def test_set_default_gateway_raises_error(self):
         self.become_admin()
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         interface = node.get_boot_interface()
         uri = get_node_interface_uri(interface)
         response = self.client.post(uri, {
@@ -682,3 +866,31 @@ class TestNodeInterfaceAPI(APITestCase):
             })
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_set_default_gateway_409_when_not_ready(self):
+        self.become_admin()
+        for status in (
+                NODE_STATUS.NEW,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_COMMISSIONING,
+                NODE_STATUS.MISSING,
+                NODE_STATUS.RESERVED,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.RETIRED,
+                NODE_STATUS.BROKEN,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING,
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.FAILED_DISK_ERASING
+        ):
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            uri = get_node_interface_uri(interface)
+            response = self.client.post(uri, {
+                "op": "set_default_gateway",
+                })
+            self.assertEqual(
+                httplib.CONFLICT, response.status_code, response.content)

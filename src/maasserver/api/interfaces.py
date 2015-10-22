@@ -20,8 +20,12 @@ from maasserver.api.support import (
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
+    NODE_STATUS,
 )
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    NodeStateViolation,
+)
 from maasserver.forms_interface import (
     BondInterfaceForm,
     InterfaceForm,
@@ -60,6 +64,13 @@ DISPLAYED_INTERFACE_FIELDS = (
     'links',
     'params',
 )
+
+
+def raise_error_for_invalid_state_on_allocated_operations(
+        node, user, operation):
+    if node.status != NODE_STATUS.READY:
+        raise NodeStateViolation(
+            "Cannot %s interface because the node is not Ready." % operation)
 
 
 class NodeInterfacesHandler(OperationsHandler):
@@ -101,6 +112,8 @@ class NodeInterfacesHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "create")
         form = PhysicalInterfaceForm(node=node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -181,6 +194,8 @@ class NodeInterfacesHandler(OperationsHandler):
         """
         node = Node.nodes.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            node, request.user, "create bond")
         form = BondInterfaceForm(node=node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -348,6 +363,8 @@ class NodeInterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            interface.node, request.user, "update interface")
         interface_form = InterfaceForm.get_interface_form(interface.type)
         # For VLAN interface we cast parents to parent. As a VLAN can only
         # have one parent.
@@ -373,6 +390,8 @@ class NodeInterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            interface.node, request.user, "delete interface")
         interface.delete()
         return rc.DELETED
 
@@ -409,6 +428,8 @@ class NodeInterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            interface.node, request.user, "link subnet")
         form = InterfaceLinkForm(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
@@ -425,6 +446,8 @@ class NodeInterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            interface.node, request.user, "unlink subnet")
         form = InterfaceUnlinkForm(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
@@ -447,6 +470,8 @@ class NodeInterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            interface.node, request.user, "set default gateway")
         form = InterfaceSetDefaultGatwayForm(
             instance=interface, data=request.data)
         if form.is_valid():
