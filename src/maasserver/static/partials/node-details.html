@@ -787,12 +787,15 @@
                                         <label class="checkbox-label" for="{$ item.name $}" ></label>
                                     </div>
                                     <div class="table__data table__column--15">
-                                        <!--
-                                        <input type="text" value="{$ item.name $}" class="table__input">
-                                        -->
-                                        {$ item.name $}
+                                        <input type="text" class="table__input"
+                                            data-ng-model="item.name"
+                                            data-maas-enter-blur
+                                            data-ng-blur="saveAvailableName(item)"
+                                            data-ng-class="{ invalid: isNameInvalid(item) }"
+                                            data-ng-disabled="item.type === 'partition'"
+                                            data-ng-change="nameHasChanged(item)">
                                     </div>
-                                    <div class="table__data table__column--15">{$ getSize(item) $}</div>
+                                    <div class="table__data table__column--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table__column--15">
                                         {$ item.fstype $}
@@ -869,6 +872,35 @@
                                                 <div class="table__data table__column--52"></div>
                                             </div>
                                         </div>
+                                        <div class="ng-hide" data-ng-show="availableMode === 'logical-volume'">
+                                            <div class="table__row table__dropdown-row">
+                                                <div class="table__data table__column--3"></div>
+                                                <div class="table__data table__column--15">
+                                                    <input type="text" class="table__input"
+                                                        data-ng-class="{ invalid: isLogicalVolumeNameInvalid(item) }"
+                                                        data-ng-change="newLogicalVolumeNameChanged(item)"
+                                                        data-ng-model="item.$options.name">
+                                                </div>
+                                                <div class="table__data table__column--15">
+                                                    <div class="inline">
+                                                        <input type="text" id="mountpoint" class="seven-col"
+                                                            ng-model="item.$options.size"
+                                                            ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
+                                                        <select name="size-units" class="five-col"
+                                                            ng-model="item.$options.sizeUnits"
+                                                            ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
+                                                            <option value="MB">MB</option>
+                                                            <option value="GB">GB</option>
+                                                            <option value="TB">TB</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="table__data table__column--15">
+                                                    Logical volume
+                                                </div>
+                                                <div class="table__data table__column--52"></div>
+                                            </div>
+                                        </div>
                                         <div class="table__row table__dropdown-row">
                                             <div class="ng-hide" data-ng-show="availableMode === 'single'">
                                                 <div class="table__data left">
@@ -878,6 +910,9 @@
                                                     <button class="cta-ubuntu secondary"
                                                         data-ng-show="canAddPartition(item)"
                                                         data-ng-click="availablePartiton(item)">{$ getPartitionButtonText(item) $}</button>
+                                                    <button class="cta-ubuntu secondary"
+                                                        data-ng-show="canAddLogicalVolume(item)"
+                                                        data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
                                                     <a class="link-cta-ubuntu text-button"
                                                         data-ng-show="hasUnmountedFilesystem(item)"
                                                         data-ng-click="availableUnformat()">Unformat</a>
@@ -917,7 +952,15 @@
                                                     <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
                                                     <button class="cta-ubuntu"
                                                         data-ng-disabled="isAddPartitionSizeInvalid(item)"
-                                                        data-ng-click="availableConfirmPartition(item)">Add Partition</button>
+                                                        data-ng-click="availableConfirmPartition(item)">Add partition</button>
+                                                </div>
+                                            </div>
+                                            <div class="ng-hide" data-ng-show="availableMode === 'logical-volume'">
+                                                <div class="table__data right">
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <button class="cta-ubuntu"
+                                                        data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item)"
+                                                        data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -996,7 +1039,7 @@
                                                 data-ng-click="availableCancel()">Cancel</a>
                                             <button class="cta-ubuntu"
                                                 data-ng-disabled="!createBcacheCanSave()"
-                                                data-ng-click="availableConfirmCreateBcache()">Create Bcache</button>
+                                                data-ng-click="availableConfirmCreateBcache()">Create bcache</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1088,12 +1131,55 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="table__row active" data-ng-show="availableMode === 'volume-group'">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="vg-create" disabled="disabled" checked />
+                                    <label class="checkbox-label" for="vg-create"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input"
+                                        data-ng-class="{ invalid: isNewDiskNameInvalid() }"
+                                        data-ng-model="availableNew.name">
+                                </div>
+                                <div class="table__data table__column--15">{$ getNewVolumeGroupSize() $}</div>
+                                <div class="table__data table__column--15">Volume group</div>
+                                <div class="table__data table__column--45"></div>
+                                <div class="table__data table__column--7"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                                        <div class="table__header table__column--5"></div>
+                                        <div class="table__header table__column--15">Name</div>
+                                        <div class="table__header table__column--15">Size</div>
+                                        <div class="table__header table__column--15">Device type</div>
+                                        <div class="table__header table__column--50"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row no-border"
+                                        data-ng-repeat="device in availableNew.devices">
+                                        <div class="table__data no-padding-top table__column--5"></div>
+                                        <div class="table__data no-padding-top table__column--15">{$ device.name $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ device.size_human $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(device) $}</div>
+                                        <div class="table__data no-padding-top table__column--50"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button"
+                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="cta-ubuntu"
+                                                data-ng-disabled="!createVolumeGroupCanSave()"
+                                                data-ng-click="availableConfirmCreateVolumeGroup()">Create volume group</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </main>
                     </section>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateRAID()"
                         data-ng-click="createRAID()">Create RAID</a>
-                    <a class="link-cta-ubuntu secondary margin-right ng-hide">Create LVM</a>
+                    <a class="link-cta-ubuntu secondary margin-right"
+                        data-ng-disabled="!canCreateVolumeGroup()"
+                        data-ng-click="createVolumeGroup()">Create Volume Group</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateCacheSet()"
                         data-ng-click="createCacheSet()">Create Cache Set</a>
@@ -1138,37 +1224,6 @@
                 </div>
 
                 <!--
-
-                // Creating a Volume Group
-
-                // First state of creating a volume group. This row shows once you have
-                // grouped 2 or more disks to create a VG0
-
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                        <input class="checkbox" type="checkbox" id="vg0" />
-                        <label class="checkbox-label" for="vg0"></label>
-                    </div>
-                    <div class="table__data table__column--15"><input type="text" value="VG0" class="table__input"><span class="table__label"><a href="">3 Disks</a></span></div>
-                    <div class="table__data table__column--15">25.5 G <span class="table__label">Free: 25.5 G</span></div>
-                    <div class="table__data table__column--15">Volume group</div>
-                    <div class="table__data table__column--45"></div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a href="" class="icon add">Add LV</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data">
-                                <button class="cta-ubuntu secondary">Add logical volume</button>
-                                <a href="" class="link-cta-ubuntu text-button margin-left">Remove volume group</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
 
                 // View disks in volume group
 
@@ -1230,76 +1285,6 @@
                         </div>
                     </div>
                 </div>
-
-
-                // Add a new Logical volume
-
-                // Similar markup style to partitioning a disk
-
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                        <input class="checkbox" type="checkbox" id="check-all" />
-                        <label class="checkbox-label" for="check-all"></label>
-                    </div>
-                    <div class="table__data table__column--15"><input type="text" value="VG0" class="table__input"><span class="table__label"><a href="">3 Disks</a></span></div>
-                    <div class="table__data table__column--15">25.5 G <span class="table__label">Free: 25.5 G</span></div>
-                    <div class="table__data table__column--15">Volume group</div>
-                    <div class="table__data table__column--45"></div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a href="" class="icon add">Add Logical volume</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row padding-bottom--ten">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15 table__field">
-                                <label for="name">Name</label>
-                                <input type="text" value="vg0 - lv0">
-                            </div>
-                            <div class="table__data table__column--15 table__field">
-                                <label for="size">Size</label>
-                                <input type="text">
-                            </div>
-                            <div class="table__data table__column--15 table__field">
-                                <label for="type">Device type</label>
-                                <span>Logical volume</span>
-                            </div>
-                            <div class="table__data table__column--15 table__field">
-                                <label for="file">File system</label>
-                                <select name="file" id="file">
-                                    <option value="fat32">fat32</option>
-                                </select>
-                            </div>
-                            <div class="table__data table__column--30 table__field">
-                                <label for="mount">Mount point</label>
-                                <input type="text">
-                            </div>
-                            <div class="table__data table__column--7"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data left">
-                                <button class="cta-ubuntu secondary">Save and add another</button>
-                            </div>
-                            <div class="table__data right">
-                                <a href="" class="link-cta-ubuntu text-button margin-left">Cancel</a>
-                                <button class="cta-ubuntu">Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                -->
-
-                <!--
-
-                // Create RAID
-
-                // MArkup for creating a raid. This has multiple rows for the
-                // RAID settings, disks within the raid and then save / cancel controls.
-
-
 
                 -->
             </form>

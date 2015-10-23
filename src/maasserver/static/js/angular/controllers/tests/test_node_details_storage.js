@@ -325,6 +325,7 @@ describe("NodeStorageController", function() {
             {
                 name: disks[0].name,
                 size_human: disks[0].size_human,
+                available_size_human: disks[0].available_size_human,
                 used_size_human: disks[0].used_size_human,
                 type: disks[0].type,
                 model: disks[0].model,
@@ -341,7 +342,8 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[1].name,
-                size_human: disks[1].available_size_human,
+                size_human: disks[1].size_human,
+                available_size_human: disks[1].available_size_human,
                 used_size_human: disks[1].used_size_human,
                 type: disks[1].type,
                 model: disks[1].model,
@@ -359,6 +361,8 @@ describe("NodeStorageController", function() {
             {
                 name: disks[3].partitions[0].name,
                 size_human: disks[3].partitions[0].size_human,
+                available_size_human: (
+                    disks[3].partitions[0].available_size_human),
                 used_size_human: disks[3].partitions[0].used_size_human,
                 type: disks[3].partitions[0].type,
                 model: "",
@@ -825,32 +829,64 @@ describe("NodeStorageController", function() {
         });
     });
 
-    describe("getSize", function() {
+    describe("showFreeSpace", function() {
 
-        it("returns used size if unmounted filesystem", function() {
+        it("returns true if volume group", function() {
             var controller = makeController();
-            var used_size = {};
-            var size = {};
             var disk = {
-                used_size_human: used_size,
-                size_human: size
+                type: "lvm-vg"
             };
-            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
 
-            expect($scope.getSize(disk)).toBe(used_size);
+            expect($scope.showFreeSpace(disk)).toBe(true);
         });
 
-        it("returns size if mounted filesystem", function() {
+        it("returns true if physical with partitions", function() {
             var controller = makeController();
-            var used_size = {};
-            var size = {};
             var disk = {
-                used_size_human: used_size,
-                size_human: size
+                type: "physical",
+                has_partitions: true
             };
-            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
 
-            expect($scope.getSize(disk)).toBe(size);
+            expect($scope.showFreeSpace(disk)).toBe(true);
+        });
+
+        it("returns false if physical without partitions", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                has_partitions: false
+            };
+
+            expect($scope.showFreeSpace(disk)).toBe(false);
+        });
+
+        it("returns true if virtual with partitions", function() {
+            var controller = makeController();
+            var disk = {
+                type: "virtual",
+                has_partitions: true
+            };
+
+            expect($scope.showFreeSpace(disk)).toBe(true);
+        });
+
+        it("returns false if virtual without partitions", function() {
+            var controller = makeController();
+            var disk = {
+                type: "virtual",
+                has_partitions: false
+            };
+
+            expect($scope.showFreeSpace(disk)).toBe(false);
+        });
+
+        it("returns false otherwise", function() {
+            var controller = makeController();
+            var disk = {
+                type: "other"
+            };
+
+            expect($scope.showFreeSpace(disk)).toBe(false);
         });
     });
 
@@ -863,7 +899,7 @@ describe("NodeStorageController", function() {
                 parent_type: "lvm-vg"
             };
 
-            expect($scope.getDeviceType(disk)).toBe("Logical Volume");
+            expect($scope.getDeviceType(disk)).toBe("Logical volume");
         });
 
         it("returns raid", function() {
@@ -880,10 +916,10 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             var disk = {
                 type: "virtual",
-                parent_type: "raid0"
+                parent_type: "other"
             };
 
-            expect($scope.getDeviceType(disk)).toBe("Raid0");
+            expect($scope.getDeviceType(disk)).toBe("Other");
         });
 
         it("returns volume group", function() {
@@ -892,7 +928,7 @@ describe("NodeStorageController", function() {
                 type: "lvm-vg"
             };
 
-            expect($scope.getDeviceType(disk)).toBe("Volume Group");
+            expect($scope.getDeviceType(disk)).toBe("Volume group");
         });
 
         it("returns type", function() {
@@ -1133,7 +1169,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             expect($scope.getPartitionButtonText({
                 has_partitions: true
-            })).toBe("Add Partition");
+            })).toBe("Add partition");
         });
 
         it("returns Partition if no partitions", function() {
@@ -1221,6 +1257,154 @@ describe("NodeStorageController", function() {
         });
     });
 
+    describe("isNameInvalid", function() {
+
+        it("returns false if name is blank", function() {
+            var controller = makeController();
+            var disk = {
+                name: ""
+            };
+
+            expect($scope.isNameInvalid(disk)).toBe(false);
+        });
+
+        it("returns true if name is already used by another disk", function() {
+            var controller = makeController();
+            var otherId = makeInteger(0, 100);
+            var id = makeInteger(100, 200);
+            var name = makeName("name");
+            var otherDisk = {
+                id: otherId,
+                type: "physical",
+                name: name
+            };
+            var thisDisk = {
+                id: id,
+                type: "physical",
+                name: name
+            };
+
+            $scope.node.disks = [otherDisk, thisDisk];
+            var disk = {
+                name: name,
+                block_id: id
+            };
+
+            expect($scope.isNameInvalid(disk)).toBe(true);
+        });
+
+        it("returns false if name is the same as self", function() {
+            var controller = makeController();
+            var id = makeInteger(100, 200);
+            var name = makeName("name");
+            var thisDisk = {
+                id: id,
+                type: "physical",
+                name: name
+            };
+
+            $scope.node.disks = [thisDisk];
+            var disk = {
+                name: name,
+                type: "physical",
+                block_id: id
+            };
+
+            expect($scope.isNameInvalid(disk)).toBe(false);
+        });
+    });
+
+    describe("saveAvailableName", function() {
+
+        it("resets name to original if empty", function() {
+            var controller = makeController();
+            var name = makeName("name");
+            var disk = {
+                name: "",
+                original: {
+                    name: name
+                }
+            };
+            spyOn(NodesManager, "updateDisk");
+
+            $scope.saveAvailableName(disk);
+            expect(disk.name).toBe(name);
+            expect(NodesManager.updateDisk).not.toHaveBeenCalled();
+        });
+
+        it("does nothing if name is the same", function() {
+            var controller = makeController();
+            var name = makeName("name");
+            var disk = {
+                name: name,
+                original: {
+                    name: name
+                }
+            };
+            spyOn(NodesManager, "updateDisk");
+
+            $scope.saveAvailableName(disk);
+            expect(NodesManager.updateDisk).not.toHaveBeenCalled();
+        });
+
+        it("calls updateDisks with new name", function() {
+            var controller = makeController();
+            var name = makeName("name");
+            var newName = makeName("newName");
+            var id = makeInteger(0, 100);
+            var disk = {
+                name: newName,
+                type: "physical",
+                block_id: id,
+                original: {
+                    name: name
+                }
+            };
+            spyOn(NodesManager, "updateDisk");
+
+            $scope.saveAvailableName(disk);
+            expect(NodesManager.updateDisk).toHaveBeenCalledWith(
+                node, id, { name: newName });
+        });
+
+        it("calls updateDisks with new name for logical volume", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var disk = {
+                name: "vg0-lvnew",
+                type: "virtual",
+                parent_type: "lvm-vg",
+                block_id: id,
+                original: {
+                    name: "vg0-lvold"
+                }
+            };
+            spyOn(NodesManager, "updateDisk");
+
+            $scope.saveAvailableName(disk);
+            expect(NodesManager.updateDisk).toHaveBeenCalledWith(
+                node, id, { name: "lvnew" });
+        });
+    });
+
+    describe("nameHasChanged", function() {
+
+        it("logical volume resets name to include parents name", function() {
+            var controller = makeController();
+            var disk = {
+                name: "",
+                type: "virtual",
+                parent_type: "lvm-vg",
+                original: {
+                    name: "vg0-lvname"
+                }
+            };
+
+            $scope.nameHasChanged(disk);
+            expect(disk.name).toBe("vg0-");
+        });
+    });
+
     describe("availableCancel", function() {
 
         it("calls updateAvailableSelection with force true", function() {
@@ -1264,14 +1448,12 @@ describe("NodeStorageController", function() {
                 null, null);
         });
 
-        it("clears fstype and sets used_size to size", function() {
+        it("clears fstype", function() {
             var controller = makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100),
-                fstype: "ext4",
-                size_human: makeName("size"),
-                used_size_human: makeName("used_size")
+                fstype: "ext4"
             };
             spyOn(NodesManager, "updateFilesystem");
             spyOn($scope, "updateAvailableSelection");
@@ -1279,7 +1461,6 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmUnformat(disk);
 
             expect(disk.fstype).toBeNull();
-            expect(disk.size_human).toBe(disk.used_size_human);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
@@ -1438,13 +1619,11 @@ describe("NodeStorageController", function() {
                     disk.$options.fstype, disk.$options.mount_point);
             });
 
-        it("sets new values on disk and sets size to used_size", function() {
+        it("sets new values on disk", function() {
             var controller = makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100),
-                size_human: makeName("size"),
-                used_size_human: makeName("used_size"),
                 $options: {
                     fstype: makeName("fs"),
                     mount_point: makeName("/path")
@@ -1456,7 +1635,6 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmFormatAndMount(disk);
             expect(disk.fstype).toBe(disk.$options.fstype);
             expect(disk.mount_point).toBe(disk.$options.mount_point);
-            expect(disk.size_human).toBe(disk.used_size_human);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
@@ -1518,6 +1696,34 @@ describe("NodeStorageController", function() {
     });
 
     describe("canDelete", function() {
+
+        it("returns true if volume group not used", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                fstype: null,
+                has_partitions: false,
+                original: {
+                    used_size: 0
+                }
+            };
+
+            expect($scope.canDelete(disk)).toBe(true);
+        });
+
+        it("returns false if volume group used", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                fstype: null,
+                has_partitions: false,
+                original: {
+                    used_size: makeInteger(100, 10000)
+                }
+            };
+
+            expect($scope.canDelete(disk)).toBe(false);
+        });
 
         it("returns true if fstype is null", function() {
             var controller = makeController();
@@ -1734,17 +1940,17 @@ describe("NodeStorageController", function() {
         it("sets availableMode to 'partition'", function() {
             var controller = makeController();
             var disk = {
-                size_human: "10 GB"
+                available_size_human: "10 GB"
             };
             $scope.availableMode = "other";
             $scope.availablePartiton(disk);
             expect($scope.availableMode).toBe("partition");
         });
 
-        it("sets $options to values from size_human", function() {
+        it("sets $options to values from available_size_human", function() {
             var controller = makeController();
             var disk = {
-                size_human: "10 GB"
+                available_size_human: "10 GB"
             };
             $scope.availablePartiton(disk);
             expect(disk.$options).toEqual({
@@ -2310,6 +2516,20 @@ describe("NodeStorageController", function() {
             expect($scope.canCreateCacheSet()).toBe(false);
         });
 
+        it("returns false if selected is volume group", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    type: "lvm-vg",
+                    fstype: null,
+                    $selected: true
+                }
+            ];
+
+            expect($scope.canCreateCacheSet()).toBe(false);
+        });
+
         it("returns true if selected has no fstype", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
@@ -2383,6 +2603,21 @@ describe("NodeStorageController", function() {
             $scope.available = [
                 {
                     fstype: "ext4",
+                    $selected: true
+                }
+            ];
+            $scope.cachesets = [{}];
+
+            expect($scope.canCreateBcache()).toBe(false);
+        });
+
+        it("returns false if selected is volume group", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    type: "lvm-vg",
+                    fstype: null,
                     $selected: true
                 }
             ];
@@ -2696,6 +2931,21 @@ describe("NodeStorageController", function() {
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
+            expect($scope.canCreateRAID()).toBe(false);
+        });
+
+        it("returns false if any selected is volume group", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([
+                {
+                    type: "lvm-vg"
+                },
+                {
+                    type: "physical"
+                }
+            ]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
             expect($scope.canCreateRAID()).toBe(false);
         });
 
@@ -3277,6 +3527,401 @@ describe("NodeStorageController", function() {
                     fstype: "ext4",
                     mount_point: "/"
                 });
+        });
+    });
+
+    describe("canCreateVolumeGroup", function() {
+
+        it("returns false isAvailableDisabled returns true", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            expect($scope.canCreateVolumeGroup()).toBe(false);
+        });
+
+        it("returns false if any selected has filesystem", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
+            expect($scope.canCreateVolumeGroup()).toBe(false);
+        });
+
+        it("returns false if any selected is volume group", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([
+                {
+                    type: "lvm-vg"
+                },
+                {
+                    type: "physical"
+                }
+            ]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            expect($scope.canCreateVolumeGroup()).toBe(false);
+        });
+
+        it("returns true if aleast 1 selected", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            expect($scope.canCreateVolumeGroup()).toBe(true);
+        });
+    });
+
+    describe("createVolumeGroup", function() {
+
+        it("does nothing if canCreateVolumeGroup returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "canCreateVolumeGroup").and.returnValue(false);
+            $scope.availableMode = "other";
+
+            $scope.createVolumeGroup();
+            expect($scope.availableMode).toBe("other");
+        });
+
+        it("sets up availableNew", function() {
+            var controller = makeController();
+            spyOn($scope, "canCreateVolumeGroup").and.returnValue(true);
+            $scope.availableMode = "other";
+
+            // Add vg name to create a name after that index.
+            var otherVG = {
+                name: "vg4"
+            };
+            node.disks = [otherVG];
+
+            // Will be set as the devices.
+            var disk0 = {
+                $selected: true
+            };
+            var disk1 = {
+                $selected: true
+            };
+            $scope.available = [disk0, disk1];
+
+            $scope.createVolumeGroup();
+            expect($scope.availableMode).toBe("volume-group");
+            expect($scope.availableNew.name).toBe("vg5");
+            expect($scope.availableNew.devices).toEqual([disk0, disk1]);
+        });
+    });
+
+    describe("getNewVolumeGroupSize", function() {
+
+        it("return the total of all devices", function() {
+            var controller = makeController();
+            $scope.availableNew.devices = [
+                {
+                    original: {
+                        available_size: 1000 * 1000
+                    }
+                },
+                {
+                    original: {
+                        available_size: 1000 * 1000
+                    }
+                },
+                {
+                    original: {
+                        available_size: 1000 * 1000
+                    }
+                }
+            ];
+
+            expect($scope.getNewVolumeGroupSize()).toBe("3.0 MB");
+        });
+    });
+
+    describe("createVolumeGroupCanSave", function() {
+
+        it("return true if isNewDiskNameInvalid returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
+
+            expect($scope.createVolumeGroupCanSave()).toBe(true);
+        });
+
+        it("return false if isNewDiskNameInvalid returns true", function() {
+            var controller = makeController();
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
+
+            expect($scope.createVolumeGroupCanSave()).toBe(false);
+        });
+    });
+
+    describe("availableConfirmCreateVolumeGroup", function() {
+
+        it("does nothing if createVolumeGroupCanSave returns false",
+            function() {
+                var controller = makeController();
+                spyOn($scope, "createVolumeGroupCanSave").and.returnValue(
+                    false);
+                var partition0 = {
+                    type: "partition",
+                    block_id: makeInteger(0, 10),
+                    partition_id: makeInteger(0, 10)
+                };
+                var partition1 = {
+                    type: "partition",
+                    block_id: makeInteger(10, 20),
+                    partition_id: makeInteger(10, 20)
+                };
+                var disk0 = {
+                    type: "physical",
+                    block_id: makeInteger(0, 10)
+                };
+                var disk1 = {
+                    type: "physical",
+                    block_id: makeInteger(10, 20)
+                };
+                var availableNew = {
+                    name: makeName("vg"),
+                    devices: [partition0, partition1, disk0, disk1]
+                };
+                $scope.availableNew = availableNew;
+                spyOn(NodesManager, "createVolumeGroup");
+
+                $scope.availableConfirmCreateVolumeGroup();
+                expect(NodesManager.createVolumeGroup).not.toHaveBeenCalled();
+            });
+
+        it("calls NodesManager.createVolumeGroup", function() {
+            var controller = makeController();
+            spyOn($scope, "createVolumeGroupCanSave").and.returnValue(true);
+            var partition0 = {
+                type: "partition",
+                block_id: makeInteger(0, 10),
+                partition_id: makeInteger(0, 10)
+            };
+            var partition1 = {
+                type: "partition",
+                block_id: makeInteger(10, 20),
+                partition_id: makeInteger(10, 20)
+            };
+            var disk0 = {
+                type: "physical",
+                block_id: makeInteger(0, 10)
+            };
+            var disk1 = {
+                type: "physical",
+                block_id: makeInteger(10, 20)
+            };
+            var availableNew = {
+                name: makeName("vg"),
+                devices: [partition0, partition1, disk0, disk1]
+            };
+            $scope.availableNew = availableNew;
+            spyOn(NodesManager, "createVolumeGroup");
+
+            $scope.availableConfirmCreateVolumeGroup();
+            expect(NodesManager.createVolumeGroup).toHaveBeenCalledWith(
+                node, {
+                    name: availableNew.name,
+                    block_devices: [disk0.block_id, disk1.block_id],
+                    partitions: [
+                        partition0.partition_id, partition1.partition_id]
+                });
+        });
+    });
+
+    describe("canAddLogicalVolume", function() {
+
+        it("returns false if not volume group", function() {
+            var controller = makeController();
+            expect($scope.canAddLogicalVolume({
+                type: "physical"
+            })).toBe(false);
+            expect($scope.canAddLogicalVolume({
+                type: "virtual"
+            })).toBe(false);
+            expect($scope.canAddLogicalVolume({
+                type: "partition"
+            })).toBe(false);
+        });
+
+        it("returns false if not enough space", function() {
+            var controller = makeController();
+            expect($scope.canAddLogicalVolume({
+                type: "lvm-vg",
+                original: {
+                    available_size: 1.5 * 1024 * 1024
+                }
+            })).toBe(false);
+        });
+
+        it("returns true if enough space", function() {
+            var controller = makeController();
+            expect($scope.canAddLogicalVolume({
+                type: "lvm-vg",
+                original: {
+                    available_size: 10 * 1024 * 1024
+                }
+            })).toBe(true);
+        });
+    });
+
+    describe("availableLogicalVolume", function() {
+
+        it("sets availableMode to 'logical-volume'", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                available_size_human: "10 GB"
+            };
+            $scope.availableMode = "other";
+            $scope.availableLogicalVolume(disk);
+            expect($scope.availableMode).toBe("logical-volume");
+        });
+
+        it("sets $options to correct values", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                available_size_human: "10 GB"
+            };
+            $scope.availableLogicalVolume(disk);
+            expect(disk.$options).toEqual({
+                name: "vg0-lv0",
+                size: "10",
+                sizeUnits: "GB"
+            });
+        });
+    });
+
+    describe("isLogicalVolumeNameInvalid", function() {
+
+        it("returns true if doesn't start with volume group", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                $options: {
+                    name: "v"
+                }
+            };
+
+            expect($scope.isLogicalVolumeNameInvalid(disk)).toBe(true);
+        });
+
+        it("returns true if equal to volume group", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                $options: {
+                    name: "vg0-"
+                }
+            };
+
+            expect($scope.isLogicalVolumeNameInvalid(disk)).toBe(true);
+        });
+
+        it("returns false has text after the volume group", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                $options: {
+                    name: "vg0-l"
+                }
+            };
+
+            expect($scope.isLogicalVolumeNameInvalid(disk)).toBe(false);
+        });
+    });
+
+    describe("newLogicalVolumeNameChanged", function() {
+
+        it("resets name to volume group name if not present", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                name: "vg0",
+                $options: {
+                    name: "v"
+                }
+            };
+
+            $scope.newLogicalVolumeNameChanged(disk);
+            expect(disk.$options.name).toBe("vg0-");
+        });
+    });
+
+    describe("isAddLogicalVolumeSizeInvalid", function() {
+
+        it("returns value from isAddPartitionSizeInvalid", function() {
+            var controller = makeController();
+            var sentinel = {};
+            spyOn($scope, "isAddPartitionSizeInvalid").and.returnValue(
+                sentinel);
+
+            expect($scope.isAddLogicalVolumeSizeInvalid({})).toBe(sentinel);
+        });
+    });
+
+    describe("availableConfirmLogicalVolume", function() {
+
+        it("does nothing if invalid", function() {
+            var controller = makeController();
+            var disk = {
+                $options: {
+                    size: "",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createLogicalVolume");
+
+            $scope.availableConfirmLogicalVolume(disk);
+
+            expect(NodesManager.createLogicalVolume).not.toHaveBeenCalled();
+        });
+
+        it("calls createLogicalVolume with bytes", function() {
+            var controller = makeController();
+            var disk = {
+                name: "vg0",
+                block_id: makeInteger(0, 100),
+                original: {
+                    available_size: 4 * 1000 * 1000 * 1000
+                },
+                $options: {
+                    name: "vg0-lv0",
+                    size: "2",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createLogicalVolume");
+
+            $scope.availableConfirmLogicalVolume(disk);
+
+            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+                node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000);
+        });
+
+        it("calls createLogicalVolume with available_size bytes", function() {
+            var controller = makeController();
+            var disk = {
+                name: "vg0",
+                block_id: makeInteger(0, 100),
+                original: {
+                    available_size: 2.6 * 1000 * 1000 * 1000
+                },
+                $options: {
+                    name: "vg0-lv0",
+                    size: "2.62",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createLogicalVolume");
+
+            $scope.availableConfirmLogicalVolume(disk);
+
+            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+                node, disk.block_id, "lv0", 2.6 * 1000 * 1000 * 1000);
         });
     });
 

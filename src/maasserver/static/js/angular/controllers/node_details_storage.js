@@ -45,8 +45,9 @@ angular.module('MAAS').filter('removeAvailableByNew', function() {
 angular.module('MAAS').controller('NodeStorageController', [
     '$scope', 'NodesManager', 'ConverterService',
     function($scope, NodesManager, ConverterService) {
-        var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
         var PARTITION_TABLE_EXTRA_SPACE = 3 * 1024 * 1024;
+        var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
+        var MIN_LOGICAL_VOLUME_SIZE = MIN_PARTITION_SIZE;
 
         // Different selection modes.
         var SELECTION_MODE = {
@@ -59,7 +60,9 @@ angular.module('MAAS').controller('NodeStorageController', [
             FORMAT_AND_MOUNT: "format-mount",
             PARTITION: "partition",
             BCACHE: "bcache",
-            RAID: "raid"
+            RAID: "raid",
+            VOLUME_GROUP: "volume-group",
+            LOGICAL_VOLUME: "logical-volume"
         };
 
         // Different available raid modes.
@@ -290,7 +293,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                     }
                     var data = {
                         "name": disk.name,
-                        "size_human": disk.available_size_human,
+                        "size_human": disk.size_human,
+                        "available_size_human": disk.available_size_human,
                         "used_size_human": disk.used_size_human,
                         "type": disk.type,
                         "model": disk.model,
@@ -313,6 +317,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         available.push({
                             "name": partition.name,
                             "size_human": partition.size_human,
+                            "available_size_human": (
+                                partition.available_size_human),
                             "used_size_human": partition.used_size_human,
                             "type": "partition",
                             "model": "",
@@ -484,6 +490,39 @@ angular.module('MAAS').controller('NodeStorageController', [
             return prefix + (idx + 1);
         }
 
+        // Return true if another disk exists with name.
+        function isNameAlreadyInUse(name, exclude_disk) {
+            var i, j;
+            for(i = 0; i < $scope.node.disks.length; i++) {
+                var disk = $scope.node.disks[i];
+                if(disk.name === name) {
+                    if(!angular.isObject(exclude_disk) ||
+                        exclude_disk.type === "partition" ||
+                        exclude_disk.block_id !== disk.id) {
+                        return true;
+                    }
+                }
+                if(angular.isArray(disk.partitions)) {
+                    for(j = 0; j < disk.partitions.length; j++) {
+                        var partition = disk.partitions[j];
+                        if(partition.name === name) {
+                            if(!angular.isObject(exclude_disk) ||
+                                exclude_disk.type !== "partition" ||
+                                exclude_disk.partition_id !== partition.id) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Return true if the disk is a logical volume.
+        function isLogicalVolume(disk) {
+            return disk.type === "virtual" && disk.parent_type === "lvm-vg";
+        }
+
         // Called by $parent when the node has been loaded.
         $scope.nodeLoaded = function() {
             $scope.$watch("node.disks", updateDisks);
@@ -592,12 +631,13 @@ angular.module('MAAS').controller('NodeStorageController', [
             return false;
         };
 
-        // Return the size to show the user based on the disk.
-        $scope.getSize = function(disk) {
-            if($scope.hasUnmountedFilesystem(disk)) {
-                return disk.used_size_human;
+        $scope.showFreeSpace = function(disk) {
+            if(disk.type === "lvm-vg") {
+                return true;
+            } else if(disk.type === "physical" || disk.type === "virtual") {
+                return disk.has_partitions;
             } else {
-                return disk.size_human;
+                return false;
             }
         };
 
@@ -609,14 +649,14 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             if(disk.type === "virtual") {
                 if(disk.parent_type === "lvm-vg") {
-                    return "Logical Volume";
+                    return "Logical volume";
                 } else if(disk.parent_type.indexOf("raid-") === 0) {
                     return "RAID " + disk.parent_type.split("-")[1];
                 } else {
                     return capitalizeFirstLetter(disk.parent_type);
                 }
             } else if(disk.type === "lvm-vg") {
-                return "Volume Group";
+                return "Volume group";
             } else {
                 return capitalizeFirstLetter(disk.type);
             }
@@ -705,7 +745,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return the text for the partition button.
         $scope.getPartitionButtonText = function(disk) {
             if(disk.has_partitions) {
-                return "Add Partition";
+                return "Add partition";
             } else {
                 return "Partition";
             }
@@ -744,6 +784,44 @@ angular.module('MAAS').controller('NodeStorageController', [
             return true;
         };
 
+        // Return true if the name is invalid.
+        $scope.isNameInvalid = function(disk) {
+            if(disk.name === "") {
+                return false;
+            } else if(isNameAlreadyInUse(disk.name, disk)) {
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        // Save the new name of the disk if it changed.
+        $scope.saveAvailableName = function(disk) {
+            if(disk.name === "") {
+                disk.name = disk.original.name;
+            } else if(disk.name !== disk.original.name) {
+                var name = disk.name;
+                if(isLogicalVolume(disk)){
+                    var parentName = disk.original.name.split("-")[0] + "-";
+                    name = name.slice(parentName.length);
+                }
+                NodesManager.updateDisk($scope.node, disk.block_id, {
+                    name: name
+                });
+            }
+        };
+
+        // Prevent logical volumes from changing the volume group prefix.
+        $scope.nameHasChanged = function(disk) {
+            if(isLogicalVolume(disk)) {
+                var parentName = disk.original.name.split("-")[0] + "-";
+                var startsWith = disk.name.indexOf(parentName);
+                if(startsWith !== 0) {
+                    disk.name = parentName;
+                }
+            }
+        };
+
         // Cancel the current available operation.
         $scope.availableCancel = function() {
             $scope.updateAvailableSelection(true);
@@ -762,11 +840,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 disk.block_id, disk.partition_id,
                 null, null);
 
-            // Clear the fstype and update the size_human to match
-            // used_size_human so that the UI does not flicher why the new
-            // object is received.
+            // Clear the fstype.
             disk.fstype = null;
-            disk.size_human = disk.used_size_human;
             $scope.updateAvailableSelection(true);
         };
 
@@ -814,7 +889,6 @@ angular.module('MAAS').controller('NodeStorageController', [
             // for the new object to be received.
             disk.fstype = disk.$options.fstype;
             disk.mount_point = disk.$options.mount_point;
-            disk.size_human = disk.used_size_human;
             $scope.updateAvailableSelection(true);
 
             // If the mount_point is set the we need to transition this to
@@ -849,11 +923,15 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
-            if(!disk.has_partitions && (
-                !angular.isString(disk.fstype) || disk.fstype === "")) {
-                return true;
+            if(disk.type === "lvm-vg") {
+                return disk.original.used_size === 0;
             } else {
-                return false;
+                if(!disk.has_partitions && (
+                    !angular.isString(disk.fstype) || disk.fstype === "")) {
+                    return true;
+                } else {
+                    return false;
+                }
             }
         };
 
@@ -920,7 +998,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availablePartiton = function(disk) {
             $scope.availableMode = SELECTION_MODE.PARTITION;
             // Set starting size to the maximum available space.
-            var size_and_units = disk.size_human.split(" ");
+            var size_and_units = disk.available_size_human.split(" ");
             disk.$options = {
                 size: size_and_units[0],
                 sizeUnits: size_and_units[1]
@@ -1123,7 +1201,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             var selected = $scope.getSelectedAvailable();
             if(selected.length === 1) {
-                return !$scope.hasUnmountedFilesystem(selected[0]);
+                return (
+                    !$scope.hasUnmountedFilesystem(selected[0]) &&
+                    selected[0].type !== "lvm-vg");
             }
             return false;
         };
@@ -1152,7 +1232,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             var selected = $scope.getSelectedAvailable();
             if(selected.length === 1) {
-                var allowed = !$scope.hasUnmountedFilesystem(selected[0]);
+                var allowed = (
+                    !$scope.hasUnmountedFilesystem(selected[0]) &&
+                    selected[0].type !== "lvm-vg");
                 return allowed && $scope.cachesets.length > 0;
             }
             return false;
@@ -1264,6 +1346,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 for(i = 0; i < selected.length; i++) {
                     if($scope.hasUnmountedFilesystem(selected[i])) {
                         return false;
+                    } else if(selected[i].type === "lvm-vg") {
+                        return false;
                     }
                 }
                 return true;
@@ -1340,8 +1424,13 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk is an active RAID member.
         $scope.isActiveRAIDMember = function(disk) {
-            var idx = $scope.availableNew.spares.indexOf(getUniqueKey(disk));
-            return idx === -1;
+            if(!angular.isArray($scope.availableNew.spares)) {
+                return true;
+            } else {
+                var idx = $scope.availableNew.spares.indexOf(
+                    getUniqueKey(disk));
+                return idx === -1;
+            }
         };
 
         // Return true if the disk is a spare RAID member.
@@ -1444,6 +1533,173 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.availableNew = {};
 
             // Update the selection.
+            $scope.updateAvailableSelection(true);
+        };
+
+        // Return true if a volume group can be created.
+        $scope.canCreateVolumeGroup = function() {
+            if($scope.isAvailableDisabled()) {
+                return false;
+            }
+
+            var selected = $scope.getSelectedAvailable();
+            if(selected.length > 0) {
+                var i;
+                for(i = 0; i < selected.length; i++) {
+                    if($scope.hasUnmountedFilesystem(selected[i])) {
+                        return false;
+                    } else if(selected[i].type === "lvm-vg") {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        };
+
+        // Called to create a volume group.
+        $scope.createVolumeGroup = function() {
+            if(!$scope.canCreateVolumeGroup()) {
+                return;
+            }
+            $scope.availableMode = SELECTION_MODE.VOLUME_GROUP;
+            $scope.availableNew = {
+                name: getNextName("vg"),
+                devices: $scope.getSelectedAvailable()
+            };
+        };
+
+        // Return the size of the new volume group.
+        $scope.getNewVolumeGroupSize = function() {
+            var total = 0;
+            angular.forEach($scope.availableNew.devices, function(device) {
+                total += device.original.available_size;
+            });
+            return ConverterService.bytesToUnits(total).string;
+        };
+
+        // Return true if volume group can be saved.
+        $scope.createVolumeGroupCanSave = function() {
+            return !$scope.isNewDiskNameInvalid();
+        };
+
+        // Confirm and create the volume group device.
+        $scope.availableConfirmCreateVolumeGroup = function() {
+            if(!$scope.createVolumeGroupCanSave()) {
+                return;
+            }
+
+            // Create the RAID.
+            var params = {
+                name: $scope.availableNew.name,
+                block_devices: [],
+                partitions: []
+            };
+            angular.forEach($scope.availableNew.devices, function(device) {
+                if(device.type === "partition") {
+                    params.partitions.push(device.partition_id);
+                } else {
+                    params.block_devices.push(device.block_id);
+                }
+            });
+            NodesManager.createVolumeGroup($scope.node, params);
+
+            // Remove devices from available.
+            angular.forEach($scope.availableNew.devices, function(device) {
+                var idx = $scope.available.indexOf($scope.availableNew.device);
+                $scope.available.splice(idx, 1);
+            });
+            $scope.availableNew = {};
+
+            // Update the selection.
+            $scope.updateAvailableSelection(true);
+        };
+
+        // Return true if a logical volume can be added to disk.
+        $scope.canAddLogicalVolume = function(disk) {
+            if(disk.type !== "lvm-vg") {
+                return false;
+            } else if(disk.original.available_size < MIN_LOGICAL_VOLUME_SIZE) {
+                return false;
+            } else {
+                return true;
+            }
+        };
+
+        // Enter logical volume mode.
+        $scope.availableLogicalVolume = function(disk) {
+            $scope.availableMode = SELECTION_MODE.LOGICAL_VOLUME;
+            // Set starting size to the maximum available space.
+            var size_and_units = disk.available_size_human.split(" ");
+            var namePrefix = disk.name + "-lv";
+            disk.$options = {
+                name: getNextName(namePrefix),
+                size: size_and_units[0],
+                sizeUnits: size_and_units[1]
+            };
+        };
+
+        // Return true if the name of the logical volume is invalid.
+        $scope.isLogicalVolumeNameInvalid = function(disk) {
+            if(!angular.isString(disk.$options.name)) {
+                return false;
+            }
+            var startsWith = disk.$options.name.indexOf(disk.name + "-");
+            return (
+                startsWith !== 0 ||
+                disk.$options.name.length <= disk.name.length + 1 ||
+                isNameAlreadyInUse(disk.$options.name));
+        };
+
+        // Don't allow the name of the logical volume to remove the volume
+        // group name.
+        $scope.newLogicalVolumeNameChanged = function(disk) {
+            if(!angular.isString(disk.$options.name)) {
+                return;
+            }
+            var startsWith = disk.$options.name.indexOf(disk.name + "-");
+            if(startsWith !== 0) {
+                disk.$options.name = disk.name + "-";
+            }
+        };
+
+        // Return true if the logical volume size is invalid.
+        $scope.isAddLogicalVolumeSizeInvalid = function(disk) {
+            // Uses the same logic as the partition size checked.
+            return $scope.isAddPartitionSizeInvalid(disk);
+        };
+
+        // Confirm the logical volume creation.
+        $scope.availableConfirmLogicalVolume = function(disk) {
+            // Do nothing if not valid.
+            if($scope.isAddLogicalVolumeSizeInvalid(disk)) {
+                return;
+            }
+
+            // Get the bytes to create the partition. Round down to the
+            // total available on the disk.
+            var removeDisk = false;
+            var bytes = ConverterService.unitsToBytes(
+                disk.$options.size, disk.$options.sizeUnits);
+            if(bytes > disk.original.available_size) {
+                bytes = disk.original.available_size;
+
+                // Remove the disk as its going to use all the remaining space.
+                removeDisk = true;
+            }
+
+            // Remove the volume group name from the name.
+            var name = disk.$options.name.slice(disk.name.length + 1);
+
+            // Create the logical volume.
+            NodesManager.createLogicalVolume(
+                $scope.node, disk.block_id, name, bytes);
+
+            // Remove the disk if needed.
+            if(removeDisk) {
+                var idx = $scope.available.indexOf(disk);
+                $scope.available.splice(idx, 1);
+            }
             $scope.updateAvailableSelection(true);
         };
 

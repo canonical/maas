@@ -619,4 +619,61 @@ describe("NodesManager", function() {
             });
         });
     });
+
+    describe("createVolumeGroup", function() {
+
+        it("calls node.create_volume_group", function(done) {
+            var fakeNode = makeNode();
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createVolumeGroup(
+                    fakeNode, {}).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_volume_group");
+                done();
+            });
+        });
+
+        it("calls node.create_volume_group with params", function(done) {
+            var fakeNode = makeNode();
+            var params = {
+                block_id: makeName("block_id"),
+                partition_id: makeName("block_id")
+            };
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createVolumeGroup(
+                    fakeNode, params).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_volume_group");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(params.block_id);
+                expect(sentObject.params.partition_id).toBe(
+                    params.partition_id);
+                done();
+            });
+        });
+    });
+
+    describe("createLogicalVolume", function() {
+
+        it("calls node.create_logical_volume", function(done) {
+            var fakeNode = makeNode();
+            var volume_group_id = makeInteger(0, 100);
+            var name = makeName("lv");
+            var size = makeInteger(1000 * 1000, 1000 * 1000 * 1000);
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createLogicalVolume(
+                    fakeNode, volume_group_id, name, size).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_logical_volume");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.volume_group_id).toBe(
+                    volume_group_id);
+                expect(sentObject.params.name).toBe(name);
+                expect(sentObject.params.size).toBe(size);
+                done();
+            });
+        });
+    });
 });

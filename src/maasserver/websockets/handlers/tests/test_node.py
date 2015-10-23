@@ -1207,6 +1207,34 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             None, partition.get_effective_filesystem())
 
+    def test_update_disk_for_physical_block_device(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        new_name = factory.make_name("new")
+        handler.update_disk({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': new_name,
+            })
+        self.assertEquals(new_name, reload_object(block_device).name)
+
+    def test_update_disk_for_virtual_block_device(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        block_device = factory.make_VirtualBlockDevice(node=node)
+        new_name = factory.make_name("new")
+        handler.update_disk({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': new_name,
+            })
+        self.assertEquals(new_name, reload_object(block_device).name)
+
     def test_delete_disk(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
@@ -1476,6 +1504,45 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             mount_point,
             raid.virtual_device.get_effective_filesystem().mount_point)
+
+    def test_create_volume_group(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        partition = factory.make_Partition(node=node)
+        name = factory.make_name("vg")
+        handler.create_volume_group({
+            'system_id': node.system_id,
+            'name': name,
+            'block_devices': [disk.id],
+            'partitions': [partition.id],
+            })
+        volume_group = VolumeGroup.objects.filter_by_node(node).first()
+        self.assertIsNotNone(volume_group)
+        self.assertEquals(name, volume_group.name)
+
+    def test_create_logical_volume(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
+        name = factory.make_name("lv")
+        size = volume_group.get_lvm_free_space()
+        handler.create_logical_volume({
+            'system_id': node.system_id,
+            'name': name,
+            'volume_group_id': volume_group.id,
+            'size': size,
+            })
+        logical_volume = volume_group.virtual_devices.first()
+        self.assertIsNotNone(logical_volume)
+        self.assertEquals(
+            "%s-%s" % (volume_group.name, name), logical_volume.get_name())
+        self.assertEquals(size, logical_volume.size)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

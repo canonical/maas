@@ -271,5 +271,42 @@ angular.module('MAAS').factory(
                     "node.create_raid", params);
             };
 
+        // Create a new volume group.
+        NodesManager.prototype.createVolumeGroup = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_volume_group", params);
+            };
+
+        // Create a new logical volume.
+        NodesManager.prototype.createLogicalVolume = function(
+            node, volume_group_id, name, size) {
+                var self = this;
+                var method = this._handler + ".create_logical_volume";
+                var params = {
+                    system_id: node.system_id,
+                    volume_group_id: volume_group_id,
+                    name: name,
+                    size: size
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        // Update a disk.
+        NodesManager.prototype.updateDisk = function(
+            node, block_id, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                params.block_id = block_id;
+                return RegionConnection.callMethod(
+                    "node.update_disk", params);
+            };
+
         return new NodesManager();
     }]);

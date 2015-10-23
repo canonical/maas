@@ -35,11 +35,15 @@ from maasserver.forms import (
     AdminNodeWithMACAddressesForm,
     CreateBcacheForm,
     CreateCacheSetForm,
+    CreateLogicalVolumeForm,
     CreateRaidForm,
+    CreateVolumeGroupForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
     MountBlockDeviceForm,
     MountPartitionForm,
+    UpdatePhysicalBlockDeviceForm,
+    UpdateVirtualBlockDeviceForm,
 )
 from maasserver.forms_interface import (
     BondInterfaceForm,
@@ -135,6 +139,7 @@ class NodeHandler(TimestampedModelHandler):
             'unlink_subnet',
             'update_filesystem',
             'update_disk_tags',
+            'update_disk',
             'delete_disk',
             'delete_partition',
             'delete_volume_group',
@@ -143,6 +148,8 @@ class NodeHandler(TimestampedModelHandler):
             'create_cache_set',
             'create_bcache',
             'create_raid',
+            'create_volume_group',
+            'create_logical_volume',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -767,6 +774,29 @@ class NodeHandler(TimestampedModelHandler):
         disk_obj.tags = params['tags']
         disk_obj.save(update_fields=['tags'])
 
+    def update_disk(self, params):
+        """Update disk information."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        device = BlockDevice.objects.get(
+            id=params['block_id'], node=node).actual_instance
+        if device.type == 'physical':
+            form = UpdatePhysicalBlockDeviceForm(
+                instance=device, data=params)
+        elif device.type == 'virtual':
+            form = UpdateVirtualBlockDeviceForm(
+                instance=device, data=params)
+        else:
+            raise HandlerError(
+                'Cannot update block device of type %s' % device.type)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
+
     def delete_disk(self, params):
         # Only admin users can perform delete.
         if not self.user.is_superuser:
@@ -894,6 +924,31 @@ class NodeHandler(TimestampedModelHandler):
             self.update_blockdevice_filesystem(
                 node, raid.virtual_device.id,
                 params.get("fstype"), params.get("mount_point"))
+
+    def create_volume_group(self, params):
+        """Create a volume group."""
+        node = self.get_object(params)
+        form = CreateVolumeGroupForm(node=node, data=params)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
+
+    def create_logical_volume(self, params):
+        """Create a logical volume."""
+        node = self.get_object(params)
+        volume_group = VolumeGroup.objects.get(id=params['volume_group_id'])
+        if volume_group.get_node() != node:
+            raise VolumeGroup.DoesNotExist()
+        form = CreateLogicalVolumeForm(
+            volume_group, {
+                'name': params['name'],
+                'size': params['size'],
+            })
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            form.save()
 
     def action(self, params):
         """Perform the action on the object."""
