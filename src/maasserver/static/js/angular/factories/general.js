@@ -49,6 +49,16 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
+                default_min_hwe_kernel: {
+                    method: "general.default_min_hwe_kernel",
+                    data: { text: '' },
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null,
+                    replaceData: function(oldData, newData) {
+                        oldData.text = newData;
+                    }
+                },
                 osinfo: {
                     method: "general.osinfo",
                     data: {},

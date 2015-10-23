@@ -227,6 +227,10 @@ def pxeconfig(request):
         # we give precedence to any kernel defined in the subarchitecture field
         if subarch == "generic" and node.hwe_kernel:
             subarch = node.hwe_kernel
+        elif(subarch == "generic"
+             and node.get_boot_purpose() == "commissioning"
+             and node.min_hwe_kernel):
+            subarch = node.min_hwe_kernel
     else:
         nodegroup = find_nodegroup_for_pxeconfig_request(request)
         preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
@@ -254,7 +258,14 @@ def pxeconfig(request):
                 else:
                     arch, _ = resource.split_arch()
 
-        subarch = get_optional_param(request.GET, 'subarch', 'generic')
+        default_min_hwe_kernel = Config.objects.get_config(
+            'default_min_hwe_kernel')
+        if default_min_hwe_kernel:
+            subarch = get_optional_param(
+                request.GET, 'subarch', default_min_hwe_kernel)
+        else:
+            subarch = get_optional_param(
+                request.GET, 'subarch', 'generic')
 
     # If we are booting with "xinstall", then we should always return the
     # commissioning operating system and distro_series.

@@ -361,6 +361,15 @@ class TestPXEConfigAPI(MAASServerTestCase):
             (ip, hostname),
             (json.loads(response.content)["log_host"], mock.call_args[0][0]))
 
+    def test_pxeconfig_enlistment_checks_default_min_hwe_kernel(self):
+        params = self.get_default_params()
+        params['arch'] = 'armhf'
+        Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(
+            "hwe-v",
+            json.loads(response.content)["subarch"])
+
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
         node = Interface.objects.get(mac_address=params['mac']).node
@@ -630,6 +639,17 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params_out = self.get_pxeconfig(params)
         self.assertEqual(osystem, params_out["osystem"])
         self.assertEqual(release, params_out["release"])
+
+    def test_pxeconfig_commissioning_node_uses_min_hwe_kernel(self):
+        node = factory.make_Node(min_hwe_kernel="hwe-v")
+        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        self.patch(Node, 'get_boot_purpose').return_value = "commissioning"
+        params = self.get_default_params()
+        params['mac'] = nic.mac_address
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(
+            "hwe-v",
+            json.loads(response.content)["subarch"])
 
     def test_pxeconfig_returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         nodegroup = factory.make_NodeGroup()

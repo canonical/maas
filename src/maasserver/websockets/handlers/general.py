@@ -45,6 +45,7 @@ class GeneralHandler(Handler):
         allowed_methods = [
             'architectures',
             'hwe_kernels',
+            'default_min_hwe_kernel',
             'osinfo',
             'node_actions',
             'device_actions',
@@ -60,6 +61,10 @@ class GeneralHandler(Handler):
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
         return BootResource.objects.get_usable_hwe_kernels()
+
+    def default_min_hwe_kernel(self, params):
+        """Return the default_min_hwe_kernel."""
+        return Config.objects.get_config('default_min_hwe_kernel')
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""

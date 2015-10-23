@@ -36,6 +36,14 @@ class TestCommissioningFormForm(MAASServerTestCase):
                 'commissioning_distro_series', field.choices),
             field.error_messages['invalid_choice'])
 
+    def test_commissioningform_error_msg_lists_min_hwe_kernel_choices(self):
+        form = CommissioningForm()
+        field = form.fields['default_min_hwe_kernel']
+        self.assertEqual(
+            compose_invalid_choice_text(
+                'default_min_hwe_kernel', field.choices),
+            field.error_messages['invalid_choice'])
+
 
 class TestCommissioningScriptForm(MAASServerTestCase):
 

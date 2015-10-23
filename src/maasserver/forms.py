@@ -566,7 +566,11 @@ class NodeForm(MAASModelForm):
             return boot_type
 
     def clean_min_hwe_kernel(self):
-        return validate_min_hwe_kernel(self.cleaned_data.get('min_hwe_kernel'))
+        min_hwe_kernel = self.cleaned_data.get('min_hwe_kernel')
+        if self.new_node and not min_hwe_kernel:
+            min_hwe_kernel = Config.objects.get_config(
+                'default_min_hwe_kernel')
+        return validate_min_hwe_kernel(min_hwe_kernel)
 
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
@@ -1306,6 +1310,8 @@ class CommissioningForm(ConfigForm):
         Form.__init__(self, *args, **kwargs)
         self.fields['commissioning_distro_series'] = get_config_field(
             'commissioning_distro_series')
+        self.fields['default_min_hwe_kernel'] = get_config_field(
+            'default_min_hwe_kernel')
         self._load_initials()
 
 

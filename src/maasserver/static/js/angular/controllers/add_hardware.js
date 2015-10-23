@@ -24,6 +24,8 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
+        $scope.default_min_hwe_kernel = GeneralManager.getData(
+            "default_min_hwe_kernel");
         $scope.error = null;
 
         // Input values.
@@ -281,6 +283,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 macs: [newMAC()],
                 zone: defaultZone(),
                 architecture: defaultArchitecture(),
+                min_hwe_kernel: $scope.default_min_hwe_kernel.text,
                 power: {
                     type: null,
                     parameters: {}
@@ -439,7 +442,6 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.machine.cluster === null ||
                 $scope.machine.zone === null ||
                 $scope.machine.architecture === '' ||
-                $scope.machine.min_hwe_kernel === '' ||
                 $scope.machine.power.type === null ||
                 $scope.invalidName($scope.machine));
             if(in_error) {

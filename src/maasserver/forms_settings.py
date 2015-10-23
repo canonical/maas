@@ -27,6 +27,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
 from maasserver.fields import IPListFormField
+from maasserver.models import BootResource
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
@@ -39,6 +40,7 @@ from maasserver.utils.osystems import (
     list_all_usable_releases,
     list_commissioning_choices,
     list_osystem_choices,
+    release_a_newer_than_b,
 )
 
 
@@ -109,6 +111,31 @@ def make_default_distro_series_field(*args, **kwargs):
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'release', release_choices)
+        },
+        **kwargs)
+    return field
+
+
+def make_default_min_hwe_kernel_field(*args, **kwargs):
+    """Build and return the default_min_hwe_kernel field."""
+    kernel_choices = [('', '--- No minimum kernel ---')]
+    # Global choices are limited to the commissioning release as min_hwe_kernel
+    # is used during commissioning.
+    commissioning_series = Config.objects.get_config(
+        'commissioning_distro_series')
+    if commissioning_series:
+        commissioning_os_release = "ubuntu/" + commissioning_series
+        kernel_choices += [
+            (kernel, kernel)
+            for kernel in BootResource.objects.get_usable_hwe_kernels(
+                commissioning_os_release)
+            if release_a_newer_than_b(kernel, commissioning_series)]
+    field = forms.ChoiceField(
+        initial=Config.objects.get_config('default_min_hwe_kernel'),
+        choices=kernel_choices,
+        error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'default_min_hwe_kernel', kernel_choices)
         },
         **kwargs)
     return field
@@ -255,6 +282,18 @@ CONFIG_ITEMS = {
             'required': False,
             # This field's `choices` and `error_messages` are populated
             # at run-time to avoid a race condition.
+        }
+    },
+    'default_min_hwe_kernel': {
+        'default': None,
+        'form': make_default_min_hwe_kernel_field,
+        'form_kwargs': {
+            'label': "Default Minimum Kernel Version",
+            'required': False,
+            'help_text': (
+                "The default minimum kernel version used on all new and"
+                " commissioned nodes."
+            )
         }
     },
     'default_storage_layout': {

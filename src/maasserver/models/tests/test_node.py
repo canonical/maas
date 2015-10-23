@@ -1492,6 +1492,20 @@ class TestNode(MAASServerTestCase):
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(node_start, MockCalledOnceWith(admin, user_data))
 
+    def test_start_commissioning_sets_min_hwe_kernel(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = lambda user, user_data: post_commit()
+        user_data = factory.make_string().encode('ascii')
+        generate_user_data = self.patch(
+            commissioning, 'generate_user_data')
+        generate_user_data.return_value = user_data
+        admin = factory.make_admin()
+        Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
+        node.start_commissioning(admin)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertEqual('hwe-v', node.min_hwe_kernel)
+
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         NodeResult.objects.store_data(

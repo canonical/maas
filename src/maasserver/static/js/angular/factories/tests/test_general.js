@@ -51,7 +51,7 @@ describe("GeneralManager", function() {
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
             ["node_actions", "device_actions", "architectures", "hwe_kernels",
-             "osinfo", "bond_options", "version"]);
+             "default_min_hwe_kernel", "osinfo", "bond_options", "version"]);
     });
 
     it("_data.node_actions has correct data", function() {
@@ -88,6 +88,17 @@ describe("GeneralManager", function() {
         expect(hwe_kernels.loaded).toBe(false);
         expect(hwe_kernels.polling).toBe(false);
         expect(hwe_kernels.nextPromise).toBeNull();
+    });
+
+    it("_data.default_min_hwe_kernels has correct data", function() {
+        var default_min_hwe_kernel =
+            GeneralManager._data.default_min_hwe_kernel;
+        expect(default_min_hwe_kernel.method).toBe(
+            "general.default_min_hwe_kernel");
+        expect(default_min_hwe_kernel.data).toEqual({text: ''});
+        expect(default_min_hwe_kernel.loaded).toBe(false);
+        expect(default_min_hwe_kernel.polling).toBe(false);
+        expect(default_min_hwe_kernel.nextPromise).toBeNull();
     });
 
     it("_data.osinfo has correct data", function() {
@@ -166,6 +177,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.device_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
+            GeneralManager._data.default_min_hwe_kernel.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             GeneralManager._data.bond_options.loaded = true;
             GeneralManager._data.version.loaded = true;
@@ -416,11 +428,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(7);
+            expect(GeneralManager._loadData.calls.count()).toBe(8);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),
