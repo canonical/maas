@@ -25,7 +25,11 @@ from netifaces import (
     AF_INET6,
 )
 from provisioningserver import network
-from testtools.matchers import HasLength
+from provisioningserver.network import sort_networks_by_priority
+from testtools.matchers import (
+    Equals,
+    HasLength,
+)
 
 
 def make_inet_address(subnet=None):
@@ -216,3 +220,31 @@ class TestNetworks(MAASTestCase):
         self.assertEqual(
             network.filter_unique_networks(networks),
             network.filter_unique_networks(reversed(networks)))
+
+
+class TestSortNetworksByPriority(MAASTestCase):
+
+    def test__sorts_by_type_then_ip_version(self):
+        interfaces = [
+            {'ip': "2001:db8::1",
+             'type': "ethernet.vlan",
+             'interface': 'vlan40'},
+            {'ip': "10.0.0.1",
+             'type': "ethernet.vlan",
+             'interface': 'vlan40'},
+            {'ip': "2001:db8:1::1",
+             'type': "ethernet.physical",
+             'interface': 'eth1'},
+            {'ip': "10.0.1.1",
+             'type': "ethernet.physical",
+             'interface': 'eth1'},
+            {'ip': "10.0.2.1",
+             'type': "ethernet.bridge",
+             'interface': 'br0'},
+        ]
+        sorted_interfaces = sort_networks_by_priority(interfaces)
+        self.expectThat(sorted_interfaces[0], Equals(interfaces[3]))
+        self.expectThat(sorted_interfaces[1], Equals(interfaces[2]))
+        self.expectThat(sorted_interfaces[2], Equals(interfaces[4]))
+        self.expectThat(sorted_interfaces[3], Equals(interfaces[1]))
+        self.expectThat(sorted_interfaces[4], Equals(interfaces[0]))

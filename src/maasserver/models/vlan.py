@@ -49,6 +49,14 @@ class VLANManager(Manager):
         from maasserver.models.fabric import Fabric
         return Fabric.objects.get_default_fabric().get_default_vlan()
 
+    def filter_by_nodegroup_interface(self, nodegroup, ifname):
+        """Query fot the VLAN that matches the specified NodeGroup, whose
+        interface matches the specified name.
+        """
+        return self.filter(
+            subnet__nodegroupinterface__nodegroup=nodegroup,
+            subnet__nodegroupinterface__interface=ifname)
+
 
 class VLAN(CleanSave, TimestampedModel):
     """A `VLAN`.

@@ -21,7 +21,7 @@ from random import randint
 import re
 
 
-def make_name_from_interface(interface):
+def make_name_from_interface(interface, alias=None):
     """Generate a cluster interface name based on a network interface name.
 
     The name is used as an identifier in API URLs, so awkward characters are
@@ -30,6 +30,8 @@ def make_name_from_interface(interface):
 
     If `interface` is `None`, or empty, a name will be made up.
     """
+    if alias:
+        interface = "%s:%s" % (interface, alias)
     if interface is None or interface == u'':
         base_name = u'unnamed-%d' % randint(1000000, 9999999)
     else:

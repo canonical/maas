@@ -23,7 +23,11 @@ from maasserver.forms import (
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     NodeGroupInterfaceForm,
 )
-from maasserver.models import NodeGroupInterface
+from maasserver.models import (
+    Fabric,
+    NodeGroupInterface,
+    VLAN,
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -182,7 +186,9 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             data=int_settings, instance=make_ngi_instance(cluster))
         self.assertTrue(form.is_valid())
         interface = form.save()
-        self.assertEqual('%s-ipv4' % int_settings['interface'], interface.name)
+        self.assertThat(
+            interface.name,
+            StartsWith('%s-ipv4-' % int_settings['interface']))
 
     def test__disambiguates_IPv6_interface_with_ipv6_suffix(self):
         cluster = factory.make_NodeGroup()
@@ -458,3 +464,102 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # print(list(Subnet.objects.all()))
         # self.assertThat(ngi.network, Equals(new_network.cidr))
         self.assertThat(Subnet.objects.count(), Equals(1))
+
+    def test_multiple_subnets_on_single_interface_uses_existing_vlan(self):
+        ng = factory.make_NodeGroup()
+        ngi1 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.0.1', subnet_mask='255.255.255.0'),
+            instance=ngi1)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi1 = form.save()
+        self.assertIsNotNone(ngi1)
+        ngi2 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.1.1', subnet_mask='255.255.255.0'),
+            instance=ngi2)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi2 = form.save()
+        self.assertIsNotNone(ngi2)
+        self.assertThat(VLAN.objects.all().count(), Equals(1))
+        self.assertThat(ngi1.vlan, Equals(ngi2.vlan))
+
+    def test_subnet_vlan_creation_uses_default_fabric_if_empty(self):
+        ng = factory.make_NodeGroup()
+        ngi1 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.0.1', subnet_mask='255.255.255.0'),
+            instance=ngi1)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi1 = form.save()
+        self.assertIsNotNone(ngi1)
+        self.assertThat(Fabric.objects.all().count(), Equals(1))
+        self.assertThat(ngi1.vlan.fabric.id, Equals(0))
+
+    def test_creates_new_fabric_if_alt_subnet_exists_in_default_fabric(self):
+        ng = factory.make_NodeGroup()
+        ngi1 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.0.1', subnet_mask='255.255.255.0'),
+            instance=ngi1)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi1 = form.save()
+        self.assertIsNotNone(ngi1)
+        self.assertThat(Fabric.objects.all().count(), Equals(1))
+        self.assertThat(ngi1.vlan.fabric.id, Equals(0))
+        ngi2 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth1', ip='192.168.1.1', subnet_mask='255.255.255.0'),
+            instance=ngi2)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi2 = form.save()
+        self.assertIsNotNone(ngi2)
+        self.assertThat(Fabric.objects.all().count(), Equals(2))
+        # The first NodeGroupInterface we saved should be using the default
+        # Fabric
+        self.assertThat(ngi1.vlan.fabric.id, Equals(0))
+        self.assertIsNotNone(ngi2.vlan.fabric)
+
+    def test_creates_vlan_interface_if_interface_type_and_parent_known(self):
+        ng = factory.make_NodeGroup()
+        ngi1 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.0.1', subnet_mask='255.255.255.0'),
+            instance=ngi1)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi1 = form.save()
+        self.assertIsNotNone(ngi1)
+        self.assertThat(Fabric.objects.all().count(), Equals(1))
+        self.assertThat(ngi1.vlan.fabric.id, Equals(0))
+        ngi2 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='vlan12', ip='192.168.1.1', subnet_mask='255.255.255.0',
+            parent='eth0', type='ethernet.vlan'), instance=ngi2)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi2 = form.save()
+        self.assertIsNotNone(ngi2)
+        self.assertThat(Fabric.objects.all().count(), Equals(1))
+        self.assertThat(VLAN.objects.filter(vid=12).count(), Equals(1))
+
+    def test_creates_vlan_plus_new_fabric_if_no_parent_untagged_exists(self):
+        ng = factory.make_NodeGroup()
+        ngi1 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0', ip='192.168.0.1', subnet_mask='255.255.255.0'),
+            instance=ngi1)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi1 = form.save()
+        self.assertIsNotNone(ngi1)
+        self.assertThat(Fabric.objects.all().count(), Equals(1))
+        self.assertThat(ngi1.vlan.fabric.id, Equals(0))
+        ngi2 = NodeGroupInterface(nodegroup=ng)
+        form = NodeGroupInterfaceForm(data=dict(
+            interface='eth0.12', ip='192.168.1.1', subnet_mask='255.255.255.0',
+            type='ethernet.vlan'), instance=ngi2)
+        self.assertThat(form.is_valid(), Equals(True))
+        ngi2 = form.save()
+        self.assertIsNotNone(ngi2)
+        self.assertThat(Fabric.objects.all().count(), Equals(2))
+        # Check that VLAN 12 was created on the non-default VLAN.
+        self.assertThat(VLAN.objects.filter(
+            vid=12, fabric__id__gt=0).count(), Equals(1))

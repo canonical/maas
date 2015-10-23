@@ -627,25 +627,25 @@ class TestNodeGroupInterface(MAASServerTestCase):
             NodeGroupInterface.objects.filter(interface=net_interface),
             HasLength(2))
 
-    def test_validation_rejects_two_IPv4_interfaces_on_net_interface(self):
+    def test_rejects_two_managed_IPv4_interfaces_on_net_interface(self):
         cluster = factory.make_NodeGroup()
         net_interface = factory.make_name('eth')
         factory.make_NodeGroupInterface(
             cluster, interface=net_interface,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=factory.make_ipv4_network())
         network = factory.make_ipv4_network()
         extra_interface = NodeGroupInterface(
             nodegroup=cluster, interface=net_interface,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             ip=factory.pick_ip_in_network(network))
 
         error = self.assertRaises(ValidationError, extra_interface.save)
-        self.assertEqual(
-            [
+        self.assertThat(
+            error.messages, Contains(
                 "Another cluster interface already connects "
                 "network interface %s to an IPv4 network."
-                % net_interface
-            ],
-            error.messages)
+                % net_interface))
 
     def test_validation_accepts_two_IPv6_interfaces_on_net_interface(self):
         cluster = factory.make_NodeGroup()
@@ -660,29 +660,29 @@ class TestNodeGroupInterface(MAASServerTestCase):
         extra_interface.save()
         self.assertThat(cluster.nodegroupinterface_set.all(), HasLength(2))
 
-    def test_validation_rejects_two_IPv6_static_ranges_on_net_interface(self):
+    def test_rejects_two_managed_IPv6_static_ranges_on_net_interface(self):
         cluster = factory.make_NodeGroup()
         net_interface = factory.make_name('eth')
         factory.make_NodeGroupInterface(
             cluster, interface=net_interface,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=factory.make_ipv6_network(slash=64))
         network = factory.make_ipv6_network(slash=64)
         static_low = unicode(IPAddress(network.first + 1))
         static_high = unicode(IPAddress(network.last - 1))
         extra_interface = NodeGroupInterface(
             nodegroup=cluster, interface=net_interface,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             ip=factory.pick_ip_in_network(network),
             static_ip_range_low=static_low,
             static_ip_range_high=static_high)
 
         error = self.assertRaises(ValidationError, extra_interface.save)
-        self.assertEqual(
-            [
+        self.assertThat(
+            error.messages, Contains(
                 "Another cluster interface with a static address range "
                 "already connects network interface %s to an IPv6 network."
-                % net_interface
-            ],
-            error.messages)
+                % net_interface))
 
     def test_validation_knows_update_from_new_interface(self):
         cluster = factory.make_NodeGroup()

@@ -22,12 +22,13 @@ from tempfile import mkdtemp
 from textwrap import dedent
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.network import filter_likely_unmanaged_networks
+from provisioningserver.network import filter_and_annotate_networks
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
     _get_settings_dict,
     _parse_interface_definition,
     annotate_with_driver_information,
+    get_bonded_interfaces,
     get_interface_type,
     parse_ip_addr,
 )
@@ -328,7 +329,8 @@ class TestGetInterfaceType(MAASTestCase):
 
     def createInterfaceType(
             self, ifname, iftype, is_bridge=False, is_vlan=False,
-            is_bond=False, is_wireless=False, is_physical=False):
+            is_bond=False, is_wireless=False, is_physical=False,
+            bonded_interfaces=None):
         ifdir = os.path.join(self.tmp_sys_net, ifname)
         os.mkdir(ifdir)
         type_file = os.path.join(ifdir, 'type')
@@ -342,6 +344,10 @@ class TestGetInterfaceType(MAASTestCase):
             f.close()
         if is_bond:
             os.mkdir(os.path.join(ifdir, 'bonding'))
+            if bonded_interfaces is not None:
+                f = open(os.path.join(ifdir, 'bonding', 'slaves'), 'w')
+                f.write(b"%s\n" % ' '.join(bonded_interfaces).encode('utf-8'))
+                f.close()
         if is_physical or is_wireless:
             os.mkdir(os.path.join(ifdir, 'device'))
             os.mkdir(os.path.join(ifdir, 'device', 'driver'))
@@ -382,6 +388,14 @@ class TestGetInterfaceType(MAASTestCase):
             'bond0', sys_class_net=self.tmp_sys_net,
             proc_net_vlan=self.tmp_proc_net_vlan),
             Equals('ethernet.bond')
+        )
+
+    def test__identifies_bonded_interfaces(self):
+        self.createEthernetInterface(
+            'bond0', is_bond=True, bonded_interfaces=['eth0', 'eth1'])
+        self.assertThat(get_bonded_interfaces(
+            'bond0', sys_class_net=self.tmp_sys_net),
+            Equals(['eth0', 'eth1'])
         )
 
     def test__identifies_vlan_interface(self):
@@ -452,7 +466,14 @@ class TestAnnotateWithDriverInformation(MAASTestCase):
         interfaces = parse_ip_addr(ip_addr_output)
         interfaces_with_types = annotate_with_driver_information(interfaces)
         for name in interfaces:
-            self.assertThat(interfaces_with_types[name], Contains('type'))
+            iface = interfaces_with_types[name]
+            self.assertThat(iface, Contains('type'))
+            if iface['type'] == 'ethernet.vlan':
+                self.expectThat(iface, Contains('vid'))
+            elif iface['type'] == 'ethernet.bond':
+                self.expectThat(iface, Contains('bonded_interfaces'))
+            elif iface['type'] == 'ethernet.bridge':
+                self.expectThat(iface, Contains('bridged_interfaces'))
 
 
 class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
@@ -467,7 +488,7 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
             {"interface": "wlan0"},
             {"interface": "avian0"},
         ]
-        actual_networks = filter_likely_unmanaged_networks(input_networks)
+        actual_networks = filter_and_annotate_networks(input_networks)
         expected_networks = [
             {"interface": "em0"},
             {"interface": "eth0"},
@@ -476,7 +497,7 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
         ]
         self.assertThat(actual_networks, Equals(expected_networks))
 
-    def test__filters_based_on_json_data_if_available(self):
+    def test__filters_and_annotates_based_on_json_data_if_available(self):
         input_networks = [
             {"interface": "em0"},
             {"interface": "eth0"},
@@ -484,21 +505,35 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
             {"interface": "bond0"},
             {"interface": "avian0"},
             {"interface": "br0"},
+            {"interface": "br1"},
+            {"interface": "br2"},
+            {"interface": "br3"},
             {"interface": "wlan0"},
         ]
         # Wow, these are some poorly named interfaces.
         # Though I guess technically an avian carrier is a physical interface.
         input_json = {
             "avian0": {"type": "ethernet.physical"},
-            "br0": {"type": "ethernet.vlan"},
-            "wlan0": {"type": "ethernet.bond"}
+            "br0": {"type": "ethernet.vlan", "vid": 123, "parent": "br3"},
+            "br1": {"type": "ethernet.bridge",
+                    "bridged_interfaces": ["eth1", "eth2"]},
+            "br2": {"type": "ethernet.bridge",
+                    "bridged_interfaces": ["avian0"]},
+            "br3": {"type": "ethernet.bridge"},
+            "wlan0": {"type": "ethernet.bond",
+                      "bonded_interfaces": ["em0", "eth0"]}
         }
-        actual_networks = filter_likely_unmanaged_networks(
+        actual_networks = filter_and_annotate_networks(
             input_networks, json.dumps(input_json))
         expected_networks = [
-            {"interface": "avian0"},
-            {"interface": "br0"},
-            {"interface": "wlan0"},
+            {"interface": "avian0", 'type': "ethernet.physical"},
+            {"interface": "br0", 'type': "ethernet.vlan", "vid": 123,
+             "parent": "br3"},
+            {"interface": "br2", 'type': "ethernet.bridge",
+             "bridged_interfaces": "avian0"},
+            {"interface": "br3", 'type': "ethernet.bridge"},
+            {"interface": "wlan0", 'type': "ethernet.bond",
+             "bonded_interfaces": "em0 eth0"},
         ]
         self.assertThat(actual_networks, Equals(expected_networks))
 
@@ -514,7 +549,7 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
         ]
         input_json = {
         }
-        actual_networks = filter_likely_unmanaged_networks(
+        actual_networks = filter_and_annotate_networks(
             input_networks, json.dumps(input_json))
         expected_networks = [
             {"interface": "em0"},

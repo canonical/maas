@@ -70,6 +70,29 @@ class FabricManager(Manager):
             fabric._create_default_vlan()
         return fabric
 
+    def get_or_create_for_subnet(self, subnet):
+        """Given an existing fabric_id (by default, the default fabric)
+        creates and returns a new Fabric if there is an existing Subnet in
+        the fabric already. Exclude the specified subnet (which will be one
+        that was just created).
+        """
+        from maasserver.models import Subnet
+        default_fabric = self.get_default_fabric()
+        if Subnet.objects.filter(
+                vlan__fabric=default_fabric).exclude(
+                id=subnet.id).count() == 0:
+            return default_fabric
+        else:
+            return Fabric.objects.create()
+
+    def filter_by_nodegroup_interface(self, nodegroup, ifname):
+        """Query for the Fabric associated with the specified NodeGroup,
+        where the NodeGroupInterface matches the specified name.
+        """
+        return self.filter(
+            vlan__subnet__nodegroupinterface__nodegroup=nodegroup,
+            vlan__subnet__nodegroupinterface__interface=ifname)
+
     def get_fabric_or_404(self, id, user, perm):
         """Fetch a `Fabric` by its id.  Raise exceptions if no `Fabric` with
         this id exist or if the provided user has not the required permission

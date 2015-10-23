@@ -108,7 +108,10 @@ def _parse_interface_definition(line):
         string.strip, line.split(':'))
 
     interface['index'] = int(index)
-    interface['name'] = name.split('@')[0]
+    names = name.split('@')
+    interface['name'] = names[0]
+    if len(names) > 1:
+        interface['parent'] = names[1]
 
     # Now parse the <properties> part from above.
     # This will be in the form "<FLAG1,FLAG2> key1 value1 key2 value2 ..."
@@ -196,6 +199,35 @@ def get_first_and_last_usable_host_in_network(network):
         raise ValueError("Unknown IP address family: %s" % network.version)
 
 
+def get_bonded_interfaces(ifname, sys_class_net="/sys/class/net"):
+    """Returns a list of interface names which are part of the specified
+    Ethernet bond.
+
+    :return:list
+    """
+    bonding_slaves_file = os.path.join(
+        sys_class_net, ifname, 'bonding', 'slaves')
+    if os.path.isfile(bonding_slaves_file):
+        with open(bonding_slaves_file) as f:
+            return f.read().split()
+    else:
+        return []
+
+
+def get_bridged_interfaces(ifname, sys_class_net="/sys/class/net"):
+    """Returns a list of interface names which are part of the specified
+    Ethernet bridge interface.
+
+    :return:list
+    """
+    bridged_interfaces_dir = os.path.join(
+        sys_class_net, ifname, 'brif')
+    if os.path.isdir(bridged_interfaces_dir):
+        return os.listdir(bridged_interfaces_dir)
+    else:
+        return []
+
+
 def get_interface_type(
         ifname, sys_class_net="/sys/class/net",
         proc_net_vlan='/proc/net/vlan'):
@@ -229,11 +261,11 @@ def get_interface_type(
     If the interface can be determined to be a non-Ethernet type, the type
     that is found will be returned. (For example, 'loopback' or 'ipip'.)
     """
-    sys_path = '%s/%s' % (sys_class_net, ifname)
+    sys_path = os.path.join(sys_class_net, ifname)
     if not os.path.isdir(sys_path):
         return 'missing'
 
-    sys_type_path = '%s/type' % sys_path
+    sys_type_path = os.path.join(sys_path, 'type')
     with open(sys_type_path) as f:
         iftype = int(f.read().strip())
 
@@ -278,5 +310,32 @@ def annotate_with_driver_information(interfaces):
     (if found) for each interface.
     """
     for name in interfaces:
-        interfaces[name]['type'] = get_interface_type(name)
+        iface = interfaces[name]
+        iftype = get_interface_type(name)
+        interfaces[name]['type'] = iftype
+        if iftype == 'ethernet.bond':
+            iface['bonded_interfaces'] = get_bonded_interfaces(name)
+        elif iftype == 'ethernet.vlan':
+            iface['vid'] = get_vid_from_ifname(name)
+        elif iftype == 'ethernet.bridge':
+            iface['bridged_interfaces'] = get_bridged_interfaces(name)
     return interfaces
+
+
+def get_vid_from_ifname(ifname):
+    """Returns the VID for the specified VLAN interface name.
+
+    Returns 0 if the VID could not be determined.
+
+    :return:int
+    """
+    vid = 0
+    iface_vid_re = re.compile('.*\.([0-9]+)$')
+    iface_vid_match = iface_vid_re.match(ifname)
+    vlan_vid_re = re.compile('vlan([0-9]+)$')
+    vlan_vid_match = vlan_vid_re.match(ifname)
+    if iface_vid_match:
+        vid = int(iface_vid_match.group(1))
+    elif vlan_vid_match:
+        vid = int(vlan_vid_match.group(1))
+    return vid

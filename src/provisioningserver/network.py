@@ -149,11 +149,10 @@ def get_ip_addr_json():
     return ip_addr_json
 
 
-def _filter_likely_physical_networks_using_interface_name(networks):
+def _filter_managed_networks_by_ifname(networks):
     """
-    Given the specified list of networks and corresponding JSON, filters
-    the list of networks and returns any that may be physical interfaces
-    (based on the interface name).
+    Given the specified list of networks, filters the list of networks and
+    returns any that may be physical interfaces (based on the interface name).
 
     :param networks: A list of network dictionaries. Must contain an
         'interface' key containing the interface name.
@@ -170,11 +169,89 @@ def _filter_likely_physical_networks_using_interface_name(networks):
         ]
 
 
-def _filter_likely_physical_networks_using_json_data(networks, ip_addr_json):
+def _annotate_network_with_interface_information(network, addr_info):
+    """Adds a 'type' field to a specified dictionary which represents a network
+    interface.
+    """
+    iface = addr_info.get(network['interface'], None)
+    if iface is not None and 'type' in iface:
+        network['type'] = iface['type']
+        if 'vid' in iface:
+            network['vid'] = iface['vid']
+        if 'bridged_interfaces' in iface:
+            network['bridged_interfaces'] = ' '.join(
+                iface['bridged_interfaces'])
+        if 'bonded_interfaces' in iface:
+            network['bonded_interfaces'] = ' '.join(
+                iface['bonded_interfaces'])
+        if 'parent' in iface:
+            network['parent'] = iface['parent']
+    return network
+
+
+def _bridges_a_physical_interface(ifname, addr_info):
+    """Returns True if the bridge interface with the specified name bridges
+    at least one physical Ethernet interface. Otherwise, returns False.
+    """
+    bridge_interface = addr_info.get(ifname)
+    for interface_name in bridge_interface.get('bridged_interfaces', []):
+        iface = addr_info.get(interface_name, {})
+        if iface.get('type') == 'ethernet.physical':
+            return True
+    return False
+
+
+def _belongs_to_a_vlan(ifname, addr_info):
+    """Returns True if the interface with the specified name is needed
+    because a VLAN interface depends on it.
+    """
+    for interface_name in addr_info:
+        iface = addr_info.get(interface_name, {})
+        if iface.get('type') == 'ethernet.vlan':
+            if iface.get('parent') == ifname:
+                return True
+    return False
+
+
+def _network_name(network):
+    """Returns interface name for the specified network. (removes a trailing
+    alias, if present.)
+    """
+    return network['interface'].split(':')[0]
+
+
+def _should_manage_network(network, addr_info):
+    """Returns True if this network should be managed; otherwise returns False.
+    """
+    ifname = _network_name(network)
+    addrinfo = addr_info.get(ifname, {})
+    iftype = addrinfo.get('type', '')
+    # In general, only physical Ethernet interfaces, VLANs, and bonds
+    # are going to be managed. Since they are most likely irrelevant, (and
+    # we don't want them to create superfluous subnets) filter out virtual
+    # interfaces (whose specific type cannot be determined) and bridges.
+    # However, reconsider bridges as "possibly managed" if they are
+    # present in support of a physical Ethernet device, or a VLAN is
+    # defined on top of the bridge.
+    return (
+        addrinfo and
+        (_belongs_to_a_vlan(ifname, addr_info) or
+         iftype == 'ethernet.physical' or
+         iftype == 'ethernet.vlan' or
+         iftype == 'ethernet.bond' or
+         (iftype == 'ethernet.bridge' and
+          _bridges_a_physical_interface(ifname, addr_info))
+         )
+    )
+
+
+def _filter_and_annotate_managed_networks(networks, ip_addr_json):
     """
     Given the specified list of networks and corresponding JSON, filters
     the list of networks and returns any that are known to be physical
     interfaces. (based on driver information gathered from /sys)
+
+    Also annotates the list of networks with each network's type.
 
     :param networks: A list of network dictionaries. Must contain an
         'interface' key containing the interface name.
@@ -184,25 +261,25 @@ def _filter_likely_physical_networks_using_json_data(networks, ip_addr_json):
     addr_info = json.loads(ip_addr_json)
     assert isinstance(addr_info, dict)
     return [
-        network
+        _annotate_network_with_interface_information(network, addr_info)
         for network in networks
-        if (network['interface'] in addr_info and
-            'type' in addr_info[network['interface']] and
-            (addr_info[network['interface']]['type'] == 'ethernet.physical' or
-             addr_info[network['interface']]['type'] == 'ethernet.vlan' or
-             addr_info[network['interface']]['type'] == 'ethernet.bond'))
+        if _should_manage_network(network, addr_info)
         ]
 
 
-def filter_likely_unmanaged_networks(networks, ip_addr_json=None):
+def filter_and_annotate_networks(networks, ip_addr_json=None):
     """
     Given the specified list of networks and optional corresponding JSON,
-    filters the list of networks and returns any that are known to be physical
-    interfaces.
+    filters the list of networks and returns any that may correspond to managed
+    networks. (that is, any physical Ethernet interfaces, plus bonds and
+    VLANs.)
 
     If no interfaces are found, fall back to using the interface name to
     filter the list in a reasonable manner. (this allows support for running
     on LXCs, where all interfaces may be virtual.)
+
+    Also annotates the list of networks with their type, and other metadata
+    such as VLAN VID, bonded/bridged interfaces, or parent.
 
     :param networks: A list of network dictionaries. Must contain an
         'interface' key containing the interface name.
@@ -211,9 +288,9 @@ def filter_likely_unmanaged_networks(networks, ip_addr_json=None):
     """
     assert networks is not None
     if ip_addr_json is None:
-        return _filter_likely_physical_networks_using_interface_name(networks)
+        return _filter_managed_networks_by_ifname(networks)
     else:
-        physical_networks = _filter_likely_physical_networks_using_json_data(
+        physical_networks = _filter_and_annotate_managed_networks(
             networks, ip_addr_json)
         if len(physical_networks) > 0:
             return physical_networks
@@ -221,5 +298,57 @@ def filter_likely_unmanaged_networks(networks, ip_addr_json=None):
             # Since we couldn't find anything, fall back to using the heuristic
             # based on names. (we could be running inside a container with only
             # virtual interfaces, etc.)
-            return _filter_likely_physical_networks_using_interface_name(
+            return _filter_managed_networks_by_ifname(
                 networks)
+
+
+def _get_interface_type_priority(iface):
+    """Returns a sort key based on interface types we prefer to process
+    first when adding them to a NodeGroup.
+
+    The most important thing is that we need to process VLANs last, since they
+    require the underlying Fabric to be created first.
+    """
+    iftype = iface.get('type')
+    # Physical interfaces first, followed by bonds, followed by bridges.
+    # VLAN interfaces last.
+    # This will ensure that underlying Fabric objects can be created before
+    # any VLANs that may belong to each Fabric.
+    if iftype == "ethernet.physical":
+        return 0
+    elif iftype == "ethernet.wireless":
+        return 1
+    elif iftype == "ethernet":
+        return 2
+    elif iftype == "ethernet.bond":
+        return 3
+    elif iftype == "ethernet.bridge":
+        return 4
+    elif iftype == "ethernet.vlan":
+        return 5
+    else:
+        # We don't really care what the sort order is; they should be filtered
+        # out anyway.
+        return -1
+
+
+def _network_priority_sort_key(iface):
+    """Returns a sort key used for processing interfaces before adding them
+    to a NodeGroup.
+
+    First sorts by interface type, then interface name, then address family.
+    (Since MAAS usually manages IPv4 addresses, and we have a name
+    disambiguation funciton that can produce somewhat unfriendly names,
+    make sure the IPv4 interfaces get to go first.)
+    """
+    return (
+        _get_interface_type_priority(iface),
+        iface['interface'],
+        IPAddress(iface['ip']).version
+    )
+
+
+def sort_networks_by_priority(networks):
+    """Sorts the specified list of networks in the order in which we would
+    prefer to add them to a NodeGroup."""
+    return sorted(networks, key=_network_priority_sort_key)

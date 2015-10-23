@@ -525,6 +525,7 @@ class ClusterClient(Cluster):
 
         networks = discover_networks()
 
+        ip_addr_json = None
         try:
             ip_addr_json = get_ip_addr_json()
         except ExternalProcessError as epe:

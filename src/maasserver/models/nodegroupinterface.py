@@ -400,7 +400,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             return
         ip_version = IPAddress(self.ip).version
         similar_interfaces = self.nodegroup.nodegroupinterface_set.filter(
-            interface=self.interface)
+            interface=self.interface).exclude(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         if self.id is not None:
             similar_interfaces = similar_interfaces.exclude(id=self.id)
         potential_clashes = [

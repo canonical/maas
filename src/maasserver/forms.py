@@ -46,9 +46,10 @@ __all__ = [
 import collections
 from collections import Counter
 from functools import partial
+import hashlib
 import json
+import os
 import pipes
-from random import randint
 import re
 
 from crochet import TimeoutError
@@ -126,6 +127,7 @@ from maasserver.models import (
     Config,
     Device,
     DownloadProgress,
+    Fabric,
     Filesystem,
     Interface,
     LargeFile,
@@ -142,6 +144,7 @@ from maasserver.models import (
     SSLKey,
     Tag,
     VirtualBlockDevice,
+    VLAN,
     VolumeGroup,
     Zone,
 )
@@ -192,11 +195,15 @@ from netaddr import (
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.network import filter_likely_unmanaged_networks
+from provisioningserver.network import (
+    filter_and_annotate_networks,
+    sort_networks_by_priority,
+)
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
 )
+from provisioningserver.utils.ipaddr import get_vid_from_ifname
 from provisioningserver.utils.network import (
     ip_range_within_network,
     make_network,
@@ -1546,35 +1553,6 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     return True
 
 
-def disambiguate_name(original_name, ip_address):
-    """Return a unique variant of `original_name` for a cluster interface.
-
-    This function has no knowledge of other existing cluster interfaces.  It
-    disambiguates based purely on the given data and random numbers.
-
-    :param original_name: The originally proposed name for the cluster
-        interface, which presumably turned out to be ambiguous.
-    :param ip_address: IP address for the cluster interface (either as a
-        string or as an `IPAddress`).  Used to determine whether the interface
-        is an IPv4 one or an IPv6 one.
-    :return: A version of `original_name` with a disambiguating suffix.  The
-        suffix contains both the IP version (`ipv4` or `ipv6`) and possibly a
-        random part to avoid further clashes.
-    """
-    ip_version = IPAddress(ip_address).version
-    assert ip_version in (4, 6)
-    if ip_version == 6:
-        # IPv6 cluster interface.  In principle there could be many of these
-        # on the same network interface, so add a random suffix.
-        suffix = 'ipv6-%d' % randint(10000, 99999)
-    else:
-        # IPv4 cluster interface.  There can be only one of these on the
-        # network interface, so just suffixing '-ipv4' to the name should make
-        # it unique.
-        suffix = 'ipv4'
-    return '%s-%s' % (original_name, suffix)
-
-
 class NodeGroupInterfaceForm(MAASModelForm):
 
     management = forms.TypedChoiceField(
@@ -1628,6 +1606,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
 
         subnet = None
         if self.instance and self.instance.subnet and ip and subnet_mask:
+            # Existing NodeGroupInterface, so just update the existing Subnet.
             cidr = create_cidr(ip, subnet_mask)
             subnet = self.instance.subnet
             subnet.update_cidr(cidr)
@@ -1635,20 +1614,100 @@ class NodeGroupInterfaceForm(MAASModelForm):
                 subnet.gateway_ip = router_ip
             subnet.save()
         elif subnet_mask:
+            # New NodeGroupInterface, so create the Subnet (if we have enough
+            # information).
             cidr = create_cidr(ip, subnet_mask)
-            subnet, _ = Subnet.objects.get_or_create(
+            subnet, created = Subnet.objects.get_or_create(
                 cidr=cidr, defaults={
                     'name': cidr,
                     'cidr': cidr,
                     'gateway_ip': router_ip,
                     'space': Space.objects.get_default_space()
                 })
+            if created:
+                # Check if a Subnet was already created for a matching
+                # interface. (this could happen if multiple IP addresses
+                # are assigned to the same interface.)
+                vlan = None
+                ifname = self.cleaned_data.get('interface')
+                if self.instance:
+                    vlan = VLAN.objects.filter_by_nodegroup_interface(
+                        self.instance.nodegroup, ifname).order_by('id').first()
+                if vlan is not None:
+                    # Found an existing VLAN that matches this interface.
+                    # No need to create a new one; just assign that VLAN
+                    # to the subnet that was found.
+                    subnet.vlan = vlan
+                    subnet.save()
+                elif self.data.get('type') == 'ethernet.vlan':
+                    # If we're creating a VLAN, we must be intending to put
+                    # the VLAN on a Fabric that already exists.
+                    # Check the VLAN's parent interface to see if it is
+                    # already associated with a VLAN (and hence a Fabric).
+                    vid = self.data.get('vid', get_vid_from_ifname(ifname))
+                    parent = self.data.get('parent')
+                    fabric = Fabric.objects.filter_by_nodegroup_interface(
+                        self.instance.nodegroup, parent).first()
+                    if fabric is None:
+                        fabric = Fabric.objects.get_or_create_for_subnet(
+                            subnet)
+                    vlan = VLAN.objects.create(vid=vid, fabric=fabric)
+                    subnet.vlan = vlan
+                    subnet.save()
+                else:
+                    # If we created a new Subnet, and it's *not* a tagged VLAN
+                    # (and we didn't find an existing interface above), that
+                    # means we need to create a new Fabric and place the
+                    # subnet in its default VLAN.
+                    fabric = Fabric.objects.get_or_create_for_subnet(
+                        subnet)
+                    subnet.vlan = fabric.get_default_vlan()
+                    subnet.save()
 
         interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
         if interface.subnet != subnet:
             interface.subnet = subnet
             interface.save()
         return interface
+
+    def _ensure_unique_cluster_interface_name(self, name, interface):
+        """
+        Ensures that the specified interface name is unique. Appends a portion
+        of a unique sha256 hex string (and the IP version) if not.
+
+        :param name: The tentative "friendly" name of this cluster interface.
+        :param interface: The name of the network interface.
+        :return:str
+        """
+        # Get the cluster to which this interface is attached.  There may not
+        # be one, since it may be a placeholder instance that is still being
+        # initialised by the same request that is also creating the interface.
+        # In that case, self.instance.nodegroup will not be None, but rather
+        # an ORM stub which crashes when accessed.
+        cluster = get_one(
+            NodeGroup.objects.filter(id=self.instance.nodegroup_id))
+        if cluster is not None and interface:
+            siblings = cluster.nodegroupinterface_set
+            while siblings.filter(name=name).exists():
+                # In case the interface name already exists, use a
+                # cryptographic hash based on the interface name and address
+                # (plus some random bytes for good measure).
+                ip_address = self.cleaned_data['ip']
+                ip_version = IPAddress(ip_address).version
+                sha = hashlib.sha256()
+                sha.update(name)
+                sha.update(ip_address)
+                sha.update(self.cleaned_data['subnet_mask'])
+                sha.update(os.urandom(32))
+                digest = sha.hexdigest()
+                for i in range(4, 65):
+                    # The upper bound of this range() will be 64, so that
+                    # we can get the full sha256 hex string if needed.
+                    suffix = digest[:i]
+                    new_name = '%s-ipv%d-%s' % (name, ip_version, suffix)
+                    if not siblings.filter(name=new_name).exists():
+                        return new_name
+        return name
 
     def compute_name(self):
         """Return the value the `name` field should have.
@@ -1670,20 +1729,9 @@ class NodeGroupInterfaceForm(MAASModelForm):
         # compatibility with clients that expect the pre-1.6 behaviour, where
         # the 'name' and 'interface' fields were the same thing.
         interface = self.cleaned_data.get('interface')
-        name = make_name_from_interface(interface)
-        # Get the cluster to which this interface is attached.  There may not
-        # be one, since it may be a placeholder instance that is still being
-        # initialised by the same request that is also creating the interface.
-        # In that case, self.instance.nodegroup will not be None, but rather
-        # an ORM stub which crashes when accessed.
-        cluster = get_one(
-            NodeGroup.objects.filter(id=self.instance.nodegroup_id))
-        if cluster is not None and interface:
-            siblings = cluster.nodegroupinterface_set
-            if siblings.filter(name=name).exists():
-                # This name is already in use.  Add a suffix to make it unique.
-                return disambiguate_name(name, self.cleaned_data['ip'])
-
+        name = make_name_from_interface(
+            interface, alias=self.data.get('alias'))
+        name = self._ensure_unique_cluster_interface_name(name, interface)
         return name
 
     def get_duplicate_fqdns(self):
@@ -1705,6 +1753,18 @@ class NodeGroupInterfaceForm(MAASModelForm):
         duplicates.extend(other_cluster_duplicates)
 
         return set(duplicates)
+
+    def clean_interface(self):
+        # Interface names must be consistent, so that if eth0 and eth0:1
+        # are added as cluster interfaces, they can be associated with the
+        # same VLANs. Save the alias so that we can use it in to
+        # disambiguate the interface name.
+        ifname = self.cleaned_data['interface']
+        if ':' in ifname:
+            alias = ifname.strip().split(':', 1)[1]
+            self.data['alias'] = alias
+            ifname = ifname.strip().split(':')[0]
+        return ifname
 
     def clean_management(self):
         management = self.cleaned_data['management']
@@ -2018,7 +2078,7 @@ class NodeGroupDefineForm(MAASModelForm):
 
         # Try to only manage physical Ethernet interfaces.
         ip_addr_json = self.data.get('ip_addr_json', None)
-        interfaces = filter_likely_unmanaged_networks(interfaces, ip_addr_json)
+        interfaces = filter_and_annotate_networks(interfaces, ip_addr_json)
 
         for interface in interfaces:
             validate_nodegroupinterface_definition(interface)
@@ -2033,9 +2093,7 @@ class NodeGroupDefineForm(MAASModelForm):
         # unique names for cluster interfaces on the same network interface,
         # the IPv4 one will get first stab at getting the exact same name as
         # the network interface.
-        interfaces = sorted(
-            self.cleaned_data['interfaces'],
-            key=lambda definition: IPAddress(definition['ip']).version)
+        interfaces = sort_networks_by_priority(self.cleaned_data['interfaces'])
         for interface in interfaces:
             instance = NodeGroupInterface(nodegroup=nodegroup)
             form = NodeGroupInterfaceForm(data=interface, instance=instance)
