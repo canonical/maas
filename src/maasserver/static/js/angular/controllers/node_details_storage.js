@@ -58,8 +58,49 @@ angular.module('MAAS').controller('NodeStorageController', [
             DELETE: "delete",
             FORMAT_AND_MOUNT: "format-mount",
             PARTITION: "partition",
-            BCACHE: "bcache"
+            BCACHE: "bcache",
+            RAID: "raid"
         };
+
+        // Different available raid modes.
+        var RAID_MODES = [
+            {
+                level: "raid-0",
+                title: "RAID 0",
+                min_disks: 2,
+                allows_spares: false,
+                calculateSize: function(minSize, numDisks) {
+                    return minSize * numDisks;
+                }
+            },
+            {
+                level: "raid-1",
+                title: "RAID 1",
+                min_disks: 2,
+                allows_spares: true,
+                calculateSize: function(minSize, numDisks) {
+                    return minSize;
+                }
+            },
+            {
+                level: "raid-5",
+                title: "RAID 5",
+                min_disks: 3,
+                allows_spares: true,
+                calculateSize: function(minSize, numDisks) {
+                    return minSize * (numDisks - 1);
+                }
+            },
+            {
+                level: "raid-6",
+                title: "RAID 6",
+                min_disks: 4,
+                allows_spares: true,
+                calculateSize: function(minSize, numDisks) {
+                    return minSize * (numDisks - 2);
+                }
+            }
+        ];
 
         $scope.editing = false;
         $scope.editing_tags = false;
@@ -416,31 +457,31 @@ angular.module('MAAS').controller('NodeStorageController', [
             return pattern.test(string);
         }
 
-        // Extract the index from the bcache name.
-        function getBcacheIndexFromName(name) {
-            var pattern = /^bcache([0-9]+)$/;
+        // Extract the index from the name based on prefix.
+        function getIndexFromName(prefix, name) {
+            var pattern = new RegExp("^" + prefix + "([0-9]+)$");
             var match = pattern.exec(name);
             if(angular.isArray(match) && match.length === 2) {
                 return parseInt(match[1], 10);
             }
         }
 
-        // Get the next bcache device name.
-        function getNextBcacheName() {
+        // Get the next device name based on prefix.
+        function getNextName(prefix) {
             var idx = -1;
             angular.forEach($scope.node.disks, function(disk) {
-                var bcacheIdx = getBcacheIndexFromName(disk.name);
-                if(angular.isNumber(bcacheIdx)) {
-                    idx = Math.max(idx, bcacheIdx);
+                var dIdx = getIndexFromName(prefix, disk.name);
+                if(angular.isNumber(dIdx)) {
+                    idx = Math.max(idx, dIdx);
                 }
                 angular.forEach(disk.partitions, function(partition) {
-                    bcacheIdx = getBcacheIndexFromName(partition.name);
-                    if(angular.isNumber(bcacheIdx)) {
-                        idx = Math.max(idx, bcacheIdx);
+                    dIdx = getIndexFromName(prefix, partition.name);
+                    if(angular.isNumber(dIdx)) {
+                        idx = Math.max(idx, dIdx);
                     }
                 });
             });
-            return "bcache" + (idx + 1);
+            return prefix + (idx + 1);
         }
 
         // Called by $parent when the node has been loaded.
@@ -569,6 +610,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             if(disk.type === "virtual") {
                 if(disk.parent_type === "lvm-vg") {
                     return "Logical Volume";
+                } else if(disk.parent_type.indexOf("raid-") === 0) {
+                    return "RAID " + disk.parent_type.split("-")[1];
                 } else {
                     return capitalizeFirstLetter(disk.parent_type);
                 }
@@ -843,6 +886,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             } else if(disk.type === "virtual") {
                 if(disk.parent_type === "lvm-vg") {
                     return "logical volume";
+                } else if(disk.parent_type.indexOf("raid-") === 0) {
+                    return "RAID " + disk.parent_type.split("-")[1] + " disk";
                 } else {
                     return disk.parent_type + " disk";
                 }
@@ -1120,13 +1165,20 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
             $scope.availableMode = SELECTION_MODE.BCACHE;
             $scope.availableNew = {
-                name: getNextBcacheName(),
+                name: getNextName("bcache"),
                 device: $scope.getSelectedAvailable()[0],
                 cacheset: $scope.cachesets[0],
                 cacheMode: "writeback",
                 fstype: null,
                 mountPoint: ""
             };
+        };
+
+        // Clear mount point when the fstype is changed.
+        $scope.fstypeChanged = function() {
+            if($scope.availableNew.fstype === null) {
+                $scope.availableNew.mountPoint = "";
+            }
         };
 
         // Return true when the name of the new disk is invalid.
@@ -1194,6 +1246,201 @@ angular.module('MAAS').controller('NodeStorageController', [
             // Remove device from available.
             var idx = $scope.available.indexOf($scope.availableNew.device);
             $scope.available.splice(idx, 1);
+            $scope.availableNew = {};
+
+            // Update the selection.
+            $scope.updateAvailableSelection(true);
+        };
+
+        // Return true if a RAID can be created.
+        $scope.canCreateRAID = function() {
+            if($scope.isAvailableDisabled()) {
+                return false;
+            }
+
+            var selected = $scope.getSelectedAvailable();
+            if(selected.length > 1) {
+                var i;
+                for(i = 0; i < selected.length; i++) {
+                    if($scope.hasUnmountedFilesystem(selected[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        };
+
+        // Called to create a RAID.
+        $scope.createRAID = function() {
+            if(!$scope.canCreateRAID()) {
+                return;
+            }
+            $scope.availableMode = SELECTION_MODE.RAID;
+            $scope.availableNew = {
+                name: getNextName("md"),
+                devices: $scope.getSelectedAvailable(),
+                mode: null,
+                spares: [],
+                fstype: null,
+                mountPoint: ""
+            };
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[0];
+        };
+
+        // Get the available RAID modes.
+        $scope.getAvailableRAIDModes = function() {
+            if(!angular.isObject($scope.availableNew) ||
+                !angular.isArray($scope.availableNew.devices)) {
+                return [];
+            }
+
+            var modes = [];
+            angular.forEach(RAID_MODES, function(mode) {
+                if($scope.availableNew.devices.length >= mode.min_disks) {
+                    modes.push(mode);
+                }
+            });
+            return modes;
+        };
+
+        // Return the total number of available spares for the current mode.
+        $scope.getTotalNumberOfAvailableSpares = function() {
+            var mode = $scope.availableNew.mode;
+            if(angular.isUndefined(mode) || !mode.allows_spares) {
+                return 0;
+            } else {
+                var diff = $scope.availableNew.devices.length - mode.min_disks;
+                if(diff < 0) {
+                    diff = 0;
+                }
+                return diff;
+            }
+        };
+
+        // Return the number of remaining spares that can be selected.
+        $scope.getNumberOfRemainingSpares = function() {
+            var allowed = $scope.getTotalNumberOfAvailableSpares();
+            if(allowed <= 0) {
+                return 0;
+            } else {
+                return allowed - $scope.availableNew.spares.length;
+            }
+        };
+
+        // Return true if the spares column should be shown.
+        $scope.showSparesColumn = function() {
+            return $scope.getTotalNumberOfAvailableSpares() > 0;
+        };
+
+        // Called when the RAID mode is changed to reset the selected spares.
+        $scope.RAIDModeChanged = function() {
+            $scope.availableNew.spares = [];
+        };
+
+        // Return true if the disk is an active RAID member.
+        $scope.isActiveRAIDMember = function(disk) {
+            var idx = $scope.availableNew.spares.indexOf(getUniqueKey(disk));
+            return idx === -1;
+        };
+
+        // Return true if the disk is a spare RAID member.
+        $scope.isSpareRAIDMember = function(disk) {
+            return !$scope.isActiveRAIDMember(disk);
+        };
+
+        // Set the disk as an active RAID member.
+        $scope.setAsActiveRAIDMember = function(disk) {
+            var idx = $scope.availableNew.spares.indexOf(getUniqueKey(disk));
+            if(idx > -1) {
+                $scope.availableNew.spares.splice(idx, 1);
+            }
+        };
+
+        // Set the disk as a spare RAID member.
+        $scope.setAsSpareRAIDMember = function(disk) {
+            var key = getUniqueKey(disk);
+            var idx = $scope.availableNew.spares.indexOf(key);
+            if(idx === -1) {
+                $scope.availableNew.spares.push(key);
+            }
+        };
+
+        // Return the size of the new RAID device.
+        $scope.getNewRAIDSize = function() {
+            if(angular.isUndefined($scope.availableNew.mode)) {
+                return "";
+            }
+            var calculateSize = $scope.availableNew.mode.calculateSize;
+            if(!angular.isFunction(calculateSize)) {
+                return "";
+            }
+
+            // Get the number of disks and the minimum disk size in the RAID.
+            var numDisks = (
+                $scope.availableNew.devices.length -
+                $scope.availableNew.spares.length);
+            var minSize = Number.MAX_VALUE;
+            angular.forEach($scope.availableNew.devices, function(device) {
+                minSize = Math.min(minSize, device.original.available_size);
+            });
+
+            // Calculate the new size.
+            var size = calculateSize(minSize, numDisks);
+            return ConverterService.bytesToUnits(size).string;
+        };
+
+        // Return true if RAID can be saved.
+        $scope.createRAIDCanSave = function() {
+            return (
+                !$scope.isNewDiskNameInvalid() &&
+                !$scope.isMountPointInvalid($scope.availableNew.mountPoint));
+        };
+
+        // Confirm and create the RAID device.
+        $scope.availableConfirmCreateRAID = function() {
+            if(!$scope.createRAIDCanSave()) {
+                return;
+            }
+
+            // Create the RAID.
+            var params = {
+                name: $scope.availableNew.name,
+                level: $scope.availableNew.mode.level,
+                block_devices: [],
+                partitions: [],
+                spare_devices: [],
+                spare_partitions: []
+            };
+            angular.forEach($scope.availableNew.devices, function(device) {
+                if($scope.isActiveRAIDMember(device)) {
+                    if(device.type === "partition") {
+                        params.partitions.push(device.partition_id);
+                    } else {
+                        params.block_devices.push(device.block_id);
+                    }
+                } else {
+                    if(device.type === "partition") {
+                        params.spare_partitions.push(device.partition_id);
+                    } else {
+                        params.spare_devices.push(device.block_id);
+                    }
+                }
+            });
+            if(angular.isString($scope.availableNew.fstype) &&
+                $scope.availableNew.fstype !== "") {
+                params.fstype = $scope.availableNew.fstype;
+                if($scope.availableNew.mountPoint !== "") {
+                    params.mount_point = $scope.availableNew.mountPoint;
+                }
+            }
+            NodesManager.createRAID($scope.node, params);
+
+            // Remove devices from available.
+            angular.forEach($scope.availableNew.devices, function(device) {
+                var idx = $scope.available.indexOf($scope.availableNew.device);
+                $scope.available.splice(idx, 1);
+            });
             $scope.availableNew = {};
 
             // Update the selection.

@@ -926,8 +926,8 @@
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'bcache'">
                                 <div class="table__data table__column--3">
-                                  <input class="checkbox" type="checkbox" id="bcache-create" disabled="disabled" checked />
-                                  <label class="checkbox-label" for="bcache-create"></label>
+                                    <input class="checkbox" type="checkbox" id="bcache-create" disabled="disabled" checked />
+                                    <label class="checkbox-label" for="bcache-create"></label>
                                 </div>
                                 <div class="table__data table__column--15">
                                     <input type="text" class="table__input"
@@ -962,6 +962,7 @@
                                             <label for="type">File system</label>
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
+                                                data-ng-change="fstypeChanged()"
                                                 data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                 <option value="">Unformatted</option>
                                             </select>
@@ -969,8 +970,9 @@
                                         <div class="table__data table__column--30">
                                             <label for="mountpoint">Mount point</label>
                                             <input type="text" id="mountpoint"
-                                                ng-model="availableNew.mountPoint"
-                                                ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                                data-ng-model="availableNew.mountPoint"
+                                                data-ng-disabled="availableNew.fstype === null"
+                                                data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
                                         <div class="table__data table__column--7"></div>
                                     </div>
@@ -999,9 +1001,98 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="table__row active" data-ng-show="availableMode === 'raid'">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="raid-create" disabled="disabled" checked />
+                                    <label class="checkbox-label" for="raid-create"></label>
+                                </div>
+                                <div class="table__data table__column--15">
+                                    <input type="text" class="table__input"
+                                        data-ng-class="{ invalid: isNewDiskNameInvalid() }"
+                                        data-ng-model="availableNew.name">
+                                </div>
+                                <div class="table__data table__column--15">{$ getNewRAIDSize() $}</div>
+                                <div class="table__data table__column--15">{$ availableNew.mode.title $}</div>
+                                <div class="table__data table__column--45"></div>
+                                <div class="table__data table__column--7"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row padding-bottom--ten">
+                                        <div class="table__data table__column--3"></div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">RAID type</label>
+                                            <select name="type" id="type"
+                                                data-ng-model="availableNew.mode"
+                                                data-ng-change="RAIDModeChanged()"
+                                                data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--15"></div>
+                                        <div class="table__data table__column--15"></div>
+                                        <div class="table__data table__column--15">
+                                            <label for="type">File system</label>
+                                            <select name="filesys"
+                                                data-ng-model="availableNew.fstype"
+                                                data-ng-change="fstypeChanged()"
+                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                <option value="">Unformatted</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table__column--30">
+                                            <label for="mountpoint">Mount point</label>
+                                            <input type="text" id="mountpoint"
+                                                data-ng-model="availableNew.mountPoint"
+                                                data-ng-disabled="availableNew.fstype === null"
+                                                data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                        </div>
+                                        <div class="table__data table__column--7"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                                        <div class="table__header table__column--5"></div>
+                                        <div class="table__header table__column--15">Name</div>
+                                        <div class="table__header table__column--15">Size</div>
+                                        <div class="table__header table__column--15">Device type</div>
+                                        <div class="table__header table__column--10">Active</div>
+                                        <div class="table__header table__column--15">
+                                            <span data-ng-show="showSparesColumn()">Spare (Maximum {$ getTotalNumberOfAvailableSpares() $})</span>
+                                        </div>
+                                        <div class="table__header table__column--25"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row no-border"
+                                        data-ng-repeat="device in availableNew.devices">
+                                        <div class="table__data no-padding-top table__column--5"></div>
+                                        <div class="table__data no-padding-top table__column--15">{$ device.name $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ device.size_human $}</div>
+                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(device) $}</div>
+                                        <div class="table__data no-padding-top table__column--10">
+                                            <input type="radio"
+                                                data-ng-checked="isActiveRAIDMember(device)"
+                                                data-ng-click="setAsActiveRAIDMember(device)">
+                                        </div>
+                                        <div class="table__data no-padding-top table__column--15">
+                                            <input type="radio"
+                                                data-ng-show="showSparesColumn()"
+                                                data-ng-checked="isSpareRAIDMember(device)"
+                                                data-ng-click="setAsSpareRAIDMember(device)"
+                                                data-ng-disabled="getNumberOfRemainingSpares() <= 0">
+                                        </div>
+                                        <div class="table__data no-padding-top table__column--25"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row">
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button"
+                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="cta-ubuntu"
+                                                data-ng-disabled="!createRAIDCanSave()"
+                                                data-ng-click="availableConfirmCreateRAID()">Create RAID</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </main>
                     </section>
-                    <a class="link-cta-ubuntu secondary margin-right ng-hide">Create RAID</a>
+                    <a class="link-cta-ubuntu secondary margin-right"
+                        data-ng-disabled="!canCreateRAID()"
+                        data-ng-click="createRAID()">Create RAID</a>
                     <a class="link-cta-ubuntu secondary margin-right ng-hide">Create LVM</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateCacheSet()"
@@ -1208,114 +1299,7 @@
                 // MArkup for creating a raid. This has multiple rows for the
                 // RAID settings, disks within the raid and then save / cancel controls.
 
-                <div class="table__row active">
-                    <div class="table__data table__column--3">
-                      <input class="checkbox" type="checkbox" id="check-all" />
-                      <label class="checkbox-label" for="check-all"></label>
-                    </div>
-                    <div class="table__data table__column--15">
-                        <input type="text" value="raid0" class="table__input">
-                    </div>
-                    <div class="table__data table__column--15">34 G</div>
-                    <div class="table__data table__column--15">RAID</div>
-                    <div class="table__data table__column--45"></div>
-                    <div class="table__data table__column--7">
-                        <div class="table__controls">
-                            <a class="icon partition">Partition</a>
-                            <a class="icon delete">Delete</a>
-                        </div>
-                    </div>
-                    <div class="table__dropdown">
-                        <div class="table__row table__dropdown-row padding-bottom--ten">
-                          <div class="table__data table__column--3">
-                          </div>
-                          <div class="table__data table__column--15">
-                              <label for="type">RAID type</label>
-                              <select name="type" id="type">
-                                  <option value="raid5">RAID 5</option>
-                              </select>
-                          </div>
-                          <div class="table__data table__column--15">
-                              <label for="type">File system</label>
-                              <select name="type" id="type">
-                                  <option value="raid5">fat32</option>
-                              </select>
-                          </div>
-                          <div class="table__data table__column--30">
-                              <label for="mtPoint">Mount point</label>
-                              <input type="text">
-                          </div>
-                          <div class="table__data table__column--37"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row table__dropdown-row--head">
-                            <div class="table__header table__column--5"></div>
-                            <div class="table__header table__column--15">Name</div>
-                            <div class="table__header table__column--15">Size</div>
-                            <div class="table__header table__column--15">Device type</div>
-                            <div class="table__header table__column--10">Active</div>
-                            <div class="table__header table__column--15">Spare (Maximum 1)</div>
-                            <div class="table__header table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sdb</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare">
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sdb</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare">
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sdb</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare">
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row no-border">
-                            <div class="table__data no-padding-top table__column--5"></div>
-                            <div class="table__data no-padding-top table__column--15">sdb</div>
-                            <div class="table__data no-padding-top table__column--15">8.5 G</div>
-                            <div class="table__data no-padding-top table__column--15">Physical</div>
-                            <div class="table__data no-padding-top table__column--10">
-                                <input type="radio" name="active" value="active">
-                            </div>
-                            <div class="table__data no-padding-top table__column--15">
-                                <input type="radio" name="active" value="spare">
-                            </div>
-                            <div class="table__data no-padding-top table__column--25"></div>
-                        </div>
-                        <div class="table__row table__dropdown-row">
-                            <div class="table__data right">
-                                <a href="" class="link-cta-ubuntu text-button">Cancel</a>
-                                <button class="cta-ubuntu">Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
 
                 -->
             </form>

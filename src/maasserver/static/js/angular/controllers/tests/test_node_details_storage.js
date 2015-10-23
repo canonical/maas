@@ -866,6 +866,16 @@ describe("NodeStorageController", function() {
             expect($scope.getDeviceType(disk)).toBe("Logical Volume");
         });
 
+        it("returns raid", function() {
+            var controller = makeController();
+            var disk = {
+                type: "virtual",
+                parent_type: "raid-5"
+            };
+
+            expect($scope.getDeviceType(disk)).toBe("RAID 5");
+        });
+
         it("returns parent_type", function() {
             var controller = makeController();
             var disk = {
@@ -1640,6 +1650,14 @@ describe("NodeStorageController", function() {
                 type: "virtual",
                 parent_type: "lvm-vg"
             })).toBe("logical volume");
+        });
+
+        it("returns 'RAID %d' for virtual on raid", function() {
+            var controller = makeController();
+            expect($scope.getRemoveTypeText({
+                type: "virtual",
+                parent_type: "raid-1"
+            })).toBe("RAID 1 disk");
         });
 
         it("returns parent_type + 'disk' for other virtual", function() {
@@ -2451,6 +2469,32 @@ describe("NodeStorageController", function() {
         });
     });
 
+    describe("fstypeChanged", function() {
+
+        it("leave mountPoint when fstype is not null", function() {
+            var controller = makeController();
+            var mountPoint = makeName("srv");
+            $scope.availableNew = {
+                fstype: "ext4",
+                mountPoint: mountPoint
+            };
+
+            $scope.fstypeChanged();
+            expect($scope.availableNew.mountPoint).toBe(mountPoint);
+        });
+
+        it("clear mountPoint when fstype null", function() {
+            var controller = makeController();
+            $scope.availableNew = {
+                fstype: null,
+                mountPoint: makeName("srv")
+            };
+
+            $scope.fstypeChanged();
+            expect($scope.availableNew.mountPoint).toBe("");
+        });
+    });
+
     describe("isNewDiskNameInvalid", function() {
 
         it("returns true if blank name", function() {
@@ -2629,6 +2673,610 @@ describe("NodeStorageController", function() {
             expect($scope.available).toEqual([]);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
+        });
+    });
+
+    describe("canCreateRAID", function() {
+
+        it("returns false isAvailableDisabled returns true", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            expect($scope.canCreateRAID()).toBe(false);
+        });
+
+        it("returns false if less than 2 is selected", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
+            expect($scope.canCreateRAID()).toBe(false);
+        });
+
+        it("returns false if any selected has filesystem", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
+            expect($scope.canCreateRAID()).toBe(false);
+        });
+
+        it("returns true if more than 1 selected", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            expect($scope.canCreateRAID()).toBe(true);
+        });
+    });
+
+    describe("createRAID", function() {
+
+        it("does nothing if canCreateRAID returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "canCreateRAID").and.returnValue(false);
+            $scope.availableMode = "other";
+
+            $scope.createRAID();
+            expect($scope.availableMode).toBe("other");
+        });
+
+        it("sets up availableNew", function() {
+            var controller = makeController();
+            spyOn($scope, "canCreateRAID").and.returnValue(true);
+            $scope.availableMode = "other";
+
+            // Add md name to create a name after that index.
+            var otherRAID = {
+                name: "md4"
+            };
+            node.disks = [otherRAID];
+
+            // Will be set as the devices.
+            var disk0 = {
+                $selected: true
+            };
+            var disk1 = {
+                $selected: true
+            };
+            $scope.available = [disk0, disk1];
+
+            $scope.createRAID();
+            expect($scope.availableMode).toBe("raid");
+            expect($scope.availableNew.name).toBe("md5");
+            expect($scope.availableNew.devices).toEqual([disk0, disk1]);
+            expect($scope.availableNew.mode.level).toEqual("raid-0");
+            expect($scope.availableNew.spares).toEqual([]);
+            expect($scope.availableNew.fstype).toBeNull();
+            expect($scope.availableNew.mountPoint).toEqual("");
+        });
+    });
+
+    describe("getAvailableRAIDModes", function() {
+
+        it("returns empty list if availableNew null", function() {
+            var controller = makeController();
+            $scope.availableNew = null;
+
+            expect($scope.getAvailableRAIDModes()).toEqual([]);
+        });
+
+        it("returns empty list if availableNew.devices not defined",
+            function() {
+                var controller = makeController();
+                $scope.availableNew = {};
+
+                expect($scope.getAvailableRAIDModes()).toEqual([]);
+            });
+
+        it("returns raid 0 and 1 for 2 disks", function() {
+            var controller = makeController();
+            $scope.availableNew.devices = [{}, {}];
+
+            var modes = $scope.getAvailableRAIDModes();
+            expect(modes[0].level).toEqual("raid-0");
+            expect(modes[1].level).toEqual("raid-1");
+        });
+
+        it("returns raid 0,1,5 for 3 disks", function() {
+            var controller = makeController();
+            $scope.availableNew.devices = [{}, {}, {}];
+
+            var modes = $scope.getAvailableRAIDModes();
+            expect(modes[0].level).toEqual("raid-0");
+            expect(modes[1].level).toEqual("raid-1");
+            expect(modes[2].level).toEqual("raid-5");
+        });
+
+        it("returns raid 0,1,5,6 for 4 disks", function() {
+            var controller = makeController();
+            $scope.availableNew.devices = [{}, {}, {}, {}];
+
+            var modes = $scope.getAvailableRAIDModes();
+            expect(modes[0].level).toEqual("raid-0");
+            expect(modes[1].level).toEqual("raid-1");
+            expect(modes[2].level).toEqual("raid-5");
+            expect(modes[3].level).toEqual("raid-6");
+        });
+    });
+
+    describe("getTotalNumberOfAvailableSpares", function() {
+
+        var modes = [
+            {
+                level: "raid-0",
+                min_disks: 2,
+                allows_spares: false
+            },
+            {
+                level: "raid-1",
+                min_disks: 2,
+                allows_spares: true
+            },
+            {
+                level: "raid-5",
+                min_disks: 3,
+                allows_spares: true
+            },
+            {
+                level: "raid-6",
+                min_disks: 4,
+                allows_spares: true
+            }
+        ];
+
+        angular.forEach(modes, function(mode) {
+
+            it("returns current result for " + mode.level, function() {
+                var controller = makeController();
+                $scope.availableNew.mode = mode;
+                if(!mode.allows_spares) {
+                    expect($scope.getTotalNumberOfAvailableSpares()).toBe(0);
+                } else {
+                    var count = makeInteger(mode.min_disks, 100);
+                    var i, devices = [];
+                    for(i = 0; i < count; i++) {
+                        devices.push({});
+                    }
+                    $scope.availableNew.devices = devices;
+                    expect(
+                        $scope.getTotalNumberOfAvailableSpares(),
+                        count - mode.min_disks);
+                }
+            });
+        });
+    });
+
+    describe("getNumberOfRemainingSpares", function() {
+
+        it("returns 0 when getTotalNumberOfAvailableSpares returns 0",
+            function() {
+                var controller = makeController();
+                spyOn(
+                    $scope,
+                    "getTotalNumberOfAvailableSpares").and.returnValue(0);
+
+                expect($scope.getNumberOfRemainingSpares()).toBe(0);
+            });
+
+        it("returns allowed minus the current number of spares",
+            function() {
+                var controller = makeController();
+                var count = makeInteger(10, 100);
+                spyOn(
+                    $scope,
+                    "getTotalNumberOfAvailableSpares").and.returnValue(count);
+                var sparesCount = makeInteger(0, count);
+                var i, spares = [];
+                for(i = 0; i < sparesCount; i++) {
+                    spares.push({});
+                }
+                $scope.availableNew.spares = spares;
+
+                expect($scope.getNumberOfRemainingSpares()).toBe(
+                    count - sparesCount);
+            });
+    });
+
+    describe("showSparesColumn", function() {
+
+        it("returns true when getTotalNumberOfAvailableSpares greater than 0",
+            function() {
+                var controller = makeController();
+                spyOn(
+                    $scope,
+                    "getTotalNumberOfAvailableSpares").and.returnValue(1);
+
+                expect($scope.showSparesColumn()).toBe(true);
+            });
+
+        it("returns false when getTotalNumberOfAvailableSpares less than 1",
+            function() {
+                var controller = makeController();
+                spyOn(
+                    $scope,
+                    "getTotalNumberOfAvailableSpares").and.returnValue(0);
+
+                expect($scope.showSparesColumn()).toBe(false);
+            });
+    });
+
+    describe("RAIDModeChanged", function() {
+
+        it("clears availableNew.spares", function() {
+            var controller = makeController();
+            $scope.availableNew.spares = [{}, {}];
+
+            $scope.RAIDModeChanged();
+            expect($scope.availableNew.spares).toEqual([]);
+        });
+    });
+
+    describe("isActiveRAIDMember", function() {
+
+        it("returns true when disk key not in spares", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+            $scope.setAsActiveRAIDMember(disk);
+
+            expect($scope.isActiveRAIDMember(disk)).toBe(true);
+        });
+
+        it("returns false when disk key in spares", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+            $scope.setAsSpareRAIDMember(disk);
+
+            expect($scope.isActiveRAIDMember(disk)).toBe(false);
+        });
+    });
+
+    describe("isSpareRAIDMember", function() {
+
+        it("returns false when disk key not in spares", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+            $scope.setAsActiveRAIDMember(disk);
+
+            expect($scope.isSpareRAIDMember(disk)).toBe(false);
+        });
+
+        it("returns true when disk key in spares", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+            $scope.setAsSpareRAIDMember(disk);
+
+            expect($scope.isSpareRAIDMember(disk)).toBe(true);
+        });
+    });
+
+    describe("setAsActiveRAIDMember", function() {
+
+        it("sets the disk as an active RAID member", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+
+            $scope.setAsSpareRAIDMember(disk);
+            expect($scope.isSpareRAIDMember(disk)).toBe(true);
+
+            $scope.setAsActiveRAIDMember(disk);
+            expect($scope.isActiveRAIDMember(disk)).toBe(true);
+        });
+    });
+
+    describe("setAsSpareRAIDMember", function() {
+
+        it("sets the disk as a spare RAID member", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                block_id: makeInteger()
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk];
+
+            $scope.setAsActiveRAIDMember(disk);
+            expect($scope.isActiveRAIDMember(disk)).toBe(true);
+
+            $scope.setAsSpareRAIDMember(disk);
+            expect($scope.isSpareRAIDMember(disk)).toBe(true);
+        });
+    });
+
+    describe("getNewRAIDSize", function() {
+
+        it("gets proper raid-0 size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[0];
+
+            expect($scope.getNewRAIDSize()).toBe("2.0 MB");
+        });
+
+        it("gets proper raid-1 size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[1];
+
+            expect($scope.getNewRAIDSize()).toBe("1.0 MB");
+        });
+
+        it("gets proper raid-5 size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk2 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var spare0 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1, disk2, spare0];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[2];
+            $scope.setAsSpareRAIDMember(spare0);
+
+            expect($scope.getNewRAIDSize()).toBe("2.0 MB");
+        });
+
+        it("gets proper raid-6 size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk2 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk3 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var spare0 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1, disk2, disk3, spare0];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[3];
+            $scope.setAsSpareRAIDMember(spare0);
+
+            expect($scope.getNewRAIDSize()).toBe("2.0 MB");
+        });
+    });
+
+    describe("createRAIDCanSave", function() {
+
+        it("returns false if isNewDiskNameInvalid returns true", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "/";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(true);
+
+            expect($scope.createRAIDCanSave()).toBe(false);
+        });
+
+        it("returns false if isMountPointInvalid returns true", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "not/absolute";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
+
+            expect($scope.createRAIDCanSave()).toBe(false);
+        });
+
+        it("returns true if both return false", function() {
+            var controller = makeController();
+            $scope.availableNew.mountPoint = "/";
+            spyOn($scope, "isNewDiskNameInvalid").and.returnValue(false);
+
+            expect($scope.createRAIDCanSave()).toBe(true);
+        });
+    });
+
+    describe("availableConfirmCreateRAID", function() {
+
+        it("does nothing if createRAIDCanSave returns false", function() {
+            var controller = makeController();
+            spyOn($scope, "createRAIDCanSave").and.returnValue(false);
+            var partition0 = {
+                type: "partition",
+                block_id: makeInteger(0, 10),
+                partition_id: makeInteger(0, 10)
+            };
+            var partition1 = {
+                type: "partition",
+                block_id: makeInteger(10, 20),
+                partition_id: makeInteger(10, 20)
+            };
+            var disk0 = {
+                type: "physical",
+                block_id: makeInteger(0, 10)
+            };
+            var disk1 = {
+                type: "physical",
+                block_id: makeInteger(10, 20)
+            };
+            var availableNew = {
+                name: makeName("md"),
+                mode: {
+                    level: "raid-1"
+                },
+                devices: [partition0, partition1, disk0, disk1],
+                spares: [],
+                fstype: null,
+                mountPoint: ""
+            };
+            $scope.availableNew = availableNew;
+            $scope.setAsSpareRAIDMember(partition0);
+            $scope.setAsSpareRAIDMember(disk0);
+            spyOn(NodesManager, "createRAID");
+
+            $scope.availableConfirmCreateRAID();
+            expect(NodesManager.createRAID).not.toHaveBeenCalled();
+        });
+
+        it("calls NodesManager.createRAID", function() {
+            var controller = makeController();
+            spyOn($scope, "createRAIDCanSave").and.returnValue(true);
+            var partition0 = {
+                type: "partition",
+                block_id: makeInteger(0, 10),
+                partition_id: makeInteger(0, 10)
+            };
+            var partition1 = {
+                type: "partition",
+                block_id: makeInteger(10, 20),
+                partition_id: makeInteger(10, 20)
+            };
+            var disk0 = {
+                type: "physical",
+                block_id: makeInteger(0, 10)
+            };
+            var disk1 = {
+                type: "physical",
+                block_id: makeInteger(10, 20)
+            };
+            var availableNew = {
+                name: makeName("md"),
+                mode: {
+                    level: "raid-1"
+                },
+                devices: [partition0, partition1, disk0, disk1],
+                spares: [],
+                fstype: null,
+                mountPoint: ""
+            };
+            $scope.availableNew = availableNew;
+            $scope.setAsSpareRAIDMember(partition0);
+            $scope.setAsSpareRAIDMember(disk0);
+            spyOn(NodesManager, "createRAID");
+
+            $scope.availableConfirmCreateRAID();
+            expect(NodesManager.createRAID).toHaveBeenCalledWith(
+                node, {
+                    name: availableNew.name,
+                    level: "raid-1",
+                    block_devices: [disk1.block_id],
+                    partitions: [partition1.partition_id],
+                    spare_devices: [disk0.block_id],
+                    spare_partitions: [partition0.partition_id]
+                });
+        });
+
+        it("calls NodesManager.createRAID with filesystem", function() {
+            var controller = makeController();
+            spyOn($scope, "createRAIDCanSave").and.returnValue(true);
+            var partition0 = {
+                type: "partition",
+                block_id: makeInteger(0, 10),
+                partition_id: makeInteger(0, 10)
+            };
+            var partition1 = {
+                type: "partition",
+                block_id: makeInteger(10, 20),
+                partition_id: makeInteger(10, 20)
+            };
+            var disk0 = {
+                type: "physical",
+                block_id: makeInteger(0, 10)
+            };
+            var disk1 = {
+                type: "physical",
+                block_id: makeInteger(10, 20)
+            };
+            var availableNew = {
+                name: makeName("md"),
+                mode: {
+                    level: "raid-1"
+                },
+                devices: [partition0, partition1, disk0, disk1],
+                spares: [],
+                fstype: "ext4",
+                mountPoint: "/"
+            };
+            $scope.availableNew = availableNew;
+            $scope.setAsSpareRAIDMember(partition0);
+            $scope.setAsSpareRAIDMember(disk0);
+            spyOn(NodesManager, "createRAID");
+
+            $scope.availableConfirmCreateRAID();
+            expect(NodesManager.createRAID).toHaveBeenCalledWith(
+                node, {
+                    name: availableNew.name,
+                    level: "raid-1",
+                    block_devices: [disk1.block_id],
+                    partitions: [partition1.partition_id],
+                    spare_devices: [disk0.block_id],
+                    spare_partitions: [partition0.partition_id],
+                    fstype: "ext4",
+                    mount_point: "/"
+                });
         });
     });
 

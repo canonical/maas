@@ -35,6 +35,7 @@ from maasserver.forms import (
     AdminNodeWithMACAddressesForm,
     CreateBcacheForm,
     CreateCacheSetForm,
+    CreateRaidForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
     MountBlockDeviceForm,
@@ -141,6 +142,7 @@ class NodeHandler(TimestampedModelHandler):
             'create_partition',
             'create_cache_set',
             'create_bcache',
+            'create_raid',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -877,6 +879,20 @@ class NodeHandler(TimestampedModelHandler):
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, bcache.virtual_device.id,
+                params.get("fstype"), params.get("mount_point"))
+
+    def create_raid(self, params):
+        """Create a RAID."""
+        node = self.get_object(params)
+        form = CreateRaidForm(node=node, data=params)
+        if not form.is_valid():
+            raise HandlerError(form.errors)
+        else:
+            raid = form.save()
+
+        if 'fstype' in params:
+            self.update_blockdevice_filesystem(
+                node, raid.virtual_device.id,
                 params.get("fstype"), params.get("mount_point"))
 
     def action(self, params):

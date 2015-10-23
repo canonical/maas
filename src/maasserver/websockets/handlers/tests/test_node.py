@@ -42,6 +42,7 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.filesystemgroup import (
     Bcache,
+    RAID,
     VolumeGroup,
 )
 from maasserver.models.interface import Interface
@@ -1421,6 +1422,60 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             mount_point,
             bcache.virtual_device.get_effective_filesystem().mount_point)
+
+    def test_create_raid(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        disk0 = factory.make_PhysicalBlockDevice(node=node)
+        disk1 = factory.make_PhysicalBlockDevice(node=node)
+        disk2 = factory.make_PhysicalBlockDevice(node=node)
+        spare_disk = factory.make_PhysicalBlockDevice(node=node)
+        name = factory.make_name("md")
+        handler.create_raid({
+            'system_id': node.system_id,
+            'name': name,
+            'level': 'raid-5',
+            'block_devices': [disk0.id, disk1.id, disk2.id],
+            'spare_devices': [spare_disk.id],
+            })
+        raid = RAID.objects.filter_by_node(node).first()
+        self.assertIsNotNone(raid)
+        self.assertEquals(name, raid.name)
+        self.assertEquals("raid-5", raid.group_type)
+
+    def test_create_raid_with_filesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        disk0 = factory.make_PhysicalBlockDevice(node=node)
+        disk1 = factory.make_PhysicalBlockDevice(node=node)
+        disk2 = factory.make_PhysicalBlockDevice(node=node)
+        spare_disk = factory.make_PhysicalBlockDevice(node=node)
+        name = factory.make_name("md")
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        mount_point = factory.make_absolute_path()
+        handler.create_raid({
+            'system_id': node.system_id,
+            'name': name,
+            'level': 'raid-5',
+            'block_devices': [disk0.id, disk1.id, disk2.id],
+            'spare_devices': [spare_disk.id],
+            'fstype': fstype,
+            'mount_point': mount_point,
+            })
+        raid = RAID.objects.filter_by_node(node).first()
+        self.assertIsNotNone(raid)
+        self.assertEquals(name, raid.name)
+        self.assertEquals("raid-5", raid.group_type)
+        self.assertEquals(
+            fstype,
+            raid.virtual_device.get_effective_filesystem().fstype)
+        self.assertEquals(
+            mount_point,
+            raid.virtual_device.get_effective_filesystem().mount_point)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

@@ -260,5 +260,16 @@ angular.module('MAAS').factory(
                     "node.create_bcache", params);
             };
 
+        // Create a new RAID device.
+        NodesManager.prototype.createRAID = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_raid", params);
+            };
+
         return new NodesManager();
     }]);

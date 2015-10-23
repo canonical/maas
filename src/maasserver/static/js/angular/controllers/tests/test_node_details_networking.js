@@ -2789,7 +2789,7 @@ describe("NodeNetworkingController", function() {
                 vlan: vlan
             };
             var nic2 = {
-                id: makeInteger(0, 100),
+                id: makeInteger(101, 200),
                 link_id: makeInteger(0, 100),
                 type: "physical",
                 vlan: vlan
