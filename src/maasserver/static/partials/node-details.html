@@ -807,14 +807,12 @@
                                     </div>
                                     <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table__column--15 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__column--15">
-                                        <div data-ng-repeat="tag in item.tags" data-ng-hide="editing_tags">
+                                    <div class="table__data table__tags table__column--15">
+                                        <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="editing_tags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
-                                        </div>
+                                        </span>
                                         <tags-input ng-model="item.tags" data-ng-show="editing_tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                        <!--
-                                        <a class="table__controls table__controls--secondary margin-left--ten">edit</a>
-                                        -->
+                                        <a class="table__controls table__controls--secondary">edit</a>
                                     </div>
                                     <div class="table__data table__column--7">
                                         <div class="table__controls">

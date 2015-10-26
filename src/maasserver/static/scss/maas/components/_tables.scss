@@ -495,6 +495,14 @@ table {
     }
   }
 
+  .table__tags {
+
+    .table__tag {
+      display: inline-block;
+      margin-right: 5px;
+    }
+  }
+
   // Form styles
   .table__input {
     display: inline-block;
