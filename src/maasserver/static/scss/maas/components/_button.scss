@@ -99,14 +99,14 @@ form input[type='submit'] {
         }
 
         &[disabled],
-        .disabled {
+        &.disabled {
             cursor: default;
-            color: lighten(#FFF, 50%);
+            color: lighten($ubuntu-orange, 20%);
             border: 1px solid #b2b2b2;
-            background: #eee;
+            background: #FFF;
 
             &:hover {
-                background: #EEE;
+                background: #FFF;
             }
         }
     }
