@@ -203,6 +203,13 @@ class TestNodeAPI(APITestCase):
         self.assertItemsEqual(
             [mac.get_raw() for mac in macs], parsed_result['routers'])
 
+    def test_GET_returns_interface_set(self):
+        node = factory.make_Node()
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertIn('interface_set', parsed_result)
+
     def test_GET_returns_zone(self):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
