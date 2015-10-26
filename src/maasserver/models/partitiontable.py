@@ -132,7 +132,12 @@ class PartitionTable(CleanSave, TimestampedModel):
                 self.block_device.node is not None):
             node = self.block_device.node
             boot_disk = node.get_boot_disk()
-            if boot_disk is not None and self.block_device == boot_disk:
+            # Compare the block_device.id and boot_disk.id because it is
+            # possible they are not the same type. One being an instance
+            # of PhysicalBlockDevice and the other being just a BlockDevice.
+            # Without this comparison the wrong partition table type will be
+            # placed on the boot disk.
+            if boot_disk is not None and self.block_device.id == boot_disk.id:
                 bios_boot_method = node.get_bios_boot_method()
                 if bios_boot_method == "uefi":
                     # UEFI must always use a GPT table.

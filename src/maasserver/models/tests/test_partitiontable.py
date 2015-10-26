@@ -16,7 +16,10 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import PARTITION_TABLE_TYPE
-from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.blockdevice import (
+    BlockDevice,
+    MIN_BLOCK_DEVICE_SIZE,
+)
 from maasserver.models.partition import MAX_PARTITION_SIZE_FOR_MBR
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
@@ -134,10 +137,11 @@ class TestPartitionTable(MAASServerTestCase):
             partition_table.get_available_size(
                 ignore_partitions=ignore_partitions))
 
-    def test_save_sets_table_type_to_mbr_for_pxe_boot(self):
+    def test_save_sets_table_type_to_mbr_for_boot_when_type_miss_match(self):
         node = factory.make_Node(bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
-        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        partition_table = factory.make_PartitionTable(
+            block_device=BlockDevice.objects.get(id=boot_disk.id))
         self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
