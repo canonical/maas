@@ -83,11 +83,11 @@ angular.module('MAAS').filter('removeDefaultVLANIfVLAN', function() {
 
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
-    'NodesManager', 'GeneralManager', 'ManagerHelperService',
+    'NodesManager', 'GeneralManager', 'UsersManager', 'ManagerHelperService',
     'ValidationService',
     function(
         $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
-        NodesManager, GeneralManager, ManagerHelperService,
+        NodesManager, GeneralManager, UsersManager, ManagerHelperService,
         ValidationService) {
 
         // Different interface types.
@@ -122,7 +122,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         var SELECTION_MODE = {
             NONE: null,
             SINGLE: "single",
-            MUTLI: "multi",
+            MULTI: "multi",
             DELETE: "delete",
             ADD: "add",
             CREATE_BOND: "create-bond"
@@ -408,6 +408,33 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             updateLoaded();
         };
 
+        // Return true if user is a super user/
+        $scope.isSuperUser = function() {
+            var authUser = UsersManager.getAuthUser();
+            if(!angular.isObject(authUser)) {
+                return false;
+            }
+            return authUser.is_superuser;
+        };
+
+        // Return true if the networking information cannot be edited.
+        // (it can't be changed when the node is in any state other
+        // than Ready or Broken and the user is not a superuser)
+        $scope.isAllNetworkingDisabled = function() {
+            if (!$scope.isSuperUser()) {
+                // If the user is not a superuser, disable the networking panel.
+                return true;
+            } else if (angular.isObject($scope.node) &&
+                ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
+                // If the node is not ready or broken, disable networking panel.
+                return true;
+            } else {
+                // User must be a superuser and the node must be
+                // either ready or broken. Enable it.
+                return false;
+            }
+        };
+
         // Get the text for the type of the interface.
         $scope.getInterfaceTypeText = function(nic) {
             var text = INTERFACE_TYPE_TEXTS[nic.type];
@@ -682,7 +709,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             if($scope.selectedInterfaces.length > 1) {
                 if($scope.selectedMode !== SELECTION_MODE.BOND) {
-                    $scope.selectedMode = SELECTION_MODE.MUTLI;
+                    $scope.selectedMode = SELECTION_MODE.MULTI;
                 }
             } else if($scope.selectedInterfaces.length === 1) {
                 $scope.selectedMode = SELECTION_MODE.SINGLE;
@@ -786,7 +813,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.newInterface = {};
             $scope.newBondInterface = {};
             if($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
-                $scope.selectedMode = SELECTION_MODE.MUTLI;
+                $scope.selectedMode = SELECTION_MODE.MULTI;
             } else {
                 $scope.selectedMode = SELECTION_MODE.SINGLE;
             }
@@ -935,20 +962,25 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Return true if this interface should be disabled in the list. Only
+        // Return true if the networking information cannot be edited
+        // or if this interface should be disabled in the list. Only
         // returns true when in create bond mode.
         $scope.isDisabled = function() {
-            return (
-                $scope.selectedMode !== SELECTION_MODE.NONE &&
-                $scope.selectedMode !== SELECTION_MODE.SINGLE &&
-                $scope.selectedMode !== SELECTION_MODE.MUTLI);
+            if ($scope.isAllNetworkingDisabled()) {
+                return true;
+            } else {
+                return (
+                    $scope.selectedMode !== SELECTION_MODE.NONE &&
+                    $scope.selectedMode !== SELECTION_MODE.SINGLE &&
+                    $scope.selectedMode !== SELECTION_MODE.MULTI);
+            }
         };
 
         // Return true when a bond can be created based on the current
         // selection. Only can be done if no aliases are selected and all
         // selected interfaces are on the same VLAN.
         $scope.canCreateBond = function() {
-            if($scope.selectedMode !== SELECTION_MODE.MUTLI) {
+            if($scope.selectedMode !== SELECTION_MODE.MULTI) {
                 return false;
             }
             var interfaces = getSelectedInterfaces();
@@ -974,7 +1006,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Show the create bond view.
         $scope.showCreateBond = function() {
-            if($scope.selectedMode === SELECTION_MODE.MUTLI &&
+            if($scope.selectedMode === SELECTION_MODE.MULTI &&
                 $scope.canCreateBond()) {
                 $scope.selectedMode = SELECTION_MODE.CREATE_BOND;
 
@@ -1069,7 +1101,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         ManagerHelperService.loadManagers([
             FabricsManager,
             VLANsManager,
-            SubnetsManager
+            SubnetsManager,
+            UsersManager
         ]).then(function() {
             $scope.managersHaveLoaded = true;
             updateLoaded();

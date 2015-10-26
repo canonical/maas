@@ -316,6 +316,13 @@
             <form class="ng-hide" data-ng-show="loaded">
                 <div class="twelve-col">
                     <h2 class="title">Network</h2>
+                    <div class="twelve-col error ng-hide" data-ng-show="isAllNetworkingDisabled() && isSuperUser()">
+                        <ul class="flash-messages">
+                            <li class="flash-messages__item info">
+                                Network configuration cannot be modified unless the node is Ready or Broken.
+                            </li>
+                        </ul>
+                    </div>
                     <div class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
@@ -344,11 +351,13 @@
                                 data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), selected: !isOnlyInterfaceSelected(interface) }"
                                 data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
                                 <div class="table__data table__column--3">
-                                    <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
-                                        data-ng-checked="isInterfaceSelected(interface)"
-                                        data-ng-click="toggleInterfaceSelect(interface)"
-                                        data-ng-disabled="isDisabled()" />
-                                    <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
+                                    <span data-ng-hide="isAllNetworkingDisabled()">
+                                        <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
+                                            data-ng-checked="isInterfaceSelected(interface)"
+                                            data-ng-click="toggleInterfaceSelect(interface)"
+                                            data-ng-disabled="isDisabled()">
+                                        <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
+                                    </span>
                                 </div>
                                 <div class="table__data table__column--15" data-ng-show="column == 'name'">
                                     <span class="ng-hide" data-ng-show="interface.type == 'alias' || interface.type == 'vlan'">{$ interface.name $}</span>
@@ -595,7 +604,7 @@
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-class="{ disabled: !canCreateBond() }"
                         data-ng-click="showCreateBond()"
-                        data-ng-hide="isShowingCreateBond()">Create Bond</a>
+                        data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond()">Create Bond</a>
                 </div>
             </form>
         </div>

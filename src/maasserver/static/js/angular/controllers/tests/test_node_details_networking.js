@@ -182,18 +182,18 @@ describe("NodeNetworkingController", function() {
     }));
 
     // Load the required dependencies for the NodeNetworkingController.
-    var FabricsManager, VLANsManager, SubnetsManager, NodesManager;
-    var GeneralManager, ManagerHelperService;
+    var FabricsManager, VLANsManager, SubnetsManager, UsersManager;
+    var NodesManager, GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         FabricsManager = $injector.get("FabricsManager");
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         NodesManager = $injector.get("NodesManager");
         GeneralManager = $injector.get("GeneralManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
-    // Create the node on the parent.
     var node;
     beforeEach(function() {
         node = {
@@ -2626,6 +2626,9 @@ describe("NodeNetworkingController", function() {
 
         it("returns false when in none, single, or multi mode", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            // Node needs to be Ready or Broken for the mode to be considered.
+            $scope.node = {status: "Ready"};
             $scope.selectedMode = null;
             expect($scope.isDisabled()).toBe(false);
             $scope.selectedMode = "single";
@@ -2636,12 +2639,105 @@ describe("NodeNetworkingController", function() {
 
         it("returns true when in delete, add, or create modes", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            // Node needs to be Ready or Broken for the mode to be considered.
+            $scope.node = {status: "Ready"};
             $scope.selectedMode = "create-bond";
             expect($scope.isDisabled()).toBe(true);
             $scope.selectedMode = "add";
             expect($scope.isDisabled()).toBe(true);
             $scope.selectedMode = "delete";
             expect($scope.isDisabled()).toBe(true);
+        });
+
+        it("returns true when the node state is not 'Ready' or 'Broken'",
+            function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node = {status: "Ready"};
+            expect($scope.isDisabled()).toBe(false);
+            $scope.node = {status: "Broken"};
+            expect($scope.isDisabled()).toBe(false);
+            ["New",
+             "Commissioning",
+             "Failed commissioning",
+             "Missing",
+             "Reserved",
+             "Allocated",
+             "Deploying",
+             "Deployed",
+             "Retired",
+             "Failed deployment",
+             "Releasing",
+             "Releasing failed",
+             "Disk erasing",
+             "Failed disk erasing"].forEach(function (s) {
+                 $scope.node = {state: s};
+                 expect($scope.isDisabled()).toBe(true);
+             });
+        });
+
+        it("returns true if the user is not a superuser", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return false; };
+            $scope.node = {status: "Ready"};
+            expect($scope.isDisabled()).toBe(true);
+            $scope.node = {status: "Broken"};
+            expect($scope.isDisabled()).toBe(true);
+        });
+    });
+
+    describe("isSuperUser", function() {
+        it("returns true if the user is a superuser", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            expect($scope.isSuperUser()).toBe(true);
+        });
+
+        it("returns false if the user is not a superuser", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: false });
+            expect($scope.isSuperUser()).toBe(false);
+        });
+    });
+
+    describe("isAllNetworkingDisabled", function() {
+        it("returns true if the user is not a superuser and the node is ready",
+            function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: false });
+            expect($scope.isSuperUser()).toBe(false);
+            expect($scope.isAllNetworkingDisabled()).toBe(true);
+        });
+
+        it("return false if the node is Ready and we are a superuser",
+            function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            $scope.node.status = "Ready";
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
+        });
+
+        it("return false if the node is broken and we are a superuser",
+            function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            $scope.node.status = "Broken";
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
+        });
+
+        it("return true if the node is deploying and we are a superuser",
+            function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            $scope.node.status = "Deploying";
+            expect($scope.isAllNetworkingDisabled()).toBe(true);
         });
     });
 

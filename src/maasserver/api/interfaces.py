@@ -68,7 +68,7 @@ DISPLAYED_INTERFACE_FIELDS = (
 
 def raise_error_for_invalid_state_on_allocated_operations(
         node, user, operation):
-    if node.status != NODE_STATUS.READY:
+    if node.status not in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
         raise NodeStateViolation(
             "Cannot %s interface because the node is not Ready." % operation)
 
