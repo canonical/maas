@@ -447,12 +447,32 @@
                     </ul>
                 </div>
             </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.networks.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Networks</h4>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.subnets.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Subnets</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="network in tabs.nodes.metadata.networks | orderBy:['name', '-count']" data-ng-class="{ active: isFilterActive('networks', network.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('networks', network.name, 'nodes')">{$ network.name $} ({$ network.count $})</a>
+                        <li class="accordion__tab-item" data-ng-repeat="subnet in tabs.nodes.metadata.subnets | orderBy:['name', '-count']" data-ng-class="{ active: isFilterActive('subnets', subnet.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('subnets', subnet.name, 'nodes')">{$ subnet.name $} ({$ subnet.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.fabrics.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Fabrics</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="fabric in tabs.nodes.metadata.fabrics | orderBy:['name', '-count']" data-ng-class="{ active: isFilterActive('fabrics', fabric.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('fabrics', fabric.name, 'nodes')">{$ fabric.name $} ({$ fabric.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.spaces.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">Spaces</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="space in tabs.nodes.metadata.spaces | orderBy:['name', '-count']" data-ng-class="{ active: isFilterActive('spaces', space.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('spaces', space.name, 'nodes')">{$ space.name $} ({$ space.count $})</a>
                         </li>
                     </ul>
                 </div>

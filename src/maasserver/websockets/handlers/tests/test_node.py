@@ -134,6 +134,7 @@ class TestNodeHandler(MAASServerTestCase):
             for cache_set in CacheSet.objects.get_cache_sets_for_node(node)
         ]
         disks = sorted(disks, key=itemgetter("name"))
+        subnets = handler.get_all_subnets(node)
         data = {
             "actions": compile_node_actions(node, handler.user).keys(),
             "architecture": node.architecture,
@@ -201,6 +202,9 @@ class TestNodeHandler(MAASServerTestCase):
                 for blockdevice in node.physicalblockdevice_set.all()
             ]) / (1000 ** 3)),
             "storage_tags": handler.get_all_storage_tags(blockdevices),
+            "subnets": [subnet.name for subnet in subnets],
+            "fabrics": handler.get_all_fabric_names(node, subnets),
+            "spaces": handler.get_all_space_names(subnets),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
@@ -223,7 +227,9 @@ class TestNodeHandler(MAASServerTestCase):
                 "pxe_mac_vendor",
                 "extra_macs",
                 "tags",
-                "networks",
+                "subnets",
+                "fabrics",
+                "spaces",
                 "physical_disk_count",
                 "storage",
                 "storage_tags",
@@ -660,6 +666,80 @@ class TestNodeHandler(MAASServerTestCase):
             factory.make_Event(node=node, type=event_type)
         self.assertEquals([], handler.dehydrate_events(node))
 
+    def make_node_with_subnets(self):
+        user = factory.make_User()
+        handler = NodeHandler(user, {})
+        space1 = factory.make_Space()
+        fabric1 = factory.make_Fabric(name=factory.make_name("fabric"))
+        vlan1 = factory.make_VLAN(fabric=fabric1)
+        subnet1 = factory.make_Subnet(space=space1, vlan=vlan1)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, vlan=vlan1)
+        node.save()
+
+        # Bond interface with a VLAN on top. With the bond set to STATIC
+        # and the VLAN set to AUTO.
+        fabric2 = factory.make_Fabric(name=factory.make_name("fabric"))
+        vlan2 = factory.make_VLAN(fabric=fabric2)
+        space2 = factory.make_Space()
+        bond_subnet = factory.make_Subnet(space=space1, vlan=vlan1)
+        vlan_subnet = factory.make_Subnet(space=space2, vlan=vlan2)
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan1)
+        nic2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan2)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[nic1, nic2], vlan=vlan1)
+        vlan_int = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[bond])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(bond_subnet.get_ipnetwork()),
+            subnet=bond_subnet, interface=bond)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=vlan_subnet, interface=vlan_int)
+
+        # LINK_UP interface with no subnet.
+        fabric3 = factory.make_Fabric(name=factory.make_name("fabric"))
+        vlan3 = factory.make_VLAN(fabric=fabric3)
+        nic3 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan3, node=node)
+        nic3_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=None, interface=nic3)
+        nic3_ip.subnet = None
+        nic3_ip.save()
+
+        self.patch_autospec(interface_module, "update_host_maps")
+        boot_interface = node.get_boot_interface()
+        boot_interface.claim_static_ips()
+        node.boot_interface = boot_interface
+        node.save()
+
+        subnets = [subnet1, bond_subnet, vlan_subnet]
+        fabrics = [fabric1, fabric2, fabric3]
+        spaces = [space1, space2]
+        return (handler, node, subnets, fabrics, spaces)
+
+    def test_get_all_subnets(self):
+        (handler, node, subnets, _, _) = self.make_node_with_subnets()
+        self.assertItemsEqual(subnets, handler.get_all_subnets(node))
+
+    def test_get_all_fabric_names(self):
+        (handler, node, _, fabrics, _) = self.make_node_with_subnets()
+        fabric_names = [fabric.name for fabric in fabrics]
+        node_subnets = handler.get_all_subnets(node)
+        self.assertItemsEqual(
+            fabric_names, handler.get_all_fabric_names(node, node_subnets))
+
+    def test_get_all_space_names(self):
+        (handler, node, _, _, spaces) = self.make_node_with_subnets()
+        space_names = [space.name for space in spaces]
+        node_subnets = handler.get_all_subnets(node)
+        self.assertItemsEqual(
+            space_names, handler.get_all_space_names(node_subnets))
+
     def test_get(self):
         user = factory.make_User()
         handler = NodeHandler(user, {})
@@ -757,7 +837,7 @@ class TestNodeHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEquals(
-            query_10_count, 9,
+            query_10_count, 11,
             "Number of queries has changed; make sure this is expected.")
         self.assertEquals(
             query_10_count, query_20_count,

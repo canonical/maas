@@ -26,7 +26,9 @@ angular.module('MAAS').factory(
                 "zone": function(node) {
                     return node.zone.name;
                 },
-                "networks": null,
+                "subnets": null,
+                "fabrics": null,
+                "spaces": null,
                 "storage_tags": null
             };
 

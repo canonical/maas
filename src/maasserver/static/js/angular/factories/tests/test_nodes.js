@@ -47,7 +47,8 @@ describe("NodesManager", function() {
         expect(NodesManager._pk).toBe("system_id");
         expect(NodesManager._handler).toBe("node");
         expect(Object.keys(NodesManager._metadataAttributes)).toEqual(
-            ["status", "owner", "tags", "zone", "networks", "storage_tags"]);
+            ["status", "owner", "tags", "zone", "subnets", "fabrics",
+            "spaces", "storage_tags"]);
     });
 
     describe("create", function() {

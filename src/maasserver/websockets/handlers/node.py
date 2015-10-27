@@ -115,8 +115,11 @@ class NodeHandler(TimestampedModelHandler):
         queryset = (
             Node.nodes.filter(installable=True)
                 .select_related('nodegroup', 'pxe_mac', 'owner')
-                .prefetch_related('interface_set__ip_addresses__subnet__vlan')
+                .prefetch_related(
+                    'interface_set__ip_addresses__subnet__vlan__fabric')
+                .prefetch_related('interface_set__ip_addresses__subnet__space')
                 .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
+                .prefetch_related('interface_set__vlan__fabric')
                 .prefetch_related('zone')
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice')
@@ -259,6 +262,11 @@ class NodeHandler(TimestampedModelHandler):
                 for blockdevice in physical_blockdevices
                 ]) / (1000 ** 3))
         data["storage_tags"] = self.get_all_storage_tags(blockdevices)
+
+        subnets = self.get_all_subnets(obj)
+        data["subnets"] = [subnet.name for subnet in subnets]
+        data["fabrics"] = self.get_all_fabric_names(obj, subnets)
+        data["spaces"] = self.get_all_space_names(subnets)
 
         data["tags"] = [
             tag.name
@@ -576,6 +584,28 @@ class NodeHandler(TimestampedModelHandler):
         for blockdevice in blockdevices:
             tags = tags.union(blockdevice.tags)
         return list(tags)
+
+    def get_all_subnets(self, obj):
+        subnets = set()
+        for interface in obj.interface_set.all():
+            for ip_address in interface.ip_addresses.all():
+                if ip_address.subnet is not None:
+                    subnets.add(ip_address.subnet)
+        return list(subnets)
+
+    def get_all_fabric_names(self, obj, subnets):
+        fabric_names = set()
+        for interface in obj.interface_set.all():
+            fabric_names.add(interface.vlan.fabric.name)
+        for subnet in subnets:
+            fabric_names.add(subnet.vlan.fabric.name)
+        return list(fabric_names)
+
+    def get_all_space_names(self, subnets):
+        space_names = set()
+        for subnet in subnets:
+            space_names.add(subnet.space.name)
+        return list(space_names)
 
     def get_blockdevices_for(self, obj):
         """Return only `BlockDevice`s using the prefetched query."""
