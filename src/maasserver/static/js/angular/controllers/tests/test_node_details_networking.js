@@ -167,6 +167,113 @@ describe("removeDefaultVLANIfVLAN", function() {
 });
 
 
+describe("filterLinkModes", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Load the filterLinkModes.
+    var filterLinkModes;
+    beforeEach(inject(function($filter) {
+        filterLinkModes = $filter("filterLinkModes");
+    }));
+
+    // Load the modes before each test.
+    var modes;
+    beforeEach(function() {
+        modes = [
+            {
+                mode: "auto",
+                text: "Auto assign"
+            },
+            {
+                mode: "static",
+                text: "Static assign"
+            },
+            {
+                mode: "dhcp",
+                text: "DHCP"
+            },
+            {
+                mode: "link_up",
+                text: "Unconfigured"
+            }
+        ];
+    });
+
+    it("only link_up when no subnet", function() {
+        var nic = {
+            subnet : null
+        };
+        expect(filterLinkModes(modes, nic)).toEqual([
+            {
+                "mode": "link_up",
+                "text": "Unconfigured"
+            }
+        ]);
+    });
+
+    it("all modes if only one link", function() {
+        var nic = {
+            subnet : {},
+            links: [{}]
+        };
+        expect(filterLinkModes(modes, nic)).toEqual([
+            {
+                "mode": "auto",
+                "text": "Auto assign"
+            },
+            {
+                "mode": "static",
+                "text": "Static assign"
+            },
+            {
+                "mode": "dhcp",
+                "text": "DHCP"
+            },
+            {
+                "mode": "link_up",
+                "text": "Unconfigured"
+            }
+        ]);
+    });
+
+    it("auto and static modes if more than one link", function() {
+        var nic = {
+            subnet : {},
+            links: [{}, {}]
+        };
+        expect(filterLinkModes(modes, nic)).toEqual([
+            {
+                "mode": "auto",
+                "text": "Auto assign"
+            },
+            {
+                "mode": "static",
+                "text": "Static assign"
+            }
+        ]);
+    });
+
+    it("auto and static modes if interface is alias", function() {
+        var nic = {
+            type: "alias",
+            subnet : {}
+        };
+        expect(filterLinkModes(modes, nic)).toEqual([
+            {
+                "mode": "auto",
+                "text": "Auto assign"
+            },
+            {
+                "mode": "static",
+                "text": "Static assign"
+            }
+        ]);
+    });
+});
+
+
 describe("NodeNetworkingController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -1222,84 +1329,6 @@ describe("NodeNetworkingController", function() {
                 subnet : null
             };
             expect($scope.isLinkModeDisabled(nic)).toBe(true);
-        });
-    });
-
-    describe("getLinkModes", function() {
-
-        it("only link_up when no subnet", function() {
-            var controller = makeController();
-            var nic = {
-                subnet : null
-            };
-            expect($scope.getLinkModes(nic)).toEqual([
-                {
-                    "mode": "link_up",
-                    "text": "Unconfigured"
-                }
-            ]);
-        });
-
-        it("all modes if only one link", function() {
-            var controller = makeController();
-            var nic = {
-                subnet : {},
-                links: [{}]
-            };
-            expect($scope.getLinkModes(nic)).toEqual([
-                {
-                    "mode": "auto",
-                    "text": "Auto assign"
-                },
-                {
-                    "mode": "static",
-                    "text": "Static assign"
-                },
-                {
-                    "mode": "dhcp",
-                    "text": "DHCP"
-                },
-                {
-                    "mode": "link_up",
-                    "text": "Unconfigured"
-                }
-            ]);
-        });
-
-        it("auto and static modes if more than one link", function() {
-            var controller = makeController();
-            var nic = {
-                subnet : {},
-                links: [{}, {}]
-            };
-            expect($scope.getLinkModes(nic)).toEqual([
-                {
-                    "mode": "auto",
-                    "text": "Auto assign"
-                },
-                {
-                    "mode": "static",
-                    "text": "Static assign"
-                }
-            ]);
-        });
-
-        it("auto and static modes if interface is alias", function() {
-            var controller = makeController();
-            var nic = {
-                type: "alias",
-                subnet : {}
-            };
-            expect($scope.getLinkModes(nic)).toEqual([
-                {
-                    "mode": "auto",
-                    "text": "Auto assign"
-                },
-                {
-                    "mode": "static",
-                    "text": "Static assign"
-                }
-            ]);
         });
     });
 

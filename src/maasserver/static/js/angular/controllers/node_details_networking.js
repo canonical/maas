@@ -81,6 +81,42 @@ angular.module('MAAS').filter('removeDefaultVLANIfVLAN', function() {
 });
 
 
+// Filter that is specific to the NodeNetworkingController. Only provide the
+// available modes for that interface type.
+angular.module('MAAS').filter('filterLinkModes', function() {
+    return function(modes, nic) {
+        if(!angular.isObject(nic)) {
+            return modes;
+        }
+        var filtered = [];
+        if(!angular.isObject(nic.subnet)) {
+            // No subnet is configure so the only allowed mode
+            // is 'link_up'.
+            angular.forEach(modes, function(mode) {
+                if(mode.mode === "link_up") {
+                    filtered.push(mode);
+                }
+            });
+        } else {
+            // Don't add LINK_UP  or DHCP if more than one link exists or
+            // if the interface is an alias.
+            var allowLinkUpAndDHCP = (
+                (angular.isObject(nic.links) && nic.links.length > 1) ||
+                (nic.type === "alias"));
+            angular.forEach(modes, function(mode) {
+                if(allowLinkUpAndDHCP && (
+                    mode.mode === "link_up" ||
+                    mode.mode === "dhcp")) {
+                    return;
+                }
+                filtered.push(mode);
+            });
+        }
+        return filtered;
+    };
+});
+
+
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
     'NodesManager', 'GeneralManager', 'UsersManager', 'ManagerHelperService',
@@ -146,6 +182,24 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.newInterface = {};
         $scope.newBondInterface = {};
         $scope.bondOptions = GeneralManager.getData("bond_options");
+        $scope.modes = [
+            {
+                mode: LINK_MODE.AUTO,
+                text: LINK_MODE_TEXTS[LINK_MODE.AUTO]
+            },
+            {
+                mode: LINK_MODE.STATIC,
+                text: LINK_MODE_TEXTS[LINK_MODE.STATIC]
+            },
+            {
+                mode: LINK_MODE.DHCP,
+                text: LINK_MODE_TEXTS[LINK_MODE.DHCP]
+            },
+            {
+                mode: LINK_MODE.LINK_UP,
+                text: LINK_MODE_TEXTS[LINK_MODE.LINK_UP]
+            }
+        ];
 
         // Give $parent which is the NodeDetailsController access to this scope
         // it will call `nodeLoaded` once the node has been fully loaded.
@@ -575,37 +629,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.isLinkModeDisabled = function(nic) {
             // This is only disabled when a subnet has not been selected.
             return !angular.isObject(nic.subnet);
-        };
-
-        // Get the available link modes for an interface.
-        $scope.getLinkModes = function(nic) {
-            modes = [];
-            if(!angular.isObject(nic.subnet)) {
-                // No subnet is configure so the only allowed mode
-                // is 'link_up'.
-                modes.push({
-                    "mode": LINK_MODE.LINK_UP,
-                    "text": LINK_MODE_TEXTS[LINK_MODE.LINK_UP]
-                });
-            } else {
-                // Don't add LINK_UP  or DHCP if more than one link exists or
-                // if the interface is an alias.
-                var allowLinkUpAndDHCP = (
-                    (angular.isObject(nic.links) && nic.links.length > 1) ||
-                    (nic.type === INTERFACE_TYPE.ALIAS));
-                angular.forEach(LINK_MODE_TEXTS, function(text, mode) {
-                    if(allowLinkUpAndDHCP && (
-                        mode === LINK_MODE.LINK_UP ||
-                        mode === LINK_MODE.DHCP)) {
-                        return;
-                    }
-                    modes.push({
-                        "mode": mode,
-                        "text": text
-                    });
-                });
-            }
-            return modes;
         };
 
         // Called when the link mode for this interface and link has been
