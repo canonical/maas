@@ -205,6 +205,36 @@ class TestNodeForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
+    def test_set_distro_series_accepts_short_distro_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        release = factory.make_name('release')
+        make_usable_osystem(
+            self, releases=[release + '6', release + '0', release + '3'])
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            },
+            instance=node)
+        form.set_distro_series(release)
+        form.save()
+        self.assertEquals(release + '6', node.distro_series)
+
+    def test_set_distro_series_doesnt_allow_short_ubuntu_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        make_usable_osystem(
+            self,
+            osystem_name='ubuntu',
+            releases=['trusty'])
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            },
+            instance=node)
+        form.set_distro_series('trust')
+        self.assertFalse(form.is_valid())
+
     def test_starts_with_default_distro_series(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)

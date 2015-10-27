@@ -364,10 +364,36 @@ def clean_distro_series_field(form, field, os_field):
 def find_osystem_and_release_from_release_name(name):
     """Return os and release for the given release name."""
     osystems = list_all_usable_osystems()
+    possible_short_names = []
     for osystem in osystems:
         for release in osystem['releases']:
             if release['name'] == name:
                 return osystem, release
+            elif osystem['name'] == name:
+                # If the given release matches the osystem name add it to
+                # our list of possibilities. This allows a user to specify
+                # Ubuntu and get the latest release available.
+                possible_short_names.append({
+                    'osystem': osystem,
+                    'release': release})
+            elif (osystem['name'] != "ubuntu"
+                  and release['name'].startswith(name)):
+                # Check if the given name is a shortened version of a known
+                # name. e.g centos7 for centos70.  We don't allow short names
+                # for Ubuntu releases
+                possible_short_names.append({
+                    'osystem': osystem,
+                    'release': release})
+    if len(possible_short_names) > 0:
+        # Do a reverse sort of all the possibilities and pick the top one.
+        # This allows a user to do a short hand with versioning to pick the
+        # latest release. e.g we have centos70, centos71 given centos7 this
+        # will pick centos71
+        sorted_list = sorted(
+            possible_short_names,
+            key=lambda os_release: os_release['release']['name'],
+            reverse=True)
+        return sorted_list[0]['osystem'], sorted_list[0]['release']
     return None, None
 
 
@@ -671,7 +697,7 @@ class NodeForm(MAASModelForm):
                 self.data['osystem'] = osystem['name']
                 self.data['distro_series'] = '%s/%s%s' % (
                     osystem['name'],
-                    series,
+                    release['name'],
                     key_required,
                     )
             else:
