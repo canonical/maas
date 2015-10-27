@@ -71,6 +71,7 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -171,7 +172,7 @@ class TestNodeHandler(MAASServerTestCase):
                 for mac_address in node.get_extra_macs()
             ],
             "fqdn": node.fqdn,
-            "hwe_kernel": node.hwe_kernel,
+            "hwe_kernel": make_hwe_kernel_ui_text(node.hwe_kernel),
             "hostname": node.hostname,
             "id": node.id,
             "installation_results": handler.dehydrate_node_results(

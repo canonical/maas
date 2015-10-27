@@ -18,17 +18,23 @@ __all__ = [
     'list_all_usable_osystems',
     'list_all_usable_releases',
     'list_all_usable_hwe_kernels',
+    'list_hwe_kernel_choices',
     'list_osystem_choices',
     'list_release_choices',
     'list_commissioning_choices',
+    'make_hwe_kernel_ui_text',
     'validate_hwe_kernel',
     ]
 
 from operator import itemgetter
 
+from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
-from maasserver.models import BootResource
+from maasserver.models import (
+    BootResource,
+    BootSourceCache,
+)
 
 
 def list_all_usable_osystems():
@@ -76,11 +82,35 @@ def list_all_usable_hwe_kernels(releases):
             kernels[osystem] = {}
         for release in osystems:
             os_release = osystem + '/' + release['name']
-            kernels[osystem][release['name']] = sorted([
-                i for i in BootResource.objects.get_usable_hwe_kernels(
-                    os_release)
-                if release_a_newer_than_b(i, release['name'])])
+            kernels[osystem][release['name']] = list_hwe_kernel_choices(
+                sorted([
+                    i for i in BootResource.objects.get_usable_hwe_kernels(
+                        os_release)
+                    if release_a_newer_than_b(i, release['name'])]))
     return kernels
+
+
+def make_hwe_kernel_ui_text(hwe_kernel):
+    if not hwe_kernel:
+        return hwe_kernel
+    release_letter = hwe_kernel.replace('hwe-', '')
+    boot_sources = BootSourceCache.objects.filter(
+        release__startswith=release_letter,
+        subarch=hwe_kernel)
+    if len(boot_sources) > 0:
+        return "%s (%s)" % (hwe_kernel, boot_sources[0].release)
+    else:
+        ubuntu = UbuntuDistroInfo()
+        for release in ubuntu.all:
+            if release.startswith(release_letter):
+                return "%s (%s)" % (hwe_kernel, release)
+    return hwe_kernel
+
+
+def list_hwe_kernel_choices(hwe_kernels):
+    return [(hwe_kernel, make_hwe_kernel_ui_text(hwe_kernel))
+            for hwe_kernel in hwe_kernels
+            ]
 
 
 def list_all_releases_requiring_keys(osystems):

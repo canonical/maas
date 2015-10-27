@@ -31,6 +31,7 @@ from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
     list_all_usable_releases,
+    list_hwe_kernel_choices,
     list_osystem_choices,
     list_release_choices,
 )
@@ -60,7 +61,8 @@ class GeneralHandler(Handler):
 
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
-        return BootResource.objects.get_usable_hwe_kernels()
+        return list_hwe_kernel_choices(
+            BootResource.objects.get_usable_hwe_kernels())
 
     def default_min_hwe_kernel(self, params):
         """Return the default_min_hwe_kernel."""

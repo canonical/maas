@@ -73,6 +73,7 @@ from maasserver.utils.converters import (
     XMLToYAML,
 )
 from maasserver.utils.orm import transactional
+from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -276,7 +277,7 @@ class NodeHandler(TimestampedModelHandler):
             data["show_os_info"] = self.dehydrate_show_os_info(obj)
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
-            data["hwe_kernel"] = obj.hwe_kernel
+            data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
 
             # Network
             data["interfaces"] = [

@@ -20,7 +20,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
         '<select name="hwe_kernel" data-ng-model="ngModel.hwe_kernel" ',
             'data-ng-show="hwe_kernels.length"',
             'data-ng-options="',
-            'hwe_kernel for hwe_kernel in hwe_kernels">',
+            'hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in hwe_kernels">',
             '<option value="">Default kernel</option>',
         '</select>'
     ].join(''));

@@ -183,7 +183,7 @@
                                 <select name="min_hwe_kernel" id="min_hwe_kernel" placeholder="No minimum kernel"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.min_hwe_kernel.selected"
-                                    data-ng-options="hwe_kernel for hwe_kernel in summary.min_hwe_kernel.options">
+                                    data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in summary.min_hwe_kernel.options">
                                     <option value="">No minimum kernel</option>
                                 </select>
                             </div>

@@ -39,6 +39,7 @@ from maasserver.utils.osystems import (
     list_all_usable_osystems,
     list_all_usable_releases,
     list_commissioning_choices,
+    list_hwe_kernel_choices,
     list_osystem_choices,
     release_a_newer_than_b,
 )
@@ -125,11 +126,11 @@ def make_default_min_hwe_kernel_field(*args, **kwargs):
         'commissioning_distro_series')
     if commissioning_series:
         commissioning_os_release = "ubuntu/" + commissioning_series
-        kernel_choices += [
-            (kernel, kernel)
-            for kernel in BootResource.objects.get_usable_hwe_kernels(
-                commissioning_os_release)
-            if release_a_newer_than_b(kernel, commissioning_series)]
+        kernel_choices += list_hwe_kernel_choices(
+            [kernel
+             for kernel in BootResource.objects.get_usable_hwe_kernels(
+                 commissioning_os_release)
+             if release_a_newer_than_b(kernel, commissioning_series)])
     field = forms.ChoiceField(
         initial=Config.objects.get_config('default_min_hwe_kernel'),
         choices=kernel_choices,

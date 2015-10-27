@@ -17,11 +17,13 @@ __all__ = []
 from operator import itemgetter
 import random
 
+from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -36,6 +38,7 @@ from maasserver.utils.osystems import (
     list_commissioning_choices,
     list_osystem_choices,
     list_release_choices,
+    make_hwe_kernel_ui_text,
     release_a_newer_than_b,
     validate_hwe_kernel,
     validate_osystem_and_distro_series,
@@ -259,6 +262,30 @@ class TestReleases(MAASServerTestCase):
             for release in comm_releases
             ]
         self.assertEqual(choices, list_commissioning_choices([osystem]))
+
+    def test_make_hwe_kernel_ui_text_finds_release_from_bootsourcecache(self):
+        ubuntu_releases = UbuntuDistroInfo()
+        release = random.choice(ubuntu_releases.all).decode("utf-8")
+        kernel = 'hwe-' + release[0]
+        factory.make_usable_boot_resource(
+            name="ubuntu/%s" % release,
+            extra={'subarches': kernel},
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        self.assertEqual(
+            '%s (%s)' % (kernel, release),
+            make_hwe_kernel_ui_text(kernel))
+
+    def test_make_hwe_kernel_ui_finds_release_from_ubuntudistroinfo(self):
+        self.assertEqual('hwe-t (trusty)', make_hwe_kernel_ui_text('hwe-t'))
+
+    def test_make_hwe_kernel_ui_returns_kernel_when_none_found(self):
+        # Since this is testing that our fall final fall back returns just the
+        # kernel name when the release isn't found in BootSourceCache or
+        # UbuntuDistroInfo we patch out UbuntuDistroInfo so nothing is found.
+        self.patch(UbuntuDistroInfo, 'all').value = []
+        self.assertEqual(
+            'hwe-m',
+            make_hwe_kernel_ui_text('hwe-m'))
 
 
 class TestValidateOsystemAndDistroSeries(MAASServerTestCase):

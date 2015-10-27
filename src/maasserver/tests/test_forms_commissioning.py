@@ -14,11 +14,16 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
+from distro_info import UbuntuDistroInfo
 from django.core.files.uploadedfile import SimpleUploadedFile
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
     CommissioningForm,
     CommissioningScriptForm,
 )
+from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
@@ -43,6 +48,24 @@ class TestCommissioningFormForm(MAASServerTestCase):
             compose_invalid_choice_text(
                 'default_min_hwe_kernel', field.choices),
             field.error_messages['invalid_choice'])
+
+    def test_commissioningform_contains_real_and_ui_choice(self):
+        ubuntu_releases = UbuntuDistroInfo()
+        release = random.choice(ubuntu_releases.all).decode("utf-8")
+        name = 'ubuntu/%s' % release
+        kernel = 'hwe-' + release[0]
+        factory.make_usable_boot_resource(
+            name=name,
+            extra={'subarches': kernel},
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        Config.objects.set_config(
+            'commissioning_distro_series',
+            release)
+        form = CommissioningForm()
+        self.assertItemsEqual([
+            ('', '--- No minimum kernel ---'),
+            (kernel, '%s (%s)' % (kernel, release))],
+            form.fields['default_min_hwe_kernel'].choices)
 
 
 class TestCommissioningScriptForm(MAASServerTestCase):
