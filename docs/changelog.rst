@@ -3,6 +3,52 @@ Changelog
 =========
 
 
+1.9.0 (beta1)
+=============
+
+Major New Features
+------------------
+
+**Storage Configuration: LVM and RAID UI**
+ Starting from MAAS 1.9.0 (beta1), MAAS now exposes custom
+ storage configuration in the WebUI for the following:
+
+  * LVM: Ability to easily create LVM.
+  * RAID: Ability to create RAID 0, 1, 5, 6.
+
+Minor notable changes
+---------------------
+
+**Fabric and subnet creation**
+ Starting from MAAS 1.9.0 (beta1), MAAS now auto-creates multiple fabrics
+ per physical interface connected to the Cluster Controller, and will
+ correctly create subnetworks under each fabric, as well as VLAN's if any
+ VLAN interface on the Cluster Controller is preset.
+
+Known Problems & Workarounds
+----------------------------
+
+**CentOS fails to deploy with LVM Storage layout**
+ CentOS fails to deploy when deploying with an LVM storage layout.
+ Provided that LVM is the default storage layout, every CentOS deployment
+ will fail, unless this layout is changed to 'Flat' storage.
+
+ To work around the problem, the default storage layout can be changed from
+ `LVM` to `Flat` in MAAS' Networks page, under `Storage Layout` section.
+
+ See bug `1499558`_ for more information.
+
+.. _1499558:
+  https://launchpad.net/bugs/1499558
+
+**Fail to deploy (boot) with UEFI**
+ MAAS will successfully instal in a UEFI system, however, after deployment
+ it won't boot onto the local disk. See bug `1510120`_ for more information.
+
+.. _1510120:
+  https://launchpad.net/bugs/1510120
+
+
 1.9.0 (alpha5)
 ==============
 
