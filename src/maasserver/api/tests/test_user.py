@@ -19,6 +19,14 @@ import json
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
+from maasserver.models import (
+    SSHKey,
+    SSLKey,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from testtools.matchers import ContainsAll
@@ -164,3 +172,87 @@ class TestUser(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.status_code)
         self.assertItemsEqual([], User.objects.filter(username=nonuser))
+
+    def test_DELETE_requires_admin_privileges(self):
+        user = factory.make_User()
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.status_code)
+        self.assertTrue(User.objects.filter(username=user.username).exists())
+
+    def test_DELETE_requires_admin_privileges_with_invalid_user(self):
+        """If the user has no admin privileges, it doesn't matter if the user
+        being deleted exists or not, we will return a 403."""
+        nonuser = factory.make_name('nonuser')
+        response = self.client.delete(reverse('user_handler', args=[nonuser]))
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.status_code)
+
+    def test_DELETE_keeps_quiet_if_user_not_found(self):
+        self.become_admin()
+        nonuser = factory.make_name('nonuser')
+        response = self.client.delete(reverse('user_handler', args=[nonuser]))
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.status_code)
+
+    def test_DELETE_admin_cannot_delete_self(self):
+        self.become_admin()
+        user = self.logged_in_user
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.status_code)
+        self.assertTrue(User.objects.filter(username=user.username).exists())
+        self.assertIn('cannot self-delete', response.content)
+
+    def test_DELETE_deletes_user(self):
+        self.become_admin()
+        user = factory.make_User()
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.status_code)
+        self.assertItemsEqual([], User.objects.filter(username=user.username))
+
+    def test_DELETE_user_with_node_fails(self):
+        self.become_admin()
+        user = factory.make_User()
+        factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.status_code)
+        self.assertIn('assigned nodes cannot be deleted', response.content)
+
+    def test_DELETE_user_with_staticaddress_fails(self):
+        self.become_admin()
+        user = factory.make_User()
+        factory.make_StaticIPAddress(
+            user=user, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.status_code)
+        self.assertIn(
+            'with reserved IP addresses cannot be deleted', response.content)
+
+    def test_DELETE_user_with_sslkey_deletes_key(self):
+        self.become_admin()
+        user = factory.make_User()
+        key_id = factory.make_SSLKey(user=user).id
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.status_code)
+        self.assertFalse(SSLKey.objects.filter(id=key_id).exists())
+
+    def test_DELETE_user_with_sshkey_deletes_key(self):
+        self.become_admin()
+        user = factory.make_User()
+        key_id = factory.make_SSHKey(user=user).id
+        response = self.client.delete(
+            reverse('user_handler', args=[user.username]))
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.status_code)
+        self.assertFalse(SSHKey.objects.filter(id=key_id).exists())

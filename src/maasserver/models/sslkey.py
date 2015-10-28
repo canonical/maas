@@ -23,6 +23,7 @@ from cgi import escape
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     Manager,
     TextField,
@@ -93,7 +94,7 @@ class SSLKey(CleanSave, TimestampedModel):
     """
     objects = SSLKeyManager()
 
-    user = ForeignKey(User, null=False, editable=False)
+    user = ForeignKey(User, null=False, editable=False, on_delete=CASCADE)
     key = TextField(
         null=False, blank=False, editable=True, validators=[validate_ssl_key])
 

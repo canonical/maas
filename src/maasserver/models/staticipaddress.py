@@ -36,6 +36,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
+    PROTECT,
 )
 from maasserver import (
     DefaultMeta,
@@ -594,7 +595,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         validators=[validate_hostname])
 
     user = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False)
+        User, default=None, blank=True, null=True, editable=False,
+        on_delete=PROTECT)
 
     objects = StaticIPAddressManager()
 

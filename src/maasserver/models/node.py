@@ -44,6 +44,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
+    PROTECT,
     Q,
     SET_DEFAULT,
     SET_NULL,
@@ -447,7 +448,8 @@ class Node(CleanSave, TimestampedModel):
         default=NODE_STATUS.DEFAULT)
 
     owner = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False)
+        User, default=None, blank=True, null=True, editable=False,
+        on_delete=PROTECT)
 
     bios_boot_method = CharField(max_length=31, blank=True, null=True)
 

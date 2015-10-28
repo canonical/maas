@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
@@ -28,6 +29,9 @@ from maasserver.api.utils import (
     get_mandatory_param,
 )
 from maasserver.models import User
+from maasserver.utils.orm import get_one
+from piston.models import Consumer
+from piston.utils import rc
 
 
 class UsersHandler(OperationsHandler):
@@ -79,7 +83,7 @@ class UsersHandler(OperationsHandler):
 class UserHandler(OperationsHandler):
     """Manage a user account."""
     api_doc_section_name = "User"
-    create = update = delete = None
+    create = update = None
 
     model = User
     fields = (
@@ -90,3 +94,24 @@ class UserHandler(OperationsHandler):
 
     def read(self, request, username):
         return get_object_or_404(User, username=username)
+
+    @admin_method
+    def delete(self, request, username):
+        """Deletes a user"""
+        if request.user.username == username:
+            raise ValidationError("An administrator cannot self-delete.")
+
+        user = get_one(User.objects.filter(username=username))
+
+        if user is not None:
+            if user.node_set.exists():
+                raise ValidationError(
+                    "A user with assigned nodes cannot be deleted.")
+            elif user.staticipaddress_set.exists():
+                raise ValidationError(
+                    "A user with reserved IP addresses cannot be deleted.")
+            else:
+                Consumer.objects.filter(user=user).delete()
+                user.delete()
+
+        return rc.DELETED

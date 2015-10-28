@@ -26,6 +26,7 @@ from django.db.models import (
     ForeignKey,
     Manager,
     Model,
+    PROTECT,
 )
 from django.utils.http import urlencode
 from maasserver import DefaultMeta
@@ -89,7 +90,8 @@ class FileStorage(CleanSave, Model):
     # owner can be None: this is to support upgrading existing
     # installations where the files were not linked to users yet.
     owner = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False)
+        User, default=None, blank=True, null=True, editable=False,
+        on_delete=PROTECT)
     key = CharField(
         max_length=36, unique=True, default=generate_filestorage_key,
         editable=False)
