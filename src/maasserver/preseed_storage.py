@@ -177,13 +177,19 @@ class CurtinStorageGenerator:
             disk_operation["serial"] = block_device.serial
         else:
             disk_operation["path"] = block_device.id_path
-        # When no partition table, then the superblock on the
-        # device should be wiped. This ensures that previous data is not
-        # available to newly deployed node.
+
+        # Set the partition table type if a partition table exists or if this
+        # is the boot disk.
         partition_table = block_device.get_partitiontable()
         if partition_table is not None:
             disk_operation["ptable"] = self._get_ptable_type(
                 partition_table)
+        elif block_device.id == self.boot_disk.id:
+            if self.node.get_bios_boot_method() == "uefi":
+                disk_operation["ptable"] = "gpt"
+            else:
+                disk_operation["ptable"] = "msdos"
+
         # Set this disk to be the grub device if its the boot disk.
         if self.boot_disk == block_device:
             disk_operation["grub_device"] = True

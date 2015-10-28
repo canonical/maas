@@ -411,6 +411,73 @@ class TestSimpleWithEmptyDiskLayout(
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
 
 
+class TestMBRWithBootDiskWithoutPartitionsLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: msdos
+            model: QEMU HARDDISK
+            serial: QM00001
+          - id: sdb
+            name: sdb
+            type: disk
+            wipe: superblock
+            ptable: msdos
+            path: /dev/disk/by-id/wwn-0x55cd2e400009bf84
+            grub_device: true
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            uuid: 6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398
+            size: 8586788864B
+            device: sda
+            wipe: superblock
+            offset: 2097152B
+          - id: sda-part1_format
+            type: format
+            fstype: ext4
+            label: root
+            uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
+            volume: sda-part1
+          - id: sda-part1_mount
+            type: mount
+            path: /
+            device: sda-part1_format
+        """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
+        first_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sdb",
+            id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84")
+        node.boot_disk = boot_disk
+        node.save()
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=first_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=(8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/")
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
 class TestComplexDiskLayout(
         MAASServerTestCase, AssertStorageConfigMixin):
 
