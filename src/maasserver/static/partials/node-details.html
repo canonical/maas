@@ -860,18 +860,16 @@
                                                     {$ getAddPartitionName(item) $}
                                                 </div>
                                                 <div class="table__data table__column--15">
-                                                    <div class="inline">
-                                                        <input type="text" id="mountpoint" class="seven-col"
-                                                            ng-model="item.$options.size"
-                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
-                                                        <select name="size-units" class="five-col"
-                                                            ng-model="item.$options.sizeUnits"
-                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
-                                                            <option value="MB">MB</option>
-                                                            <option value="GB">GB</option>
-                                                            <option value="TB">TB</option>
-                                                        </select>
-                                                    </div>
+                                                    <input type="text" id="mountpoint" class="six-col margin-right"
+                                                        ng-model="item.$options.size"
+                                                        ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                    <select name="size-units" class="five-col"
+                                                        ng-model="item.$options.sizeUnits"
+                                                        ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                        <option value="MB">MB</option>
+                                                        <option value="GB">GB</option>
+                                                        <option value="TB">TB</option>
+                                                    </select>
                                                 </div>
                                                 <div class="table__data table__column--15">
                                                     Partition
