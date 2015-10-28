@@ -2372,6 +2372,48 @@ class TestNode(MAASServerTestCase):
             reload_object(filesystem), Not(Is(None)),
             "Non-acquired filesystem should not have been deleted.")
 
+    def test_boot_disk_removes_formatable_filesystem(self):
+        node = factory.make_Node()
+        new_boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.EXT4, block_device=new_boot_disk)
+        node.boot_disk = new_boot_disk
+        node.save()
+        self.assertIsNone(reload_object(filesystem))
+
+    def test_boot_disk_displays_error_if_in_filesystem_group(self):
+        node = factory.make_Node()
+        new_boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        pv_filesystem = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, block_device=new_boot_disk)
+        filesystem_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
+            filesystems=[pv_filesystem])
+        node.boot_disk = new_boot_disk
+        error = self.assertRaises(ValidationError, node.save)
+        self.assertEqual({
+            'boot_disk': [
+                "Cannot be set as the boot disk; already in-use in %s "
+                "'%s'." % (
+                    filesystem_group.get_nice_name(),
+                    filesystem_group.name,
+                    )]},
+            error.message_dict)
+
+    def test_boot_disk_displays_error_if_in_cache_set(self):
+        node = factory.make_Node()
+        new_boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        cache_set = factory.make_CacheSet(block_device=new_boot_disk)
+        node.boot_disk = new_boot_disk
+        error = self.assertRaises(ValidationError, node.save)
+        self.assertEqual({
+            'boot_disk': [
+                "Cannot be set as the boot disk; already in-use in cache set "
+                "'%s'." % (
+                    cache_set.name,
+                    )]},
+            error.message_dict)
+
     def test_boot_interface_displays_error_if_not_hosts_interface(self):
         node0 = factory.make_Node(interface=True)
         node1 = factory.make_Node()

@@ -788,6 +788,40 @@ class Node(CleanSave, TimestampedModel):
         # take advantage of the cache.
         return [tag.name for tag in self.tags.all()]
 
+    def clean_boot_disk(self):
+        """Check that the boot disk is either un-used or has a partition
+        table.
+
+        It's possible that the boot disk we are seeing is already in-use with a
+        filesystem group or cache set.
+        """
+        if self.boot_disk is not None:
+            filesystem = self.boot_disk.get_effective_filesystem()
+            if filesystem is not None:
+                if filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT:
+                    # Format-able filesystem so it can just be removed.
+                    filesystem.delete()
+                elif filesystem.filesystem_group is not None:
+                    # Part of a filesystem group and cannot be set as the
+                    # boot disk.
+                    raise ValidationError({
+                        "boot_disk": [
+                            "Cannot be set as the boot disk; already in-use "
+                            "in %s '%s'." % (
+                                filesystem.filesystem_group.get_nice_name(),
+                                filesystem.filesystem_group.name,
+                                )]
+                        })
+                elif filesystem.cache_set is not None:
+                    # Part of a cache set and cannot be set as the boot disk.
+                    raise ValidationError({
+                        "boot_disk": [
+                            "Cannot be set as the boot disk; already in-use "
+                            "in cache set '%s'." % (
+                                filesystem.cache_set.name,
+                                )]
+                        })
+
     def clean_boot_interface(self):
         """Check that this Node's boot interface (if present) belongs to this
         Node.
@@ -835,6 +869,7 @@ class Node(CleanSave, TimestampedModel):
         super(Node, self).clean(*args, **kwargs)
         self.clean_status()
         self.clean_architecture()
+        self.clean_boot_disk()
         self.clean_boot_interface()
 
     def display_status(self):
