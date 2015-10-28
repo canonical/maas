@@ -327,7 +327,7 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--15">
+                                <div class="table__header table__column--12">
                                     <a class="active"
                                         data-ng-class="{ active: column == 'name' }"
                                         data-ng-click="column = 'name'">
@@ -339,6 +339,7 @@
                                         MAC
                                     </a>
                                 </div>
+                                <div class="table__header table__column--3">PXE</div>
                                 <div class="table__header table__column--9">Type</div>
                                 <div class="table__header table__column--14">Fabric</div>
                                 <div class="table__header table__column--14">VLAN</div>
@@ -359,7 +360,7 @@
                                         <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--15" data-ng-show="column == 'name'">
+                                <div class="table__data table__column--12" data-ng-show="column == 'name'">
                                     <span class="ng-hide" data-ng-show="interface.type == 'alias' || interface.type == 'vlan'">{$ interface.name $}</span>
                                     <input type="text" class="table__input"
                                         data-ng-show="interface.type != 'alias' && interface.type != 'vlan'"
@@ -375,7 +376,7 @@
                                         </a>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--15 ng-hide" data-ng-show="column == 'mac'">
+                                <div class="table__data table__column--12 ng-hide" data-ng-show="column == 'mac'">
                                     {$ interface.mac_address $}
                                     <span class="table__label active ng-hide" data-ng-show="interface.members">
                                         <a data-ng-click="toggleMembers(interface)">
@@ -383,6 +384,10 @@
                                             <span class="ng-hide" data-ng-show="isShowingMembers(interface)">Hide members</span>
                                         </a>
                                     </span>
+                                </div>
+                                <div class="table__data table__column--3">
+                                    <input class="align-center" type="radio" name="bootInterface" checked
+                                        data-ng-if="isBootInterface(interface)">
                                 </div>
                                 <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
                                 <div class="table__data table__column--14">
@@ -454,8 +459,10 @@
                                     <div class="table__row table__dropdown-row" data-ng-show="isShowingAdd()">
                                         <div class="table__data table__column--3">
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table__column--12">
                                             {$ getAddName() $}
+                                        </div>
+                                        <div class="table__data table__column--3">
                                         </div>
                                         <div class="table__data table__column--9">
                                             <select class="table__input" name="type" id="type"
@@ -537,10 +544,14 @@
                             <div class="table__row active ng-hide" data-ng-show="isShowingCreateBond()">
                                 <div class="table__data table__column--3">
                                 </div>
-                                <div class="table__data table__column--15">
+                                <div class="table__data table__column--12">
                                     <input type="text" class="table__input editible"
                                         data-ng-class="{ invalid: isInterfaceNameInvalid(newBondInterface) }"
                                         data-ng-model="newBondInterface.name">
+                                </div>
+                                <div class="table__data table__column--3">
+                                    <input class="align-center" type="radio" name="bondBootInterface" checked
+                                        data-ng-if="getBondIsBootInterface()">
                                 </div>
                                 <div class="table__data table__column--15">Bond</div>
                                 <div class="table__data table__column--67"></div>

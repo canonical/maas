@@ -489,6 +489,26 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
+        // Return true if the interface is the boot interface or has a parent
+        // that is the boot interface.
+        $scope.isBootInterface = function(nic) {
+            if(!angular.isObject(nic)) {
+                return false;
+            }
+
+            if(nic.is_boot) {
+                return true;
+            } else if(nic.type === INTERFACE_TYPE.BOND) {
+                var i;
+                for(i = 0; i < nic.members.length; i++) {
+                    if(nic.members[i].is_boot) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
         // Get the text for the type of the interface.
         $scope.getInterfaceTypeText = function(nic) {
             var text = INTERFACE_TYPE_TEXTS[nic.type];
@@ -1044,6 +1064,21 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     xmitHashPolicy: "layer2"
                 };
             }
+        };
+
+        // Return true if the new bond interface has a parent that is a boot
+        // interface.
+        $scope.getBondIsBootInterface = function() {
+            if(!angular.isArray($scope.newBondInterface.parents)) {
+                return false;
+            }
+            var i;
+            for(i = 0; i < $scope.newBondInterface.parents.length; i++) {
+                if($scope.newBondInterface.parents[i].is_boot) {
+                    return true;
+                }
+            }
+            return false;
         };
 
         // Return the MAC address that should be shown as a placeholder. This

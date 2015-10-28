@@ -876,6 +876,60 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("isBootInterface", function() {
+
+        it("returns true if is_boot is true", function() {
+            var controller = makeController();
+            var nic = {
+                is_boot: true
+            };
+            expect($scope.isBootInterface(nic)).toBe(true);
+        });
+
+        it("returns false if is_boot is false", function() {
+            var controller = makeController();
+            var nic = {
+                type: "physical",
+                is_boot: false
+            };
+            expect($scope.isBootInterface(nic)).toBe(false);
+        });
+
+        it("returns false if bond has no members with is_boot", function() {
+            var controller = makeController();
+            var nic = {
+                type: "bond",
+                is_boot: false,
+                members: [
+                    {
+                        is_boot: false
+                    },
+                    {
+                        is_boot: false
+                    }
+                ]
+            };
+            expect($scope.isBootInterface(nic)).toBe(false);
+        });
+
+        it("returns true if bond has member with is_boot", function() {
+            var controller = makeController();
+            var nic = {
+                type: "bond",
+                is_boot: false,
+                members: [
+                    {
+                        is_boot: false
+                    },
+                    {
+                        is_boot: true
+                    }
+                ]
+            };
+            expect($scope.isBootInterface(nic)).toBe(true);
+        });
+    });
+
     describe("getInterfaceTypeText", function() {
         var INTERFACE_TYPE_TEXTS = {
             "physical": "Physical",
@@ -2937,6 +2991,39 @@ describe("NodeNetworkingController", function() {
                 lacpRate: "slow",
                 xmitHashPolicy: "layer2"
             });
+        });
+    });
+
+    describe("getBondIsBootInterface", function() {
+
+        it("returns false if bond has no members with is_boot", function() {
+            var controller = makeController();
+            $scope.newBondInterface = {
+                parents: [
+                    {
+                        is_boot: false
+                    },
+                    {
+                        is_boot: false
+                    }
+                ]
+            };
+            expect($scope.getBondIsBootInterface()).toBe(false);
+        });
+
+        it("returns true if bond has member with is_boot", function() {
+            var controller = makeController();
+            $scope.newBondInterface = {
+                parents: [
+                    {
+                        is_boot: false
+                    },
+                    {
+                        is_boot: true
+                    }
+                ]
+            };
+            expect($scope.getBondIsBootInterface()).toBe(true);
         });
     });
 
