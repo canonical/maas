@@ -14,9 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import random
-
-from distro_info import UbuntuDistroInfo
 from django.core.files.uploadedfile import SimpleUploadedFile
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
@@ -50,8 +47,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
             field.error_messages['invalid_choice'])
 
     def test_commissioningform_contains_real_and_ui_choice(self):
-        ubuntu_releases = UbuntuDistroInfo()
-        release = random.choice(ubuntu_releases.all).decode("utf-8")
+        release = factory.pick_ubuntu_release()
         name = 'ubuntu/%s' % release
         kernel = 'hwe-' + release[0]
         factory.make_usable_boot_resource(

@@ -78,7 +78,10 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maasserver.utils.curtin import curtin_supports_webhook_events
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -734,7 +737,7 @@ class TestGetCurtinUserData(
         PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
-    def test_get_curtin_userdata_calls_compose_curtin_storage_config(self):
+    def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
             interface=True)
@@ -744,10 +747,35 @@ class TestGetCurtinUserData(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config")
-
+        mock_compose_network = self.patch(
+            preseed_module, "compose_curtin_network_config")
+        self.patch(
+            preseed_module, "curtin_supports_custom_storage").value = True
+        node.osystem = u'ubuntu'
         user_data = get_curtin_userdata(node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+        self.assertThat(mock_compose_network, MockCalledOnceWith(node))
+
+    def test_get_curtin_userdata_doesnt_call_compose_config_on_otheros(self):
+        node = factory.make_Node(
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
+            interface=True)
+        factory.make_NodeGroupInterface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        arch, subarch = node.architecture.split('/')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_compose_storage = self.patch(
+            preseed_module, "compose_curtin_storage_config")
+        mock_compose_network = self.patch(
+            preseed_module, "compose_curtin_network_config")
+        self.patch(
+            preseed_module, "curtin_supports_custom_storage").value = True
+        node.osystem = factory.make_name("osystem")
+        user_data = get_curtin_userdata(node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_compose_storage, MockNotCalled())
+        self.assertThat(mock_compose_network, MockNotCalled())
 
     def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
         node = factory.make_Node(

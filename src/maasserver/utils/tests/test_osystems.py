@@ -24,7 +24,10 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_release,
 )
 from maasserver.enum import BOOT_RESOURCE_TYPE
-from maasserver.models import BootResource
+from maasserver.models import (
+    BootResource,
+    Config,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
@@ -43,6 +46,7 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_osystem_and_distro_series,
 )
+from maastesting.matchers import MockAnyCall
 
 
 class TestOsystems(MAASServerTestCase):
@@ -264,8 +268,7 @@ class TestReleases(MAASServerTestCase):
         self.assertEqual(choices, list_commissioning_choices([osystem]))
 
     def test_make_hwe_kernel_ui_text_finds_release_from_bootsourcecache(self):
-        ubuntu_releases = UbuntuDistroInfo()
-        release = random.choice(ubuntu_releases.all).decode("utf-8")
+        release = factory.pick_ubuntu_release()
         kernel = 'hwe-' + release[0]
         factory.make_usable_boot_resource(
             name="ubuntu/%s" % release,
@@ -445,3 +448,21 @@ class TestValidateHweKernel(MAASServerTestCase):
                 ' min_hwe_kernel(hwe-v).', e.message)
             exception_raised = True
         self.assertEqual(True, exception_raised)
+
+    def test_validate_hwe_kern_always_sets_kern_with_commissionable_os(self):
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('hwe-t', 'hwe-v')
+        mock_get_config = self.patch(Config.objects, "get_config")
+        mock_get_config.return_value = 'trusty'
+        kernel = validate_hwe_kernel(
+            None,
+            'hwe-v',
+            '%s/generic' % factory.make_name('arch'),
+            factory.make_name("osystem"),
+            factory.make_name("distro"))
+        self.assertThat(
+            mock_get_config, MockAnyCall('commissioning_osystem'))
+        self.assertThat(
+            mock_get_config, MockAnyCall('commissioning_distro_series'))
+        self.assertEquals('hwe-v', kernel)

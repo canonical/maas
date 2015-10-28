@@ -34,6 +34,7 @@ from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 from maasserver.models import (
     BootResource,
     BootSourceCache,
+    Config,
 )
 
 
@@ -286,11 +287,17 @@ def validate_hwe_kernel(
     os/release/architecture combination, and that the selected hwe_kernel is >=
     min_hwe_kernel. If no hwe_kernel is selected one will be chosen.
     """
-    # The hwe_kernel feature is only supported on Ubuntu
-    if((osystem and "ubuntu" not in osystem.lower()) or
+    if (not osystem or
        (not architecture or architecture == '') or
        (not distro_series or distro_series == '')):
         return hwe_kernel
+
+    # If we're not deploying Ubuntu we are just setting the kernel to be used
+    # during deployment
+    if osystem != "ubuntu":
+        osystem = Config.objects.get_config('commissioning_osystem')
+        distro_series = Config.objects.get_config(
+            'commissioning_distro_series')
 
     arch, subarch = architecture.split('/')
 

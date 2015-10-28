@@ -249,8 +249,8 @@
                             </dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ getOSText() $}</dd>
-                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Kernel</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ node.hwe_kernel $}</dd>
+                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS()">Kernel</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS()">{$ node.hwe_kernel $}</dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">Third Party Driver</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
@@ -320,6 +320,13 @@
                         <ul class="flash-messages">
                             <li class="flash-messages__item info">
                                 Network configuration cannot be modified unless the node is Ready or Broken.
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="twelve-col error ng-hide" data-ng-show="!isUbuntuOS()">
+                        <ul class="flash-messages">
+                            <li class="flash-messages__item info">
+                                Custom network configuration only supported on Ubuntu. Using OS default configuration.
                             </li>
                         </ul>
                     </div>
@@ -630,6 +637,13 @@
                     <ul class="flash-messages">
                         <li class="flash-messages__item error">
                             No storage information. Commissioning this node will gather the storage information.
+                        </li>
+                    </ul>
+                </div>
+                <div class="twelve-col error ng-hide" data-ng-show="!isUbuntuOS()">
+                    <ul class="flash-messages">
+                        <li class="flash-messages__item info">
+                            Custom storage configuration only supported on Ubuntu. Using flat layout.
                         </li>
                     </ul>
                 </div>

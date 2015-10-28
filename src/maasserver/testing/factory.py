@@ -26,6 +26,7 @@ import logging
 import random
 import time
 
+from distro_info import UbuntuDistroInfo
 from django.contrib.auth.models import User
 from django.test.client import RequestFactory
 from django.utils import timezone
@@ -235,6 +236,21 @@ class Factory(maastesting.factory.Factory):
         """Pick a random commissioning release from operating system."""
         releases = osystem.get_supported_commissioning_releases()
         return random.choice(releases)
+
+    def pick_ubuntu_release(self, but_not=None):
+        """Pick a random supported Ubuntu release.
+
+        :param but_not: Exclude these releases from the result
+        :type but_not: Sequence
+        """
+        ubuntu_releases = UbuntuDistroInfo()
+        supported_releases = ubuntu_releases.all[
+            ubuntu_releases.all.index('precise'):]
+        if but_not is None:
+            but_not = []
+        return random.choice(
+            [choice for choice in supported_releases if choice not in but_not],
+            ).decode("utf-8")
 
     def _save_node_unchecked(self, node):
         """Save a :class:`Node`, but circumvent status transition checks."""

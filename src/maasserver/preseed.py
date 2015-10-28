@@ -230,15 +230,28 @@ def get_curtin_userdata(node):
     kernel_config = compose_curtin_kernel_preseed(node)
     verbose_config = compose_curtin_verbose_preseed()
 
+    supports_custom_storage = True
     # Get the storage configration if curtin supports custom storage.
-    storage_config = compose_curtin_storage_config(node)
     if not curtin_supports_custom_storage():
         maaslog.error(
             "%s: cannot deploy with custom storage config; missing support "
             "from curtin." % node.hostname)
-        storage_config = []
+        supports_custom_storage = False
 
-    network_config = compose_curtin_network_config(node)
+    if node.osystem != "ubuntu":
+        maaslog.error(
+            "%s: is not being deployed with custom storage or networking "
+            "config; using operating system other than Ubuntu." %
+            node.hostname)
+        supports_custom_storage = False
+        network_config = []
+    else:
+        network_config = compose_curtin_network_config(node)
+
+    if supports_custom_storage:
+        storage_config = compose_curtin_storage_config(node)
+    else:
+        storage_config = []
 
     # Pack the curtin and the configuration into a script to execute on the
     # deploying node.

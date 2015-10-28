@@ -837,6 +837,24 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isUbuntuOS", function() {
+        it("returns true when ubuntu", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = 'ubuntu';
+            node.distro_series = makeName("distro_series");
+            expect($scope.isUbuntuOS()).toBe(true);
+        });
+
+        it("returns false when otheros", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = makeName("osystem");
+            node.distro_series = makeName("distro_series");
+            expect($scope.isUbuntuOS()).toBe(false);
+        });
+    });
+
     describe("isActionError", function() {
 
         it("returns true if actionError", function() {

@@ -8,7 +8,8 @@ Networking
 
 .. note::
 
-  This feature is available in MAAS versions 1.9 and above.
+  This feature is available in MAAS versions 1.9 and above on Ubuntu
+  deployments.
 
 MAAS 1.9 adds support for the modeling of a wide variety of networking concepts
 and configurations.
