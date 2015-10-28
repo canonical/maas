@@ -175,6 +175,18 @@ class Filesystem(CleanSave, TimestampedModel):
             raise ValidationError(
                 "BCACHE_CACHE must be inside of a cache_set.")
 
+        # You cannot place a filesystem directly on the boot_disk. It requires
+        # a partition to be used.
+        if self.block_device is not None:
+            node = self.block_device.node
+            boot_disk = node.get_boot_disk()
+            if boot_disk is not None and boot_disk.id == self.block_device.id:
+                # This is the boot disk for the node.
+                raise ValidationError(
+                    "Cannot place filesystem directly on the boot disk. "
+                    "Create a partition on the boot disk first and then "
+                    "format the partition.")
+
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid4()

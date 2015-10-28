@@ -3492,6 +3492,17 @@ def get_cache_set_choices_for_node(node):
     ]
 
 
+def _move_boot_disk_to_partitions(block_devices, partitions):
+    """Removes the boot disk from the block_devices, creates a partition
+    on the boot disk and adds it to partitions."""
+    for block_device in block_devices:
+        partition = block_device.create_partition_if_boot_disk()
+        if partition is not None:
+            block_devices.remove(block_device)
+            partitions.append(partition)
+            return
+
+
 class CreateCacheSetForm(Form):
     """For validaing and saving a new Bcache Cache Set."""
 
@@ -3526,8 +3537,14 @@ class CreateCacheSetForm(Form):
         if self.cleaned_data['cache_device']:
             cache_device = BlockDevice.objects.get(
                 id=self.cleaned_data['cache_device'])
-            return CacheSet.objects.get_or_create_cache_set_for_block_device(
-                cache_device)
+            partition = cache_device.create_partition_if_boot_disk()
+            if partition is not None:
+                return CacheSet.objects.get_or_create_cache_set_for_partition(
+                    partition)
+            else:
+                return (
+                    CacheSet.objects.get_or_create_cache_set_for_block_device(
+                        cache_device))
         elif self.cleaned_data['cache_partition']:
             cache_partition = Partition.objects.get(
                 id=self.cleaned_data['cache_partition'])
@@ -3537,7 +3554,7 @@ class CreateCacheSetForm(Form):
     def _set_up_field_choices(self):
         """Sets up choices for `cache_device` and `cache_partition` fields."""
         # Select the unused, non-partitioned block devices of this node.
-        free_block_devices = list(
+        free_block_devices = (
             BlockDevice.objects.get_free_block_devices_for_node(self.node))
         block_device_choices = [
             (bd.id, bd.name)
@@ -3594,8 +3611,13 @@ class UpdateCacheSetForm(Form):
         if self.cleaned_data['cache_device']:
             filesystem = self.cache_set.get_filesystem()
             filesystem.partition = None
-            filesystem.block_device = BlockDevice.objects.get(
+            block_device = BlockDevice.objects.get(
                 id=self.cleaned_data['cache_device'])
+            partition = block_device.create_partition_if_boot_disk()
+            if partition is not None:
+                filesystem.partition = partition
+            else:
+                filesystem.block_device = block_device
             filesystem.save()
         elif self.cleaned_data['cache_partition']:
             filesystem = self.cache_set.get_filesystem()
@@ -3680,6 +3702,10 @@ class CreateBcacheForm(Form):
         if self.cleaned_data['backing_device']:
             backing_device = BlockDevice.objects.get(
                 id=self.cleaned_data['backing_device'])
+            partition = backing_device.create_partition_if_boot_disk()
+            if partition is not None:
+                backing_partition = partition
+                backing_device = None
         elif self.cleaned_data['backing_partition']:
             backing_partition = Partition.objects.get(
                 id=self.cleaned_data['backing_partition'])
@@ -3695,7 +3721,7 @@ class CreateBcacheForm(Form):
         """Sets up choices for `cache_set`, `backing_device`,
         and `backing_partition` fields."""
         # Select the unused, non-partitioned block devices of this node.
-        free_block_devices = list(
+        free_block_devices = (
             BlockDevice.objects.get_free_block_devices_for_node(self.node))
         block_device_choices = [
             (bd.id, bd.name)
@@ -3754,9 +3780,16 @@ class UpdateBcacheForm(Form):
             # Remove previous cache
             self.bcache.filesystems.filter(
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING).delete()
-            # Create a new one on this device.
-            self.bcache.filesystems.add(Filesystem.objects.create(
-                block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
+            # Create a new one on this device or on the partition on this
+            # device if the device is the boot disk.
+            partition = device.create_partition_if_boot_disk()
+            if partition is not None:
+                filesystem = Filesystem.objects.create(
+                    partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+            else:
+                filesystem = Filesystem.objects.create(
+                    block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+            self.bcache.filesystems.add(filesystem)
         elif self.cleaned_data['backing_partition']:
             partition = Partition.objects.get(
                 id=int(self.cleaned_data['backing_partition']))
@@ -3788,8 +3821,9 @@ class UpdateBcacheForm(Form):
         # the ones currently used by bcache and exclude the virtual block
         # device created by the cache.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(
-                self.node).exclude(id=self.bcache.virtual_device.id))
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
+        free_block_devices = free_block_devices.exclude(
+            id=self.bcache.virtual_device.id)
         current_block_devices = self.bcache.filesystems.exclude(
             block_device=None)
         block_device_choices = [
@@ -3858,8 +3892,7 @@ class CreateRaidForm(Form):
         """
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(
-                self.node))
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
         block_device_choices = [
             (bd.id, bd.name)
             for bd in free_block_devices
@@ -3908,15 +3941,16 @@ class CreateRaidForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-
-        block_devices = BlockDevice.objects.filter(
-            id__in=self.cleaned_data['block_devices'])
-        partitions = Partition.objects.filter(
-            id__in=self.cleaned_data['partitions'])
-        spare_devices = BlockDevice.objects.filter(
-            id__in=self.cleaned_data['spare_devices'])
-        spare_partitions = Partition.objects.filter(
-            id__in=self.cleaned_data['spare_partitions'])
+        block_devices = list(BlockDevice.objects.filter(
+            id__in=self.cleaned_data['block_devices']))
+        partitions = list(Partition.objects.filter(
+            id__in=self.cleaned_data['partitions']))
+        _move_boot_disk_to_partitions(block_devices, partitions)
+        spare_devices = list(BlockDevice.objects.filter(
+            id__in=self.cleaned_data['spare_devices']))
+        spare_partitions = list(Partition.objects.filter(
+            id__in=self.cleaned_data['spare_partitions']))
+        _move_boot_disk_to_partitions(spare_devices, spare_partitions)
 
         return RAID.objects.create_raid(
             name=self.cleaned_data['name'],
@@ -4077,15 +4111,23 @@ class UpdateRaidForm(Form):
 
         for device_id in self.cleaned_data['add_block_devices']:
             if device_id not in current_block_device_ids:
-                self.raid.add_device(
-                    BlockDevice.objects.get(id=device_id),
-                    FILESYSTEM_TYPE.RAID)
+                block_device = BlockDevice.objects.get(id=device_id)
+                partition = block_device.create_partition_if_boot_disk()
+                if partition is not None:
+                    self.raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
+                else:
+                    self.raid.add_device(block_device, FILESYSTEM_TYPE.RAID)
 
         for device_id in self.cleaned_data['add_spare_devices']:
             if device_id not in current_block_device_ids:
-                self.raid.add_device(
-                    BlockDevice.objects.get(id=device_id),
-                    FILESYSTEM_TYPE.RAID_SPARE)
+                block_device = BlockDevice.objects.get(id=device_id)
+                partition = block_device.create_partition_if_boot_disk()
+                if partition is not None:
+                    self.raid.add_partition(
+                        partition, FILESYSTEM_TYPE.RAID_SPARE)
+                else:
+                    self.raid.add_device(
+                        block_device, FILESYSTEM_TYPE.RAID_SPARE)
 
         for partition_id in self.cleaned_data['add_partitions']:
             if partition_id not in current_partition_ids:
@@ -4134,8 +4176,7 @@ class CreateVolumeGroupForm(Form):
         """
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(
-                self.node))
+            BlockDevice.objects.get_free_block_devices_for_node(self.node))
         self.fields['block_devices'].choices = [
             (bd.id, bd.name)
             for bd in free_block_devices
@@ -4179,13 +4220,16 @@ class CreateVolumeGroupForm(Form):
 
         This implementation of `save` does not support the `commit` argument.
         """
-        block_device_ids = self.cleaned_data['block_devices']
-        partition_ids = self.cleaned_data['partitions']
+        block_devices = list(BlockDevice.objects.filter(
+            id__in=self.cleaned_data['block_devices']))
+        partitions = list(Partition.objects.filter(
+            id__in=self.cleaned_data['partitions']))
+        _move_boot_disk_to_partitions(block_devices, partitions)
         return VolumeGroup.objects.create_volume_group(
             name=self.cleaned_data['name'],
             uuid=self.cleaned_data.get('uuid'),
-            block_devices=BlockDevice.objects.filter(id__in=block_device_ids),
-            partitions=Partition.objects.filter(id__in=partition_ids))
+            block_devices=block_devices,
+            partitions=partitions)
 
 
 class UpdateVolumeGroupForm(Form):
@@ -4221,8 +4265,7 @@ class UpdateVolumeGroupForm(Form):
         node = self.volume_group.get_node()
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(
-                node))
+            BlockDevice.objects.get_free_block_devices_for_node(node))
         self.fields['add_block_devices'].choices = [
             (bd.id, bd.name)
             for bd in free_block_devices
@@ -4300,6 +4343,9 @@ class UpdateVolumeGroupForm(Form):
             ]
         partitions = partitions + list(
             Partition.objects.filter(id__in=add_partition_ids))
+
+        # Move the boot disk to the partitions if it exists.
+        _move_boot_disk_to_partitions(block_devices, partitions)
 
         # Update the block devices and partitions in the volume group.
         self.volume_group.update_block_devices_and_partitions(

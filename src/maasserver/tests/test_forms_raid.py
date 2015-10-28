@@ -71,7 +71,7 @@ class TestCreateRaidForm(MAASServerTestCase):
             form.errors)
 
     def test_choices_are_being_populated_correctly(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for _ in range(10)
@@ -209,6 +209,51 @@ class TestCreateRaidForm(MAASServerTestCase):
                 for fs in raid.filesystems.exclude(partition=None)
             ])
 
+    def test_raid_creation_on_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(10)
+        ]
+        for bd in bds[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        block_devices = [
+            bd.id
+            for bd in bds
+            if bd.get_partitiontable() is None
+        ]
+        partitions = [
+            bd.get_partitiontable().add_partition().id
+            for bd in bds[5:]
+        ]
+        form = CreateRaidForm(node=node, data={
+            'name': 'md1',
+            'level': FILESYSTEM_GROUP_TYPE.RAID_6,
+            'block_devices': block_devices,
+            'partitions': partitions,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        raid = form.save()
+        self.assertEqual('md1', raid.name)
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
+        block_devices = [
+            bd.id
+            for bd in bds
+            if bd.get_partitiontable() is None and not bd.is_boot_disk()
+        ]
+        self.assertItemsEqual(
+            block_devices,
+            [fs.block_device.id
+             for fs in raid.filesystems.exclude(block_device=None)])
+        partitions = [
+            bd.get_partitiontable().partitions.first().id
+            for bd in [bds[0]] + bds[5:]
+        ]
+        self.assertItemsEqual(
+            partitions,
+            [fs.partition.id
+             for fs in raid.filesystems.exclude(partition=None)])
+
     def test_raid_creation_without_storage_fails(self):
         node = factory.make_Node()
         for level in [
@@ -255,6 +300,20 @@ class TestUpdateRaidForm(MAASServerTestCase):
         form = UpdateRaidForm(raid, data={'add_block_devices': bd_names})
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test_add_valid_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6, node=node)
+        raid = RAID.objects.get(id=raid.id)
+        form = UpdateRaidForm(raid, data={'add_block_devices': [boot_disk.id]})
+        self.assertTrue(form.is_valid(), form.errors)
+        raid = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(
+            boot_partition.get_effective_filesystem().filesystem_group.id,
+            raid.id)
+
     def test_add_valid_partition(self):
         raid = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
@@ -272,6 +331,20 @@ class TestUpdateRaidForm(MAASServerTestCase):
                   for _ in range(5)]
         form = UpdateRaidForm(raid, data={'add_spare_devices': bd_ids})
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_add_valid_spare_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        raid = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_6, node=node)
+        raid = RAID.objects.get(id=raid.id)
+        form = UpdateRaidForm(raid, data={'add_spare_devices': [boot_disk.id]})
+        self.assertTrue(form.is_valid(), form.errors)
+        raid = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(
+            boot_partition.get_effective_filesystem().filesystem_group.id,
+            raid.id)
 
     def test_add_valid_spare_partition(self):
         raid = factory.make_FilesystemGroup(

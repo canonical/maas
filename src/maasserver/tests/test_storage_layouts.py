@@ -62,6 +62,7 @@ def round_size_by_blocks(size, block_size):
 
 def make_Node_with_uefi_boot_method(*args, **kwargs):
     kwargs['bios_boot_method'] = "uefi"
+    kwargs['with_boot_disk'] = False
     return factory.make_Node(*args, **kwargs)
 
 
@@ -458,7 +459,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ], layout.fields.keys())
 
     def test__creates_layout_with_mbr_defaults(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         layout = FlatStorageLayout(node)
@@ -486,7 +487,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_maximum_mbr_partition_size(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=3 * (1024 ** 4))
         layout = FlatStorageLayout(node)
@@ -990,7 +991,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 ))
 
     def test__creates_layout_with_multiple_mbr_partitions(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=7 * (1024 ** 4))
         layout = LVMStorageLayout(node)

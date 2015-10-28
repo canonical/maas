@@ -144,6 +144,21 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
         ]
         self.assertItemsEqual(block_devices, block_devices_in_vg)
 
+    def test_creates_volume_group_with_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        data = {
+            'name': factory.make_name("vg"),
+            'block_devices': [boot_disk.id],
+        }
+        form = CreateVolumeGroupForm(node, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(
+            boot_partition.get_effective_filesystem().filesystem_group.id,
+            volume_group.id)
+
     def test_creates_volume_group_with_block_devices_by_name(self):
         node = factory.make_Node()
         block_devices = [
@@ -321,6 +336,21 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
         self.assertEquals(
             volume_group.id,
             block_device.get_effective_filesystem().filesystem_group.id)
+
+    def test_adds_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        volume_group = factory.make_VolumeGroup(node=node)
+        data = {
+            'add_block_devices': [boot_disk.id],
+            }
+        form = UpdateVolumeGroupForm(volume_group, data=data)
+        self.assertTrue(form.is_valid(), form._errors)
+        volume_group = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(
+            boot_partition.get_effective_filesystem().filesystem_group.id,
+            volume_group.id)
 
     def test_adds_block_device_by_name(self):
         node = factory.make_Node()

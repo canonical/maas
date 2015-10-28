@@ -286,7 +286,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(None, parsed_result["owner"])
 
     def test_GET_returns_physical_block_devices(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
@@ -2083,7 +2083,8 @@ class TestSetStorageLayout(APITestCase):
 
     def test__400_when_no_boot_disk(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False)
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'set_storage_layout',

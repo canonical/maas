@@ -59,7 +59,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_number_of_physical_devices_for_returns_correct_count(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         num_of_devices = random.randint(2, 4)
         for _ in range(num_of_devices):
             factory.make_PhysicalBlockDevice(node=node)
@@ -68,7 +68,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             PhysicalBlockDevice.objects.number_of_physical_devices_for(node))
 
     def test_number_of_physical_devices_for_filters_on_node(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         num_of_devices = random.randint(2, 4)
         for _ in range(num_of_devices):
             factory.make_PhysicalBlockDevice(node=node)
@@ -79,7 +79,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             PhysicalBlockDevice.objects.number_of_physical_devices_for(node))
 
     def test_total_size_of_physical_devices_for_returns_sum_of_size(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         sizes = [
             random.randint(MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 2)
             for _ in range(3)
@@ -92,7 +92,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
                 node))
 
     def test_total_size_of_physical_devices_for_filters_on_node(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         sizes = [
             random.randint(MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE * 2)
             for _ in range(3)

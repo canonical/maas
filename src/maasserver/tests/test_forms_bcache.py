@@ -40,7 +40,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
             {'cache_mode': [u'This field is required.']}, form.errors)
 
     def test_choices_are_being_populated_correctly(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
@@ -145,6 +145,28 @@ class TestCreateBcacheForm(MAASServerTestCase):
             bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
         self.assertEqual(FILESYSTEM_GROUP_TYPE.BCACHE, bcache.group_type)
 
+    def test_bcache_creation_on_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        cache_set = factory.make_CacheSet(node=node)
+        form = CreateBcacheForm(node=node, data={
+            'name': 'bcache0',
+            'cache_set': cache_set.id,
+            'backing_device': boot_disk.id,
+            'cache_mode': CACHE_MODE_TYPE.WRITEBACK,
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        bcache = form.save()
+        self.assertEqual('bcache0', bcache.name)
+        self.assertEqual(cache_set, bcache.cache_set)
+        self.assertEqual(FILESYSTEM_GROUP_TYPE.BCACHE, bcache.group_type)
+        boot_partition = (
+            boot_disk.get_partitiontable().partitions.first())
+        self.assertEqual(
+            boot_partition.get_effective_filesystem(),
+            bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING))
+
     def test_bcache_creation_with_invalid_names_fails(self):
         node = factory.make_Node()
         uuid = unicode(uuid4())
@@ -218,8 +240,13 @@ class TestCreateBcacheForm(MAASServerTestCase):
 class TestUpdateBcacheForm(MAASServerTestCase):
 
     def test_choices_are_being_populated_correctly(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         device_size = 1 * 1000 ** 4
+        # Make 10 block devices.
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, size=device_size)
+            for _ in range(10)
+        ]
         # Make 3 cache sets.
         cache_sets = [
             factory.make_CacheSet(node=node)
@@ -231,11 +258,6 @@ class TestUpdateBcacheForm(MAASServerTestCase):
         ] + [
             cache_set.name
             for cache_set in cache_sets
-        ]
-        # Make 10 block devices.
-        bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=device_size)
-            for _ in range(10)
         ]
         # Partition the last 5 devices with a single partition.
         partitions = [
@@ -328,3 +350,28 @@ class TestUpdateBcacheForm(MAASServerTestCase):
         self.assertIn(
             'is not one of the available choices.',
             form.errors['backing_device'][0])
+
+    def test_bcache_update_with_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        cache_set = factory.make_CacheSet(node=node)
+        filesystems = [
+            factory.make_Filesystem(
+                partition=factory.make_PartitionTable(
+                    block_device=factory.make_PhysicalBlockDevice(
+                        node=node)).add_partition(),
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING)
+            ]
+        bcache = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, cache_set=cache_set,
+            filesystems=filesystems)
+        form = UpdateBcacheForm(bcache=bcache, data={
+            'backing_device': boot_disk.id
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        bcache = form.save()
+        boot_partition = (
+            boot_disk.get_partitiontable().partitions.first())
+        self.assertEqual(
+            boot_partition.get_effective_filesystem(),
+            bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING))

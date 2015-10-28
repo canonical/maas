@@ -126,3 +126,22 @@ class TestFilesystem(MAASServerTestCase):
         partition = factory.make_Partition()
         filesystem = factory.make_Filesystem(partition=partition)
         self.assertEquals(partition, filesystem.get_parent())
+
+    def test_cannot_create_filesystem_directly_on_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'Cannot place filesystem directly on the "
+                    "boot disk. Create a partition on the boot disk first "
+                    "and then format the partition.']}")):
+            factory.make_Filesystem(block_device=boot_disk)
+
+    def test_can_create_filesystem_on_partition_on_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        partition = factory.make_Partition(partition_table=partition_table)
+        # Test is that an error is not raised.
+        factory.make_Filesystem(partition=partition)

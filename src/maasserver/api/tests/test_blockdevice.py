@@ -55,7 +55,7 @@ def get_blockdevice_uri(device, node=None, by_name=False):
 class TestBlockDevices(APITestCase):
 
     def test_read(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
 
         # Add three physical block devices
         physical_block_devices = [
@@ -104,7 +104,7 @@ class TestBlockDevices(APITestCase):
         self.assertItemsEqual(expected_device_ids, result_device_ids)
 
     def test_read_returns_model(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
@@ -128,10 +128,10 @@ class TestBlockDevices(APITestCase):
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
             "mount_point": filesystem.mount_point,
-            }, parsed_devices[0]['filesystem'])
+            }, parsed_devices[1]['filesystem'])
 
     def test_read_returns_partition_type(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -146,7 +146,7 @@ class TestBlockDevices(APITestCase):
                          partition_table.table_type)
 
     def test_read_returns_partitions(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         block_size = 1024
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
@@ -176,7 +176,7 @@ class TestBlockDevices(APITestCase):
                       [p['size'] for p in parsed_device['partitions']])
 
     def test_read_returns_filesystems_on_partitions(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         block_size = 1024
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
@@ -224,7 +224,7 @@ class TestBlockDevices(APITestCase):
         """Checks it's possible to add a physical block device using the POST
         method"""
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         uri = get_blockdevices_uri(node)
         response = self.client.post(uri, {
             'name': 'sda',

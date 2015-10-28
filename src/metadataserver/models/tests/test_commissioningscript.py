@@ -1100,8 +1100,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_only_for_node(self):
         device = self.make_block_device()
-        node = factory.make_Node()
-        other_node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
+        other_node = factory.make_Node(with_boot_disk=False)
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
         self.assertEquals(

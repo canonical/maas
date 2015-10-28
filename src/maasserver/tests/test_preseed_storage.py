@@ -136,7 +136,8 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
     def test__renders_expected_output(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi")
+            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi",
+            with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
@@ -289,7 +290,8 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
         """)
 
     def test__renders_expected_output(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
@@ -385,7 +387,8 @@ class TestSimpleWithEmptyDiskLayout(
         """)
 
     def test__renders_expected_output(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
@@ -591,7 +594,8 @@ class TestComplexDiskLayout(
 
     def test__renders_expected_output(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi")
+            status=NODE_STATUS.ALLOCATED, bios_boot_method="uefi",
+            with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB

@@ -138,27 +138,27 @@ class TestPartitionTable(MAASServerTestCase):
                 ignore_partitions=ignore_partitions))
 
     def test_save_sets_table_type_to_mbr_for_boot_when_type_miss_match(self):
-        node = factory.make_Node(bios_boot_method="pxe")
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=BlockDevice.objects.get(id=boot_disk.id))
         self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
-        node = factory.make_Node(bios_boot_method="uefi")
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=boot_disk)
         self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_none_boot_disk(self):
-        node = factory.make_Node(bios_boot_method="pxe")
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         factory.make_PhysicalBlockDevice(node=node)
         other_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=other_disk)
         self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_force_mbr_on_boot_disk_pxe(self):
-        node = factory.make_Node(bios_boot_method="pxe")
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         error = self.assertRaises(
             ValidationError,
@@ -171,7 +171,7 @@ class TestPartitionTable(MAASServerTestCase):
             }, error.error_dict)
 
     def test_save_force_mbr_on_boot_disk_pxe_force_gpt_on_boot_disk_uefi(self):
-        node = factory.make_Node(bios_boot_method="uefi")
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         error = self.assertRaises(
             ValidationError,

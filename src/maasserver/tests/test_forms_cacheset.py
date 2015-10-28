@@ -35,7 +35,7 @@ class TestCreateCacheSetForm(MAASServerTestCase):
             form.errors)
 
     def test_choices_are_being_populated_correctly(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
         bds = [
             factory.make_PhysicalBlockDevice(node=node)
@@ -82,6 +82,18 @@ class TestCreateCacheSetForm(MAASServerTestCase):
         cache_set = form.save()
         self.assertEquals(cache_device, cache_set.get_device())
 
+    def test_cache_set_creation_with_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        form = CreateCacheSetForm(node=node, data={
+            'cache_device': boot_disk.id,
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        cache_set = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(boot_partition, cache_set.get_device())
+
     def test_cache_set_creation_with_partition(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
@@ -120,7 +132,7 @@ class TestCreateCacheSetForm(MAASServerTestCase):
 class TestUpdateCacheSetForm(MAASServerTestCase):
 
     def test_choices_are_being_populated_correctly(self):
-        node = factory.make_Node()
+        node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
         bds = [
             factory.make_PhysicalBlockDevice(node=node)
@@ -148,7 +160,7 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
             for bd in bds
             if bd.get_partitiontable() is None
         ]
-        cache_set = factory.make_CacheSet(block_device=bds[0])
+        cache_set = factory.make_CacheSet(block_device=bds[1])
         form = UpdateCacheSetForm(cache_set=cache_set, data={})
         # Should allow all devices and partitions, including the one currently
         # in use on the cache set.
@@ -170,6 +182,20 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         cache_set = form.save()
         self.assertEquals(new_cache_device, cache_set.get_device())
+        self.assertIsNone(partition.get_effective_filesystem())
+
+    def test_save_updates_the_cache_set_with_boot_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition = factory.make_Partition(node=node)
+        cache_set = factory.make_CacheSet(partition=partition)
+        form = UpdateCacheSetForm(cache_set=cache_set, data={
+            "cache_device": boot_disk.id,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        cache_set = form.save()
+        boot_partition = boot_disk.get_partitiontable().partitions.first()
+        self.assertEquals(boot_partition, cache_set.get_device())
         self.assertIsNone(partition.get_effective_filesystem())
 
     def test_save_updates_the_cache_set_with_partition(self):

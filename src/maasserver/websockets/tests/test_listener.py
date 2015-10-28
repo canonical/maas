@@ -423,6 +423,7 @@ class TransactionalHelpersMixin:
     def create_node(self, params=None):
         if params is None:
             params = {}
+        params['with_boot_disk'] = False
         return factory.make_Node(**params)
 
     @transactional
@@ -441,7 +442,7 @@ class TransactionalHelpersMixin:
     def create_device_with_parent(self, params=None):
         if params is None:
             params = {}
-        parent = factory.make_Node()
+        parent = factory.make_Node(with_boot_disk=False)
         params["installable"] = False
         params["parent"] = parent
         device = factory.make_Node(**params)

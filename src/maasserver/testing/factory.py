@@ -261,7 +261,7 @@ class Factory(maastesting.factory.Factory):
             routers=None, zone=None, networks=None, boot_type=None,
             sortable_name=False, power_type=None, power_parameters=None,
             power_state=None, power_state_updated=undefined, disable_ipv4=None,
-            with_boot_disk=False, vlan=None, **kwargs):
+            with_boot_disk=True, vlan=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -312,7 +312,7 @@ class Factory(maastesting.factory.Factory):
             node.networks.add(*networks)
         if interface:
             self.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
-        if with_boot_disk:
+        if installable and with_boot_disk:
             self.make_PhysicalBlockDevice(node=node)
 
         # Update the 'updated'/'created' fields with a call to 'update'
@@ -1300,8 +1300,10 @@ class Factory(maastesting.factory.Factory):
     def make_CacheSet(self, block_device=None, partition=None, node=None):
         if node is None:
             node = self.make_Node()
-        if block_device is None:
-            if partition is None:
+        if partition is None and block_device is None:
+            if self.pick_bool():
+                partition = self.make_Partition(node=node)
+            else:
                 block_device = self.make_PhysicalBlockDevice(node=node)
         if block_device is not None:
             return CacheSet.objects.get_or_create_cache_set_for_block_device(
@@ -1328,6 +1330,9 @@ class Factory(maastesting.factory.Factory):
         if filesystems is None:
             if node is None:
                 node = self.make_Node()
+            if node.physicalblockdevice_set.count() == 0:
+                # Add the boot disk and leave it as is.
+                self.make_PhysicalBlockDevice(node=node)
             if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 for _ in range(num_lvm_devices):
                     block_device = self.make_PhysicalBlockDevice(
