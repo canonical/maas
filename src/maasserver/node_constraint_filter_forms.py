@@ -27,6 +27,7 @@ import re
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.forms.fields import Field
 from maasserver.fields import mac_validator
 from maasserver.forms import (
     MultipleChoiceField,
@@ -49,6 +50,7 @@ from maasserver.utils.orm import (
 )
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
+from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,
 # followed by an optional colon, then size (which is mandatory) followed by an
@@ -97,6 +99,36 @@ def storage_validator(value):
         rendered_groups.append(group)
     if ','.join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
+
+NETWORKING_CONSTRAINT_KEYS = {
+    'space',
+    'not_space',
+    'mode',
+    'fabric_class',
+    'not_fabric_class',
+    'subnet_cidr',
+    'not_subnet_cidr',
+    'vid',
+    'not_vid',
+    'fabric',
+    'not_fabric',
+    'subnet',
+    'not_subnet',
+}
+
+
+def networking_validator(constraint_map):
+    """Validate the given LabeledConstraintMap object."""
+    # At this point, the basic syntax of a labeled constraint map will have
+    # already been validated by the underlying form field. However, we also
+    # need to validate the specified things we're looking for in the
+    # networking domain.
+    for label in constraint_map:
+        constraints = constraint_map[label]
+        for constraint_name in constraints.iterkeys():
+            if constraint_name not in NETWORKING_CONSTRAINT_KEYS:
+                raise ValidationError(
+                    "Unknown networking constraint: '%s" % constraint_name)
 
 
 def generate_architecture_wildcards(arches):
@@ -516,6 +548,20 @@ def get_subnet_from_spec(spec):
         raise Subnet.DoesNotExist("No subnet matching '%s'." % spec)
 
 
+class LabeledConstraintMapField(Field):
+
+    def __init__(self, *args, **kwargs):
+        super(LabeledConstraintMapField, self).__init__(*args, **kwargs)
+        self.validators.insert(
+            0, lambda constraint_map: constraint_map.validate(
+                exception_type=ValidationError))
+
+    def to_python(self, value):
+        """Returns a LabeledConstraintMap object."""
+        if value is not None and len(value.strip()) != 0:
+            return LabeledConstraintMap(value)
+
+
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
@@ -572,6 +618,9 @@ class AcquireNodeForm(RenamableFieldsForm):
 
     storage = forms.CharField(
         validators=[storage_validator], label="Storage", required=False)
+
+    networking = LabeledConstraintMapField(
+        validators=[networking_validator], label="Networking", required=False)
 
     ignore_unknown_constraints = True
 

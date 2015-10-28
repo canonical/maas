@@ -40,7 +40,10 @@ from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+)
 
 
 class TestUtils(MAASServerTestCase):
@@ -863,6 +866,26 @@ class TestAcquireNodeForm(MAASServerTestCase):
             id=constraint_map[node.id].keys()[1])  # 2nd constraint with name
         self.assertGreaterEqual(disk1.size, 5 * 1000 ** 3)
 
+    def test_networking_constraint_rejected_if_syntax_is_invalid(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'networking': u'label:x'})
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertThat(form.errors, Contains('networking'))
+
+    def test_networking_constraint_rejected_if_key_is_invalid(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'networking': u'label:chirp_chirp_thing=silenced'})
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertThat(form.errors, Contains('networking'))
+
+    def test_networking_constraint_validated(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'networking': u'label:fabric=fabric-0'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')
         arch = '%s/generic' % factory.make_name('arch')
@@ -962,6 +985,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
             'storage': '0(ssd),10(ssd)',
+            'networking': 'label:fabric=fabric-0',
             }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)

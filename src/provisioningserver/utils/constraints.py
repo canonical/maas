@@ -19,6 +19,41 @@ __all__ = [
 import re
 
 
+class LabeledConstraintMap(object):
+    """Class to encapsulate a labeled constraint map, so that it only
+    needs to be parsed once.
+    """
+
+    def __init__(self, value):
+        self.value = value
+        self.map = None
+        self.error = None
+        try:
+            self.map = parse_labeled_constraint_map(value)
+        except ValueError as error:
+            self.error = error
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.value))
+
+    def __unicode__(self):
+        return self.value
+
+    def __iter__(self):
+        if self.map is None:
+            return iter([])
+        return iter(self.map)
+
+    def __getitem__(self, item):
+        return self.map[item]
+
+    def validate(self, exception_type=ValueError):
+        if self.error:
+            # XXX mpontillo 2015-10-28 Need to re-raise this properly once we
+            # get to Python 3.
+            raise exception_type(self.error.message)
+
+
 def parse_labeled_constraint_map(value, exception_type=ValueError):
     """Returns a dictionary of constraints, given the specified constraint
     value. Validates that the following conditions hold true:
@@ -41,6 +76,8 @@ def parse_labeled_constraint_map(value, exception_type=ValueError):
 
     When multiple keys are contained within a constraint, the values will be
     returned (in the order specified) inside a list.
+
+    When a duplicate label is specified, an exception is thrown.
 
     Single values will also be returned inside a list, for consistency.
 
