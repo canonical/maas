@@ -769,6 +769,36 @@ class TestFilesystemGroup(MAASServerTestCase):
         self.assertEquals(
             small_size * (number_of_raid_devices - 1), fsgroup.get_size())
 
+    def test_get_size_returns_correct_disk_size_for_raid_10(self):
+        node = factory.make_Node()
+        small_size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2)
+        other_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        number_of_raid_devices = random.randint(3, 9)
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=factory.make_PhysicalBlockDevice(
+                    node=node, size=small_size)),
+        ]
+        for _ in range(number_of_raid_devices):
+            filesystems.append(
+                factory.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID,
+                    block_device=factory.make_PhysicalBlockDevice(
+                        node=node, size=other_size)))
+        # Spares are ignored and not taken into calculation.
+        for _ in range(3):
+            filesystems.append(
+                factory.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=factory.make_PhysicalBlockDevice(
+                        node=node, size=other_size)))
+        fsgroup = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_10, filesystems=filesystems)
+        self.assertEquals(
+            small_size * (number_of_raid_devices + 1) / 2, fsgroup.get_size())
+
     def test_get_size_returns_0_if_bcache_without_backing(self):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         self.assertEquals(0, fsgroup.get_size())
@@ -1071,7 +1101,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 fstype=FILESYSTEM_TYPE.RAID,
                 block_device=factory.make_PhysicalBlockDevice(node=node))
             for _ in range(random.randint(1, 3))
-        ]
+            ]
         with ExpectedException(
                 ValidationError,
                 re.escape(
@@ -1088,7 +1118,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 fstype=FILESYSTEM_TYPE.RAID,
                 block_device=factory.make_PhysicalBlockDevice(node=node))
             for _ in range(random.randint(4, 10))
-        ]
+            ]
         for _ in range(random.randint(1, 5)):
             filesystems.append(
                 factory.make_Filesystem(
@@ -1097,6 +1127,59 @@ class TestFilesystemGroup(MAASServerTestCase):
         # Test is that this does not raise an exception.
         factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6,
+            filesystems=filesystems)
+
+    def test_cannot_save_raid_10_with_less_than_3_raid_devices(self):
+        node = factory.make_Node()
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=factory.make_PhysicalBlockDevice(node=node))
+            for _ in range(random.randint(1, 2))
+        ]
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 10 must have at least 3 raid "
+                    "devices and any number of spares.']}")):
+            factory.make_FilesystemGroup(
+                group_type=FILESYSTEM_GROUP_TYPE.RAID_10,
+                filesystems=filesystems)
+
+    def test_can_save_raid_10_with_3_raid_devices_and_spares(self):
+        node = factory.make_Node()
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=factory.make_PhysicalBlockDevice(node=node))
+            for _ in range(3)
+        ]
+        for _ in range(random.randint(1, 5)):
+            filesystems.append(
+                factory.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=factory.make_PhysicalBlockDevice(node=node)))
+        # Test is that this does not raise an exception.
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_10,
+            filesystems=filesystems)
+
+    def test_can_save_raid_10_with_4_or_more_raid_devices_and_spares(self):
+        node = factory.make_Node()
+        filesystems = [
+            factory.make_Filesystem(
+                fstype=FILESYSTEM_TYPE.RAID,
+                block_device=factory.make_PhysicalBlockDevice(node=node))
+            for _ in range(random.randint(4, 10))
+        ]
+        for _ in range(random.randint(1, 5)):
+            filesystems.append(
+                factory.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=factory.make_PhysicalBlockDevice(node=node)))
+        # Test is that this does not raise an exception.
+        factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.RAID_10,
             filesystems=filesystems)
 
     def test_cannot_save_bcache_without_cache_set(self):
@@ -1319,6 +1402,10 @@ class TestFilesystemGroupGetNiceName(MAASServerTestCase):
         (FILESYSTEM_GROUP_TYPE.RAID_6, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
             "name": "RAID",
+        }),
+        (FILESYSTEM_GROUP_TYPE.RAID_10, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_10,
+            "name": "RAID",
             }),
         (FILESYSTEM_GROUP_TYPE.BCACHE, {
             "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
@@ -1355,6 +1442,10 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
         (FILESYSTEM_GROUP_TYPE.RAID_6, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
             "prefix": "md",
+        }),
+        (FILESYSTEM_GROUP_TYPE.RAID_10, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_10,
+            "prefix": "md",
             }),
         (FILESYSTEM_GROUP_TYPE.BCACHE, {
             "group_type": FILESYSTEM_GROUP_TYPE.BCACHE,
@@ -1390,6 +1481,10 @@ class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
             }),
         (FILESYSTEM_GROUP_TYPE.RAID_6, {
             "group_type": FILESYSTEM_GROUP_TYPE.RAID_6,
+            "block_size": 512,
+        }),
+        (FILESYSTEM_GROUP_TYPE.RAID_10, {
+            "group_type": FILESYSTEM_GROUP_TYPE.RAID_10,
             "block_size": 512,
             }),
         # For BCACHE see
@@ -1695,7 +1790,7 @@ class TestRAID(MAASServerTestCase):
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node)
             for _ in range(3)
-        ]
+            ]
         uuid = unicode(uuid4())
         with ExpectedException(
                 ValidationError,
@@ -1705,6 +1800,27 @@ class TestRAID(MAASServerTestCase):
             RAID.objects.create_raid(
                 name='md0',
                 level=FILESYSTEM_GROUP_TYPE.RAID_6,
+                uuid=uuid,
+                block_devices=block_devices,
+                partitions=[],
+                spare_devices=[],
+                spare_partitions=[])
+
+    def test_create_raid_10_with_2_elements_fails(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(2)
+        ]
+        uuid = unicode(uuid4())
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [u'RAID level 10 must have at least 3 raid "
+                    "devices and any number of spares.']}")):
+            RAID.objects.create_raid(
+                name='md0',
+                level=FILESYSTEM_GROUP_TYPE.RAID_10,
                 uuid=uuid,
                 block_devices=block_devices,
                 partitions=[],

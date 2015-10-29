@@ -1395,6 +1395,18 @@ class Factory(maastesting.factory.Factory):
                     fstype=FILESYSTEM_TYPE.RAID_SPARE,
                     block_device=spare_block_device)
                 group.filesystems.add(spare_filesystem)
+            elif group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
+                for _ in range(4):
+                    block_device = self.make_PhysicalBlockDevice(node)
+                    filesystem = self.make_Filesystem(
+                        fstype=FILESYSTEM_TYPE.RAID,
+                        block_device=block_device)
+                    group.filesystems.add(filesystem)
+                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_filesystem = self.make_Filesystem(
+                    fstype=FILESYSTEM_TYPE.RAID_SPARE,
+                    block_device=spare_block_device)
+                group.filesystems.add(spare_filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
                 backing_block_device = self.make_PhysicalBlockDevice(node)
                 backing_filesystem = self.make_Filesystem(

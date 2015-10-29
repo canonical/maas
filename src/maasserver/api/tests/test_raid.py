@@ -97,6 +97,8 @@ class TestRaidsAPI(APITestCase):
                 node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_5),
             factory.make_FilesystemGroup(
                 node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6),
+            factory.make_FilesystemGroup(
+                node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_10),
         ]
         # Not RAID. Should not be in the output.
         for _ in range(3):
@@ -419,7 +421,7 @@ class TestRaidsAPI(APITestCase):
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(10)
-        ]
+            ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
         for bd in bds[5:]:
@@ -446,11 +448,58 @@ class TestRaidsAPI(APITestCase):
 
         parsed_device = json.loads(response.content)
         (parsed_block_devices, parsed_partitions,
-            parsed_block_device_spares, parsed_partition_spares) = (
+         parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
         # Size is equivalent to 6 devices of 9 TB each.
         self.assertEqual(
             6 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
+            parsed_device['size'])
+        self.assertItemsEqual(block_devices, parsed_block_devices)
+        self.assertItemsEqual(partitions, parsed_partitions)
+        self.assertItemsEqual(spare_devices, parsed_block_device_spares)
+        self.assertItemsEqual(spare_partitions, parsed_partition_spares)
+
+    def test_create_raid_10(self):
+        """Checks it's possible to create a RAID 10 using 4 raw
+        devices, 4 partitions, one spare device and one spare partition."""
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        # Add 10 10TB physical block devices to the node.
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            for i in range(10)
+        ]
+        for bd in bds[5:]:
+            factory.make_PartitionTable(block_device=bd)
+        for bd in bds[5:]:
+            bd.get_partitiontable().add_partition(size=1000 ** 4)
+        large_partitions = [bd.get_partitiontable().add_partition()
+                            for bd in bds[5:]]
+        uuid4 = unicode(uuid.uuid4())
+        uri = get_raid_devices_uri(node)
+        block_devices = [bd.id for bd in bds[1:]
+                         if bd.get_partitiontable() is None]
+        partitions = [lp.id for lp in large_partitions[1:]]
+        spare_devices = [bds[0].id]
+        spare_partitions = [large_partitions[0].id]
+        response = self.client.post(uri, {
+            'name': 'md0',
+            'uuid': uuid4,
+            'level': FILESYSTEM_GROUP_TYPE.RAID_10,
+            'block_devices': block_devices,
+            'partitions': partitions,
+            'spare_devices': spare_devices,
+            'spare_partitions': spare_partitions,
+        })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        parsed_device = json.loads(response.content)
+        (parsed_block_devices, parsed_partitions,
+            parsed_block_device_spares, parsed_partition_spares) = (
+            get_devices_from_raid(parsed_device))
+        # Size is equivalent to 4 devices of 9 TB each.
+        self.assertEqual(
+            4 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
             parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
@@ -486,13 +535,35 @@ class TestRaidsAPI(APITestCase):
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(3)
-        ]
+            ]
         uuid4 = unicode(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
             'uuid': uuid4,
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
+            'block_devices': [bd.id for bd in bds],
+            'partitions': [],
+            'spare_devices': [],
+            'spare_partitions': [],
+        })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+                         response.content)
+
+    def test_create_raid_10_with_2_elements_fails(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        # Add 3 10TB physical block devices to the node.
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            for i in range(2)
+        ]
+        uuid4 = unicode(uuid.uuid4())
+        uri = get_raid_devices_uri(node)
+        response = self.client.post(uri, {
+            'name': 'md0',
+            'uuid': uuid4,
+            'level': FILESYSTEM_GROUP_TYPE.RAID_10,
             'block_devices': [bd.id for bd in bds],
             'partitions': [],
             'spare_devices': [],

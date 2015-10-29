@@ -261,6 +261,7 @@ class TestCreateRaidForm(MAASServerTestCase):
                 FILESYSTEM_GROUP_TYPE.RAID_1,
                 FILESYSTEM_GROUP_TYPE.RAID_5,
                 FILESYSTEM_GROUP_TYPE.RAID_6,
+                FILESYSTEM_GROUP_TYPE.RAID_10,
         ]:
             form = CreateRaidForm(node=node, data={
                 'name': 'md1',

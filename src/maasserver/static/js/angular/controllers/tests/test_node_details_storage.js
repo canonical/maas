@@ -3023,9 +3023,10 @@ describe("NodeStorageController", function() {
             var modes = $scope.getAvailableRAIDModes();
             expect(modes[0].level).toEqual("raid-0");
             expect(modes[1].level).toEqual("raid-1");
+            expect(modes.length).toEqual(2);
         });
 
-        it("returns raid 0,1,5 for 3 disks", function() {
+        it("returns raid 0,1,5,10 for 3 disks", function() {
             var controller = makeController();
             $scope.availableNew.devices = [{}, {}, {}];
 
@@ -3033,9 +3034,11 @@ describe("NodeStorageController", function() {
             expect(modes[0].level).toEqual("raid-0");
             expect(modes[1].level).toEqual("raid-1");
             expect(modes[2].level).toEqual("raid-5");
+            expect(modes[3].level).toEqual("raid-10");
+            expect(modes.length).toEqual(4);
         });
 
-        it("returns raid 0,1,5,6 for 4 disks", function() {
+        it("returns raid 0,1,5,6,10 for 4 disks", function() {
             var controller = makeController();
             $scope.availableNew.devices = [{}, {}, {}, {}];
 
@@ -3044,6 +3047,8 @@ describe("NodeStorageController", function() {
             expect(modes[1].level).toEqual("raid-1");
             expect(modes[2].level).toEqual("raid-5");
             expect(modes[3].level).toEqual("raid-6");
+            expect(modes[4].level).toEqual("raid-10");
+            expect(modes.length).toEqual(5);
         });
     });
 
@@ -3068,6 +3073,11 @@ describe("NodeStorageController", function() {
             {
                 level: "raid-6",
                 min_disks: 4,
+                allows_spares: true
+            },
+            {
+                level: "raid-10",
+                min_disks: 3,
                 allows_spares: true
             }
         ];
@@ -3341,6 +3351,7 @@ describe("NodeStorageController", function() {
             $scope.availableNew.mode = $scope.getAvailableRAIDModes()[2];
             $scope.setAsSpareRAIDMember(spare0);
 
+            // The 1MB spare causes us to only use 1MB of each active disk.
             expect($scope.getNewRAIDSize()).toBe("2.0 MB");
         });
 
@@ -3376,7 +3387,39 @@ describe("NodeStorageController", function() {
             $scope.availableNew.mode = $scope.getAvailableRAIDModes()[3];
             $scope.setAsSpareRAIDMember(spare0);
 
+            // The 1MB spare causes us to only use 1MB of each active disk.
             expect($scope.getNewRAIDSize()).toBe("2.0 MB");
+        });
+
+        it("gets proper raid-10 size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var disk2 = {
+                original: {
+                    available_size: 2 * 1000 * 1000
+                }
+            };
+            var spare0 = {
+                original: {
+                    available_size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1, disk2, spare0];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[4];
+            $scope.setAsSpareRAIDMember(spare0);
+
+            // The 1MB spare causes us to only use 1MB of each active disk.
+            expect($scope.getNewRAIDSize()).toBe("1.5 MB");
         });
     });
 

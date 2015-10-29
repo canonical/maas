@@ -463,6 +463,9 @@ class FILESYSTEM_GROUP_TYPE:
     #: RAID level 6
     RAID_6 = 'raid-6'
 
+    #: RAID level 10
+    RAID_10 = 'raid-10'
+
     #: Bcache
     BCACHE = 'bcache'
 
@@ -472,6 +475,7 @@ FILESYSTEM_GROUP_RAID_TYPES = [
     FILESYSTEM_GROUP_TYPE.RAID_1,
     FILESYSTEM_GROUP_TYPE.RAID_5,
     FILESYSTEM_GROUP_TYPE.RAID_6,
+    FILESYSTEM_GROUP_TYPE.RAID_10,
     ]
 
 # Django choices for FILESYSTEM_GROUP_RAID_TYPES: sequence of tuples (key, UI
@@ -481,6 +485,7 @@ FILESYSTEM_GROUP_RAID_TYPE_CHOICES = (
     (FILESYSTEM_GROUP_TYPE.RAID_1, "RAID 1"),
     (FILESYSTEM_GROUP_TYPE.RAID_5, "RAID 5"),
     (FILESYSTEM_GROUP_TYPE.RAID_6, "RAID 6"),
+    (FILESYSTEM_GROUP_TYPE.RAID_10, "RAID 10"),
     )
 
 # Django choices for FILESYSTEM_GROUP_TYPE: sequence of tuples (key, UI

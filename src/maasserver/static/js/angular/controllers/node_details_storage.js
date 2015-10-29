@@ -102,6 +102,15 @@ angular.module('MAAS').controller('NodeStorageController', [
                 calculateSize: function(minSize, numDisks) {
                     return minSize * (numDisks - 2);
                 }
+            },
+            {
+                level: "raid-10",
+                title: "RAID 10",
+                min_disks: 3,
+                allows_spares: true,
+                calculateSize: function(minSize, numDisks) {
+                    return minSize * numDisks / 2;
+                }
             }
         ];
 

@@ -417,6 +417,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 return min_size * (num_raid - 1)
             elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
                 return min_size * (num_raid - 2)
+            elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
+                return min_size * num_raid / 2
         raise ValidationError("Unknown raid type: %s" % self.group_type)
 
     def get_bcache_backing_filesystem(self):
@@ -582,6 +584,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             if num_raid < 4:
                 raise ValidationError(
                     "RAID level 6 must have at least 4 raid devices and "
+                    "any number of spares.")
+        elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
+            # RAID 10 must have at least 4 RAID filesystems, but can have
+            # spares.
+            if num_raid < 3:
+                raise ValidationError(
+                    "RAID level 10 must have at least 3 raid devices and "
                     "any number of spares.")
         num_raid_invalid = len([
             fstype
