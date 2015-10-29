@@ -485,7 +485,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             network = self.network
             if network and IPAddress(self.ip) not in self.network:
                 raise ValidationError(
-                    "Cluster IP address is not within specified subnet.")
+                    {'ip':
+                     ["Cluster IP address is not within specified subnet."]})
+            if (network and network.size < 8 and self.is_managed):
+                raise ValidationError(
+                    {'subnet_mask': ['Subnet is too small to manage.']})
         except AddrFormatError as e:
             # The interface's address is validated separately.  If the
             # combination with the netmask is invalid, either there's already
@@ -510,6 +514,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                     errors[field] = [
                         "That field cannot be empty (unless that interface is "
                         "'unmanaged')"]
+            if len(errors) == 0 and self.ip_range_low == self.ip_range_high:
+                errors.setdefault('ip_range_low', []).append([
+                    "Dynamic range cannot be one address."])
+                errors.setdefault('ip_range_high', []).append([
+                    "Dynamic range cannot be one address."])
             if len(errors) != 0:
                 raise ValidationError(errors)
 

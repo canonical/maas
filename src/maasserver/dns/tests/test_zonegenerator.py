@@ -425,12 +425,12 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_with_one_nodegroup_yields_forward_and_reverse_zone(self):
         self.useFixture(RegionConfigurationFixture())
         nodegroup = self.make_node_group(
-            name="henry", network=IPNetwork("10/32"))
+            name="henry", network=IPNetwork("10/29"))
         zones = ZoneGenerator(nodegroup, Mock()).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
-                reverse_zone("henry", "10/32")))
+                reverse_zone("henry", "10/29")))
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         self.useFixture(RegionConfigurationFixture())
@@ -453,14 +453,14 @@ class TestZoneGenerator(MAASServerTestCase):
         # This demonstrates ZoneGenerator in all-singing all-dancing mode.
         self.useFixture(RegionConfigurationFixture())
         nodegroups = [
-            self.make_node_group(name="one", network=IPNetwork("10/32")),
-            self.make_node_group(name="one", network=IPNetwork("11/32")),
-            self.make_node_group(name="two", network=IPNetwork("20/32")),
-            self.make_node_group(name="two", network=IPNetwork("21/32")),
+            self.make_node_group(name="one", network=IPNetwork("10/29")),
+            self.make_node_group(name="one", network=IPNetwork("11/29")),
+            self.make_node_group(name="two", network=IPNetwork("20/29")),
+            self.make_node_group(name="two", network=IPNetwork("21/29")),
             ]
         [  # Other nodegroups.
-            self.make_node_group(name="one", network=IPNetwork("12/32")),
-            self.make_node_group(name="two", network=IPNetwork("22/32")),
+            self.make_node_group(name="one", network=IPNetwork("12/29")),
+            self.make_node_group(name="two", network=IPNetwork("22/29")),
             ]
         expected_zones = (
             # For the forward zones, all nodegroups sharing a domain name,
@@ -470,10 +470,10 @@ class TestZoneGenerator(MAASServerTestCase):
             forward_zone("two"),
             # For the reverse zones, a single reverse zone description is
             # generated for each nodegroup passed in, in network order.
-            reverse_zone("one", "10/32"),
-            reverse_zone("one", "11/32"),
-            reverse_zone("two", "20/32"),
-            reverse_zone("two", "21/32"),
+            reverse_zone("one", "10/29"),
+            reverse_zone("one", "11/29"),
+            reverse_zone("two", "20/29"),
+            reverse_zone("two", "21/29"),
             )
         self.assertThat(
             ZoneGenerator(nodegroups, Mock()).as_list(),

@@ -313,6 +313,16 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.full_clean()
         self.assertEqual('', getattr(interface.subnet, 'gateway_ip'))
 
+    def test_rejects_management_of_small_network(self):
+        network = IPNetwork('192.168.3.4/30')
+        exception = self.assertRaises(
+            ValidationError,
+            factory.make_NodeGroup,
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        errors = {'subnet_mask': ['Subnet is too small to manage.']}
+        self.assertEqual(errors, exception.message_dict)
+
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
         network = factory.make_ipv4_network()
         nodegroup = factory.make_NodeGroup(

@@ -62,7 +62,7 @@ describe("SubentsListController", function() {
     });
 
     it("sets initial values on $scope", function() {
-        // tab-independant variables.
+        // tab-independent variables.
         var controller = makeController();
         expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.fabrics).toBe(FabricsManager.getItems());

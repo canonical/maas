@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -230,8 +232,8 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             IPAddress(interface.subnet_mask))
 
     def test__accepts_netmasks_other_than_64_bits_on_IPv6(self):
-        netmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc'
-        network = factory.make_ipv6_network(slash=netmask)
+        netmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff8'
+        network = factory.make_ipv6_network(slash=125)
         int_settings = factory.get_interface_fields(
             network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             netmask=netmask)
@@ -242,6 +244,32 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(
             IPAddress(netmask),
             IPAddress(interface.subnet_mask))
+
+    def test__rejects_126_bit_netmask_on_IPv6(self):
+        netmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc'
+        network = factory.make_ipv6_network(slash=126)
+        int_settings = factory.get_interface_fields(
+            network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            netmask=netmask)
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance())
+        self.assertFalse(form.is_valid())
+
+    def test__rejects_short_netmask_on_IPv4(self):
+        slash = random.randint(30, 32)
+        if slash == 30:
+            netmask = '255.255.255.252'
+        elif slash == 31:
+            netmask = '255.255.255.254'
+        else:
+            netmask = '255.255.255.255'
+        network = factory.make_ipv4_network(slash=slash)
+        int_settings = factory.get_interface_fields(
+            network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            netmask=netmask)
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance())
+        self.assertFalse(form.is_valid())
 
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")

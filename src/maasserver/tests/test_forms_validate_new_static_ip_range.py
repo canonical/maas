@@ -55,6 +55,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             ValidationError,
             validate_new_static_ip_ranges,
             instance=interface,
+            management=interface.management,
             static_ip_range_low='10.1.0.50',
             static_ip_range_high='10.1.0.55')
         self.assertEqual(
@@ -69,6 +70,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             ValidationError,
             validate_new_static_ip_ranges,
             instance=interface,
+            management=interface.management,
             static_ip_range_low='',
             static_ip_range_high='')
         self.assertEqual(
@@ -80,7 +82,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
-            interface, static_ip_range_low='10.1.0.40',
+            interface, interface.management, static_ip_range_low='10.1.0.40',
             static_ip_range_high='10.1.0.100')
         self.assertTrue(is_valid)
 
@@ -89,7 +91,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
-            interface,
+            interface, interface.management,
             static_ip_range_low=interface.static_ip_range_low,
             static_ip_range_high='10.1.0.55')
         self.assertTrue(is_valid)
@@ -99,7 +101,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.55', '10.1.0.55', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
-            interface, static_ip_range_low='10.1.0.55',
+            interface, interface.management, static_ip_range_low='10.1.0.55',
             static_ip_range_high=interface.static_ip_range_high)
         self.assertTrue(is_valid)
 
@@ -112,7 +114,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             interface.static_ip_range_high, interface.ip_range_low,
             interface.ip_range_high, subnet=interface.subnet)
         is_valid = validate_new_static_ip_ranges(
-            interface, static_ip_range_low='10.1.0.57',
+            interface, interface.management, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
         self.assertTrue(is_valid)
 
@@ -124,7 +126,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         StaticIPAddress.objects.allocate_new(
             '10.1.0.0/16', '10.1.0.56', '10.1.0.60', '10.1.0.1', '10.1.0.10')
         is_valid = validate_new_static_ip_ranges(
-            interface, static_ip_range_low='10.1.0.57',
+            interface, interface.management, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
         self.assertTrue(is_valid)
 
@@ -135,7 +137,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
             interface.static_ip_range_high, interface.ip_range_low,
             interface.ip_range_high)
         is_valid = validate_new_static_ip_ranges(
-            interface,
+            interface, interface.management,
             static_ip_range_low=interface.static_ip_range_low,
             static_ip_range_high=interface.static_ip_range_high)
         self.assertTrue(is_valid)

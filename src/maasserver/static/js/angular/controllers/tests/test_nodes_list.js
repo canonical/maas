@@ -126,7 +126,7 @@ describe("NodesListController", function() {
     });
 
     it("sets initial values on $scope", function() {
-        // tab-independant variables.
+        // tab-independent variables.
         var controller = makeController();
         expect($scope.nodes).toBe(NodesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());

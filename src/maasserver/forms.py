@@ -1487,10 +1487,11 @@ ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S = (
     "network.")
 
 ERROR_MESSAGE_INVALID_RANGE = (
-    "Invalid IP range (high IP address must not be less than low IP address).")
+    "Invalid IP range (high IP address must be higher than low IP address).")
 
 
-def validate_new_dynamic_range_size(instance, ip_range_low, ip_range_high):
+def validate_new_dynamic_range_size(instance, management,
+                                    ip_range_low, ip_range_high):
     """Check that a ip address range is of a manageable size.
 
     :raises ValidationError: If the ip range is larger than a /16
@@ -1498,19 +1499,21 @@ def validate_new_dynamic_range_size(instance, ip_range_low, ip_range_high):
     """
     # Return early if the instance is not already managed, its dynamic
     # IP range hasn't changed, or the new values are blank.
-    if not instance.is_managed:
+    if not instance.is_managed and instance.management == management:
         return True
     # Deliberately vague check to allow for empty strings.
     if not ip_range_low and not ip_range_high:
         return True
+    if ip_range_low and ip_range_high:
+        try:
+            ip_range = IPRange(ip_range_low, ip_range_high)
+            if ip_range.size <= 1:
+                raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
+        except AddrFormatError:
+            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
     if (ip_range_low == instance.ip_range_low and
        ip_range_high == instance.ip_range_high):
         return True
-
-    try:
-        ip_range = IPRange(ip_range_low, ip_range_high)
-    except AddrFormatError:
-        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
     # Allow any size of dynamic range for v6 networks, but limit v4
     # networks to /16s.
@@ -1522,7 +1525,7 @@ def validate_new_dynamic_range_size(instance, ip_range_low, ip_range_high):
         raise ValidationError(ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S)
 
 
-def validate_new_static_ip_ranges(instance, static_ip_range_low,
+def validate_new_static_ip_ranges(instance, management, static_ip_range_low,
                                   static_ip_range_high):
     """Check that new static IP ranges don't exclude allocated addresses.
 
@@ -1532,7 +1535,7 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     """
     # Return early if the instance is not already managed, it currently
     # has no static IP range, or the static IP range hasn't changed.
-    if not instance.is_managed:
+    if not instance.is_managed and instance.management == management:
         return True
     # Deliberately vague check to allow for empty strings.
     if (not instance.static_ip_range_low or
@@ -1541,6 +1544,13 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     if (static_ip_range_low == instance.static_ip_range_low and
        static_ip_range_high == instance.static_ip_range_high):
         return True
+    if static_ip_range_low and static_ip_range_high:
+        try:
+            ip_range = IPRange(static_ip_range_low, static_ip_range_high)
+            if ip_range.size <= 1:
+                raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
+        except AddrFormatError:
+            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
     cursor = connection.cursor()
 
@@ -1820,10 +1830,10 @@ class NodeGroupInterfaceForm(MAASModelForm):
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()
         cleaned_data['name'] = self.compute_name()
-        self.clean_dependant_subnet_mask(cleaned_data)
-        self.clean_dependant_ip_ranges(cleaned_data)
+        self.clean_dependent_subnet_mask(cleaned_data)
+        self.clean_dependent_ip_ranges(cleaned_data)
         self.clean_ip_range_bounds(cleaned_data)
-        self.clean_dependant_ips_in_network(cleaned_data)
+        self.clean_dependent_ips_in_network(cleaned_data)
         return cleaned_data
 
     def get_subnet_mask(self, cleaned_data=None):
@@ -1860,7 +1870,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
         else:
             return router_ip
 
-    def clean_dependant_subnet_mask(self, cleaned_data):
+    def clean_dependent_subnet_mask(self, cleaned_data):
         ip_addr = cleaned_data.get('ip')
         if ip_addr and IPAddress(ip_addr).version == 6:
             netmask = cleaned_data.get('subnet_mask')
@@ -1869,14 +1879,16 @@ class NodeGroupInterfaceForm(MAASModelForm):
             cleaned_data['subnet_mask'] = unicode(netmask)
         new_management = cleaned_data.get('management')
         new_subnet_mask = self.get_subnet_mask(cleaned_data)
-        required_subnet_mask = (
-            new_management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
-            not new_subnet_mask)
-        if required_subnet_mask:
-            set_form_error(
-                self, 'subnet_mask',
-                "That field cannot be empty (unless that interface is "
-                "'unmanaged')")
+        if new_management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+            if not new_subnet_mask:
+                set_form_error(
+                    self, 'subnet_mask',
+                    "That field cannot be empty (unless that interface is "
+                    "'unmanaged')")
+            elif IPNetwork("%s/%s" % (ip_addr, new_subnet_mask)).size < 8:
+                set_form_error(
+                    self, 'subnet_mask',
+                    "Subnet is too small to manage.")
 
     def get_network(self, cleaned_data):
         subnet_mask = self.get_subnet_mask(cleaned_data)
@@ -1886,7 +1898,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
         else:
             return None
 
-    def clean_dependant_ips_in_network(self, cleaned_data):
+    def clean_dependent_ips_in_network(self, cleaned_data):
         """Ensure that the network settings are all congruent.
 
         Specifically, it ensures that the router address, the DHCP address
@@ -1912,12 +1924,14 @@ class NodeGroupInterfaceForm(MAASModelForm):
                 msg = "%s not in the %s network" % (ip, unicode(network.cidr))
                 set_form_error(self, field, msg)
 
-    def clean_dependant_ip_ranges(self, cleaned_data):
+    def clean_dependent_ip_ranges(self, cleaned_data):
         dynamic_range_low = cleaned_data.get('ip_range_low')
         dynamic_range_high = cleaned_data.get('ip_range_high')
+        management = cleaned_data.get('management')
         try:
             validate_new_dynamic_range_size(
-                self.instance, dynamic_range_low, dynamic_range_high)
+                self.instance, management,
+                dynamic_range_low, dynamic_range_high)
         except forms.ValidationError as exception:
             set_form_error(self, 'ip_range_low', exception.message)
             set_form_error(self, 'ip_range_high', exception.message)
@@ -1926,11 +1940,11 @@ class NodeGroupInterfaceForm(MAASModelForm):
         static_ip_range_high = cleaned_data.get('static_ip_range_high')
         try:
             validate_new_static_ip_ranges(
-                self.instance, static_ip_range_low, static_ip_range_high)
+                self.instance, management,
+                static_ip_range_low, static_ip_range_high)
         except forms.ValidationError as exception:
             set_form_error(self, 'static_ip_range_low', exception.message)
             set_form_error(self, 'static_ip_range_high', exception.message)
-        return cleaned_data
 
     def manages_static_range(self, cleaned_data):
         """Is this a managed interface with a static IP range configured?"""
@@ -1958,20 +1972,26 @@ class NodeGroupInterfaceForm(MAASModelForm):
         static_ip_range_high = IPAddress(static_ip_range_high)
 
         message_base = (
-            "Lower bound %s is higher than upper bound %s")
+            "Lower bound %s is not lower than upper bound %s")
         try:
-            IPRange(static_ip_range_low, static_ip_range_high)
-        except AddrFormatError:
             message = (
                 message_base % (
                     static_ip_range_low, static_ip_range_high))
+            range = IPRange(static_ip_range_low, static_ip_range_high)
+            if range.size <= 1:
+                set_form_error(self, 'static_ip_range_low', message)
+                set_form_error(self, 'static_ip_range_high', message)
+        except AddrFormatError:
             set_form_error(self, 'static_ip_range_low', message)
             set_form_error(self, 'static_ip_range_high', message)
         try:
-            IPRange(ip_range_low, ip_range_high)
-        except AddrFormatError:
             message = (
                 message_base % (self.ip_range_low, self.ip_range_high))
+            range = IPRange(ip_range_low, ip_range_high)
+            if range.size <= 1:
+                set_form_error(self, 'ip_range_low', message)
+                set_form_error(self, 'ip_range_high', message)
+        except AddrFormatError:
             set_form_error(self, 'ip_range_low', message)
             set_form_error(self, 'ip_range_high', message)
 
