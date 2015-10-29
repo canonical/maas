@@ -62,6 +62,7 @@ def static_resources(context):
             'js/angular/services/browser.js',
             'js/angular/services/converter.js',
             'js/angular/directives/error_overlay.js',
+            'js/angular/directives/code_lines.js',
             'js/angular/directives/error_toggle.js',
             'js/angular/directives/call_to_action.js',
             'js/angular/directives/power_parameters.js',

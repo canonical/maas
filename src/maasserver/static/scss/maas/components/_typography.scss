@@ -26,7 +26,26 @@ h4 {
 }
 
 pre {
-    border: 0;
-    background-color: #FFF;
-    border-radius: 2px;
+  border: 0;
+  background-color: #FFF;
+  border-radius: 2px;
+
+  code {
+    counter-reset: line-numbering;
+
+    .line {
+    float: left;
+
+      &::before {
+        content: counter(line-numbering);
+        counter-increment: line-numbering;
+        padding-right: 1em; /* space after numbers */
+        width: 1.5em;
+        text-align: right;
+        opacity: 0.5;
+        pointer-events: none;
+        user-select: none;
+      }
+    }
+  }
 }

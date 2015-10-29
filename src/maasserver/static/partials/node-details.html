@@ -1373,7 +1373,7 @@
             </div>
             <div class="twelve-col" data-ng-show="machine_output.selectedView.name === 'summary'">
                 <pre>
-                    <code>{$ getSummaryData() $}</code>
+                    <code data-maas-code-lines="getSummaryData()"></code>
                 </pre>
             </div>
             <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'output'">
@@ -1402,7 +1402,7 @@
             </div>
             <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'install'">
                 <pre>
-                    <code>{$ getInstallationData() $}</code>
+                    <code data-maas-code-lines="getInstallationData()"></code>
                 </pre>
             </div>
             <div class="controls">
