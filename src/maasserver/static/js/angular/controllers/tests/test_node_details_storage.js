@@ -252,7 +252,6 @@ describe("NodeStorageController", function() {
 
     it("sets initial values", function() {
         var controller = makeController();
-        expect($scope.editing).toBe(false);
         expect($scope.column).toBe('model');
         expect($scope.has_disks).toBe(false);
         expect($scope.filesystems).toEqual([]);
@@ -3277,6 +3276,25 @@ describe("NodeStorageController", function() {
             expect($scope.getNewRAIDSize()).toBe("2.0 MB");
         });
 
+        it("gets proper raid-0 size using size", function() {
+            var controller = makeController();
+            var disk0 = {
+                original: {
+                    size: 1000 * 1000
+                }
+            };
+            var disk1 = {
+                original: {
+                    size: 1000 * 1000
+                }
+            };
+            $scope.availableNew.spares = [];
+            $scope.availableNew.devices = [disk0, disk1];
+            $scope.availableNew.mode = $scope.getAvailableRAIDModes()[0];
+
+            expect($scope.getNewRAIDSize()).toBe("2.0 MB");
+        });
+
         it("gets proper raid-1 size", function() {
             var controller = makeController();
             var disk0 = {
@@ -3632,6 +3650,29 @@ describe("NodeStorageController", function() {
 
             expect($scope.getNewVolumeGroupSize()).toBe("3.0 MB");
         });
+
+        it("return the total of all devices using size", function() {
+            var controller = makeController();
+            $scope.availableNew.devices = [
+                {
+                    original: {
+                        size: 1000 * 1000
+                    }
+                },
+                {
+                    original: {
+                        size: 1000 * 1000
+                    }
+                },
+                {
+                    original: {
+                        size: 1000 * 1000
+                    }
+                }
+            ];
+
+            expect($scope.getNewVolumeGroupSize()).toBe("3.0 MB");
+        });
     });
 
     describe("createVolumeGroupCanSave", function() {
@@ -3925,83 +3966,90 @@ describe("NodeStorageController", function() {
         });
     });
 
-    describe("editTags", function() {
+    describe("canEditTags", function() {
 
-        it("doesnt sets editing to true if cannot edit", function() {
+        it("returns false for partition", function() {
             var controller = makeController();
-            canEditSpy.and.returnValue(false);
-            $scope.editing = false;
-            $scope.editing_tags = false;
-            $scope.editTags();
-            expect($scope.editing).toBe(false);
-            expect($scope.editing_tags).toBe(false);
+            expect($scope.canEditTags({
+                type: "partition"
+            })).toBe(false);
         });
 
-        it("sets editing to true", function() {
+        it("returns false for lvm-vg", function() {
             var controller = makeController();
-            canEditSpy.and.returnValue(true);
-            $scope.editing = false;
-            $scope.editing_tags = false;
-            $scope.editTags();
-            expect($scope.editing).toBe(true);
-            expect($scope.editing_tags).toBe(true);
+            expect($scope.canEditTags({
+                type: "lvm-vg"
+            })).toBe(false);
+        });
+
+        it("returns true for physical", function() {
+            var controller = makeController();
+            expect($scope.canEditTags({
+                type: "physical"
+            })).toBe(true);
+        });
+
+        it("returns true for virtual", function() {
+            var controller = makeController();
+            expect($scope.canEditTags({
+                type: "virtual"
+            })).toBe(true);
         });
     });
 
-    describe("cancelTags", function() {
+    describe("availableEditTags", function() {
 
-        it("sets editing to false", function() {
+        it("sets $options", function() {
             var controller = makeController();
-            $scope.editing = true;
-            $scope.editing_tags = true;
-            $scope.cancelTags();
-            expect($scope.editing).toBe(false);
-            expect($scope.editing_tags).toBe(false);
+            var tags = [{}, {}];
+            var disk = {
+                tags: tags
+            };
+
+            $scope.availableEditTags(disk);
+            expect(disk.$options.editingTags).toBe(true);
+            expect(disk.$options.tags).toEqual(tags);
+            expect(disk.$options.tags).not.toBe(tags);
         });
+    });
 
-        it("calls updateDisks", function() {
+    describe("availableCancelTags", function() {
+
+        it("clears $options", function() {
             var controller = makeController();
+            var options = {};
+            var disk = { $options: options };
 
-            // Updates disks so we can check that updateStorage
-            // is called.
-            node.disks = [
-                {
-                    id: 0,
-                    model: makeName("model"),
-                    tags: [],
-                    available_size: 0,
-                    filesystem: null,
-                    partitions: null
-                }
+            $scope.availableCancelTags(disk);
+            expect(disk.$options).toEqual({});
+            expect(disk.$options).not.toBe(options);
+        });
+    });
+
+    describe("availableSaveTags", function() {
+
+        it("calls NodesManager.updateDiskTags", function() {
+            var controller = makeController();
+            var tags = [
+                { text: "new" },
+                { text: "old" }
             ];
+            var disk = {
+                block_id: makeInteger(0, 100),
+                tags: [],
+                $options: {
+                   editingTags:true,
+                   tags: tags
+                }
+            };
+            spyOn(NodesManager, "updateDiskTags");
 
-            $scope.nodeLoaded();
-            $rootScope.$digest();
-            var filesystems = $scope.filesystems;
-            var available = $scope.available;
-            var used = $scope.used;
-            $scope.editing = true;
-            $scope.editing_tags = true;
-            $scope.cancelTags();
+            $scope.availableSaveTags(disk);
 
-            // Verify cancel calls updateStorage but doesn't change any data
-            expect($scope.filesystems).toEqual(filesystems);
-            expect($scope.available).toEqual(available);
-            expect($scope.used).toEqual(used);
-        });
-    });
-
-    describe("saveTags", function() {
-
-        it("sets editing to false", function() {
-            var controller = makeController();
-
-            $scope.editing = true;
-            $scope.editing_tags = true;
-            $scope.saveTags();
-
-            expect($scope.editing).toBe(false);
-            expect($scope.editing_tags).toBe(false);
+            expect(NodesManager.updateDiskTags).toHaveBeenCalledWith(
+                node, disk.block_id, ["new", "old"]);
+            expect(disk.$options).toEqual({});
+            expect(disk.tags).toEqual(tags);
         });
     });
 });

@@ -842,11 +842,19 @@
                                     <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table__column--15 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table__tags table__column--15">
-                                        <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="editing_tags">
+                                        <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
-                                        <tags-input ng-model="item.tags" data-ng-show="editing_tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                        <a class="table__controls table__controls--secondary">edit</a>
+                                        <tags-input ng-model="item.$options.tags" data-ng-show="item.$options.editingTags" allow-tags-pattern="[\w-]+"></tags-input>
+                                        <a class="table__controls table__controls--secondary"
+                                            data-ng-hide="!canEditTags(item) || item.$options.editingTags"
+                                            data-ng-click="availableEditTags(item)">edit</a>
+                                        <a class="link-cta-ubuntu text-button"
+                                            data-ng-show="item.$options.editingTags"
+                                            data-ng-click="availableCancelTags(item)">Cancel</a>
+                                        <button class="cta-ubuntu"
+                                            data-ng-show="item.$options.editingTags"
+                                            data-ng-click="availableSaveTags(item)">Save</button>
                                     </div>
                                     <div class="table__data table__column--7">
                                         <div class="table__controls">

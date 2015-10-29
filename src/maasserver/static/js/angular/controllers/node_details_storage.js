@@ -105,8 +105,6 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         ];
 
-        $scope.editing = false;
-        $scope.editing_tags = false;
         $scope.column = 'model';
         $scope.has_disks = false;
         $scope.filesystems = [];
@@ -492,6 +490,10 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if another disk exists with name.
         function isNameAlreadyInUse(name, exclude_disk) {
+            if(!angular.isArray($scope.node.disks)) {
+                return false;
+            }
+
             var i, j;
             for(i = 0; i < $scope.node.disks.length; i++) {
                 var disk = $scope.node.disks[i];
@@ -631,6 +633,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             return false;
         };
 
+        // Return true if the free space label should be shown.
         $scope.showFreeSpace = function(disk) {
             if(disk.type === "lvm-vg") {
                 return true;
@@ -1202,6 +1205,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             var selected = $scope.getSelectedAvailable();
             if(selected.length === 1) {
                 return (
+                    !selected[0].has_partitions &&
                     !$scope.hasUnmountedFilesystem(selected[0]) &&
                     selected[0].type !== "lvm-vg");
             }
@@ -1471,7 +1475,11 @@ angular.module('MAAS').controller('NodeStorageController', [
                 $scope.availableNew.spares.length);
             var minSize = Number.MAX_VALUE;
             angular.forEach($scope.availableNew.devices, function(device) {
-                minSize = Math.min(minSize, device.original.available_size);
+                // Get the size of the device. For a block device it will be
+                // at available_size and for a partition it will be at size.
+                var deviceSize = (
+                    device.original.available_size || device.original.size);
+                minSize = Math.min(minSize, deviceSize);
             });
 
             // Calculate the new size.
@@ -1546,7 +1554,9 @@ angular.module('MAAS').controller('NodeStorageController', [
             if(selected.length > 0) {
                 var i;
                 for(i = 0; i < selected.length; i++) {
-                    if($scope.hasUnmountedFilesystem(selected[i])) {
+                    if(selected[i].has_partitions) {
+                        return false;
+                    } else if($scope.hasUnmountedFilesystem(selected[i])) {
                         return false;
                     } else if(selected[i].type === "lvm-vg") {
                         return false;
@@ -1573,7 +1583,9 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.getNewVolumeGroupSize = function() {
             var total = 0;
             angular.forEach($scope.availableNew.devices, function(device) {
-                total += device.original.available_size;
+                // Add available_size or size if available_size is not set.
+                total += (
+                    device.original.available_size || device.original.size);
             });
             return ConverterService.bytesToUnits(total).string;
         };
@@ -1703,33 +1715,33 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.updateAvailableSelection(true);
         };
 
+        // Return true when tags can be edited.
+        $scope.canEditTags = function(disk) {
+            return disk.type !== "partition" && disk.type !== "lvm-vg";
+        };
+
         // Called to enter tag editing mode
-        $scope.editTags = function() {
-            if($scope.$parent.canEdit() && !$scope.editing) {
-                $scope.editing = true;
-                $scope.editing_tags = true;
-            }
+        $scope.availableEditTags = function(disk) {
+            disk.$options = {
+                editingTags: true,
+                tags: angular.copy(disk.tags)
+            };
         };
 
-        // Called to cancel editing.
-        $scope.cancelTags = function() {
-            $scope.editing = false;
-            $scope.editing_tags = false;
-            updateDisks();
+        // Called to cancel editing tags.
+        $scope.availableCancelTags = function(disk) {
+            disk.$options = {};
         };
 
-        // Called to save the changes.
-        $scope.saveTags = function() {
-            $scope.editing = false;
-            $scope.editing_tags = false;
-
-            angular.forEach($scope.available, function(disk) {
-                var tags = [];
-                angular.forEach(disk.tags, function(tag) {
-                    tags.push(tag.text);
-                });
-                NodesManager.updateDiskTags(
-                    $scope.node, disk.block_id, tags);
+        // Called to save the tag changes.
+        $scope.availableSaveTags = function(disk) {
+            var tags = [];
+            angular.forEach(disk.$options.tags, function(tag) {
+                tags.push(tag.text);
             });
+            NodesManager.updateDiskTags(
+                $scope.node, disk.block_id, tags);
+            disk.tags = disk.$options.tags;
+            disk.$options = {};
         };
     }]);
