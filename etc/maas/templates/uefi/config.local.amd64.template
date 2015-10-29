@@ -3,6 +3,6 @@ set timeout=0
 
 menuentry 'Local' {
     echo 'Booting local disk...'
-    search --set=root --file /efi/ubuntu/grub.cfg
-    configfile /efi/ubuntu/grub.cfg
+    search --set=root --file /efi/ubuntu/shimx64.efi
+    chainloader /efi/ubuntu/shimx64.efi
 }

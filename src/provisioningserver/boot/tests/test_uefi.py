@@ -14,11 +14,20 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from contextlib import contextmanager
+import os
 import re
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from provisioningserver.boot import BytesReader
+from mock import call
+from provisioningserver.boot import (
+    BootMethodInstallError,
+    BytesReader,
+    uefi as uefi_module,
+    utils,
+)
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
     re_config_file,
@@ -116,7 +125,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
                 purpose="local", arch="amd64"),
             }
         output = method.get_reader(**options).read(10000)
-        self.assertIn("configfile /efi/ubuntu/grub.cfg", output)
+        self.assertIn("chainloader /efi/ubuntu/shimx64.efi", output)
 
     def test_get_reader_with_enlist_purpose(self):
         # If purpose is "enlist", the config.enlist.template should be
@@ -246,3 +255,67 @@ class TestUEFIBootMethodRegex(MAASTestCase):
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': subarch},
             match.groupdict())
+
+
+class TestUEFIBootMethod(MAASTestCase):
+    """Tests `provisioningserver.boot.uefi.UEFIBootMethod`."""
+
+    def test_install_bootloader_get_package_raises_error(self):
+        method = UEFIBootMethod()
+        self.patch(uefi_module, 'get_main_archive_url')
+        self.patch(utils, 'get_updates_package').return_value = (None, None)
+        self.assertRaises(
+            BootMethodInstallError, method.install_bootloader, None)
+
+    def test_install_bootloader(self):
+        method = UEFIBootMethod()
+        shim_filename = factory.make_name('shim-signed')
+        shim_data = factory.make_string()
+        grub_filename = factory.make_name('grub-efi-amd64-signed')
+        grub_data = factory.make_string()
+        tmp = self.make_dir()
+        dest = self.make_dir()
+
+        @contextmanager
+        def tempdir():
+            try:
+                yield tmp
+            finally:
+                pass
+
+        mock_get_main_archive_url = self.patch(
+            uefi_module, 'get_main_archive_url')
+        mock_get_main_archive_url.return_value = 'http://archive.ubuntu.com'
+        mock_get_updates_package = self.patch(utils, 'get_updates_package')
+        mock_get_updates_package.side_effect = [
+            (shim_data, shim_filename),
+            (grub_data, grub_filename),
+            ]
+        self.patch(uefi_module, 'call_and_check')
+        self.patch(uefi_module, 'tempdir').side_effect = tempdir
+
+        mock_install_bootloader = self.patch(
+            uefi_module, 'install_bootloader')
+
+        method.install_bootloader(dest)
+
+        with open(os.path.join(tmp, shim_filename), 'rb') as stream:
+            saved_shim_data = stream.read()
+        self.assertEqual(shim_data, saved_shim_data)
+
+        with open(os.path.join(tmp, grub_filename), 'rb') as stream:
+            saved_grub_data = stream.read()
+        self.assertEqual(grub_data, saved_grub_data)
+
+        shim_expected = os.path.join(
+            tmp, "usr", "lib", "shim", "shim.efi.signed")
+        shim_dest_expected = os.path.join(dest, method.bootloader_path)
+        grub_expected = os.path.join(
+            tmp, "usr", "lib", "grub", "x86_64-efi-signed",
+            "grubnetx64.efi.signed")
+        grub_dest_expected = os.path.join(dest, "grubx64.efi")
+        self.assertThat(
+            mock_install_bootloader,
+            MockCallsMatch(
+                call(shim_expected, shim_dest_expected),
+                call(grub_expected, grub_dest_expected)))

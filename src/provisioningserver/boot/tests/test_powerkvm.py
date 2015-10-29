@@ -49,6 +49,7 @@ class TestPowerKVMBootMethod(MAASTestCase):
 
     def test_install_bootloader_get_package_raises_error(self):
         method = PowerKVMBootMethod()
+        self.patch(powerkvm_module, 'get_ports_archive_url')
         self.patch(utils, 'get_updates_package').return_value = (None, None)
         self.assertRaises(
             BootMethodInstallError, method.install_bootloader, None)
@@ -67,6 +68,9 @@ class TestPowerKVMBootMethod(MAASTestCase):
             finally:
                 pass
 
+        mock_get_ports_archive_url = self.patch(
+            powerkvm_module, 'get_ports_archive_url')
+        mock_get_ports_archive_url.return_value = 'http://ports.ubuntu.com'
         mock_get_updates_package = self.patch(utils, 'get_updates_package')
         mock_get_updates_package.return_value = (data, filename)
         self.patch(powerkvm_module, 'call_and_check')

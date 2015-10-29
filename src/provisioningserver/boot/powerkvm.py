@@ -19,10 +19,12 @@ __all__ = [
 import glob
 import os.path
 from textwrap import dedent
+from urlparse import urlparse
 
 from provisioningserver.boot import (
     BootMethod,
     BootMethodInstallError,
+    get_ports_archive_url,
     utils,
 )
 from provisioningserver.boot.install_bootloader import install_bootloader
@@ -61,10 +63,12 @@ class PowerKVMBootMethod(BootMethod):
         """Installs the required files for PowerKVM/PowerVM booting into the
         tftproot.
         """
+        ports_archive_url = get_ports_archive_url()
+        archive_url = ports_archive_url.strip(urlparse(ports_archive_url).path)
         with tempdir() as tmp:
             # Download the grub-ieee1275-bin package
             data, filename = utils.get_updates_package(
-                'grub-ieee1275-bin', 'http://ports.ubuntu.com',
+                'grub-ieee1275-bin', archive_url,
                 'main', 'ppc64el')
             if data is None:
                 raise BootMethodInstallError(

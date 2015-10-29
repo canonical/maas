@@ -20,8 +20,6 @@ from itertools import repeat
 import os.path
 import re
 from textwrap import dedent
-import urllib2
-from urlparse import urljoin
 
 from provisioningserver.boot import (
     BootMethod,
@@ -38,8 +36,6 @@ from provisioningserver.boot.install_bootloader import (
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
 
-
-ARCHIVE_PATH = "/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"
 
 CONFIG_FILE = dedent("""
     # MAAS GRUB2 pre-loader configuration file
@@ -80,40 +76,6 @@ re_config_file = r'''
 re_config_file = re_config_file.format(
     re_mac_address=re_mac_address)
 re_config_file = re.compile(re_config_file, re.VERBOSE)
-
-
-def archive_grubnet_urls(main_url):
-    """Paths to try to download grubnetx64.efi.signed."""
-    release = utils.get_distro_release()
-    # grubnetx64 will not work below version trusty, as efinet is broken
-    # when loading kernel, force trusty. Note: This is only the grub version
-    # this should not block any of the previous release from running.
-    if release in ['lucid', 'precise', 'quantal', 'saucy']:
-        release = 'trusty'
-    if not main_url.endswith('/'):
-        main_url = main_url + '/'
-    dists_url = urljoin(main_url, 'dists')
-    for dist in ['%s-updates' % release, release]:
-        yield "%s/%s/%s" % (
-            dists_url.rstrip("/"),
-            dist,
-            ARCHIVE_PATH.rstrip("/"))
-
-
-def download_grubnet(main_url, destination):
-    """Downloads grubnetx64.efi.signed from the archive."""
-    for url in archive_grubnet_urls(main_url):
-        try:
-            response = urllib2.urlopen(url)
-        # Okay, if it fails as the updates area might not hold
-        # that file.
-        except urllib2.URLError:
-            continue
-
-        with open(destination, 'wb') as stream:
-            stream.write(response.read())
-        return True
-    return False
 
 
 class UEFIBootMethod(BootMethod):
@@ -184,14 +146,27 @@ class UEFIBootMethod(BootMethod):
                 os.path.join(tmp, 'usr', 'lib', 'shim', 'shim.efi.signed'),
                 os.path.join(destination, self.bootloader_path))
 
-            # Download grubnetx64 from the archive and install
-            grub_tmp = os.path.join(tmp, 'grubnetx64.efi.signed')
-            if download_grubnet(archive_url, grub_tmp) is False:
+            # Download the grub-efi-amd64-signed package.
+            data, filename = utils.get_updates_package(
+                'grub-efi-amd64-signed', archive_url, 'main', 'amd64')
+            if data is None:
                 raise BootMethodInstallError(
-                    'Failed to download grubnetx64.efi.signed '
-                    'from the archive.')
-            grub_dst = os.path.join(destination, 'grubx64.efi')
-            install_bootloader(grub_tmp, grub_dst)
+                    'Failed to download grub-efi-amd64-signed package from '
+                    'the archive.')
+            grub_output = os.path.join(tmp, filename)
+            with open(grub_output, 'wb') as stream:
+                stream.write(data)
+
+            # Extract the package with dpkg.
+            call_and_check(["dpkg", "-x", grub_output, tmp])
+
+            # Install the grub boot loader.
+            grub_signed = os.path.join(
+                tmp, 'usr', 'lib', 'grub', 'x86_64-efi-signed',
+                'grubnetx64.efi.signed')
+            install_bootloader(
+                grub_signed,
+                os.path.join(destination, 'grubx64.efi'))
 
         config_path = os.path.join(destination, 'grub')
         config_dst = os.path.join(config_path, 'grub.cfg')
