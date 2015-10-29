@@ -89,7 +89,7 @@ class TestGeneralHandler(MAASServerTestCase):
                     arch=arch,
                     subarch=kernel,
                     release=release)
-            expected_output.append((kernel, '%s (%s)' % (kernel, release)))
+            expected_output.append((kernel, '%s (%s)' % (release, kernel)))
         handler = GeneralHandler(factory.make_User(), {})
         self.assertItemsEqual(
             sorted(expected_output, key=lambda choice: choice[0]),

@@ -275,11 +275,11 @@ class TestReleases(MAASServerTestCase):
             extra={'subarches': kernel},
             rtype=BOOT_RESOURCE_TYPE.SYNCED)
         self.assertEqual(
-            '%s (%s)' % (kernel, release),
+            '%s (%s)' % (release, kernel),
             make_hwe_kernel_ui_text(kernel))
 
     def test_make_hwe_kernel_ui_finds_release_from_ubuntudistroinfo(self):
-        self.assertEqual('hwe-t (trusty)', make_hwe_kernel_ui_text('hwe-t'))
+        self.assertEqual('trusty (hwe-t)', make_hwe_kernel_ui_text('hwe-t'))
 
     def test_make_hwe_kernel_ui_returns_kernel_when_none_found(self):
         # Since this is testing that our fall final fall back returns just the

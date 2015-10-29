@@ -99,12 +99,12 @@ def make_hwe_kernel_ui_text(hwe_kernel):
         release__startswith=release_letter,
         subarch=hwe_kernel)
     if len(boot_sources) > 0:
-        return "%s (%s)" % (hwe_kernel, boot_sources[0].release)
+        return "%s (%s)" % (boot_sources[0].release, hwe_kernel)
     else:
         ubuntu = UbuntuDistroInfo()
         for release in ubuntu.all:
             if release.startswith(release_letter):
-                return "%s (%s)" % (hwe_kernel, release)
+                return "%s (%s)" % (release, hwe_kernel)
     return hwe_kernel
 
 

@@ -239,10 +239,10 @@ def get_curtin_userdata(node):
         supports_custom_storage = False
 
     if node.osystem != "ubuntu":
-        maaslog.error(
-            "%s: is not being deployed with custom storage or networking "
-            "config; using operating system other than Ubuntu." %
-            node.hostname)
+        maaslog.info(
+            "%s: custom network and storage options are only supported on "
+            "Ubuntu. Using flat storage layout and OS default network options."
+            % node.hostname)
         supports_custom_storage = False
         network_config = []
     else:

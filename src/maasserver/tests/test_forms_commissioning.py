@@ -60,7 +60,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
         form = CommissioningForm()
         self.assertItemsEqual([
             ('', '--- No minimum kernel ---'),
-            (kernel, '%s (%s)' % (kernel, release))],
+            (kernel, '%s (%s)' % (release, kernel))],
             form.fields['default_min_hwe_kernel'].choices)
 
 
