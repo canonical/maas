@@ -248,10 +248,10 @@ class ClustersImporter:
     def _get_proxy():
         # Avoid circular import.
         from maasserver.models.config import Config
-        if not Config.objects.get_config("enable_http_proxy"):
-            return None
-        else:
+        if Config.objects.get_config("enable_http_proxy"):
             return Config.objects.get_config("http_proxy")
+        else:
+            return None
 
     @classmethod
     @transactional

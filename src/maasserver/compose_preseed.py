@@ -32,15 +32,15 @@ import yaml
 
 def get_apt_proxy_for_node(node):
     """Return the APT proxy for the `node`."""
-    if not Config.objects.get_config("enable_http_proxy"):
-        return None
-    else:
+    if Config.objects.get_config("enable_http_proxy"):
         http_proxy = Config.objects.get_config("http_proxy")
         if http_proxy:
             return http_proxy
         else:
             return "http://%s:8000/" % get_maas_facing_server_host(
                 node.nodegroup)
+    else:
+        return None
 
 
 def compose_cloud_init_preseed(node, token, base_url=''):
@@ -78,7 +78,10 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         },
     }
     apt_proxy = get_apt_proxy_for_node(node)
-    if apt_proxy:
+    use_apt_proxy = (
+        apt_proxy is not None and len(apt_proxy) > 0 and not
+        apt_proxy.isspace())
+    if use_apt_proxy:
         config['apt_proxy'] = apt_proxy
     local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
