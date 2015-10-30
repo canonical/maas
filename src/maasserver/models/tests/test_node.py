@@ -2683,6 +2683,125 @@ class NodeManagerTest(MAASServerTestCase):
             user=None, perm=NODE_PERMISSION.EDIT, ids=[node.system_id])
         self.assertItemsEqual([], observed)
 
+    def test_filter_nodes_by_spaces(self):
+        # Create a throwaway node and a throwaway space.
+        # (to ensure they are filtered out.)
+        factory.make_Space()
+        factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
+        ip = iface.ip_addresses.first()
+        space = ip.subnet.space
+        self.assertItemsEqual(
+            [node], Node.objects.filter_by_spaces([space]))
+
+    def test_filter_nodes_by_not_spaces(self):
+        factory.make_Space()
+        extra_node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.get_boot_interface()
+        ip = iface.ip_addresses.first()
+        space = ip.subnet.space
+        self.assertItemsEqual(
+            [extra_node], Node.objects.filter_by_not_spaces([space]))
+
+    def test_filter_nodes_by_fabrics(self):
+        fabric = factory.make_Fabric()
+        factory.make_Space()
+        factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(fabric=fabric)
+        iface = node.get_boot_interface()
+        fabric = iface.vlan.fabric
+        self.assertItemsEqual(
+            [node], Node.objects.filter_by_fabrics([fabric]))
+
+    def test_filter_nodes_by_not_fabrics(self):
+        fabric = factory.make_Fabric()
+        extra_node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(fabric=fabric)
+        iface = node.get_boot_interface()
+        fabric = iface.vlan.fabric
+        self.assertItemsEqual(
+            [extra_node], Node.objects.filter_by_not_fabrics([fabric]))
+
+    def test_filter_nodes_by_fabric_classes(self):
+        fabric1 = factory.make_Fabric(class_type="10g")
+        fabric2 = factory.make_Fabric(class_type="1g")
+        node1 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        self.assertItemsEqual(
+            [node1], Node.objects.filter_by_fabric_classes(["10g"]))
+
+    def test_filter_nodes_by_not_fabric_classes(self):
+        fabric1 = factory.make_Fabric(class_type="10g")
+        fabric2 = factory.make_Fabric(class_type="1g")
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        self.assertItemsEqual(
+            [node2], Node.objects.filter_by_not_fabric_classes(["10g"]))
+
+    def test_filter_nodes_by_vids(self):
+        vlan1 = factory.make_VLAN(vid=1)
+        vlan2 = factory.make_VLAN(vid=2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
+        factory.make_Node_with_Interface_on_Subnet(vlan=vlan2)
+        self.assertItemsEqual(
+            [node1], Node.objects.filter_by_vids([1]))
+
+    def test_filter_nodes_by_not_vids(self):
+        vlan1 = factory.make_VLAN(vid=1)
+        vlan2 = factory.make_VLAN(vid=2)
+        factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(vlan=vlan2)
+        self.assertItemsEqual(
+            [node2], Node.objects.filter_by_not_vids([1]))
+
+    def test_filter_nodes_by_subnet(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        self.assertItemsEqual(
+            [node1], Node.objects.filter_by_subnets([subnet1]))
+
+    def test_filter_nodes_by_not_subnet(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        self.assertItemsEqual(
+            [node2], Node.objects.filter_by_not_subnets([subnet1]))
+
+    def test_filter_nodes_by_subnet_cidr(self):
+        subnet1 = factory.make_Subnet(cidr='192.168.1.0/24')
+        subnet2 = factory.make_Subnet(cidr='192.168.2.0/24')
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        self.assertItemsEqual(
+            [node1], Node.objects.filter_by_subnet_cidrs(['192.168.1.0/24']))
+
+    def test_filter_nodes_by_not_subnet_cidr(self):
+        subnet1 = factory.make_Subnet(cidr='192.168.1.0/24')
+        subnet2 = factory.make_Subnet(cidr='192.168.2.0/24')
+        factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        self.assertItemsEqual(
+            [node2], Node.objects.filter_by_not_subnet_cidrs(
+                ['192.168.1.0/24']))
+
+    def test_filter_fabric_subnet_filter_chain(self):
+        fabric1 = factory.make_Fabric()
+        subnet1 = factory.make_Subnet(cidr='192.168.1.0/24', fabric=fabric1)
+        subnet2 = factory.make_Subnet(cidr='192.168.2.0/24', fabric=fabric1)
+        factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, fabric=fabric1)
+        self.assertItemsEqual(
+            [node2], Node.objects
+                         .filter_by_fabrics([fabric1])
+                         .filter_by_not_subnet_cidrs(['192.168.1.0/24']))
+
     def test_get_visible_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""
         user = factory.make_User()

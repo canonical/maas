@@ -100,10 +100,9 @@ def storage_validator(value):
     if ','.join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
 
-NETWORKING_CONSTRAINT_KEYS = {
+NETWORKING_CONSTRAINT_KEYS = frozenset({
     'space',
     'not_space',
-    'mode',
     'fabric_class',
     'not_fabric_class',
     'subnet_cidr',
@@ -114,7 +113,8 @@ NETWORKING_CONSTRAINT_KEYS = {
     'not_fabric',
     'subnet',
     'not_subnet',
-}
+    'mode',
+})
 
 
 def networking_validator(constraint_map):

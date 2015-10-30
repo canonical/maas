@@ -560,7 +560,7 @@ class Factory(maastesting.factory.Factory):
     def make_Node_with_Interface_on_Subnet(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             interface_count=1, nodegroup=None, vlan=None, subnet=None,
-            cidr=None, **kwargs):
+            cidr=None, fabric=None, **kwargs):
         """Create a Node that has a Interface which is on a Subnet that has a
         NodeGroupInterface.
 
@@ -580,7 +580,7 @@ class Factory(maastesting.factory.Factory):
         node = self.make_Node(
             nodegroup=nodegroup, **kwargs)
         if vlan is None:
-            vlan = self.make_VLAN()
+            vlan = self.make_VLAN(fabric=fabric)
         if subnet is None:
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
         # Check if the subnet already has a managed interface.
@@ -693,11 +693,12 @@ class Factory(maastesting.factory.Factory):
         return space
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
-                    gateway_ip=None, dns_servers=None, host_bits=None):
+                    gateway_ip=None, dns_servers=None, host_bits=None,
+                    fabric=None):
         if name is None:
             name = factory.make_name('name')
         if vlan is None:
-            vlan = factory.make_VLAN()
+            vlan = factory.make_VLAN(fabric=fabric)
         if space is None:
             space = factory.make_Space()
         if cidr is None:

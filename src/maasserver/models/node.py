@@ -50,6 +50,7 @@ from django.db.models import (
     SET_NULL,
     TextField,
 )
+from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
@@ -167,14 +168,117 @@ PowerInfo = namedtuple("PowerInfo", (
     "power_parameters"))
 
 
-class BaseNodeManager(Manager):
+class NodeQueriesMixin(object):
+
+    def filter_by_spaces(self, spaces):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface in the specified spaces.
+        """
+        return self.filter(
+            interface__ip_addresses__subnet__space__in=spaces)
+
+    def filter_by_not_spaces(self, spaces):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces in the specified spaces.
+        """
+        return self.exclude(
+            interface__ip_addresses__subnet__space__in=spaces)
+
+    def filter_by_fabrics(self, fabrics):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface in the specified fabrics.
+        """
+        return self.filter(
+            interface__vlan__fabric__in=fabrics)
+
+    def filter_by_not_fabrics(self, fabrics):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces in the specified fabrics.
+        """
+        return self.exclude(
+            interface__vlan__fabric__in=fabrics)
+
+    def filter_by_fabric_classes(self, fabric_classes):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface in the specified fabric
+        classes.
+        """
+        return self.filter(
+            interface__vlan__fabric__class_type__in=fabric_classes)
+
+    def filter_by_not_fabric_classes(
+            self, fabric_classes):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces in the specified fabric
+        classes.
+        """
+        return self.exclude(
+            interface__vlan__fabric__class_type__in=fabric_classes)
+
+    def filter_by_vids(self, vids):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface whose VLAN has one of the
+        specified VIDs.
+        """
+        return self.filter(
+            interface__vlan__vid__in=vids)
+
+    def filter_by_not_vids(self, vids):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces whose VLAN has one of the
+        specified VIDs.
+        """
+        return self.exclude(
+            interface__vlan__vid__in=vids)
+
+    def filter_by_subnets(self, subnets):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface configured on one of the
+        specified subnets.
+        """
+        return self.filter(
+            interface__ip_addresses__subnet__in=subnets)
+
+    def filter_by_not_subnets(self, subnets):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces configured on one of the
+        specified subnets.
+        """
+        return self.exclude(
+            interface__ip_addresses__subnet__in=subnets)
+
+    def filter_by_subnet_cidrs(self, subnet_cidrs):
+        """Return the set of nodes (optionally based on the specified
+        self) with at least one interface configured on one of the
+        specified subnet with the given CIDRs.
+        """
+        return self.filter(
+            interface__ip_addresses__subnet__cidr__in=subnet_cidrs)
+
+    def filter_by_not_subnet_cidrs(self, subnet_cidrs):
+        """Return the set of nodes (optionally based on the specified
+        self) without any interfaces configured on one of the
+        specified subnet with the given CIDRs.
+        """
+        return self.exclude(
+            interface__ip_addresses__subnet__cidr__in=subnet_cidrs)
+
+
+class NodeQuerySet(QuerySet, NodeQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    nodes. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class BaseNodeManager(Manager, NodeQueriesMixin):
     """A utility to manage the collection of Nodes."""
 
     extra_filters = {}
 
     def get_queryset(self):
-        return super(
-            BaseNodeManager, self).get_queryset().filter(**self.extra_filters)
+        queryset = NodeQuerySet(self.model, using=self._db)
+        return queryset.filter(**self.extra_filters)
 
     def filter_by_ids(self, query, ids=None):
         """Filter `query` result set by system_id values.
@@ -590,8 +694,8 @@ class Node(CleanSave, TimestampedModel):
     skip_networking = BooleanField(default=False)
     skip_storage = BooleanField(default=False)
 
-    # Note that the ordering of the managers is meaningul.  More precisely, the
-    # first manager defined is important: see
+    # Note that the ordering of the managers is meaningful.  More precisely,
+    # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
     # managers") for details.
     # 'objects' are all the nodes: installable and non-installable together.
