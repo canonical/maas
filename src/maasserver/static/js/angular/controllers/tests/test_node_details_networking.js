@@ -1792,7 +1792,7 @@ describe("NodeNetworkingController", function() {
         });
     });
 
-    describe("isOnlyInterfaceSelected", function() {
+    describe("cannotEditInterface", function() {
 
         it("returns true when only one selected", function() {
             var controller = makeController();
@@ -1802,7 +1802,7 @@ describe("NodeNetworkingController", function() {
             };
             var key = $scope.getUniqueKey(nic);
             $scope.selectedInterfaces = [key];
-            expect($scope.isOnlyInterfaceSelected(nic)).toBe(true);
+            expect($scope.cannotEditInterface(nic)).toBe(false);
         });
 
         it("returns false when multiple selected", function() {
@@ -1818,7 +1818,7 @@ describe("NodeNetworkingController", function() {
             var key1 = $scope.getUniqueKey(nic1);
             var key2 = $scope.getUniqueKey(nic2);
             $scope.selectedInterfaces = [key1, key2];
-            expect($scope.isOnlyInterfaceSelected(nic1)).toBe(false);
+            expect($scope.cannotEditInterface(nic1)).toBe(false);
         });
 
         it("returns false when not selected", function() {
@@ -1828,7 +1828,7 @@ describe("NodeNetworkingController", function() {
                 link_id: makeInteger(0, 100)
             };
             $scope.selectedInterfaces = [];
-            expect($scope.isOnlyInterfaceSelected(nic)).toBe(false);
+            expect($scope.cannotEditInterface(nic)).toBe(false);
         });
     });
 

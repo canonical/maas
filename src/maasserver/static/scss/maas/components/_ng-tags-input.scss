@@ -85,7 +85,7 @@ tags-input {
   .autocomplete {
     float: left;
     width: 100%;
-    
+
     .suggestion-list {
       background: #FFF;
       padding: 10px 8px;
@@ -138,6 +138,22 @@ tags-input {
 
     &:after {
       content: '';
+    }
+  }
+}
+
+.table__data {
+
+  tags-input {
+
+    .tags {
+      margin-top: -10px;
+
+      input {
+        margin-left: 0;
+        width: 50% !important;
+        float: left;
+      }
     }
   }
 }

@@ -767,13 +767,16 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 $scope.getUniqueKey(nic)) > -1;
         };
 
-        // Return true if this is the only interface selected.
-        $scope.isOnlyInterfaceSelected = function(nic) {
-            if($scope.selectedInterfaces.length === 1) {
-                var key = $scope.getUniqueKey(nic);
-                return $scope.selectedInterfaces[0] === key;
-            } else {
+        // Returns true if the interface is not selected
+        $scope.cannotEditInterface = function(nic) {
+            if ($scope.selectedMode === SELECTION_MODE.NONE) {
                 return false;
+            } else if (
+                  $scope.selectedMode !== SELECTION_MODE.MULTI &&
+                  $scope.isInterfaceSelected(nic)) {
+                return false;
+            } else {
+                return true;
             }
         };
 

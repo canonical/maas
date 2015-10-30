@@ -263,9 +263,14 @@ table {
 
     &.active {
       background-color: #FFF;
-    }
 
-    &.active {
+      .table__dropdown {
+
+        .table__data,
+        .table__input {
+          color: #333;
+        }
+      }
 
       &:hover {
 
@@ -302,6 +307,11 @@ table {
           background-color: #FFF;
           border-color: #D2D2D2;
           background-position: right 10px top 16px;
+        }
+
+        &[disabled] {
+          border-color: transparent;
+          color: #333;
         }
       }
 
@@ -346,14 +356,28 @@ table {
     }
 
     &.disabled {
-      background-color: transparent;
 
       .table__data,
       .table__input {
         color: #888;
+        pointer-events: none;
+      }
+
+      .table__input {
+        background-color: transparent;
+        border-color: transparent;
+        background-position: right -9999em top -9999em;
+        pointer-events: none;
       }
 
       &:hover {
+
+        .table__input {
+          background-color: transparent;
+          border-color: transparent;
+          background-position: right -9999em top -9999em;
+          pointer-events: none;
+        }
 
         .table__controls {
           opacity: 0;
@@ -369,14 +393,34 @@ table {
       }
     }
 
-    &.active {
-      background-color: #FFF;
+    &.noEdit {
 
-      .table__dropdown {
+      .table__input {
+        background-color: transparent;
+        border-color: transparent;
+        background-position: right -9999em top -9999em;
+        pointer-events: none;
+      }
 
-        .table__data,
+      &:hover {
+
         .table__input {
-          color: #333;
+          background-color: transparent;
+          border-color: transparent;
+          background-position: right -9999em top -9999em;
+          pointer-events: none;
+        }
+
+        .table__controls {
+          opacity: 0;
+          z-index: -1000;
+          pointer-events: none;
+
+          &--secondary {
+            z-index: -1000;
+            opacity: 0;
+            pointer-events: none;
+          }
         }
       }
     }

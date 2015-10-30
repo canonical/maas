@@ -354,9 +354,9 @@
                                 <div class="table__header table__column--27">IP Address</div>
                             </div>
                         </header>
-                        <main class="table__body">
+                        <main class="table__body" data-selected-rows>
                             <div class="table__row"
-                                data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), selected: !isOnlyInterfaceSelected(interface) }"
+                                data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), noEdit: cannotEditInterface(interface) }"
                                 data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
                                 <div class="table__data table__column--3">
                                     <span data-ng-hide="isAllNetworkingDisabled()">
@@ -649,8 +649,8 @@
                         </li>
                     </ul>
                 </div>
-                <div class="twelve-col padding-bottom">
-                    <h3>File system</h3>
+                <div class="twelve-col padding-bottom no-margin">
+                    <h3>File System</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
@@ -851,11 +851,8 @@
                                         <tags-input ng-model="item.$options.tags" data-ng-show="item.$options.editingTags" allow-tags-pattern="[\w-]+"></tags-input>
                                         <a class="table__controls table__controls--secondary"
                                             data-ng-hide="!canEditTags(item) || item.$options.editingTags"
-                                            data-ng-click="availableEditTags(item)">edit</a>
-                                        <a class="link-cta-ubuntu text-button"
-                                            data-ng-show="item.$options.editingTags"
-                                            data-ng-click="availableCancelTags(item)">Cancel</a>
-                                        <button class="cta-ubuntu"
+                                            data-ng-click="availableEditTags(item)"><span class="icon tags">edit</span></a>
+                                        <button class="cta-ubuntu margin-left--ten"
                                             data-ng-show="item.$options.editingTags"
                                             data-ng-click="availableSaveTags(item)">Save</button>
                                     </div>
