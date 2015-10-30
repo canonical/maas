@@ -545,6 +545,14 @@ class TestClustersImporterNew(MAASServerTestCase):
         self.assertThat(importer, MatchesStructure(
             proxy=Equals(urlparse(proxy))))
 
+    def test__new_obtains_None_proxy_if_disabled(self):
+        proxy = factory.make_simple_http_url()
+        Config.objects.set_config("http_proxy", proxy)
+        Config.objects.set_config("enable_http_proxy", False)
+        importer = ClustersImporter.new(uuids=[], sources=[])
+        self.assertThat(importer, MatchesStructure(
+            proxy=Equals(None)))
+
 
 class TestClustersImporterInAction(MAASServerTestCase):
     """Live tests for `ClustersImporter`."""

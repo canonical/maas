@@ -23,6 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
 )
+from maasserver.models.config import Config
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -44,6 +45,13 @@ import yaml
 
 
 class TestComposePreseed(MAASServerTestCase):
+
+    def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        Config.objects.set_config("enable_http_proxy", False)
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertNotIn('apt_proxy', preseed)
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -143,6 +151,14 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(apt_proxy, data["apt_proxy"])
         self.assertTrue(data["manual_cache_clean"])
 
+    def test_compose_preseed_skips_apt_proxy(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
+        Config.objects.set_config("enable_http_proxy", False)
+        preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
+        self.assertNotIn('apt_proxy', preseed)
+
     def test_compose_preseed_with_curtin_installer(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
@@ -162,6 +178,17 @@ class TestComposePreseed(MAASServerTestCase):
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
+
+    def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
+        Config.objects.set_config("enable_http_proxy", False)
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.CURTIN, node))
+
+        self.assertNotIn('apt_proxy', preseed)
 
     def test_compose_preseed_with_osystem_compose_preseed(self):
         os_name = factory.make_name('os')

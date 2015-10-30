@@ -215,18 +215,29 @@ CONFIG_ITEMS = {
             'required': False,
         }
     },
-    'http_proxy': {
-        'detault': None,
-        'form': forms.URLField,
+    'enable_http_proxy': {
+        'default': True,
+        'form': forms.BooleanField,
         'form_kwargs': {
-            'label': "Proxy for HTTP and HTTPS traffic",
+            'label': "Enable the use of an APT and HTTP/HTTPS proxy",
             'required': False,
             'help_text': (
-                "This is used by the cluster and region controllers for "
-                "downloading PXE boot images and other provisioning-related "
-                "resources. This will also be passed onto provisioned "
-                "nodes instead of the default proxy (the region controller "
-                "proxy).")
+                "Provision nodes to use the built-in HTTP proxy (or "
+                "user specified proxy) for APT. MAAS also uses the proxy for "
+                "downloading boot images.")
+        }
+    },
+    'http_proxy': {
+        'default': None,
+        'form': forms.URLField,
+        'form_kwargs': {
+            'label': "Proxy for APT and HTTP/HTTPS",
+            'required': False,
+            'help_text': (
+                "This will be passed onto provisioned nodes to use as a "
+                "proxy for APT traffic. MAAS also uses the proxy for "
+                "downloading boot images. If no URL is provided, the built-in "
+                "MAAS proxy will be used.")
         }
     },
     'upstream_dns': {
@@ -304,7 +315,8 @@ CONFIG_ITEMS = {
             'label': "Default storage layout",
             'choices': get_storage_layout_choices(),
             'help_text': (
-                "Storage layout that is applied to a node when it is acquired."
+                "Storage layout that is applied to a node when it is "
+                "commissioned."
             )
         }
     },

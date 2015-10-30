@@ -9,10 +9,12 @@ d-i     mirror/http/directory string {{main_archive_directory}}
 d-i     mirror/http/hostname string {{ports_archive_hostname}}
 d-i     mirror/http/directory string {{ports_archive_directory}}
 {{endif}}
+{{if enable_http_proxy}}
 {{if http_proxy }}
 d-i     mirror/http/proxy string {{http_proxy}}
 {{else}}
 d-i     mirror/http/proxy string http://{{server_host}}:8000/
+{{endif}}
 {{endif}}
 {{enddef}}
 

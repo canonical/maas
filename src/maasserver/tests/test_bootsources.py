@@ -207,7 +207,19 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         cache_boot_sources()
         self.assertEqual(
             (proxy_address, proxy_address),
-            (capture.env['http_proxy'], capture.env['http_proxy']))
+            (capture.env['http_proxy'], capture.env['https_proxy']))
+
+    def test__doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
+        proxy_address = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy_address)
+        Config.objects.set_config('enable_http_proxy', False)
+        capture = (
+            patch_and_capture_env_for_download_all_image_descriptions(self))
+        factory.make_BootSource(keyring_data='1234')
+        cache_boot_sources()
+        self.assertEqual(
+            ("", ""),
+            (capture.env['http_proxy'], capture.env['https_proxy']))
 
     def test__returns_clears_entire_cache(self):
         source = factory.make_BootSource(keyring_data='1234')

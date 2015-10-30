@@ -442,7 +442,7 @@ class TestPreseedContext(MAASServerTestCase):
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
              'server_url', 'main_archive_hostname', 'main_archive_directory',
              'ports_archive_hostname', 'ports_archive_directory',
-             'http_proxy'],
+             'enable_http_proxy', 'http_proxy'],
             context)
 
     def test_get_preseed_context_archive_refs(self):

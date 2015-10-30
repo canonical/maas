@@ -80,10 +80,11 @@ def get_boot_sources():
 def get_simplestreams_env():
     """Get environment that should be used with simplestreams."""
     env = {'GNUPGHOME': get_maas_user_gpghome()}
-    http_proxy = Config.objects.get_config('http_proxy')
-    if http_proxy is not None:
-        env['http_proxy'] = http_proxy
-        env['https_proxy'] = http_proxy
+    if Config.objects.get_config('enable_http_proxy'):
+        http_proxy = Config.objects.get_config('http_proxy')
+        if http_proxy is not None:
+            env['http_proxy'] = http_proxy
+            env['https_proxy'] = http_proxy
     return env
 
 

@@ -1711,7 +1711,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
             subnet=subnet, interface=interface)
         other_static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi, but_not=[static_ip.id]),
+            ip=factory.pick_ip_in_static_range(ngi, but_not=[static_ip.ip]),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         nodegroup_v6 = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)

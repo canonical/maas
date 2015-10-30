@@ -32,11 +32,15 @@ import yaml
 
 def get_apt_proxy_for_node(node):
     """Return the APT proxy for the `node`."""
-    http_proxy = Config.objects.get_config("http_proxy")
-    if http_proxy:
-        return http_proxy
+    if not Config.objects.get_config("enable_http_proxy"):
+        return None
     else:
-        return "http://%s:8000/" % get_maas_facing_server_host(node.nodegroup)
+        http_proxy = Config.objects.get_config("http_proxy")
+        if http_proxy:
+            return http_proxy
+        else:
+            return "http://%s:8000/" % get_maas_facing_server_host(
+                node.nodegroup)
 
 
 def compose_cloud_init_preseed(node, token, base_url=''):
@@ -47,14 +51,13 @@ def compose_cloud_init_preseed(node, token, base_url=''):
         'oauth_token_secret': token.secret,
         })
 
-    local_config_yaml = yaml.safe_dump({
+    config = {
         # Do not let cloud-init override /etc/hosts/: use the default
         # behavior which means running `dns_resolve(hostname)` on a node
         # will query the DNS server (and not return 127.0.0.1).
         # See bug 1087183 for details.
         "manage_etc_hosts": False,
         "apt_preserve_sources_list": True,
-        "apt_proxy": get_apt_proxy_for_node(node),
         # Prevent the node from requesting cloud-init data on every reboot.
         # This is done so a machine does not need to contact MAAS every time
         # it reboots.
@@ -73,7 +76,11 @@ def compose_cloud_init_preseed(node, token, base_url=''):
                 'token_secret': token.secret,
             }
         },
-    })
+    }
+    apt_proxy = get_apt_proxy_for_node(node)
+    if apt_proxy:
+        config['apt_proxy'] = apt_proxy
+    local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
 

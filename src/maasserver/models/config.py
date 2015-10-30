@@ -57,6 +57,7 @@ def get_default_config():
         'maas_name': gethostname(),
         'default_osystem': DEFAULT_OS.name,
         'default_distro_series': DEFAULT_OS.get_default_release(),
+        'enable_http_proxy': True,
         'http_proxy': None,
         'upstream_dns': None,
         'dnssec_validation': "auto",

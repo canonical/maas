@@ -38,8 +38,10 @@ apt_mirrors:
   ubuntu_security: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
 {{endif}}
 
+{{if enable_http_proxy}}
 {{if http_proxy }}
 apt_proxy: {{http_proxy}}
 {{else}}
 apt_proxy: http://{{server_host}}:8000/
+{{endif}}
 {{endif}}

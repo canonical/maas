@@ -1316,6 +1316,7 @@ class ConfigForm(Form):
 class MAASAndNetworkForm(ConfigForm):
     """Settings page, MAAS and Network section."""
     maas_name = get_config_field('maas_name')
+    enable_http_proxy = get_config_field('enable_http_proxy')
     http_proxy = get_config_field('http_proxy')
     upstream_dns = get_config_field('upstream_dns')
     dnssec_validation = get_config_field('dnssec_validation')
