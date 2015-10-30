@@ -1526,7 +1526,7 @@ def validate_new_dynamic_range_size(instance, management,
         ip_range = IPRange(ip_range_low, ip_range_high)
         if ip_range.size <= 1:
             raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-    except AddrFormatError:
+    except (AddrFormatError, ValueError):
         raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
     # Allow any size of dynamic range for v6 networks, but limit v4
@@ -1569,7 +1569,7 @@ def validate_new_static_ip_ranges(instance, management, static_ip_range_low,
             ip_range = IPRange(static_ip_range_low, static_ip_range_high)
             if ip_range.size <= 1:
                 raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-        except AddrFormatError:
+        except (AddrFormatError, ValueError):
             raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
         # Find any allocated addresses within the old static range which do
@@ -1936,9 +1936,17 @@ class NodeGroupInterfaceForm(MAASModelForm):
         ]
         for field in fields_in_network:
             ip = cleaned_data.get(field)
-            if is_set(ip) and IPAddress(ip) not in network:
-                msg = "%s not in the %s network" % (ip, unicode(network.cidr))
-                set_form_error(self, field, msg)
+            if is_set(ip):
+                try:
+                    ipaddr = IPAddress(ip)
+                except (AddrFormatError, ValueError):
+                    msg = "%s (%s) is not a valid address" % (field, ip)
+                    set_form_error(self, field, msg)
+                else:
+                    if ipaddr not in network:
+                        msg = "%s not in the %s network" % (
+                            ip, unicode(network.cidr))
+                        set_form_error(self, field, msg)
 
     def clean_dependent_ip_ranges(self, cleaned_data):
         dynamic_range_low = cleaned_data.get('ip_range_low')
@@ -1997,7 +2005,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
             if range.size <= 1:
                 set_form_error(self, 'static_ip_range_low', message)
                 set_form_error(self, 'static_ip_range_high', message)
-        except AddrFormatError:
+        except (AddrFormatError, ValueError):
             set_form_error(self, 'static_ip_range_low', message)
             set_form_error(self, 'static_ip_range_high', message)
         try:
@@ -2007,7 +2015,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
             if range.size <= 1:
                 set_form_error(self, 'ip_range_low', message)
                 set_form_error(self, 'ip_range_high', message)
-        except AddrFormatError:
+        except (AddrFormatError, ValueError):
             set_form_error(self, 'ip_range_low', message)
             set_form_error(self, 'ip_range_high', message)
 

@@ -431,6 +431,32 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             self.assertFalse(form.is_valid())
             self.assertThat(form.errors[field], Contains(message))
 
+    def test_reports_invalid_ip(self):
+        network = IPNetwork('192.168.0.3/24')
+        invalid_ip = '192.168.0.9/24'
+        checked_fields = [
+            'router_ip',
+            'ip_range_low',
+            'ip_range_high',
+            'static_ip_range_low',
+            'static_ip_range_high',
+            ]
+        for field in checked_fields:
+            nodegroup = factory.make_NodeGroup(
+                network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+            [interface] = nodegroup.get_managed_interfaces()
+            form = NodeGroupInterfaceForm(
+                data={field: invalid_ip}, instance=interface)
+            if field == 'router_ip':
+                message = "%s (%s) is not a valid address" % (
+                    field,
+                    invalid_ip,
+                    )
+            else:
+                message = "Enter a valid IPv4 or IPv6 address."
+            self.assertFalse(form.is_valid())
+            self.assertThat(form.errors[field], Contains(message))
+
     def test_identifies_duplicate_fqdns_in_nodegroup(self):
         # Don't allow DNS management to be enabled when it would
         # cause more than one node on the nodegroup to have the
