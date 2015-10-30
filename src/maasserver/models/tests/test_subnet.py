@@ -98,6 +98,163 @@ class CreateCidrTest(MAASServerTestCase):
         self.assertEqual("169.254.0.0/16", cidr)
 
 
+class TestSubnetManager(MAASServerTestCase):
+
+    def test__filter_by_specifiers_takes_single_item(self):
+        subnet1 = factory.make_Subnet(name="subnet1")
+        factory.make_Subnet(name="subnet2")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("subnet1"),
+            [subnet1])
+
+    def test__filter_by_specifiers_takes_multiple_items(self):
+        subnet1 = factory.make_Subnet(name="subnet1")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(["subnet1", "subnet2"]),
+            [subnet1, subnet2])
+
+    def test__filter_by_specifiers_takes_multiple_cidr_or_name(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(["8.8.8.8/24", "subnet2"]),
+            [subnet1, subnet2])
+
+    def test__filter_by_specifiers_empty_filter_matches_all(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers([]),
+            [subnet1, subnet2])
+
+    def test__filter_by_specifiers_matches_name_if_requested(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        factory.make_Subnet(name="subnet3")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["name:subnet1", "name:subnet2"]),
+            [subnet1, subnet2])
+
+    def test__filter_by_specifiers_matches_space_name_if_requested(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        factory.make_Subnet(name="subnet3")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["space:%s" % subnet1.space.name,
+                 "space:%s" % subnet2.space.name]),
+            [subnet1, subnet2])
+
+    def test__filter_by_specifiers_matches_vid_if_requested(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24", vid=1)
+        subnet2 = factory.make_Subnet(name="subnet2", vid=2)
+        subnet3 = factory.make_Subnet(name="subnet3", vid=3)
+        factory.make_Subnet(name="subnet4", vid=4)
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["vlan:0b1", "vlan:0x2", "vlan:3"]),
+            [subnet1, subnet2, subnet3])
+
+    def test__filter_by_specifiers_matches_untagged_vlan_if_requested(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        subnet1 = factory.make_Subnet(
+            name="subnet1", cidr="8.8.8.0/24", vlan=vlan)
+        subnet2 = factory.make_Subnet(name="subnet2", vid=2)
+        subnet3 = factory.make_Subnet(name="subnet3", vid=3)
+        factory.make_Subnet(name="subnet4", vid=4)
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["vid:UNTAGGED", "vid:0x2", "vid:3"]),
+            [subnet1, subnet2, subnet3])
+
+    def test__filter_by_specifiers_raises_for_invalid_vid(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        factory.make_Subnet(
+            name="subnet1", cidr="8.8.8.0/24", vlan=vlan)
+        factory.make_Subnet(name="subnet2", vid=2)
+        factory.make_Subnet(name="subnet3", vid=3)
+        factory.make_Subnet(name="subnet4", vid=4)
+        with ExpectedException(ValidationError):
+            Subnet.objects.filter_by_specifiers(["vid:4095"])
+
+    def test__filter_by_specifiers_works_with_chained_filter(self):
+        factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2")
+        self.assertItemsEqual(
+            Subnet.objects
+                  .exclude(name="subnet1")
+                  .filter_by_specifiers(["8.8.8.8/24", "subnet2"]),
+            [subnet2])
+
+    def test__filter_by_specifiers_ip_filter_matches_specific_ip(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2", cidr="7.7.7.0/24")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:8.8.8.8"),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:7.7.7.7"),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:1.1.1.1"),
+            [])
+
+    def test__filter_by_specifiers_ip_filter_raises_for_invalid_ip(self):
+        factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
+        with ExpectedException(AddrFormatError):
+            Subnet.objects.filter_by_specifiers("ip:x8.8.8.0"),
+        with ExpectedException(AddrFormatError):
+            Subnet.objects.filter_by_specifiers("ip:x2001:db8::"),
+
+    def test__filter_by_specifiers_ip_filter_matches_specific_cidr(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        subnet2 = factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("cidr:8.8.8.0/24"),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("cidr:2001:db8::/64"),
+            [subnet2])
+
+    def test__filter_by_specifiers_ip_filter_raises_for_invalid_cidr(self):
+        factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
+        with ExpectedException(ValueError):
+            # netaddr.IPNetwork should probably raise AddrFormatError here,
+            # but it actually raises a ValueError when it tries to parse "x8".
+            Subnet.objects.filter_by_specifiers("cidr:x8.8.8.0/24"),
+        with ExpectedException(AddrFormatError):
+            Subnet.objects.filter_by_specifiers("cidr:x2001:db8::/64"),
+
+    def test__filter_by_specifiers_ip_chained_filter_matches_specific_ip(self):
+        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
+        factory.make_Subnet(name="subnet2", cidr="7.7.7.0/24")
+        subnet3 = factory.make_Subnet(name="subnet3", cidr="6.6.6.0/24")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["ip:8.8.8.8", "name:subnet3"]), [subnet1, subnet3])
+
+    def test__filter_by_specifiers_ip_filter_matches_specific_ipv6(self):
+        subnet1 = factory.make_Subnet(
+            name="subnet1", cidr="2001:db8::/64")
+        subnet2 = factory.make_Subnet(
+            name="subnet2", cidr="2001:db8:1::/64")
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:2001:db8::5"),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:2001:db8:1::5"),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("ip:1.1.1.1"),
+            [])
+
+
 class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
 
     def test__user_view_returns_subnet(self):
@@ -152,7 +309,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
 class SubnetTest(MAASServerTestCase):
 
     def assertIPBestMatchesSubnet(self, ip, expected):
-        subnets = Subnet.objects.get_subnets_with_ip(IPAddress(ip))
+        subnets = Subnet.objects.raw_subnets_containing_ip(IPAddress(ip))
         for tmp in subnets:
             subnet = tmp
             break

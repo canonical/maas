@@ -2703,7 +2703,7 @@ class NodeManagerTest(MAASServerTestCase):
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
         self.assertItemsEqual(
-            [extra_node], Node.objects.filter_by_not_spaces([space]))
+            [extra_node], Node.objects.exclude_spaces([space]))
 
     def test_filter_nodes_by_fabrics(self):
         fabric = factory.make_Fabric()
@@ -2722,7 +2722,7 @@ class NodeManagerTest(MAASServerTestCase):
         iface = node.get_boot_interface()
         fabric = iface.vlan.fabric
         self.assertItemsEqual(
-            [extra_node], Node.objects.filter_by_not_fabrics([fabric]))
+            [extra_node], Node.objects.exclude_fabrics([fabric]))
 
     def test_filter_nodes_by_fabric_classes(self):
         fabric1 = factory.make_Fabric(class_type="10g")
@@ -2738,7 +2738,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
         self.assertItemsEqual(
-            [node2], Node.objects.filter_by_not_fabric_classes(["10g"]))
+            [node2], Node.objects.exclude_fabric_classes(["10g"]))
 
     def test_filter_nodes_by_vids(self):
         vlan1 = factory.make_VLAN(vid=1)
@@ -2754,7 +2754,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
         node2 = factory.make_Node_with_Interface_on_Subnet(vlan=vlan2)
         self.assertItemsEqual(
-            [node2], Node.objects.filter_by_not_vids([1]))
+            [node2], Node.objects.exclude_vids([1]))
 
     def test_filter_nodes_by_subnet(self):
         subnet1 = factory.make_Subnet()
@@ -2770,7 +2770,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
         node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
         self.assertItemsEqual(
-            [node2], Node.objects.filter_by_not_subnets([subnet1]))
+            [node2], Node.objects.exclude_subnets([subnet1]))
 
     def test_filter_nodes_by_subnet_cidr(self):
         subnet1 = factory.make_Subnet(cidr='192.168.1.0/24')
@@ -2786,7 +2786,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
         node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
         self.assertItemsEqual(
-            [node2], Node.objects.filter_by_not_subnet_cidrs(
+            [node2], Node.objects.exclude_subnet_cidrs(
                 ['192.168.1.0/24']))
 
     def test_filter_fabric_subnet_filter_chain(self):
@@ -2800,7 +2800,7 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertItemsEqual(
             [node2], Node.objects
                          .filter_by_fabrics([fabric1])
-                         .filter_by_not_subnet_cidrs(['192.168.1.0/24']))
+                         .exclude_subnet_cidrs(['192.168.1.0/24']))
 
     def test_get_visible_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""

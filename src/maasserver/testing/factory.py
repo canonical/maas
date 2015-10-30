@@ -277,7 +277,7 @@ class Factory(maastesting.factory.Factory):
             routers=None, zone=None, networks=None, boot_type=None,
             sortable_name=False, power_type=None, power_parameters=None,
             power_state=None, power_state_updated=undefined, disable_ipv4=None,
-            with_boot_disk=True, vlan=None, **kwargs):
+            with_boot_disk=True, vlan=None, fabric=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -327,7 +327,8 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             node.networks.add(*networks)
         if interface:
-            self.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+            self.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan, fabric=fabric)
         if installable and with_boot_disk:
             self.make_PhysicalBlockDevice(node=node)
 
@@ -578,7 +579,7 @@ class Factory(maastesting.factory.Factory):
             iftype = kwargs['iftype']
             del kwargs['iftype']
         node = self.make_Node(
-            nodegroup=nodegroup, **kwargs)
+            nodegroup=nodegroup, fabric=fabric, **kwargs)
         if vlan is None:
             vlan = self.make_VLAN(fabric=fabric)
         if subnet is None:
@@ -694,11 +695,11 @@ class Factory(maastesting.factory.Factory):
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
                     gateway_ip=None, dns_servers=None, host_bits=None,
-                    fabric=None):
+                    fabric=None, vid=None):
         if name is None:
             name = factory.make_name('name')
         if vlan is None:
-            vlan = factory.make_VLAN(fabric=fabric)
+            vlan = factory.make_VLAN(fabric=fabric, vid=vid)
         if space is None:
             space = factory.make_Space()
         if cidr is None:
@@ -759,13 +760,13 @@ class Factory(maastesting.factory.Factory):
     def make_Interface(
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
-            ip=None, enabled=True):
+            ip=None, enabled=True, fabric=None):
         if name is None and iftype != INTERFACE_TYPE.VLAN:
             name = self.make_name('name')
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
         if vlan is None:
-            vlan = self.make_VLAN()
+            vlan = self.make_VLAN(fabric=fabric)
         if (mac_address is None and
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,

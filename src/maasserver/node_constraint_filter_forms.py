@@ -15,10 +15,6 @@ __all__ = [
     ]
 
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
 from collections import defaultdict
 import itertools
 from itertools import chain
@@ -39,17 +35,13 @@ from maasserver.models import (
     PhysicalBlockDevice,
     Subnet,
     Tag,
-    VLAN,
     Zone,
 )
-from maasserver.models.subnet import SUBNET_NAME_VALIDATOR
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
 )
-from netaddr import IPAddress
-from netaddr.core import AddrFormatError
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,
@@ -100,7 +92,7 @@ def storage_validator(value):
     if ','.join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
 
-NETWORKING_CONSTRAINT_KEYS = frozenset({
+NETWORKING_CONSTRAINT_NAMES = {
     'space',
     'not_space',
     'fabric_class',
@@ -114,21 +106,21 @@ NETWORKING_CONSTRAINT_KEYS = frozenset({
     'subnet',
     'not_subnet',
     'mode',
-})
+}
 
 
-def networking_validator(constraint_map):
+def interfaces_validator(constraint_map):
     """Validate the given LabeledConstraintMap object."""
     # At this point, the basic syntax of a labeled constraint map will have
     # already been validated by the underlying form field. However, we also
     # need to validate the specified things we're looking for in the
-    # networking domain.
+    # interfaces domain.
     for label in constraint_map:
         constraints = constraint_map[label]
         for constraint_name in constraints.iterkeys():
-            if constraint_name not in NETWORKING_CONSTRAINT_KEYS:
+            if constraint_name not in NETWORKING_CONSTRAINT_NAMES:
                 raise ValidationError(
-                    "Unknown networking constraint: '%s" % constraint_name)
+                    "Unknown interfaces constraint: '%s" % constraint_name)
 
 
 def generate_architecture_wildcards(arches):
@@ -385,169 +377,6 @@ def nodes_by_storage(storage):
     return nodes
 
 
-def strip_type_tag(type_tag, specifier):
-    """Return a network specifier minus its type tag."""
-    prefix = type_tag + ':'
-    assert specifier.startswith(prefix)
-    return specifier[len(prefix):]
-
-
-class SubnetSpecifier:
-    """A :class:`SubnetSpecifier` identifies a :class:`Subnet`.
-
-    For example, in placement constraints, a user may specify that a node
-    must be attached to a certain subnet.  They identify the subnet through
-    a subnet specifier, which may be its name (`dmz`), an IP address
-    (`ip:10.12.0.0`), or a VLAN tag (`vlan:15` or `vlan:0xf`).
-
-    Each type of subnet specifier has its own `SubnetSpecifier`
-    implementation class.  The class constructor validates and parses a
-    subnet specifier of its type, and the object knows how to retrieve
-    whatever subnet it identifies from the database.
-    """
-    __metaclass__ = ABCMeta
-
-    # Most subnet specifiers start with a type tag followed by a colon, e.g.
-    # "ip:10.1.0.0".
-    type_tag = None
-
-    @abstractmethod
-    def find_subnet(self):
-        """Load the identified :class:`Subnet` from the database.
-
-        :raise Subnet.DoesNotExist: If no subnet matched the specifier.
-        :return: The :class:`Subnet`.
-        """
-
-
-class NameSpecifier(SubnetSpecifier):
-    """Identify a subnet by its name.
-
-    This type of subnet specifier has no type tag; it's just the name.  A
-    subnet name cannot contain colon (:) characters.
-    """
-
-    def __init__(self, spec):
-        SUBNET_NAME_VALIDATOR(spec)
-        self.name = spec
-
-    def find_subnet(self):
-        return Subnet.objects.get(name=self.name)
-
-
-class IPSpecifier(SubnetSpecifier):
-    """Identify a subnet by any IP address it contains.
-
-    The IP address is prefixed with a type tag `ip:`, e.g. `ip:10.1.1.0`.
-    It can name any IP address within the subnet, including its base address,
-    its broadcast address, or any host address that falls in its IP range.
-    """
-    type_tag = 'ip'
-
-    def __init__(self, spec):
-        ip_string = strip_type_tag(self.type_tag, spec)
-        try:
-            self.ip = IPAddress(ip_string)
-        except AddrFormatError as e:
-            raise ValidationError("Invalid IP address: %s." % e)
-
-    def find_subnet(self):
-        subnets = list(Subnet.objects.get_subnets_with_ip(self.ip))
-        if len(subnets) > 0:
-            return subnets[0]
-        raise Subnet.DoesNotExist()
-
-
-class VLANSpecifier(SubnetSpecifier):
-    """Identify a subnet by its (nonzero) VLAN tag.
-
-    This only applies to VLANs.  The VLAN tag is a numeric value prefixed with
-    a type tag of `vlan:`, e.g. `vlan:12`.  Tags may also be given in
-    hexadecimal form: `vlan:0x1a`.  This is case-insensitive.
-    """
-    type_tag = 'vlan'
-
-    def __init__(self, spec):
-        vlan_string = strip_type_tag(self.type_tag, spec)
-        if vlan_string.lower().startswith('0x'):
-            # Hexadecimal.
-            base = 16
-        else:
-            # Decimal.
-            base = 10
-        try:
-            self.vlan_tag = int(vlan_string, base)
-        except ValueError:
-            raise ValidationError("Invalid VLAN tag: '%s'." % vlan_string)
-        if self.vlan_tag <= 0 or self.vlan_tag >= 0xfff:
-            raise ValidationError("VLAN tag out of range (1-4094).")
-
-    def find_subnet(self):
-        # The best we can do since we now support a more complex model is
-        # get the first VLAN with the VID and the first subnet in that VLAN.
-        vlans = VLAN.objects.filter(vid=self.vlan_tag)
-        if len(vlans) > 0:
-            subnet = vlans[0].subnet_set.first()
-            if subnet is not None:
-                return subnet
-        raise Subnet.DoesNotExist()
-
-
-SPECIFIER_CLASSES = [NameSpecifier, IPSpecifier, VLANSpecifier]
-
-SPECIFIER_TAGS = {
-    spec_class.type_tag: spec_class
-    for spec_class in SPECIFIER_CLASSES
-}
-
-
-def get_specifier_type(specifier):
-    """Obtain the specifier class that knows how to parse `specifier`.
-
-    :raise ValidationError: If `specifier` does not match any accepted type of
-        network specifier.
-    :return: A concrete `NetworkSpecifier` subclass that knows how to parse
-        `specifier`.
-    """
-    if ':' in specifier:
-        type_tag, _ = specifier.split(':', 1)
-    else:
-        type_tag = None
-    specifier_class = SPECIFIER_TAGS.get(type_tag)
-    if specifier_class is None:
-        raise ValidationError(
-            "Invalid network specifier type: '%s'." % type_tag)
-    return specifier_class
-
-
-def parse_subnet_spec(spec):
-    """Parse a network specifier; return it as a `NetworkSpecifier` object.
-
-    :raise ValidationError: If `spec` is malformed.
-    """
-    specifier_class = get_specifier_type(spec)
-    return specifier_class(spec)
-
-
-def get_subnet_from_spec(spec):
-    """Find a single `Subnet` from a given network specifier.
-
-    Note: This exists for a backward compatability layer for how MAAS used to
-    do networking. It might not always be correct since the model is now more
-    complex, but it will atleast still work.
-
-    :raise ValidationError: If `spec` is malformed.
-    :raise Subnet.DoesNotExist: If the subnet specifier does not match
-        any known subnet.
-    :return: The one `Subnet` matching `spec`.
-    """
-    specifier = parse_subnet_spec(spec)
-    try:
-        return specifier.find_subnet()
-    except Subnet.DoesNotExist:
-        raise Subnet.DoesNotExist("No subnet matching '%s'." % spec)
-
-
 class LabeledConstraintMapField(Field):
 
     def __init__(self, *args, **kwargs):
@@ -584,16 +413,49 @@ class AcquireNodeForm(RenamableFieldsForm):
     not_tags = UnconstrainedMultipleChoiceField(
         label="Not having tags", required=False)
 
-    networks = ValidatorMultipleChoiceField(
-        validator=parse_subnet_spec, label="Attached to networks",
+    # XXX mpontillo 2015-10-30 need validators for fabric constraints
+    fabrics = ValidatorMultipleChoiceField(
+        validator=lambda x: True, label="Attached to fabrics",
         required=False, error_messages={
-            'invalid_list': "Invalid parameter: list of networks required.",
+            'invalid_list': "Invalid parameter: list of fabrics required.",
+            })
+
+    not_fabrics = ValidatorMultipleChoiceField(
+        validator=lambda x: True, label="Not attached to fabrics",
+        required=False, error_messages={
+            'invalid_list': "Invalid parameter: list of fabrics required.",
+            })
+
+    fabric_classes = ValidatorMultipleChoiceField(
+        validator=lambda x: True,
+        label="Attached to fabric with specified classes",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of fabric classes required.",
+        })
+
+    not_fabric_classes = ValidatorMultipleChoiceField(
+        validator=lambda x: True,
+        label="Not attached to fabric with specified classes",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of fabric classes required."
+        })
+
+    networks = ValidatorMultipleChoiceField(
+        validator=Subnet.objects.validate_filter_specifiers,
+        label="Attached to subnets",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of subnet specifiers required.",
             })
 
     not_networks = ValidatorMultipleChoiceField(
-        validator=parse_subnet_spec, label="Not attached to networks",
+        validator=Subnet.objects.validate_filter_specifiers,
+        label="Not attached to subnets",
         required=False, error_messages={
-            'invalid_list': "Invalid parameter: list of networks required.",
+            'invalid_list':
+            "Invalid parameter: list of subnet specifiers required.",
             })
 
     connected_to = ValidatorMultipleChoiceField(
@@ -619,8 +481,8 @@ class AcquireNodeForm(RenamableFieldsForm):
     storage = forms.CharField(
         validators=[storage_validator], label="Storage", required=False)
 
-    networking = LabeledConstraintMapField(
-        validators=[networking_validator], label="Networking", required=False)
+    interfaces = LabeledConstraintMapField(
+        validators=[interfaces_validator], label="Interfaces", required=False)
 
     ignore_unknown_constraints = True
 
@@ -696,23 +558,24 @@ class AcquireNodeForm(RenamableFieldsForm):
                 {self.get_field_name('not_in_zone'): [error_msg]})
         return value
 
+    def _clean_subnet_specifiers(self, specifiers):
+        if not specifiers:
+            return None
+        subnets = set(Subnet.objects.filter_by_specifiers(specifiers))
+        if len(subnets) == 0:
+            raise ValidationError("No matching subnets found.")
+        return subnets
+
     def clean_networks(self):
         value = self.cleaned_data[self.get_field_name('networks')]
-        if value is None:
-            return None
-        try:
-            return [get_subnet_from_spec(spec) for spec in value]
-        except Subnet.DoesNotExist as e:
-            raise ValidationError(e.message)
+        return self._clean_subnet_specifiers(value)
 
     def clean_not_networks(self):
         value = self.cleaned_data[self.get_field_name('not_networks')]
-        if value is None:
-            return None
-        try:
-            return [get_subnet_from_spec(spec) for spec in value]
-        except Subnet.DoesNotExist as e:
-            raise ValidationError(e.message)
+        return self._clean_subnet_specifiers(value)
+
+    def __init__(self, *args, **kwargs):
+        super(AcquireNodeForm, self).__init__(*args, **kwargs)
 
     def clean(self):
         if not self.ignore_unknown_constraints:
@@ -829,20 +692,50 @@ class AcquireNodeForm(RenamableFieldsForm):
             not_in_zones = Zone.objects.filter(name__in=not_in_zone)
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
 
-        # Filter by networks.
+        # Filter by subnet.
         subnets = self.cleaned_data.get(self.get_field_name('networks'))
-        if subnets is not None:
+        if subnets is not None and len(subnets) > 0:
             for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
                     interface__ip_addresses__subnet=subnet)
 
-        # Filter by not_networks.
+        # Filter by not_subnets.
         not_subnets = self.cleaned_data.get(
             self.get_field_name('not_networks'))
-        if not_subnets is not None:
+        if not_subnets is not None and len(not_subnets) > 0:
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
                     interface__ip_addresses__subnet=not_subnet)
+
+        # Filter by fabrics.
+        fabrics = self.cleaned_data.get(self.get_field_name('fabrics'))
+        if fabrics is not None and len(fabrics) > 0:
+            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
+            # is null (fabric-<id>).
+            filtered_nodes = filtered_nodes.filter(
+                interface__vlan__fabric__name__in=fabrics)
+
+        # Filter by not_fabrics.
+        not_fabrics = self.cleaned_data.get(self.get_field_name('not_fabrics'))
+        if not_fabrics is not None and len(not_fabrics) > 0:
+            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
+            # is null (fabric-<id>).
+            filtered_nodes = filtered_nodes.exclude(
+                interface__vlan__fabric__name__in=not_fabrics)
+
+        # Filter by fabric classes.
+        fabric_classes = self.cleaned_data.get(self.get_field_name(
+            'fabric_classes'))
+        if fabric_classes is not None and len(fabric_classes) > 0:
+            filtered_nodes = filtered_nodes.filter(
+                interface__vlan__fabric__class_type__in=fabric_classes)
+
+        # Filter by not_fabric_classes.
+        not_fabric_classes = self.cleaned_data.get(self.get_field_name(
+            'not_fabric_classes'))
+        if not_fabric_classes is not None and len(not_fabric_classes) > 0:
+            filtered_nodes = filtered_nodes.exclude(
+                interface__vlan__fabric__class_type__in=not_fabric_classes)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

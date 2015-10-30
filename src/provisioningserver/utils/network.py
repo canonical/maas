@@ -505,3 +505,25 @@ def inet_ntop(value):
     """Convert IPv4 and IPv6 addresses from binary to text form.
     (See also inet_ntop(3), the C function with the same name and function.)"""
     return unicode(IPAddress(value))
+
+
+def parse_integer(value_string):
+    """Convert the specified `value_string` into a decimal integer.
+
+    Strips whitespace, and handles hexadecimal or binary format strings,
+    if the string is prefixed with '0x' or '0b', respectively.
+
+    :raise:ValueError if the conversion to int fails
+    :return:int
+    """
+    value_string = value_string.strip()
+    if value_string.lower().startswith('0x'):
+        # Hexadecimal.
+        base = 16
+    elif value_string.lower().startswith('0b'):
+        # Binary
+        base = 2
+    else:
+        # When all else fails, assume decimal.
+        base = 10
+    return int(value_string, base)

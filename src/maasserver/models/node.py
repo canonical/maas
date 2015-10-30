@@ -116,6 +116,7 @@ from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
     get_one,
+    MAASQueriesMixin,
     post_commit,
     post_commit_do,
     transactional,
@@ -168,97 +169,89 @@ PowerInfo = namedtuple("PowerInfo", (
     "power_parameters"))
 
 
-class NodeQueriesMixin(object):
+class NodeQueriesMixin(MAASQueriesMixin):
 
     def filter_by_spaces(self, spaces):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface in the specified spaces.
+        """Return the set of nodes with at least one interface in the specified
+        spaces.
         """
         return self.filter(
             interface__ip_addresses__subnet__space__in=spaces)
 
-    def filter_by_not_spaces(self, spaces):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces in the specified spaces.
+    def exclude_spaces(self, spaces):
+        """Return the set of nodes without any interfaces in the specified
+        spaces.
         """
         return self.exclude(
             interface__ip_addresses__subnet__space__in=spaces)
 
     def filter_by_fabrics(self, fabrics):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface in the specified fabrics.
+        """Return the set of nodes with at least one interface in the specified
+        fabrics.
         """
         return self.filter(
             interface__vlan__fabric__in=fabrics)
 
-    def filter_by_not_fabrics(self, fabrics):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces in the specified fabrics.
+    def exclude_fabrics(self, fabrics):
+        """Return the set of nodes without any interfaces in the specified
+        fabrics.
         """
         return self.exclude(
             interface__vlan__fabric__in=fabrics)
 
     def filter_by_fabric_classes(self, fabric_classes):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface in the specified fabric
-        classes.
+        """Return the set of nodes with at least one interface in the specified
+        fabric classes.
         """
         return self.filter(
             interface__vlan__fabric__class_type__in=fabric_classes)
 
-    def filter_by_not_fabric_classes(
+    def exclude_fabric_classes(
             self, fabric_classes):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces in the specified fabric
-        classes.
+        """Return the set of nodes without any interfaces in the specified
+        fabric classes.
         """
         return self.exclude(
             interface__vlan__fabric__class_type__in=fabric_classes)
 
     def filter_by_vids(self, vids):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface whose VLAN has one of the
-        specified VIDs.
+        """Return the set of nodes with at least one interface whose VLAN has
+        one of the specified VIDs.
         """
         return self.filter(
             interface__vlan__vid__in=vids)
 
-    def filter_by_not_vids(self, vids):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces whose VLAN has one of the
-        specified VIDs.
+    def exclude_vids(self, vids):
+        """Return the set of nodes without any interfaces whose VLAN has one of
+        the specified VIDs.
         """
         return self.exclude(
             interface__vlan__vid__in=vids)
 
     def filter_by_subnets(self, subnets):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface configured on one of the
-        specified subnets.
+        """Return the set of nodes with at least one interface configured on
+        one of the specified subnets.
         """
         return self.filter(
             interface__ip_addresses__subnet__in=subnets)
 
-    def filter_by_not_subnets(self, subnets):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces configured on one of the
-        specified subnets.
+    def exclude_subnets(self, subnets):
+        """Return the set of nodes without any interfaces configured on one of
+        the specified subnets.
         """
         return self.exclude(
             interface__ip_addresses__subnet__in=subnets)
 
     def filter_by_subnet_cidrs(self, subnet_cidrs):
-        """Return the set of nodes (optionally based on the specified
-        self) with at least one interface configured on one of the
-        specified subnet with the given CIDRs.
+        """Return the set of nodes with at least one interface configured on
+        one of the specified subnet with the given CIDRs.
         """
         return self.filter(
             interface__ip_addresses__subnet__cidr__in=subnet_cidrs)
 
-    def filter_by_not_subnet_cidrs(self, subnet_cidrs):
-        """Return the set of nodes (optionally based on the specified
-        self) without any interfaces configured on one of the
-        specified subnet with the given CIDRs.
+    def exclude_subnet_cidrs(self, subnet_cidrs):
+        """Return the set of nodes without any interfaces configured on one of
+        the specified subnet with the given CIDRs.
         """
         return self.exclude(
             interface__ip_addresses__subnet__cidr__in=subnet_cidrs)

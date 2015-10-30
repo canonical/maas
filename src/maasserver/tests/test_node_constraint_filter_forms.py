@@ -233,7 +233,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def assertConstrainedNodes(self, nodes, data):
         form = AcquireNodeForm(data=data)
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _ = form.filter_nodes(Node.objects.all())
         self.assertItemsEqual(nodes, filtered_nodes)
 
@@ -299,6 +299,22 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (False, {'mem': ["Invalid memory: number of MiB required."]}),
             (form.is_valid(), form.errors))
 
+    def test_legacy_networks_field_falls_back_to_subnets_query(self):
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+            ]
+        # Filter for this subnet.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 1
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'networks': [subnets[pick].name]})
+
     def test_networks_filters_by_name(self):
         subnets = [
             factory.make_Subnet()
@@ -310,10 +326,26 @@ class TestAcquireNodeForm(MAASServerTestCase):
             ]
         # Filter for this subnet.  Take one in the middle to avoid
         # coincidental success based on ordering.
-        pick = 2
+        pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
             {'networks': [subnets[pick].name]})
+
+    def test_networks_filters_by_space(self):
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+            ]
+        # Filter for this subnet.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 1
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'networks': ["space:%s" % subnets[pick].space.name]})
 
     def test_networks_filters_by_ip(self):
         subnets = [
@@ -326,7 +358,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             ]
         # Filter for this subnet.  Take one in the middle to avoid
         # coincidental success based on ordering.
-        pick = 2
+        pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
             {'networks': [
@@ -345,7 +377,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             ]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
-        pick = 2
+        pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
             {'networks': ['vlan:%d' % vlan_tags[pick]]})
@@ -371,14 +403,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {node},
             {'networks': [subnets[1].name]})
 
-    def test_invalid_networks(self):
+    def test_invalid_subnets(self):
         form = AcquireNodeForm(data={'networks': 'ip:10.0.0.0'})
         self.assertEquals(
             (
                 False,
                 {
                     'networks': [
-                        "Invalid parameter: list of networks required.",
+                        "Invalid parameter: "
+                        "list of subnet specifiers required.",
                         ],
                 },
             ),
@@ -388,7 +421,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         # is being consulted.
         form = AcquireNodeForm(data={'networks': ['vlan:-1']})
         self.assertEquals(
-            (False, {'networks': ["VLAN tag out of range (1-4094)."]}),
+            (False, {'networks': [
+                "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
@@ -429,6 +463,17 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             [node],
             {'networks': [this_subnet.name]})
+
+    def test_legacy_not_networks_falls_back_to_not_networks_query(self):
+        [not_subnet, subnet] = [
+            factory.make_Subnet()
+            for _ in range(2)
+        ]
+        factory.make_Node_with_Interface_on_Subnet(subnet=not_subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        self.assertConstrainedNodes(
+            {node},
+            {'not_networks': [not_subnet.name]})
 
     def test_not_networks_filters_by_name(self):
         [subnet, not_subnet] = [
@@ -474,7 +519,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {interfaceless_node, unconnected_node},
             {'not_networks': [factory.make_Subnet().name]})
 
-    def test_not_networks_exclude_node_with_any_interface_on_not_subnets(self):
+    def test_not_networks_exclude_node_with_any_interface(self):
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         other_subnet = factory.make_Subnet()
@@ -497,7 +542,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 False,
                 {
                     'not_networks': [
-                        "Invalid parameter: list of networks required.",
+                        "Invalid parameter: "
+                        "list of subnet specifiers required.",
                         ],
                 },
             ),
@@ -507,7 +553,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         # is being consulted.
         form = AcquireNodeForm(data={'not_networks': ['vlan:-1']})
         self.assertEquals(
-            (False, {'not_networks': ["VLAN tag out of range (1-4094)."]}),
+            (False, {'not_networks': [
+                "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
             (form.is_valid(), form.errors))
 
     def test_not_networks_combines_filters(self):
@@ -866,25 +913,88 @@ class TestAcquireNodeForm(MAASServerTestCase):
             id=constraint_map[node.id].keys()[1])  # 2nd constraint with name
         self.assertGreaterEqual(disk1.size, 5 * 1000 ** 3)
 
-    def test_networking_constraint_rejected_if_syntax_is_invalid(self):
-        factory.make_Node_with_Interface_on_Subnet()
+    def test_fabrics_constraint(self):
+        fabric1 = factory.make_Fabric(name="fabric1")
+        fabric2 = factory.make_Fabric(name="fabric2")
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
         form = AcquireNodeForm({
-            u'networking': u'label:x'})
-        self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(form.errors, Contains('networking'))
-
-    def test_networking_constraint_rejected_if_key_is_invalid(self):
-        factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
-            u'networking': u'label:chirp_chirp_thing=silenced'})
-        self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(form.errors, Contains('networking'))
-
-    def test_networking_constraint_validated(self):
-        factory.make_Node_with_Interface_on_Subnet()
-        form = AcquireNodeForm({
-            u'networking': u'label:fabric=fabric-0'})
+            u'fabrics': [u'fabric2']})
         self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_not_fabrics_constraint(self):
+        fabric1 = factory.make_Fabric(name="fabric1")
+        fabric2 = factory.make_Fabric(name="fabric2")
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        form = AcquireNodeForm({
+            u'not_fabrics': [u'fabric1']})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_fabric_classes_constraint(self):
+        fabric1 = factory.make_Fabric(class_type="10g")
+        fabric2 = factory.make_Fabric(class_type="1g")
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        form = AcquireNodeForm({
+            u'fabric_classes': [u'1g']})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_not_fabric_classes_constraint(self):
+        fabric1 = factory.make_Fabric(class_type="10g")
+        fabric2 = factory.make_Fabric(class_type="1g")
+        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        form = AcquireNodeForm({
+            u'not_fabric_classes': [u'10g']})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_interfaces_constraint_rejected_if_syntax_is_invalid(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'interfaces': u'label:x'})
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertThat(form.errors, Contains('interfaces'))
+
+    def test_interfaces_constraint_rejected_if_key_is_invalid(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'interfaces': u'label:chirp_chirp_thing=silenced'})
+        self.assertFalse(form.is_valid(), dict(form.errors))
+        self.assertThat(form.errors, Contains('interfaces'))
+
+    def test_interfaces_constraint_validated(self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'interfaces': u'label:fabric=fabric-0'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
+    @skip("XXX mpontillo 2015-10-30 need to use upcoming interfaces filter")
+    def test_interfaces_filters_by_fabric_class(self):
+        fabric1 = factory.make_Fabric(class_type="1g")
+        fabric2 = factory.make_Fabric(class_type="10g")
+        node1 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+
+        form = AcquireNodeForm({
+            u'interfaces': u'label:fabric_class=10g'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+        form = AcquireNodeForm({
+            u'interfaces': u'label:fabric_class=1g'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node1], filtered_nodes)
 
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')
@@ -985,7 +1095,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
             'storage': '0(ssd),10(ssd)',
-            'networking': 'label:fabric=fabric-0',
+            'interfaces': 'label:fabric=fabric-0',
+            'fabrics': [factory.make_Fabric().name],
+            'not_fabrics': [factory.make_Fabric().name],
+            'fabric_classes': [
+                factory.make_Fabric(class_type="10g").class_type],
+            'not_fabric_classes': [
+                factory.make_Fabric(class_type="1g").class_type],
             }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)

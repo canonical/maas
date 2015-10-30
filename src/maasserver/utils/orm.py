@@ -666,3 +666,27 @@ class FullyConnected:
         """Close database connections in the current thread."""
         for alias in connections:
             connections[alias].close()
+
+
+class MAASQueriesMixin(object):
+    """Contains utility functions that any mixin for model object manager
+    queries may need to make use of."""
+
+    def get_id_list(self, raw_query):
+        """Returns a list of IDs for each row in the specified raw query.
+
+        This can be used to create additional filters to chain from a raw
+        query, which would not otherwise be possible.
+
+        Note that using this method risks a race condition, since a row
+        could be inserted after the raw query runs.
+        """
+        ids = [row.id for row in raw_query]
+        return self.filter(id__in=ids)
+
+    def get_id_filter(self, raw_query):
+        """Returns a `QuerySet` for the specified raw query, by executing it
+        and adding an 'in' filter with the ID of each object in the raw query.
+        """
+        ids = self.get_id_list(raw_query)
+        return self.filter(id__in=ids)

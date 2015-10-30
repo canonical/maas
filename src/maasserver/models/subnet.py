@@ -28,7 +28,9 @@ from django.db.models import (
     ForeignKey,
     Manager,
     PROTECT,
+    Q,
 )
+from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
@@ -42,14 +44,18 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 from netaddr import (
+    AddrFormatError,
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.utils import flatten
 from provisioningserver.utils.network import (
     MAASIPSet,
     make_ipaddress,
     make_iprange,
+    parse_integer,
 )
 
 
@@ -92,13 +98,65 @@ def create_cidr(network, subnet_mask=None):
     return unicode(cidr)
 
 
-class SubnetManager(Manager):
-    """Manager for :class:`Subnet` model."""
+def parse_item_operation(specifier):
+    """
+    Returns a tuple indicating the specifier string, and its related
+    operation (if one was found).
 
-    def create_from_cidr(self, cidr, vlan, space):
-        """Create a subnet from the given CIDR."""
-        name = "subnet-" + unicode(cidr)
-        return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
+    If the first character in the specifier is '|', the operator will be OR.
+
+    If the first character in the specifier is '&', the operator will be AND.
+
+    If unspecified, the default operator is OR.
+
+    :param specifier: a string containing the specifier.
+    :return: tuple
+    """
+    specifier = specifier.strip()
+
+    from operator import (
+        and_ as AND,
+        or_ as OR,
+    )
+
+    if specifier.startswith('|'):
+        op = OR
+        specifier = specifier[1:]
+    elif specifier.startswith('&'):
+        op = AND
+        specifier = specifier[1:]
+    else:
+        # Default to OR.
+        op = OR
+    return specifier, op
+
+
+def parse_item_specifier_type(specifier, types=frozenset(), separator=':'):
+    """
+    Returns a tuple that splits the string int a specifier, and its specifier
+    type.
+
+    Retruns a tuple of (specifier, specifier_type). If no specifier type could
+    be found in the set, returns None in place of the specifier_type.
+
+    :param specifier: The specifier string, such as "ip:10.0.0.1".
+    :param types: A set of strings that will be recognized as specifier types.
+    :param separator: Optional specifier. Defaults to ':'.
+    :return: tuple
+    """
+    if separator in specifier:
+        tokens = specifier.split(separator, 1)
+        if tokens[0] in types:
+            specifier_type = tokens[0]
+            specifier = tokens[1].strip()
+        else:
+            specifier_type = None
+    else:
+        specifier_type = None
+    return specifier, specifier_type
+
+
+class SubnetQueriesMixin(MAASQueriesMixin):
 
     find_subnets_with_ip_query = """
         SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
@@ -109,7 +167,7 @@ class SubnetManager(Manager):
         ORDER BY prefixlen DESC
         """
 
-    def get_subnets_with_ip(self, ip):
+    def raw_subnets_containing_ip(self, ip):
         """Find the most specific Subnet the specified IP address belongs in.
         """
         return self.raw(
@@ -135,8 +193,7 @@ class SubnetManager(Manager):
         LEFT OUTER JOIN maasserver_nodegroup AS nodegroup
           ON ngi.nodegroup_id = nodegroup.id
         WHERE
-            %s << subnet.cidr AND /* Specified IP is inside range */
-            vlan.fabric_id = %s
+            %s << subnet.cidr /* Specified IP is inside range */
         ORDER BY
             /* For nodegroup_status, 1=ENABLED, 2=DISABLED, and NULL
                means the outer join didn't find a related NodeGroup. */
@@ -151,26 +208,148 @@ class SubnetManager(Manager):
         LIMIT 1
         """
 
-    def get_best_subnet_for_ip(self, ip, fabric=None):
+    def get_best_subnet_for_ip(self, ip):
         """Find the most-specific managed Subnet the specified IP address
         belongs to.
 
         The most-specific Subnet is a Subnet that is both referred to by
-        a managed, active NodeGroupInterface, and on the specified Fabric.
-
-        If no Fabric is specified, uses the default Fabric.
+        a managed, active NodeGroupInterface.
         """
-        # Circular imports
-        fabric = self._find_fabric(fabric)
-
         subnets = self.raw(
             self.find_best_subnet_for_ip_query,
-            params=[unicode(ip), fabric])
+            params=[unicode(ip)])
 
         for subnet in subnets:
             return subnet  # This is stable because the query is ordered.
         else:
             return None
+
+    SUBNET_SPECIFIER_TYPES = frozenset({
+        'ip',
+        'cidr',
+        'name',
+        'vlan',
+        'vid',
+        'space',
+    })
+
+    def validate_filter_specifiers(self, specifiers):
+        """Validate the given filter string."""
+        try:
+            self.filter_by_specifiers(specifiers)
+        except (ValueError, AddrFormatError) as e:
+            raise ValidationError(e.message)
+
+    def _get_specifiers_query(self, specifiers):
+        """Returns a Q object for objects matching the given specifiers.
+
+        See documentation for `filter_by_specifiers()`.
+
+        :return:django.db.models.Q
+        """
+        current_q = Q()
+        # Handle a single item, or a list.
+        specifiers = list(flatten(specifiers))
+        for item in specifiers:
+            item, op = parse_item_operation(item)
+            item, specifier_type = parse_item_specifier_type(
+                item, types=self.SUBNET_SPECIFIER_TYPES)
+
+            if specifier_type == 'ip':
+                # Try to validate this before it hits the database, since this
+                # is going to be a raw query.
+                item = unicode(IPAddress(item))
+                # This is a special case. If a specific IP filter is included,
+                # a custom query is needed to get the result. We can't chain
+                # a raw query using Q without grabbing the IDs first.
+                ids = self.get_id_list(self.raw_subnets_containing_ip(item))
+                current_q = op(current_q, Q(id__in=ids))
+            elif specifier_type == 'name':
+                current_q = op(current_q, Q(name=item))
+            elif specifier_type == 'vlan' or specifier_type == 'vid':
+                if item.lower() == 'untagged':
+                    vid = 0
+                else:
+                    vid = parse_integer(item)
+                if vid < 0 or vid >= 0xfff:
+                    raise ValidationError(
+                        "VLAN tag (VID) out of range "
+                        "(0-4094; 0 for untagged.)")
+                current_q = op(current_q, Q(vlan__vid=vid))
+            elif specifier_type == 'cidr':
+                ip = IPNetwork(item)
+                cidr = unicode(ip.cidr)
+                current_q = op(current_q, Q(cidr=cidr))
+            elif specifier_type == 'space':
+                current_q = op(current_q, Q(space__name=item))
+            else:
+                # By default, search for a specific CIDR first, then
+                # fall back to the name.
+                try:
+                    ip = IPNetwork(item)
+                except AddrFormatError:
+                    current_q = op(current_q, Q(name=item))
+                else:
+                    cidr = unicode(ip.cidr)
+                    current_q = op(current_q, Q(cidr=cidr))
+        return current_q
+
+    def filter_by_specifiers(self, specifiers):
+        """Filters subnets by the given list of specifiers (or single
+        specifier).
+
+        Allows a number of types to be prefixed in front of each specifier:
+            * 'ip:' Matches the subnet that best matches the given IP address.
+            * 'cidr:' Matches a subnet with the exact given CIDR.
+            * 'name': Matches a subnet with the given name.
+            * 'vid:' Matches a subnet whose VLAN has the given VID.
+                Can be used with a hexadecimal or binary string by prefixing
+                it with '0x' or '0b'.
+            ' 'vlan:' Synonym for 'vid' for compatibility with older MAAS
+                versions.
+
+        If no specifier is given, the input will be treated as a CIDR. If
+        the input is not a valid CIDR, it will be treated as subnet name.
+
+        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
+            but the address could not be parsed.
+        :return:QuerySet
+        """
+        query = self._get_specifiers_query(specifiers)
+        return self.filter(query)
+
+    def exclude_by_specifiers(self, specifiers):
+        """Excludes subnets by the given list of specifiers (or single
+        specifier).
+
+        See documentation for `filter_by_specifiers()`.
+
+        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
+            but the address could not be parsed.
+        :return:QuerySet
+        """
+        query = self._get_specifiers_query(specifiers)
+        return self.exclude(query)
+
+
+class SubnetQuerySet(QuerySet, SubnetQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    subnets. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class SubnetManager(Manager, SubnetQueriesMixin):
+    """Manager for :class:`Subnet` model."""
+
+    def get_queryset(self):
+        queryset = SubnetQuerySet(self.model, using=self._db)
+        return queryset
+
+    def create_from_cidr(self, cidr, vlan, space):
+        """Create a subnet from the given CIDR."""
+        name = "subnet-" + unicode(cidr)
+        return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
 
     def _find_fabric(self, fabric):
         from maasserver.models import Fabric

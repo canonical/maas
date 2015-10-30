@@ -52,6 +52,7 @@ from provisioningserver.utils.network import (
     MAASIPSet,
     make_iprange,
     make_network,
+    parse_integer,
     resolve_hostname,
 )
 from testtools.matchers import (
@@ -733,3 +734,25 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['inefficiency_string'], Equals("TBD"))
         self.assertThat(json, Contains('ranges'))
         self.assertThat(json['ranges'], Equals(stats.ranges.render_json()))
+
+
+class TestParseInteger(MAASTestCase):
+
+    def test__parses_decimal_integer(self):
+        self.assertThat(parse_integer("0"), Equals(0))
+        self.assertThat(parse_integer("1"), Equals(1))
+        self.assertThat(parse_integer("-1"), Equals(-1))
+        self.assertThat(parse_integer("1000"), Equals(1000))
+        self.assertThat(parse_integer("10000000"), Equals(10000000))
+
+    def test__parses_hexadecimal_integer(self):
+        self.assertThat(parse_integer("0x0"), Equals(0))
+        self.assertThat(parse_integer("0x1"), Equals(1))
+        self.assertThat(parse_integer("0x1000"), Equals(0x1000))
+        self.assertThat(parse_integer("0x10000000"), Equals(0x10000000))
+
+    def test__parses_binary_integer(self):
+        self.assertThat(parse_integer("0b0"), Equals(0))
+        self.assertThat(parse_integer("0b1"), Equals(1))
+        self.assertThat(parse_integer("0b1000"), Equals(0b1000))
+        self.assertThat(parse_integer("0b10000000"), Equals(0b10000000))
