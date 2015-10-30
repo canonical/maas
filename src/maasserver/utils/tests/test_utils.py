@@ -26,10 +26,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
-from maasserver.enum import (
-    NODE_STATUS_CHOICES,
-    NODEGROUPINTERFACE_MANAGEMENT,
-)
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -39,7 +36,6 @@ from maasserver.utils import (
     absolute_url_reverse,
     build_absolute_uri,
     find_nodegroup,
-    get_db_state,
     get_local_cluster_UUID,
     make_validation_error_message,
     strip_domain,
@@ -143,18 +139,6 @@ class TestAbsoluteUrlReverse(MAASServerTestCase):
         expected_url = path + "%s?%s" % (
             reverse('settings'), urlencode(parameters))
         self.assertEqual(expected_url, absolute_url)
-
-
-class GetDbStateTest(MAASServerTestCase):
-    """Testing for the method `get_db_state`."""
-
-    def test_get_db_state_returns_db_state(self):
-        status = factory.pick_choice(NODE_STATUS_CHOICES)
-        node = factory.make_Node(status=status)
-        another_status = factory.pick_choice(
-            NODE_STATUS_CHOICES, but_not=[status])
-        node.status = another_status
-        self.assertEqual(status, get_db_state(node, 'status'))
 
 
 class TestBuildAbsoluteURI(MAASTestCase):

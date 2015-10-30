@@ -110,13 +110,11 @@ from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils import (
-    get_db_state,
-    strip_domain,
-)
+from maasserver.utils import strip_domain
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
+    get_one,
     post_commit,
     post_commit_do,
     transactional,
@@ -790,7 +788,7 @@ class Node(CleanSave, TimestampedModel):
         # take advantage of the cache.
         return [tag.name for tag in self.tags.all()]
 
-    def clean_boot_disk(self):
+    def clean_boot_disk(self, prev):
         """Check that the boot disk is either un-used or has a partition
         table.
 
@@ -824,7 +822,7 @@ class Node(CleanSave, TimestampedModel):
                                 )]
                         })
 
-    def clean_boot_interface(self):
+    def clean_boot_interface(self, prev):
         """Check that this Node's boot interface (if present) belongs to this
         Node.
 
@@ -839,9 +837,9 @@ class Node(CleanSave, TimestampedModel):
                         "Must be one of the node's interfaces."],
                     })
 
-    def clean_status(self):
+    def clean_status(self, prev):
         """Check a node's status transition against the node-status FSM."""
-        old_status = get_db_state(self, 'status')
+        old_status = None if prev is None else prev.status
         if self.status == old_status:
             # No transition is always a safe transition.
             pass
@@ -852,7 +850,6 @@ class Node(CleanSave, TimestampedModel):
                 maaslog.info(
                     "%s: Status transition from %s to %s",
                     self.hostname, stat[old_status], stat[self.status])
-            pass
         else:
             # Transition not permitted.
             error_text = "Invalid transition: %s -> %s." % (
@@ -861,7 +858,7 @@ class Node(CleanSave, TimestampedModel):
                 )
             raise NodeStateViolation(error_text)
 
-    def clean_architecture(self):
+    def clean_architecture(self, prev):
         if self.architecture == '' and self.installable:
             raise ValidationError(
                 {'architecture':
@@ -869,10 +866,11 @@ class Node(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
-        self.clean_status()
-        self.clean_architecture()
-        self.clean_boot_disk()
-        self.clean_boot_interface()
+        prev = get_one(Node.objects.filter(pk=self.pk))
+        self.clean_status(prev)
+        self.clean_architecture(prev)
+        self.clean_boot_disk(prev)
+        self.clean_boot_interface(prev)
 
     def display_status(self):
         """Return status text as displayed to the user."""

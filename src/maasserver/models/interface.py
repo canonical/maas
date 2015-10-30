@@ -8,8 +8,6 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
-from maasserver.utils import get_one
-
 
 str = None
 
@@ -23,27 +21,33 @@ __all__ = [
     'UnknownInterface',
     ]
 
-
 from collections import defaultdict
-from django.core.exceptions import PermissionDenied, ValidationError
+
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
 from django.db import models
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
     Manager,
     ManyToManyField,
     PROTECT,
     Q,
-    BooleanField,
 )
-from maasserver.clusterrpc.dhcp import remove_host_maps
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
+from maasserver.clusterrpc.dhcp import (
+    remove_host_maps,
+    update_host_maps,
+)
 from maasserver.enum import (
-    INTERFACE_TYPE,
     INTERFACE_LINK_TYPE,
+    INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -54,24 +58,25 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import (
     JSONObjectField,
-    VerboseRegexValidator,
     MACAddressField,
+    VerboseRegexValidator,
 )
-from maasserver.utils.signals import connect_to_field_change
-from maasserver.clusterrpc.dhcp import update_host_maps
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.space import Space
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.utils.ipaddr import (
-    get_first_and_last_usable_host_in_network
-)
+from maasserver.utils.orm import get_one
+from maasserver.utils.signals import connect_to_field_change
 from netaddr import (
     IPAddress,
     IPNetwork,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.ipaddr import (
+    get_first_and_last_usable_host_in_network,
+)
+
 
 maaslog = get_maas_logger("interface")
 

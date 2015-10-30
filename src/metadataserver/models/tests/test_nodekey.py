@@ -17,6 +17,7 @@ __all__ = []
 from maasserver.testing.factory import factory
 from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.models import NodeKey
+from testtools.matchers import HasLength
 
 
 class TestNodeKeyManager(DjangoTestCase):
@@ -56,6 +57,12 @@ class TestNodeKeyManager(DjangoTestCase):
             node,
             NodeKey.objects.get_node_for_key(
                 NodeKey.objects.get_token_for_node(node).key))
+
+    def test_clear_token_for_node_deletes_related_NodeKey(self):
+        node = factory.make_Node()
+        NodeKey.objects.get_token_for_node(node)
+        NodeKey.objects.clear_token_for_node(node)
+        self.assertThat(NodeKey.objects.filter(node=node), HasLength(0))
 
     def test_get_node_for_key_inverts_get_token_for_node(self):
         key = NodeKey.objects.get_token_for_node(factory.make_Node()).key

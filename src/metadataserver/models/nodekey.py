@@ -16,7 +16,6 @@ __all__ = [
     'NodeKey',
     ]
 
-
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -28,10 +27,7 @@ from maasserver.models.user import create_auth_token
 from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
-from piston.models import (
-    KEY_SIZE,
-    Token,
-)
+from piston.models import KEY_SIZE
 
 
 class NodeKeyManager(Manager):
@@ -91,6 +87,20 @@ class NodeKeyManager(Manager):
         else:
             return nodekey.token
 
+    def clear_token_for_node(self, node):
+        """Find node's OAuth token; if there is one, delete it.
+
+        :param node: The node that needs an oauth token for access to the
+            metadata service.
+        :type node: Node
+        """
+        nodekey = get_one(self.filter(node=node))
+        if nodekey is not None:
+            # Django emulates ON DELETE CASCADE by default which is about as
+            # sensible as eating live wasps. It means that deleting the token
+            # will delete `nodekey` implicitly.
+            nodekey.token.delete()
+
     def get_node_for_key(self, key):
         """Find the Node that `key` was created for.
 
@@ -121,6 +131,7 @@ class NodeKey(CleanSave, Model):
 
     node = ForeignKey(
         'maasserver.Node', null=False, editable=False, unique=True)
-    token = ForeignKey(Token, null=False, editable=False, unique=True)
+    token = ForeignKey(
+        'piston.Token', null=False, editable=False, unique=True)
     key = CharField(
         max_length=KEY_SIZE, null=False, editable=False, unique=True)

@@ -13,11 +13,12 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "power",
-    "dns",
     "dhcp",
-    "monitors",
+    "dns",
     "events",
+    "monitors",
+    "nodes",
+    "power",
 ]
 
 from maasserver.models.signals import (
@@ -25,5 +26,6 @@ from maasserver.models.signals import (
     dns,
     events,
     monitors,
+    nodes,
     power,
 )

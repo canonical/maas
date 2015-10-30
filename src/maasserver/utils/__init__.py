@@ -17,7 +17,6 @@ __all__ = [
     'absolute_reverse_url',
     'build_absolute_uri',
     'find_nodegroup',
-    'get_db_state',
     'get_local_cluster_UUID',
     'ignore_unused',
     'make_validation_error_message',
@@ -36,27 +35,11 @@ from django.core.urlresolvers import reverse
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import NodeGroupMisconfiguration
-from maasserver.utils.orm import get_one
 from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
 )
 from provisioningserver.utils.text import make_bullet_list
-
-
-def get_db_state(instance, field_name):
-    """Get the persisted state of a given field for a given model instance.
-
-    :param instance: The model instance to consider.
-    :type instance: :class:`django.db.models.Model`
-    :param field_name: The name of the field to return.
-    :type field_name: unicode
-    """
-    obj = get_one(instance.__class__.objects.filter(pk=instance.pk))
-    if obj is None:
-        return None
-    else:
-        return getattr(obj, field_name)
 
 
 def ignore_unused(*args):
