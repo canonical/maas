@@ -252,7 +252,7 @@ describe("NodeStorageController", function() {
 
     it("sets initial values", function() {
         var controller = makeController();
-        expect($scope.column).toBe('model');
+        expect($scope.column).toBe('name');
         expect($scope.has_disks).toBe(false);
         expect($scope.filesystems).toEqual([]);
         expect($scope.filesystemsMap).toEqual({});
@@ -1546,7 +1546,7 @@ describe("NodeStorageController", function() {
 
     describe("getAvailableFormatSubmitText", function() {
 
-        it("returns 'Format & Mount' when mount_point set", function() {
+        it("returns 'Mount' when mount_point set", function() {
             var controller = makeController();
             var disk = {
                 $options: {
@@ -1555,7 +1555,7 @@ describe("NodeStorageController", function() {
             };
 
             expect($scope.getAvailableFormatSubmitText(disk)).toBe(
-                "Format & Mount");
+                "Mount");
         });
 
         it("returns 'Format' when mount_point is null", function() {

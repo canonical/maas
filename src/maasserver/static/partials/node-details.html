@@ -550,6 +550,8 @@
                             </div>
                             <div class="table__row active ng-hide" data-ng-show="isShowingCreateBond()">
                                 <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="bond-create" disabled="disabled" checked />
+                                    <label class="checkbox-label" for="bond-create"></label>
                                 </div>
                                 <div class="table__data table__column--12">
                                     <input type="text" class="table__input editible"
@@ -648,7 +650,7 @@
                     </ul>
                 </div>
                 <div class="twelve-col padding-bottom">
-                    <h3>File System</h3>
+                    <h3>File system</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
@@ -791,16 +793,17 @@
                                         data-ng-disabled="isAvailableDisabled()" />
                                     <label class="checkbox-label" for="available-check-all"></label>
                                 </div>
-                                <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--15">Space Available</div>
-                                <div class="table__header table__column--15">Device Type</div>
-                                <div class="table__header table__column--15">File system</div>
-                                <div class="table__header table__column--15" colspan="2">
+                                <div class="table__header table__column--20">
+                                    <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
+                                    <span class="divide"></span>
                                     <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__header table__column--15">Tags</div>
+                                <div class="table__header table__column--15">Size</div>
+                                <div class="table__header table__column--15">Device Type</div>
+                                <div class="table__header table__column--15">File system</div>
+                                <div class="table__header table__column--25">Tags</div>
                                 <div class="table__header table__column--7"></div>
                             </div>
                         </header>
@@ -820,7 +823,7 @@
                                             data-ng-disabled="isAvailableDisabled()" />
                                         <label class="checkbox-label" for="{$ item.name $}" ></label>
                                     </div>
-                                    <div class="table__data table__column--15">
+                                    <div class="table__data table__column--20" data-ng-show="column === 'name'">
                                         <input type="text" class="table__input"
                                             data-ng-model="item.name"
                                             data-maas-enter-blur
@@ -829,6 +832,8 @@
                                             data-ng-disabled="item.type === 'partition'"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
+                                    <div class="table__data table__column--20 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--20 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table__column--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table__column--15">
@@ -839,9 +844,7 @@
                                                 data-ng-class="{ 'margin-left--ten': item.fstype }">{$ getFormatAndMountButtonText (item) $}</a>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--15" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--15 ng-hide" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__tags table__column--15">
+                                    <div class="table__data table__tags table__column--25">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
@@ -1038,7 +1041,6 @@
                                                 <option value="writearound">writearound</option>
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15"></div>
                                         <div class="table__data table__column--15">
                                             <label for="type">File system</label>
                                             <select name="filesys"
@@ -1055,6 +1057,7 @@
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
+                                        <div class="table__data table__column--15"></div>
                                         <div class="table__data table__column--7"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row table__dropdown-row--head">
@@ -1107,8 +1110,6 @@
                                                 data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15"></div>
-                                        <div class="table__data table__column--15"></div>
                                         <div class="table__data table__column--15">
                                             <label for="type">File system</label>
                                             <select name="filesys"
@@ -1125,6 +1126,8 @@
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
+                                        <div class="table__data table__column--15"></div>
+                                        <div class="table__data table__column--15"></div>
                                         <div class="table__data table__column--7"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row table__dropdown-row--head">
@@ -1217,13 +1220,13 @@
                         data-ng-click="createRAID()">Create RAID</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateVolumeGroup()"
-                        data-ng-click="createVolumeGroup()">Create Volume Group</a>
+                        data-ng-click="createVolumeGroup()">Create volume group</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateCacheSet()"
-                        data-ng-click="createCacheSet()">Create Cache Set</a>
+                        data-ng-click="createCacheSet()">Create cache Set</a>
                     <a class="link-cta-ubuntu secondary"
                         data-ng-disabled="!canCreateBcache()"
-                        data-ng-click="createBcache()">Create Bcache</a>
+                        data-ng-click="createBcache()">Create bcache</a>
                 </div>
                 <div class="twelve-col padding-bottom">
                     <h3>Used disks and partitions</h3>
@@ -1231,14 +1234,15 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--15">Device type</div>
-                                <div class="table__header table__column--30" colspan="2">
+                                <div class="table__header table__column--20">
+                                    <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
+                                    <span class="divide"></span>
                                     <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__header table__column--37">Used for</div>
+                                <div class="table__header table__column--15">Device type</div>
+                                <div class="table__header table__column--52">Used for</div>
                             </div>
                         </header>
                         <main class="table-body">
@@ -1250,11 +1254,11 @@
                             <div data-ng-repeat="item in used">
                                 <div class="table__row details__used">
                                     <div class="table__data table__column--3"></div>
-                                    <div class="table__data table__column--15">{$ item.name $}</div>
+                                    <div class="table__data table__column--20" data-ng-show="column === 'name'">{$ item.name $}</div>
+                                    <div class="table__data table__column--20" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--20" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table__column--30" colspan="2" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--30" colspan="2" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__column--37">{$ item.used_for $}</div>
+                                    <div class="table__data table__column--52">{$ item.used_for $}</div>
                                 </div>
                             </div>
                         </main>

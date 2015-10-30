@@ -114,7 +114,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         ];
 
-        $scope.column = 'model';
+        $scope.column = 'name';
         $scope.has_disks = false;
         $scope.filesystems = [];
         $scope.filesystemsMap = {};
@@ -878,7 +878,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.getAvailableFormatSubmitText = function(disk) {
             if(angular.isString(disk.$options.mount_point) &&
                 disk.$options.mount_point !== "") {
-                return "Format & Mount";
+                return "Mount";
             } else {
                 return "Format";
             }
