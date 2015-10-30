@@ -265,7 +265,7 @@ class NodeHandler(TimestampedModelHandler):
         data["storage_tags"] = self.get_all_storage_tags(blockdevices)
 
         subnets = self.get_all_subnets(obj)
-        data["subnets"] = [subnet.name for subnet in subnets]
+        data["subnets"] = [subnet.cidr for subnet in subnets]
         data["fabrics"] = self.get_all_fabric_names(obj, subnets)
         data["spaces"] = self.get_all_space_names(subnets)
 

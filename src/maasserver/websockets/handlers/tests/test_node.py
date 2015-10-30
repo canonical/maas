@@ -203,7 +203,7 @@ class TestNodeHandler(MAASServerTestCase):
                 for blockdevice in node.physicalblockdevice_set.all()
             ]) / (1000 ** 3)),
             "storage_tags": handler.get_all_storage_tags(blockdevices),
-            "subnets": [subnet.name for subnet in subnets],
+            "subnets": [subnet.cidr for subnet in subnets],
             "fabrics": handler.get_all_fabric_names(node, subnets),
             "spaces": handler.get_all_space_names(subnets),
             "swap_size": node.swap_size,
