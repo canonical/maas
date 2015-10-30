@@ -23,15 +23,16 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
-from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import (
     BootResource,
+    BootSourceCache,
     Config,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import osystems as osystems_module
+from maasserver.utils.orm import post_commit_hooks
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -270,10 +271,15 @@ class TestReleases(MAASServerTestCase):
     def test_make_hwe_kernel_ui_text_finds_release_from_bootsourcecache(self):
         release = factory.pick_ubuntu_release()
         kernel = 'hwe-' + release[0]
-        factory.make_usable_boot_resource(
-            name="ubuntu/%s" % release,
-            extra={'subarches': kernel},
-            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        # Stub out the post commit tasks otherwise the test fails due to
+        # unrun post-commit tasks at the end of the test.
+        self.patch(BootSourceCache, "post_commit_do")
+        # Force run the post commit tasks as we make new boot sources
+        with post_commit_hooks:
+            factory.make_BootSourceCache(
+                os="ubuntu/%s" % release,
+                subarch=kernel,
+                release=release)
         self.assertEqual(
             '%s (%s)' % (release, kernel),
             make_hwe_kernel_ui_text(kernel))

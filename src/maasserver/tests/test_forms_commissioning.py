@@ -20,10 +20,14 @@ from maasserver.forms import (
     CommissioningForm,
     CommissioningScriptForm,
 )
-from maasserver.models import Config
+from maasserver.models import (
+    BootSourceCache,
+    Config,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
+from maasserver.utils.orm import post_commit_hooks
 from metadataserver.models import CommissioningScript
 from testtools.matchers import MatchesStructure
 
@@ -48,8 +52,17 @@ class TestCommissioningFormForm(MAASServerTestCase):
 
     def test_commissioningform_contains_real_and_ui_choice(self):
         release = factory.pick_ubuntu_release()
-        name = 'ubuntu/%s' % release
+        name = "ubuntu/" + release
         kernel = 'hwe-' + release[0]
+        # Stub out the post commit tasks otherwise the test fails due to
+        # unrun post-commit tasks at the end of the test.
+        self.patch(BootSourceCache, "post_commit_do")
+        # Force run the post commit tasks as we make new boot sources
+        with post_commit_hooks:
+            factory.make_BootSourceCache(
+                os=name,
+                subarch=kernel,
+                release=release)
         factory.make_usable_boot_resource(
             name=name,
             extra={'subarches': kernel},
