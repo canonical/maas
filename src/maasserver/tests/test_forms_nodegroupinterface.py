@@ -333,6 +333,37 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             instance=interface)
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test_rejects_missing_ip_range_high(self):
+        network = IPNetwork("10.0.0.0/8")
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ENABLED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network, static_ip_range_low=None,
+            static_ip_range_high=None)
+        [interface] = nodegroup.get_managed_interfaces()
+        data = {'ip_range_low': '10.0.0.1'}
+        form = NodeGroupInterfaceForm(
+            data=data,
+            instance=interface)
+        self.assertFalse(form.is_valid())
+
+    def test_rejects_missing_ip_range_low(self):
+        network = IPNetwork("10.2.0.0/8")
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ENABLED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network, static_ip_range_low=None,
+            static_ip_range_high=None)
+        [interface] = nodegroup.get_managed_interfaces()
+        data = {
+            'ip_range_low': '',
+            'ip_range_high': '10.0.1.255'
+        }
+        form = NodeGroupInterfaceForm(
+            data=data,
+            instance=interface)
+        self.assertFalse(form.is_valid())
+
     def test_allows_any_size_ipv6_dynamic_range(self):
         network = factory.make_ipv6_network(slash=64)
         nodegroup = factory.make_NodeGroup(

@@ -793,7 +793,7 @@ class DeviceForm(MAASModelForm):
 
 CLUSTER_NOT_AVAILABLE = mark_safe(
     "The cluster controller for this node is not responding; power type "
-    "validation is not available."
+    "validation is not available. "
 )
 
 
@@ -1490,6 +1490,15 @@ ERROR_MESSAGE_INVALID_RANGE = (
     "Invalid IP range (high IP address must be higher than low IP address).")
 
 
+def is_set(string):
+    """Check that the string is actually set.
+
+    :param string: string to test.
+    :return: string is actually a non-empty string.
+    """
+    return (string is not None and len(string) > 0 and not string.isspace())
+
+
 def validate_new_dynamic_range_size(instance, management,
                                     ip_range_low, ip_range_high):
     """Check that a ip address range is of a manageable size.
@@ -1497,23 +1506,27 @@ def validate_new_dynamic_range_size(instance, management,
     :raises ValidationError: If the ip range is larger than a /16
         IPv4 network.
     """
-    # Return early if the instance is not already managed, its dynamic
+    # Return early if the instance will not be managed, its dynamic
     # IP range hasn't changed, or the new values are blank.
-    if not instance.is_managed and instance.management == management:
+    if management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
         return True
-    # Deliberately vague check to allow for empty strings.
-    if not ip_range_low and not ip_range_high:
+    if not is_set(ip_range_low) and not is_set(ip_range_high):
         return True
-    if ip_range_low and ip_range_high:
-        try:
-            ip_range = IPRange(ip_range_low, ip_range_high)
-            if ip_range.size <= 1:
-                raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-        except AddrFormatError:
-            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-    if (ip_range_low == instance.ip_range_low and
+    # error if only one of the range endpoints is set
+    if not is_set(ip_range_low) or not is_set(ip_range_high):
+        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
+    # if nothing relevant changed, we're done.
+    if (management == instance.management and
+       ip_range_low == instance.ip_range_low and
        ip_range_high == instance.ip_range_high):
         return True
+
+    try:
+        ip_range = IPRange(ip_range_low, ip_range_high)
+        if ip_range.size <= 1:
+            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
+    except AddrFormatError:
+        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
     # Allow any size of dynamic range for v6 networks, but limit v4
     # networks to /16s.
@@ -1533,18 +1546,24 @@ def validate_new_static_ip_ranges(instance, management, static_ip_range_low,
     existing static IP range which would fall outside of the new range,
     raise a ValidationError.
     """
-    # Return early if the instance is not already managed, it currently
-    # has no static IP range, or the static IP range hasn't changed.
-    if not instance.is_managed and instance.management == management:
+    # Return early if the instance will be unmanaged, the range is invalid,
+    # or the static IP range hasn't changed.
+    if management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
         return True
-    # Deliberately vague check to allow for empty strings.
-    if (not instance.static_ip_range_low or
-       not instance.static_ip_range_high):
-        return True
-    if (static_ip_range_low == instance.static_ip_range_low and
+    # error if only one of the range endpoints is set
+    if (not is_set(static_ip_range_low) and is_set(static_ip_range_high) or
+       is_set(static_ip_range_low) and not is_set(static_ip_range_high)):
+        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
+    # if nothing relevant changed, we're done.
+    if (management == instance.management and
+       static_ip_range_low == instance.static_ip_range_low and
        static_ip_range_high == instance.static_ip_range_high):
         return True
-    if static_ip_range_low and static_ip_range_high:
+
+    cursor = connection.cursor()
+
+    if is_set(static_ip_range_low):
+        # static_ip_range_high is also set, as checked above.
         try:
             ip_range = IPRange(static_ip_range_low, static_ip_range_high)
             if ip_range.size <= 1:
@@ -1552,10 +1571,6 @@ def validate_new_static_ip_ranges(instance, management, static_ip_range_low,
         except AddrFormatError:
             raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
 
-    cursor = connection.cursor()
-
-    # Deliberately vague check to allow for empty strings.
-    if static_ip_range_low or static_ip_range_high:
         # Find any allocated addresses within the old static range which do
         # not fall within the *new* static range. This means that we allow
         # for range expansion and contraction *unless* that means dropping
@@ -1920,7 +1935,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
         ]
         for field in fields_in_network:
             ip = cleaned_data.get(field)
-            if ip and IPAddress(ip) not in network:
+            if is_set(ip) and IPAddress(ip) not in network:
                 msg = "%s not in the %s network" % (ip, unicode(network.cidr))
                 set_form_error(self, field, msg)
 

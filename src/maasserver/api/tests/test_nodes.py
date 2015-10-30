@@ -479,7 +479,7 @@ class TestNodesAPI(APITestCase):
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         validation_errors = json.loads(response.content)['power_type']
-        self.assertIn(cluster_error, validation_errors[0])
+        self.assertIn(cluster_error, validation_errors[1])
 
     def test_GET_list_lists_nodes(self):
         # The api allows for fetching the list of Nodes.
