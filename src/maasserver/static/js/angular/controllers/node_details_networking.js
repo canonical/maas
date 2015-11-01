@@ -557,6 +557,11 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
+        // Get the subnet from its ID.
+        $scope.getSubnet = function(subnetId) {
+            return SubnetsManager.getItemFromList(subnetId);
+        };
+
         // Toggle showing or hiding the members of the interface.
         $scope.toggleMembers = function(nic) {
             var idx = $scope.showingMembers.indexOf(nic.id);

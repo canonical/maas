@@ -1035,6 +1035,20 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("getSubnet", function() {
+
+        it("calls SubnetsManager.getItemFromList", function() {
+            var controller = makeController();
+            var subnetId = makeInteger(0, 100);
+            var subnet = {};
+            spyOn(SubnetsManager, "getItemFromList").and.returnValue(subnet);
+
+            expect($scope.getSubnet(subnetId)).toBe(subnet);
+            expect(SubnetsManager.getItemFromList).toHaveBeenCalledWith(
+                subnetId);
+        });
+    });
+
     describe("toggleMembers", function() {
 
         it("adds interface id to showingMembers", function() {

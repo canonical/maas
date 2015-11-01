@@ -415,14 +415,18 @@
                                 </div>
                                 <div class="table__data table__column--18">
                                     <select class="table__input" name="subnet" id="subnet"
+                                        data-ng-hide="isAllNetworkingDisabled() && interface.discovered[0].subnet_id"
                                         data-ng-model="interface.subnet"
                                         data-ng-change="subnetChanged(interface)"
                                         data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:interface.vlan">
                                         <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
                                     </select>
+                                    <span class="ng-hide" data-ng-show="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
+                                        {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
+                                    </span>
                                 </div>
-                                <div class="table__data table__column--14">
-                                    <ul class="no-bullets">
+                                <div class="table__data table__column--21">
+                                    <ul class="no-bullets" data-ng-hide="isAllNetworkingDisabled()">
                                         <li>
                                             <select class="table__input" name="link-mode" id="link-mode"
                                                 data-ng-model="interface.mode"
@@ -441,8 +445,14 @@
                                                 data-ng-disabled="interface.mode != 'static'">
                                         </li>
                                     </ul>
+                                    <span class="ng-hide" data-ng-show="isAllNetworkingDisabled() && !interface.discovered[0].ip_address">
+                                        {$ interface.ip_address $} ({$ getLinkModeText(interface) $})
+                                    </span>
+                                    <span class="ng-hide" data-ng-show="isAllNetworkingDisabled() && interface.discovered[0].ip_address">
+                                        {$ interface.discovered[0].ip_address $} (DHCP)
+                                    </span>
                                 </div>
-                                <div class="table__data table__column--13">
+                                <div class="table__data table__column--6">
                                     <div class="table__controls align-right">
                                         <a class="icon add"
                                             data-ng-click="quickAdd(interface)"
@@ -500,14 +510,14 @@
                                                 <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--14">
+                                        <div class="table__data table__column--21">
                                             <select class="table__input" name="link-mode" id="link-mode"
                                                 data-ng-model="newInterface.mode"
                                                 data-ng-disabled="isLinkModeDisabled(newInterface)"
                                                 data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:newInterface">
                                             </select>
                                         </div>
-                                        <div class="table__data table_column--13"></div>
+                                        <div class="table__data table_column--6"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row">
                                         <div class="ng-hide" data-ng-show="isShowingInterfaceOptions()">

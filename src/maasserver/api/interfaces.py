@@ -63,6 +63,7 @@ DISPLAYED_INTERFACE_FIELDS = (
     'enabled',
     'links',
     'params',
+    'discovered',
 )
 
 
@@ -278,6 +279,10 @@ class NodeInterfaceHandler(OperationsHandler):
     @classmethod
     def links(cls, interface):
         return interface.get_links()
+
+    @classmethod
+    def discovered(cls, interface):
+        return interface.get_discovered()
 
     def read(self, request, system_id, interface_id):
         """Read interface on node.

@@ -557,9 +557,9 @@ class TestNodeHandler(MAASServerTestCase):
                 filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
             }, handler.dehydrate_filesystem(filesystem))
 
-    def test_dehydrate_interface(self):
+    def test_dehydrate_interface_for_ready_node(self):
         owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.READY)
         handler = NodeHandler(owner, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(
@@ -586,6 +586,45 @@ class TestNodeHandler(MAASServerTestCase):
             ],
             "links": expected_links,
             }, handler.dehydrate_interface(interface, node))
+
+    def test_dehydrate_interface_for_commissioning_node(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.COMMISSIONING)
+        handler = NodeHandler(owner, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=interface)
+        expected_links = interface.get_links()
+        for link in expected_links:
+            link["subnet_id"] = link.pop("subnet").id
+        discovered_subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=factory.pick_ip_in_network(discovered_subnet.get_ipnetwork()),
+            subnet=discovered_subnet, interface=interface)
+        expected_discovered = interface.get_discovered()
+        for discovered in expected_discovered:
+            discovered["subnet_id"] = discovered.pop("subnet").id
+        self.assertEquals({
+            "id": interface.id,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "enabled": interface.is_enabled(),
+            "is_boot": interface == node.boot_interface,
+            "mac_address": "%s" % interface.mac_address,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": expected_links,
+            "discovered": expected_discovered,
+        }, handler.dehydrate_interface(interface, node))
 
     def test_dehydrate_summary_output_returns_None(self):
         owner = factory.make_User()

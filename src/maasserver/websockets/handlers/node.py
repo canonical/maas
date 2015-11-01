@@ -498,7 +498,7 @@ class NodeHandler(TimestampedModelHandler):
             subnet = link.pop("subnet", None)
             if subnet is not None:
                 link["subnet_id"] = subnet.id
-        return {
+        data = {
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
@@ -516,6 +516,21 @@ class NodeHandler(TimestampedModelHandler):
             ],
             "links": links,
         }
+
+        # When the node is commissioning display the discovered IP address for
+        # this interface. This will only be shown on interfaces that are
+        # connected to a MAAS managed subnet.
+        if obj.status == NODE_STATUS.COMMISSIONING:
+            discovereds = interface.get_discovered()
+            if discovereds is not None:
+                for discovered in discovereds:
+                    # Replace the subnet object with the subnet_id. The client
+                    # will use this information to pull the subnet information
+                    # from the websocket.
+                    discovered["subnet_id"] = discovered.pop("subnet").id
+                data["discovered"] = discovereds
+
+        return data
 
     def dehydrate_summary_output(self, obj, data):
         """Dehydrate the machine summary output."""

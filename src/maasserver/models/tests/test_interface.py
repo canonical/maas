@@ -222,6 +222,38 @@ class InterfaceTest(MAASServerTestCase):
             }))
         self.assertThat(interface.get_links(), MatchesListwise(links))
 
+    def test_get_discovered_returns_None_when_empty(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        self.assertIsNone(interface.get_discovered())
+
+    def test_get_discovered_returns_discovered_address_for_ipv4_and_ipv6(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        discovered_ips = []
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        ip_v4 = factory.pick_ip_in_network(network_v4)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip_v4,
+            subnet=subnet_v4, interface=interface)
+        discovered_ips.append(
+            MatchesDict({
+                "ip_address": Equals(ip_v4),
+                "subnet": Equals(subnet_v4),
+            }))
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        ip_v6 = factory.pick_ip_in_network(network_v6)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip_v6,
+            subnet=subnet_v6, interface=interface)
+        discovered_ips.append(
+            MatchesDict({
+                "ip_address": Equals(ip_v6),
+                "subnet": Equals(subnet_v6),
+            }))
+        self.assertThat(
+            interface.get_discovered(), MatchesListwise(discovered_ips))
+
     def test_delete_deletes_related_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         discovered_ip = factory.make_StaticIPAddress(
@@ -806,7 +838,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Unknown interfaces should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.all()[i]
+            ip = interface.ip_addresses.order_by('id')[i]
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=unicode(IPNetwork(cidr_list[i]).ip)))

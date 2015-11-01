@@ -806,3 +806,58 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_lacp_rate": new_bond_lacp_rate,
             "bond_xmit_hash_policy": new_bond_xmit_hash_policy,
             }, interface.params)
+
+    def test__edit_allows_zero_params(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            parents=[parent1, parent2])
+        bond_mode = factory.pick_choice(BOND_MODE_CHOICES)
+        bond_miimon = random.randint(0, 1000)
+        bond_downdelay = random.randint(0, 1000)
+        bond_updelay = random.randint(0, 1000)
+        bond_lacp_rate = factory.pick_choice(BOND_LACP_RATE_CHOICES)
+        bond_xmit_hash_policy = factory.pick_choice(
+            BOND_XMIT_HASH_POLICY_CHOICES)
+        interface.params = {
+            "bond_mode": bond_mode,
+            "bond_miimon": bond_miimon,
+            "bond_downdelay": bond_downdelay,
+            "bond_updelay": bond_updelay,
+            "bond_lacp_rate": bond_lacp_rate,
+            "bond_xmit_hash_policy": bond_xmit_hash_policy,
+        }
+        interface.save()
+        new_vlan = factory.make_VLAN(vid=33)
+        new_name = factory.make_name()
+        new_bond_mode = factory.pick_choice(BOND_MODE_CHOICES)
+        new_bond_miimon = 0
+        new_bond_downdelay = 0
+        new_bond_updelay = 0
+        new_bond_lacp_rate = factory.pick_choice(BOND_LACP_RATE_CHOICES)
+        new_bond_xmit_hash_policy = factory.pick_choice(
+            BOND_XMIT_HASH_POLICY_CHOICES)
+        form = BondInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': new_vlan.id,
+                'name': new_name,
+                'bond_mode': new_bond_mode,
+                'bond_miimon': new_bond_miimon,
+                'bond_downdelay': new_bond_downdelay,
+                'bond_updelay': new_bond_updelay,
+                'bond_lacp_rate': new_bond_lacp_rate,
+                'bond_xmit_hash_policy': new_bond_xmit_hash_policy,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertEquals({
+            "bond_mode": new_bond_mode,
+            "bond_miimon": new_bond_miimon,
+            "bond_downdelay": new_bond_downdelay,
+            "bond_updelay": new_bond_updelay,
+            "bond_lacp_rate": new_bond_lacp_rate,
+            "bond_xmit_hash_policy": new_bond_xmit_hash_policy,
+            }, interface.params)

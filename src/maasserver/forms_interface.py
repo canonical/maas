@@ -346,7 +346,12 @@ class BondInterfaceForm(InterfaceForm):
         ]
         for bond_field in bond_fields:
             value = self.cleaned_data.get(bond_field)
-            if value:
+            if (value is not None and
+                    isinstance(value, (bytes, unicode)) and
+                    len(value) > 0 and not value.isspace()):
+                interface.params[bond_field] = value
+            elif (value is not None and
+                    not isinstance(value, (bytes, unicode))):
                 interface.params[bond_field] = value
             elif created:
                 interface.params[bond_field] = self.fields[bond_field].initial

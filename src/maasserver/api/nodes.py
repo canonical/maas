@@ -132,6 +132,7 @@ DISPLAYED_NODE_FIELDS = (
         'enabled',
         'links',
         'params',
+        'discovered',
         )),
     'routers',
     'zone',

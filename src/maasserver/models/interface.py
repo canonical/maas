@@ -253,7 +253,7 @@ class Interface(CleanSave, TimestampedModel):
         {
             "id": 1,
             "mode": "dhcp",
-            "ip": "192.168.1.2",
+            "ip_address": "192.168.1.2",
             "subnet": <Subnet object>
         }
 
@@ -275,6 +275,30 @@ class Interface(CleanSave, TimestampedModel):
                 link["subnet"] = subnet
             links.append(link)
         return links
+
+    def get_discovered(self):
+        """Return the definition of discovered IP addresses belonging to this
+        interface.
+
+        Example definition:
+        {
+            "ip_address": "192.168.1.2",
+            "subnet": <Subnet object>
+        }
+        """
+        discovered_ips = self.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        if len(discovered_ips) > 0:
+            discovered = []
+            for discovered_ip in discovered_ips:
+                if discovered_ip.ip is not None and discovered_ip.ip != "":
+                    discovered.append({
+                        "subnet": discovered_ip.subnet,
+                        "ip_address": "%s" % discovered_ip.ip,
+                        })
+            return discovered
+        else:
+            return None
 
     def only_has_link_up(self):
         """Return True if this interface is only set to LINK_UP."""

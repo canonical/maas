@@ -443,13 +443,19 @@ class TestNodeInterfaceAPI(APITestCase):
         dhcp_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP, ip="",
             subnet=dhcp_subnet, interface=bond)
+        discovered_ip = factory.pick_ip_in_network(
+            dhcp_subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=discovered_ip,
+            subnet=dhcp_subnet, interface=bond)
         links.append(
             MatchesDict({
                 "id": Equals(dhcp_ip.id),
                 "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
                 "subnet": ContainsDict({
                     "id": Equals(dhcp_subnet.id)
-                    })
+                    }),
+                "ip_address": Equals(discovered_ip),
             }))
 
         # Second link is a STATIC ip link.
@@ -506,7 +512,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "tags": Equals(bond.tags),
             "resource_uri": Equals(get_node_interface_uri(bond)),
             "params": Equals(bond.params),
-            }))
+        }))
         self.assertEquals(sorted(
             nic.name
             for nic in parents
@@ -516,6 +522,9 @@ class TestNodeInterfaceAPI(APITestCase):
             for nic in children
             ), parsed_interface["children"])
         self.assertThat(parsed_interface["links"], MatchesListwise(links))
+        json_discovered = parsed_interface["discovered"][0]
+        self.assertEquals(dhcp_subnet.id, json_discovered["subnet"]["id"])
+        self.assertEquals(discovered_ip, json_discovered["ip_address"])
 
     def test_read_404_when_invalid_id(self):
         node = factory.make_Node()
