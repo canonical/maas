@@ -55,9 +55,11 @@ from django.db import (
     connections,
     transaction,
 )
+from django.db.models import Q
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
+from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
@@ -668,6 +670,64 @@ class FullyConnected:
             connections[alias].close()
 
 
+def parse_item_operation(specifier):
+    """
+    Returns a tuple indicating the specifier string, and its related
+    operation (if one was found).
+
+    If the first character in the specifier is '|', the operator will be OR.
+
+    If the first character in the specifier is '&', the operator will be AND.
+
+    If unspecified, the default operator is OR.
+
+    :param specifier: a string containing the specifier.
+    :return: tuple
+    """
+    specifier = specifier.strip()
+
+    from operator import (
+        and_ as AND,
+        or_ as OR,
+    )
+
+    if specifier.startswith('|'):
+        op = OR
+        specifier = specifier[1:]
+    elif specifier.startswith('&'):
+        op = AND
+        specifier = specifier[1:]
+    else:
+        # Default to OR.
+        op = OR
+    return specifier, op
+
+
+def parse_item_specifier_type(specifier, types={}, separator=':'):
+    """
+    Returns a tuple that splits the string int a specifier, and its specifier
+    type.
+
+    Retruns a tuple of (specifier, specifier_type). If no specifier type could
+    be found in the set, returns None in place of the specifier_type.
+
+    :param specifier: The specifier string, such as "ip:10.0.0.1".
+    :param types: A set of strings that will be recognized as specifier types.
+    :param separator: Optional specifier. Defaults to ':'.
+    :return: tuple
+    """
+    if separator in specifier:
+        tokens = specifier.split(separator, 1)
+        if tokens[0] in types:
+            specifier_type = tokens[0]
+            specifier = tokens[1].strip()
+        else:
+            specifier_type = None
+    else:
+        specifier_type = None
+    return specifier, specifier_type
+
+
 class MAASQueriesMixin(object):
     """Contains utility functions that any mixin for model object manager
     queries may need to make use of."""
@@ -690,3 +750,23 @@ class MAASQueriesMixin(object):
         """
         ids = self.get_id_list(raw_query)
         return self.filter(id__in=ids)
+
+    def _get_specifiers_query(self, specifiers, specifier_types=None):
+        """Returns a Q object for objects matching the given specifiers.
+
+        See documentation for `filter_by_specifiers()`.
+
+        :return:django.db.models.Q
+        """
+        if specifier_types is None:
+            raise NotImplementedError("Subclass must specify specifier_types.")
+        current_q = Q()
+        # Handle a single item, or a list.
+        specifiers = list(flatten(specifiers))
+        for item in specifiers:
+            item, op = parse_item_operation(item)
+            item, specifier_type = parse_item_specifier_type(
+                item, types=specifier_types)
+            query = specifier_types.get(specifier_type)
+            current_q = query(current_q, op, item)
+        return current_q

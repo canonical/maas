@@ -50,7 +50,6 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
-from provisioningserver.utils import flatten
 from provisioningserver.utils.network import (
     MAASIPSet,
     make_ipaddress,
@@ -98,65 +97,10 @@ def create_cidr(network, subnet_mask=None):
     return unicode(cidr)
 
 
-def parse_item_operation(specifier):
-    """
-    Returns a tuple indicating the specifier string, and its related
-    operation (if one was found).
-
-    If the first character in the specifier is '|', the operator will be OR.
-
-    If the first character in the specifier is '&', the operator will be AND.
-
-    If unspecified, the default operator is OR.
-
-    :param specifier: a string containing the specifier.
-    :return: tuple
-    """
-    specifier = specifier.strip()
-
-    from operator import (
-        and_ as AND,
-        or_ as OR,
-    )
-
-    if specifier.startswith('|'):
-        op = OR
-        specifier = specifier[1:]
-    elif specifier.startswith('&'):
-        op = AND
-        specifier = specifier[1:]
-    else:
-        # Default to OR.
-        op = OR
-    return specifier, op
-
-
-def parse_item_specifier_type(specifier, types=frozenset(), separator=':'):
-    """
-    Returns a tuple that splits the string int a specifier, and its specifier
-    type.
-
-    Retruns a tuple of (specifier, specifier_type). If no specifier type could
-    be found in the set, returns None in place of the specifier_type.
-
-    :param specifier: The specifier string, such as "ip:10.0.0.1".
-    :param types: A set of strings that will be recognized as specifier types.
-    :param separator: Optional specifier. Defaults to ':'.
-    :return: tuple
-    """
-    if separator in specifier:
-        tokens = specifier.split(separator, 1)
-        if tokens[0] in types:
-            specifier_type = tokens[0]
-            specifier = tokens[1].strip()
-        else:
-            specifier_type = None
-    else:
-        specifier_type = None
-    return specifier, specifier_type
-
-
 class SubnetQueriesMixin(MAASQueriesMixin):
+
+    def __init__(self, *args, **kwargs):
+        super(SubnetQueriesMixin, self).__init__(*args, **kwargs)
 
     find_subnets_with_ip_query = """
         SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
@@ -224,15 +168,6 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         else:
             return None
 
-    SUBNET_SPECIFIER_TYPES = frozenset({
-        'ip',
-        'cidr',
-        'name',
-        'vlan',
-        'vid',
-        'space',
-    })
-
     def validate_filter_specifiers(self, specifiers):
         """Validate the given filter string."""
         try:
@@ -247,51 +182,65 @@ class SubnetQueriesMixin(MAASQueriesMixin):
 
         :return:django.db.models.Q
         """
-        current_q = Q()
-        # Handle a single item, or a list.
-        specifiers = list(flatten(specifiers))
-        for item in specifiers:
-            item, op = parse_item_operation(item)
-            item, specifier_type = parse_item_specifier_type(
-                item, types=self.SUBNET_SPECIFIER_TYPES)
+        subnet_specifier_types = {
+            'ip': self._add_ip_in_subnet_query,
+            'cidr': self._add_unvalidated_cidr_query,
+            'name': self._add_subnet_name_query,
+            'vlan': self._add_vlan_vid_query,
+            'vid': self._add_vlan_vid_query,
+            'space': self._add_space_name_query,
+            None: self._add_default_query,
+        }
+        return super(SubnetQueriesMixin, self)._get_specifiers_query(
+            specifiers, specifier_types=subnet_specifier_types)
 
-            if specifier_type == 'ip':
-                # Try to validate this before it hits the database, since this
-                # is going to be a raw query.
-                item = unicode(IPAddress(item))
-                # This is a special case. If a specific IP filter is included,
-                # a custom query is needed to get the result. We can't chain
-                # a raw query using Q without grabbing the IDs first.
-                ids = self.get_id_list(self.raw_subnets_containing_ip(item))
-                current_q = op(current_q, Q(id__in=ids))
-            elif specifier_type == 'name':
-                current_q = op(current_q, Q(name=item))
-            elif specifier_type == 'vlan' or specifier_type == 'vid':
-                if item.lower() == 'untagged':
-                    vid = 0
-                else:
-                    vid = parse_integer(item)
-                if vid < 0 or vid >= 0xfff:
-                    raise ValidationError(
-                        "VLAN tag (VID) out of range "
-                        "(0-4094; 0 for untagged.)")
-                current_q = op(current_q, Q(vlan__vid=vid))
-            elif specifier_type == 'cidr':
-                ip = IPNetwork(item)
-                cidr = unicode(ip.cidr)
-                current_q = op(current_q, Q(cidr=cidr))
-            elif specifier_type == 'space':
-                current_q = op(current_q, Q(space__name=item))
-            else:
-                # By default, search for a specific CIDR first, then
-                # fall back to the name.
-                try:
-                    ip = IPNetwork(item)
-                except AddrFormatError:
-                    current_q = op(current_q, Q(name=item))
-                else:
-                    cidr = unicode(ip.cidr)
-                    current_q = op(current_q, Q(cidr=cidr))
+    def _add_default_query(self, current_q, op, item):
+        # By default, search for a specific CIDR first, then
+        # fall back to the name.
+        try:
+            ip = IPNetwork(item)
+        except AddrFormatError:
+            current_q = self._add_subnet_name_query(current_q, op, item)
+        else:
+            cidr = unicode(ip.cidr)
+            current_q = op(current_q, Q(cidr=cidr))
+        return current_q
+
+    def _add_unvalidated_cidr_query(self, current_q, op, item):
+        ip = IPNetwork(item)
+        cidr = unicode(ip.cidr)
+        current_q = op(current_q, Q(cidr=cidr))
+        return current_q
+
+    def _add_ip_in_subnet_query(self, current_q, op, item):
+        # Try to validate this before it hits the database, since this
+        # is going to be a raw query.
+        item = unicode(IPAddress(item))
+        # This is a special case. If a specific IP filter is included,
+        # a custom query is needed to get the result. We can't chain
+        # a raw query using Q without grabbing the IDs first.
+        ids = self.get_id_list(self.raw_subnets_containing_ip(item))
+        current_q = op(current_q, Q(id__in=ids))
+        return current_q
+
+    def _add_space_name_query(self, current_q, op, item):
+        current_q = op(current_q, Q(space__name=item))
+        return current_q
+
+    def _add_subnet_name_query(self, current_q, op, item):
+        current_q = op(current_q, Q(name=item))
+        return current_q
+
+    def _add_vlan_vid_query(self, current_q, op, item):
+        if item.lower() == 'untagged':
+            vid = 0
+        else:
+            vid = parse_integer(item)
+        if vid < 0 or vid >= 0xfff:
+            raise ValidationError(
+                "VLAN tag (VID) out of range "
+                "(0-4094; 0 for untagged.)")
+        current_q = op(current_q, Q(vlan__vid=vid))
         return current_q
 
     def filter_by_specifiers(self, specifiers):
@@ -307,6 +256,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
                 it with '0x' or '0b'.
             ' 'vlan:' Synonym for 'vid' for compatibility with older MAAS
                 versions.
+            * 'space:' Matches the name of this subnet's space.
 
         If no specifier is given, the input will be treated as a CIDR. If
         the input is not a valid CIDR, it will be treated as subnet name.
