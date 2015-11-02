@@ -99,9 +99,6 @@ def create_cidr(network, subnet_mask=None):
 
 class SubnetQueriesMixin(MAASQueriesMixin):
 
-    def __init__(self, *args, **kwargs):
-        super(SubnetQueriesMixin, self).__init__(*args, **kwargs)
-
     find_subnets_with_ip_query = """
         SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
         FROM
@@ -175,24 +172,47 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         except (ValueError, AddrFormatError) as e:
             raise ValidationError(e.message)
 
-    def _get_specifiers_query(self, specifiers):
+    def get_specifiers_q(self, specifiers, separator=':'):
         """Returns a Q object for objects matching the given specifiers.
 
-        See documentation for `filter_by_specifiers()`.
+        Allows a number of types to be prefixed in front of each specifier:
+            * 'ip:' Matches the subnet that best matches the given IP address.
+            * 'cidr:' Matches a subnet with the exact given CIDR.
+            * 'name': Matches a subnet with the given name.
+            * 'vid:' Matches a subnet whose VLAN has the given VID.
+                Can be used with a hexadecimal or binary string by prefixing
+                it with '0x' or '0b'.
+            ' 'vlan:' Synonym for 'vid' for compatibility with older MAAS
+                versions.
+            * 'space:' Matches the name of this subnet's space.
+
+        If no specifier is given, the input will be treated as a CIDR. If
+        the input is not a valid CIDR, it will be treated as subnet name.
+
+        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
+            but the address could not be parsed.
 
         :return:django.db.models.Q
         """
+        # Circular imports.
+        from maasserver.models import Interface
+
+        # This dict is used by the constraints code in order to identify
+        # subnets with particular properties. Please note that changing
+        # the keys here can impact backward compatibility, so use caution.
         subnet_specifier_types = {
-            'ip': self._add_ip_in_subnet_query,
-            'cidr': self._add_unvalidated_cidr_query,
-            'name': self._add_subnet_name_query,
-            'vlan': self._add_vlan_vid_query,
-            'vid': self._add_vlan_vid_query,
-            'space': self._add_space_name_query,
             None: self._add_default_query,
+            'cidr': self._add_unvalidated_cidr_query,
+            'id': self._add_subnet_id_query,
+            'interface': (Interface.objects, 'ip_addresses__subnet'),
+            'ip': self._add_ip_in_subnet_query,
+            'name': "__name",
+            'vid': self._add_vlan_vid_query,
+            'vlan': 'vid',
+            'space': "space__name",
         }
-        return super(SubnetQueriesMixin, self)._get_specifiers_query(
-            specifiers, specifier_types=subnet_specifier_types)
+        return super(SubnetQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=subnet_specifier_types, separator=':')
 
     def _add_default_query(self, current_q, op, item):
         # By default, search for a specific CIDR first, then
@@ -200,7 +220,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         try:
             ip = IPNetwork(item)
         except AddrFormatError:
-            current_q = self._add_subnet_name_query(current_q, op, item)
+            current_q = op(current_q, Q(name=item))
         else:
             cidr = unicode(ip.cidr)
             current_q = op(current_q, Q(cidr=cidr))
@@ -223,63 +243,14 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         current_q = op(current_q, Q(id__in=ids))
         return current_q
 
-    def _add_space_name_query(self, current_q, op, item):
-        current_q = op(current_q, Q(space__name=item))
-        return current_q
-
-    def _add_subnet_name_query(self, current_q, op, item):
-        current_q = op(current_q, Q(name=item))
-        return current_q
-
-    def _add_vlan_vid_query(self, current_q, op, item):
-        if item.lower() == 'untagged':
-            vid = 0
+    def _add_subnet_id_query(self, current_q, op, item):
+        try:
+            item = parse_integer(item)
+        except ValueError:
+            raise ValidationError("Subnet ID must be numeric.")
         else:
-            vid = parse_integer(item)
-        if vid < 0 or vid >= 0xfff:
-            raise ValidationError(
-                "VLAN tag (VID) out of range "
-                "(0-4094; 0 for untagged.)")
-        current_q = op(current_q, Q(vlan__vid=vid))
-        return current_q
-
-    def filter_by_specifiers(self, specifiers):
-        """Filters subnets by the given list of specifiers (or single
-        specifier).
-
-        Allows a number of types to be prefixed in front of each specifier:
-            * 'ip:' Matches the subnet that best matches the given IP address.
-            * 'cidr:' Matches a subnet with the exact given CIDR.
-            * 'name': Matches a subnet with the given name.
-            * 'vid:' Matches a subnet whose VLAN has the given VID.
-                Can be used with a hexadecimal or binary string by prefixing
-                it with '0x' or '0b'.
-            ' 'vlan:' Synonym for 'vid' for compatibility with older MAAS
-                versions.
-            * 'space:' Matches the name of this subnet's space.
-
-        If no specifier is given, the input will be treated as a CIDR. If
-        the input is not a valid CIDR, it will be treated as subnet name.
-
-        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
-            but the address could not be parsed.
-        :return:QuerySet
-        """
-        query = self._get_specifiers_query(specifiers)
-        return self.filter(query)
-
-    def exclude_by_specifiers(self, specifiers):
-        """Excludes subnets by the given list of specifiers (or single
-        specifier).
-
-        See documentation for `filter_by_specifiers()`.
-
-        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
-            but the address could not be parsed.
-        :return:QuerySet
-        """
-        query = self._get_specifiers_query(specifiers)
-        return self.exclude(query)
+            current_q = op(current_q, Q(id=item))
+            return current_q
 
 
 class SubnetQuerySet(QuerySet, SubnetQueriesMixin):
@@ -296,9 +267,14 @@ class SubnetManager(Manager, SubnetQueriesMixin):
         queryset = SubnetQuerySet(self.model, using=self._db)
         return queryset
 
-    def create_from_cidr(self, cidr, vlan, space):
+    def create_from_cidr(self, cidr, vlan=None, space=None):
         """Create a subnet from the given CIDR."""
         name = "subnet-" + unicode(cidr)
+        from maasserver.models import (Space, VLAN)
+        if space is None:
+            space = Space.objects.get_default_space()
+        if vlan is None:
+            vlan = VLAN.objects.get_default_vlan()
         return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
 
     def _find_fabric(self, fabric):

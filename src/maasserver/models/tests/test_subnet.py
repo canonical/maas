@@ -98,7 +98,7 @@ class CreateCidrTest(MAASServerTestCase):
         self.assertEqual("169.254.0.0/16", cidr)
 
 
-class TestSubnetManager(MAASServerTestCase):
+class TestSubnetQueriesMixin(MAASServerTestCase):
 
     def test__filter_by_specifiers_takes_single_item(self):
         subnet1 = factory.make_Subnet(name="subnet1")
@@ -253,6 +253,61 @@ class TestSubnetManager(MAASServerTestCase):
         self.assertItemsEqual(
             Subnet.objects.filter_by_specifiers("ip:1.1.1.1"),
             [])
+
+    def test__matches_interfaces(self):
+        node1 = factory.make_Node_with_Interface_on_Subnet()
+        node2 = factory.make_Node_with_Interface_on_Subnet()
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        subnet1 = iface1.ip_addresses.first().subnet
+        subnet2 = iface2.ip_addresses.first().subnet
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("interface:id:%s" % iface1.id),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("interface:id:%s" % iface2.id),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:id:%s" % iface1.id,
+                 "interface:id:%s" % iface2.id]),
+            [subnet1, subnet2])
+
+    def test__craziness_works(self):
+        # This test validates that filters can be "chained" to each other
+        # in an arbitrary way.
+        node1 = factory.make_Node_with_Interface_on_Subnet()
+        node2 = factory.make_Node_with_Interface_on_Subnet()
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        subnet1 = iface1.ip_addresses.first().subnet
+        subnet2 = iface2.ip_addresses.first().subnet
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                "interface:subnet:id:%s" % subnet1.id),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                "interface:subnet:id:%s" % subnet2.id),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:subnet:id:%s" % subnet1.id,
+                 "interface:subnet:id:%s" % subnet2.id]),
+            [subnet1, subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                "interface:subnet:interface:subnet:id:%s" % subnet1.id),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                "interface:subnet:interface:subnet:id:%s" % subnet2.id),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:subnet:interface:subnet:id:%s" % subnet1.id,
+                 "interface:subnet:interface:subnet:id:%s" % subnet2.id]),
+            [subnet1, subnet2])
 
 
 class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):

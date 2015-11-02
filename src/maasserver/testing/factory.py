@@ -561,7 +561,7 @@ class Factory(maastesting.factory.Factory):
     def make_Node_with_Interface_on_Subnet(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             interface_count=1, nodegroup=None, vlan=None, subnet=None,
-            cidr=None, fabric=None, **kwargs):
+            cidr=None, fabric=None, ifname=None, **kwargs):
         """Create a Node that has a Interface which is on a Subnet that has a
         NodeGroupInterface.
 
@@ -592,7 +592,7 @@ class Factory(maastesting.factory.Factory):
             self.make_NodeGroupInterface(
                 nodegroup, vlan=vlan, management=management, subnet=subnet)
         boot_interface = self.make_Interface(
-            iftype, node=node, vlan=vlan,
+            iftype, name=ifname, node=node, vlan=vlan,
             mac_address=mac_address)
         node.boot_interface = boot_interface
         node.save()
@@ -688,7 +688,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Space(self, name=None):
         if name is None:
-            name = self.make_name('space')
+            name = self.make_name('space--')
         space = Space(name=name)
         space.save()
         return space

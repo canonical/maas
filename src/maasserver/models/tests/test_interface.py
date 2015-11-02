@@ -135,6 +135,205 @@ class TestInterfaceManager(MAASServerTestCase):
             user, NODE_PERMISSION.ADMIN)
 
 
+class TestInterfaceQueriesMixin(MAASServerTestCase):
+
+    def test__filter_by_specifiers_default_matches_cidr_or_name(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        iface3 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, parents=[iface2], name='bond0')
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "%s" % subnet1.cidr), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "%s" % subnet2.cidr), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["%s" % subnet1.cidr,
+                 "%s" % subnet2.cidr], ), [iface1, iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(iface1.name), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(iface3.name), [iface3])
+
+    def test__filter_by_specifiers_matches_fabric_class(self):
+        fabric1 = factory.make_Fabric(class_type='10g')
+        fabric2 = factory.make_Fabric(class_type='1g')
+        vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
+        vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
+        iface1 = factory.make_Interface(vlan=vlan1)
+        iface2 = factory.make_Interface(vlan=vlan2)
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "fabric_class:10g"), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "fabric_class:1g"), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["fabric_class:1g", "fabric_class:10g"]), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_fabric(self):
+        fabric1 = factory.make_Fabric(name="fabric1")
+        fabric2 = factory.make_Fabric(name="fabric2")
+        vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
+        vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
+        iface1 = factory.make_Interface(vlan=vlan1)
+        iface2 = factory.make_Interface(vlan=vlan2)
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "fabric:fabric1"), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "fabric:fabric2"), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["fabric:fabric1", "fabric:fabric2"]), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_interface_id(self):
+        iface1 = factory.make_Interface()
+        iface2 = factory.make_Interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "id:%s" % iface1.id), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "id:%s" % iface2.id), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["id:%s" % iface1.id, "id:%s" % iface2.id]), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_vid(self):
+        iface1 = factory.make_Interface()
+        iface2 = factory.make_Interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "vid:%s" % iface1.vlan.vid), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "vid:%s" % iface2.vlan.vid), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["vid:%s" % iface1.vlan.vid, "vid:%s" % iface2.vlan.vid]),
+            [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_subnet_specifier(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "subnet:cidr:%s" % subnet1.cidr), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "subnet:cidr:%s" % subnet2.cidr), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["subnet:cidr:%s" % subnet1.cidr,
+                 "subnet:cidr:%s" % subnet2.cidr], ), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_subnet_cidr_alias(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "subnet_cidr:%s" % subnet1.cidr), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "subnet_cidr:%s" % subnet2.cidr), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["subnet_cidr:%s" % subnet1.cidr,
+                 "subnet_cidr:%s" % subnet2.cidr], ), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_space(self):
+        space1 = factory.make_Space()
+        space2 = factory.make_Space()
+        subnet1 = factory.make_Subnet(space=space1)
+        subnet2 = factory.make_Subnet(space=space2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "space:%s" % space1.name), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "space:%s" % space2.name), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["space:%s" % space1.name,
+                 "space:%s" % space2.name], ), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_type(self):
+        physical = factory.make_Interface()
+        bond = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, parents=[physical])
+        vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, parents=[physical])
+        unknown = factory.make_Interface(iftype=INTERFACE_TYPE.UNKNOWN)
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "type:physical"), [physical])
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "type:vlan"), [vlan])
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "type:bond"), [bond])
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "type:unknown"), [unknown])
+
+    def test__filter_by_specifiers_matches_ip(self):
+        subnet1 = factory.make_Subnet(cidr='10.0.0.0/24')
+        subnet2 = factory.make_Subnet(cidr='10.0.1.0/24')
+        iface1 = factory.make_Interface()
+        iface2 = factory.make_Interface()
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet1,
+            interface=iface1)
+        factory.make_StaticIPAddress(
+            ip='10.0.1.1', alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet2,
+            interface=iface2)
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "ip:10.0.0.1"), [iface1])
+        self.assertItemsEqual(Interface.objects.filter_by_specifiers(
+            "ip:10.0.1.1"), [iface2])
+
+    def test__filter_by_specifiers_matches_unconfigured_mode(self):
+        subnet1 = factory.make_Subnet(cidr='10.0.0.0/24')
+        subnet2 = factory.make_Subnet(cidr='10.0.1.0/24')
+        subnet3 = factory.make_Subnet(cidr='10.0.2.0/24')
+        iface1 = factory.make_Interface()
+        iface2 = factory.make_Interface()
+        iface3 = factory.make_Interface()
+        factory.make_StaticIPAddress(
+            ip='', alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet1,
+            interface=iface1)
+        factory.make_StaticIPAddress(
+            ip=None, alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet2,
+            interface=iface2)
+        factory.make_StaticIPAddress(
+            ip='10.0.2.1', alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet3,
+            interface=iface3)
+        self.assertItemsEqual(
+            [iface1, iface2],
+            Interface.objects.filter_by_specifiers(
+                "mode:unconfigured"))
+
+
 class InterfaceTest(MAASServerTestCase):
 
     def test_rejects_invalid_name(self):
@@ -742,7 +941,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
 
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.all()[i]
+            ip = interface.ip_addresses.order_by('id')[i]
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=unicode(IPNetwork(cidr_list[i]).ip)))
@@ -792,7 +991,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Discovered IP address should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.all()[i]
+            ip = interface.ip_addresses.order_by('id')[i]
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=unicode(IPNetwork(cidr_list[i]).ip)))
@@ -874,7 +1073,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Sticky IP address should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.all()[i]
+            ip = interface.ip_addresses.order_by('id')[i]
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=unicode(IPNetwork(cidr_list[i]).ip)))
@@ -2126,14 +2325,12 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
+            alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet, interface=interface)
-        sip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=sip,
-            subnet=subnet, interface=interface)
+        sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=subnet, interface=interface).ip
         interface.release_auto_ips()
         self.assertThat(
             mock_update_host_maps,

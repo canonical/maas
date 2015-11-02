@@ -977,7 +977,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
             u'interfaces': u'label:fabric=fabric-0'})
         self.assertTrue(form.is_valid(), dict(form.errors))
 
-    @skip("XXX mpontillo 2015-10-30 need to use upcoming interfaces filter")
+    def test_interfaces_constraint_with_multiple_labels_and_values_validated(
+            self):
+        factory.make_Node_with_Interface_on_Subnet()
+        form = AcquireNodeForm({
+            u'interfaces':
+            u'label:fabric=fabric-0,fabric=fabric-1,space=default;'
+            u'label2:fabric=fabric-3,fabric=fabric-4,space=foo'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+
     def test_interfaces_filters_by_fabric_class(self):
         fabric1 = factory.make_Fabric(class_type="1g")
         fabric2 = factory.make_Fabric(class_type="10g")
@@ -995,6 +1003,52 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node1], filtered_nodes)
+
+    def test_interfaces_filters_work_with_multiple_labels(self):
+        fabric1 = factory.make_Fabric(class_type="1g")
+        fabric2 = factory.make_Fabric(class_type="10g")
+        vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
+        vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric1, vlan=vlan1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric2, vlan=vlan2)
+
+        form = AcquireNodeForm({
+            u'interfaces': u'fabric:fabric_class=1g;vlan:vid=1'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node1], filtered_nodes)
+
+        form = AcquireNodeForm({
+            u'interfaces': u'label:fabric_class=10g;vlan:vid=2'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_interfaces_filters_multiples_treated_as_OR_operation(self):
+        fabric1 = factory.make_Fabric(class_type="1g")
+        fabric2 = factory.make_Fabric(class_type="10g")
+        vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
+        vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric1, vlan=vlan1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric2, vlan=vlan2)
+
+        form = AcquireNodeForm({
+            u'interfaces':
+            u'fabric:fabric_class=1g,fabric_class=10g;vlan:vid=1'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node1], filtered_nodes)
+
+        form = AcquireNodeForm({
+            u'interfaces':
+            u'label:fabric_class=10g,fabric_class=1g;vlan:vid=2'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node2], filtered_nodes)
 
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')

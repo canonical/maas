@@ -37,6 +37,7 @@ from django.db.models import (
     PROTECT,
     Q,
 )
+from django.db.models.query import QuerySet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
@@ -63,12 +64,15 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroupinterface import NodeGroupInterface
-from maasserver.models.space import Space
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    MAASQueriesMixin,
+)
 from maasserver.utils.signals import connect_to_field_change
 from netaddr import (
+    AddrFormatError,
     IPAddress,
     IPNetwork,
 )
@@ -76,6 +80,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.ipaddr import (
     get_first_and_last_usable_host_in_network,
 )
+from provisioningserver.utils.network import parse_integer
 
 
 maaslog = get_maas_logger("interface")
@@ -113,7 +118,76 @@ def get_subnet_family(subnet):
         return None
 
 
-class InterfaceManager(Manager):
+class InterfaceQueriesMixin(MAASQueriesMixin):
+    def get_specifiers_q(self, specifiers, separator=':'):
+        """Returns a Q object for objects matching the given specifiers.
+
+        :return:django.db.models.Q
+        """
+        # Circular imports.
+        from maasserver.models import Subnet
+
+        # This dict is used by the constraints code in order to identify
+        # interfaces with particular properties. Please note that changing
+        # the keys here can impact backward compatibility, so use caution.
+        interface_specifier_types = {
+            None: self._add_default_query,
+            'id': self._add_interface_id_query,
+            # XXX mpontillo 2015-10-31 the fabric matcher should probably
+            # become a tuple, after we have specifier-based fabric queries.
+            'fabric': 'vlan__fabric__name',
+            'fabric_class': 'vlan__fabric__class_type',
+            'ip': 'ip_addresses__ip',
+            'mode': self._add_mode_query,
+            'name': '__name',
+            'subnet': (Subnet.objects, 'staticipaddress__interface'),
+            'space': 'subnet{s}space'.format(s=separator),
+            'subnet_cidr': 'subnet{s}cidr'.format(s=separator),
+            'type': '__type',
+            'vid': self._add_vlan_vid_query,
+        }
+        return super(InterfaceQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=interface_specifier_types,
+            separator=separator)
+
+    def _add_interface_id_query(self, current_q, op, item):
+        try:
+            item = parse_integer(item)
+        except ValueError:
+            raise ValidationError("Interface ID must be numeric.")
+        else:
+            current_q = op(current_q, Q(id=item))
+            return current_q
+
+    def _add_default_query(self, current_q, op, item):
+        # By default, search for a specific CIDR first, then
+        # fall back to the name.
+        try:
+            ip = IPNetwork(item)
+        except AddrFormatError:
+            current_q = op(current_q, Q(name=item))
+        else:
+            cidr = unicode(ip.cidr)
+            current_q = op(current_q, Q(ip_addresses__subnet__cidr=cidr))
+        return current_q
+
+    def _add_mode_query(self, current_q, op, item):
+        if item.strip().lower() != 'unconfigured':
+            raise ValidationError(
+                "The only valid value for 'mode' is 'unconfigured'.")
+        return op(
+            current_q,
+            Q(ip_addresses__ip__isnull=True) | Q(ip_addresses__ip=''))
+
+
+class InterfaceQuerySet(InterfaceQueriesMixin, QuerySet):
+    """Custom QuerySet which mixes in some additional queries specific to
+    subnets. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class InterfaceManager(Manager, InterfaceQueriesMixin):
     """A Django manager managing one type of interface."""
 
     def get_queryset(self):
@@ -123,7 +197,7 @@ class InterfaceManager(Manager):
         or `VLANInterface` it will filter only allow returning those
         interfaces.
         """
-        qs = super(InterfaceManager, self).get_query_set()
+        qs = InterfaceQuerySet(self.model, using=self._db)
         interface_type = self.model.get_type()
         if interface_type is None:
             # Not a specific interface type so we don't filter by the type.
@@ -321,15 +395,13 @@ class Interface(CleanSave, TimestampedModel):
         interface is connected.
         """
         # Circular imports.
-        from maasserver.models import StaticIPAddress, Subnet, Fabric
+        from maasserver.models import StaticIPAddress, Subnet
 
         # Delete all current DISCOVERED IP address on this interface. As new
         # ones are about to be added.
         StaticIPAddress.objects.filter(
             interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
 
-        # XXX:fabric - Using the default Fabric for now.
-        fabric = Fabric.objects.get_default_fabric()
         for ip in cidr_list:
             network = IPNetwork(ip)
             cidr = unicode(network.cidr)
@@ -338,12 +410,10 @@ class Interface(CleanSave, TimestampedModel):
             # Find the Subnet for each IP address seen (will be used later
             # to create or update the Subnet)
             try:
-                subnet = Subnet.objects.get(cidr=cidr, vlan__fabric=fabric)
+                subnet = Subnet.objects.get(cidr=cidr)
             except Subnet.DoesNotExist:
-                vlan = fabric.get_default_vlan()
-                space = Space.objects.get_default_space()
-                subnet = Subnet.objects.create_from_cidr(
-                    cidr=cidr, vlan=vlan, space=space)
+                # XXX mpontillo 2015-11-01 configuration != state
+                subnet = Subnet.objects.create_from_cidr(cidr)
                 maaslog.info(
                     "Creating subnet %s connected to interface %s "
                     "of node %s.", cidr, self, self.get_node())

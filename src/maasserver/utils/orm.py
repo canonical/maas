@@ -48,8 +48,12 @@ from itertools import (
 )
 import threading
 from time import sleep
+import types
 
-from django.core.exceptions import MultipleObjectsReturned
+from django.core.exceptions import (
+    MultipleObjectsReturned,
+    ValidationError,
+)
 from django.db import (
     connection,
     connections,
@@ -64,6 +68,7 @@ from provisioningserver.utils.backoff import (
     exponential_growth,
     full_jitter,
 )
+from provisioningserver.utils.network import parse_integer
 from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
@@ -703,7 +708,7 @@ def parse_item_operation(specifier):
     return specifier, op
 
 
-def parse_item_specifier_type(specifier, types={}, separator=':'):
+def parse_item_specifier_type(specifier, spec_types={}, separator=':'):
     """
     Returns a tuple that splits the string int a specifier, and its specifier
     type.
@@ -712,13 +717,14 @@ def parse_item_specifier_type(specifier, types={}, separator=':'):
     be found in the set, returns None in place of the specifier_type.
 
     :param specifier: The specifier string, such as "ip:10.0.0.1".
-    :param types: A set of strings that will be recognized as specifier types.
+    :param spec_types: A dict whose keys are strings that will be recognized
+        as specifier types.
     :param separator: Optional specifier. Defaults to ':'.
     :return: tuple
     """
     if separator in specifier:
         tokens = specifier.split(separator, 1)
-        if tokens[0] in types:
+        if tokens[0] in spec_types:
             specifier_type = tokens[0]
             specifier = tokens[1].strip()
         else:
@@ -751,7 +757,78 @@ class MAASQueriesMixin(object):
         ids = self.get_id_list(raw_query)
         return self.filter(id__in=ids)
 
-    def _get_specifiers_query(self, specifiers, specifier_types=None):
+    def get_filter_function(
+            self, specifier_type, spec_types, item, separator=':'):
+        """Returns a function that must return a Q() based on some pervious
+        Q(), an operation function (which will manipulate it), and the data
+        that will be used as an argument to the filter operation function.
+
+        :param:specifier_type: a string which will be used as a key to get
+            the specifier from the spec_types dictionary.
+        :param:spec_types: the dictionary of valid specifier types.
+        :param:item: the string that will be used to filter by
+        :param:separator: a string that must separate specifiers from their
+            values. (for example, the default of ':' would be used if you
+            wanted specifiers to look like "id:42".)
+
+        :return: types.FunctionType or types.MethodType
+        """
+        query = spec_types.get(specifier_type, None)
+        while True:
+            if isinstance(query, (types.FunctionType, types.MethodType)):
+                # Found a function or method that will appending the filter
+                # string for us. Parameters must be in the format:
+                # (<current_Q()>, <operation_function>, <item>), where
+                # the operation_function must be a function that takes action
+                # on the current_Q() to append a new query object (Q()).
+                return query
+            elif isinstance(query, types.TupleType):
+                # Specifies a query to a subordinate specifier function.
+                # This will be a tuple in the format:
+                # (manager_object, filter_from_object)
+                # That is, filter_from_object defines how to relate the object
+                # we're querying back to the object that we care about, and
+                # manager_object is a Django Manager instance.
+                (manager_object, filter_from_object) = query
+                sub_ids = manager_object.filter_by_specifiers(
+                    item).values_list(filter_from_object + '__id', flat=True)
+                # Return a function to filter the current object based on
+                # its IDs (as gathered from the query above to the related
+                # object).
+                kwargs = {"id__in": sub_ids}
+                return lambda cq, op, i: op(cq, Q(**kwargs))
+            elif isinstance(query, unicode):
+                if separator in query:
+                    # We got a string like "subnet:space". This means we want
+                    # to actually use the query specifier at the 'subnet' key,
+                    # but we want to convert the item from (for example)
+                    # "space1" to "space:space1". When we loop back around,
+                    # "subnet" will resolve to a tuple, and we'll query the
+                    # specifier-based filter for Subnet.
+                    query, subordinate = query.split(separator, 1)
+                    item = subordinate + separator + item
+                elif '__' in query:
+                    # If the value for this query specifier contains the string
+                    # '__', assume it's a Django filter expression, and return
+                    # the appropriate query. Disambiguate what could be an
+                    # 'alias expression' by allowing the __ to appear before
+                    # the filter. (that is, prefix the filter string with __
+                    # to query the current object.)
+                    if query.startswith('__'):
+                        query = query[2:]
+                    kwargs = {query: item}
+                    return lambda cq, op, i: op(cq, Q(**kwargs))
+                else:
+                    query = spec_types.get(query, None)
+            elif query is None:
+                # The None key is for the default query for this specifier.
+                query = spec_types[None]
+            else:
+                break
+        return None
+
+    def get_specifiers_q(
+            self, specifiers, specifier_types=None, separator=':'):
         """Returns a Q object for objects matching the given specifiers.
 
         See documentation for `filter_by_specifiers()`.
@@ -766,7 +843,37 @@ class MAASQueriesMixin(object):
         for item in specifiers:
             item, op = parse_item_operation(item)
             item, specifier_type = parse_item_specifier_type(
-                item, types=specifier_types)
-            query = specifier_types.get(specifier_type)
+                item, spec_types=specifier_types, separator=separator)
+            query = self.get_filter_function(
+                specifier_type, specifier_types, item, separator=separator)
             current_q = query(current_q, op, item)
+        return current_q
+
+    def filter_by_specifiers(self, specifiers, separator=':'):
+        query = self.get_specifiers_q(specifiers, separator=separator)
+        return self.filter(query)
+
+    def exclude_by_specifiers(self, specifiers):
+        """Excludes subnets by the given list of specifiers (or single
+        specifier).
+
+        See documentation for `filter_by_specifiers()`.
+
+        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
+            but the address could not be parsed.
+        :return:QuerySet
+        """
+        query = self.get_specifiers_q(specifiers)
+        return self.exclude(query)
+
+    def _add_vlan_vid_query(self, current_q, op, item):
+        if item.lower() == 'untagged':
+            vid = 0
+        else:
+            vid = parse_integer(item)
+        if vid < 0 or vid >= 0xfff:
+            raise ValidationError(
+                "VLAN tag (VID) out of range "
+                "(0-4094; 0 for untagged.)")
+        current_q = op(current_q, Q(vlan__vid=vid))
         return current_q

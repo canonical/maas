@@ -32,6 +32,7 @@ from maasserver.forms import (
 )
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
+    Interface,
     PhysicalBlockDevice,
     Subnet,
     Tag,
@@ -375,6 +376,40 @@ def nodes_by_storage(storage):
         if len(disks) == len(constraints)
     }
     return nodes
+
+
+def nodes_by_interface(interfaces_label_map):
+    """Determines the set of nodes that match the specified
+    LabeledConstraintMap (which must be a map of storage constraints.)
+
+    :param interfaces_label_map: LabeledConstraintMap
+    :return: set
+    """
+    node_ids = None
+    for label in interfaces_label_map:
+        specifiers = []
+        constraints = interfaces_label_map[label]
+        for specifier_type in constraints.iterkeys():
+            # Build constraints string.
+            specifiers.extend([
+                specifier_type + ":" + item
+                for item in constraints[specifier_type]
+            ])
+        if node_ids is None:
+            # The first time through the filter, build the list
+            # of candidate nodes.
+            nodes = Interface.objects.filter_by_specifiers(
+                specifiers)
+            node_ids = set(nodes.values_list('node__id', flat=True))
+        else:
+            # For subsequent labels, only match nodes that already matched a
+            # preceding label.
+            current_matching_nodes = Interface.objects.filter(
+                node__id__in=node_ids)
+            filtered_nodes = current_matching_nodes.filter_by_specifiers(
+                specifiers)
+            node_ids = filtered_nodes.values_list('node__id', flat=True)
+    return node_ids
 
 
 class LabeledConstraintMapField(Field):
@@ -762,6 +797,14 @@ class AcquireNodeForm(RenamableFieldsForm):
         if storage:
             compatible_nodes = nodes_by_storage(storage)
             node_ids = compatible_nodes.keys()
+            if node_ids is not None:
+                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
+
+        # Filter by interfaces (networking)
+        interfaces_label_map = self.cleaned_data.get(
+            self.get_field_name('interfaces'))
+        if interfaces_label_map is not None:
+            node_ids = nodes_by_interface(interfaces_label_map)
             if node_ids is not None:
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
