@@ -107,7 +107,7 @@ class TestFanNetwork(MAASServerTestCase):
                 underlay="10.0.0.0/8", overlay="10.0.1.0/24")
 
     def test_stores_host_reserve(self):
-        host_reserve = random.randint(0, 200)
+        host_reserve = random.randint(1, 200)
         fannetwork = factory.make_FanNetwork(
             underlay=factory.make_ipv4_network(slash=16),
             overlay=factory.make_ipv4_network(slash=8),

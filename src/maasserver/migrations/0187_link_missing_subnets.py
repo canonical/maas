@@ -14,8 +14,9 @@ class Migration(DataMigration):
         assert hasattr(Subnet.objects, "get_best_subnet_for_ip")
         for sip in orm['maasserver.StaticIPAddress'].objects.all():
             if sip.ip is not None and sip.ip != "" and sip.subnet is None:
-                sip.subnet = Subnet.objects.get_best_subnet_for_ip(sip.ip)
-                if sip.subnet != None:
+                subnet = Subnet.objects.get_best_subnet_for_ip(sip.ip)
+                if subnet != None:
+                    sip.subnet_id = subnet.id
                     sip.save()
 
     def backwards(self, orm):
