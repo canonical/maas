@@ -3,6 +3,77 @@ Changelog
 =========
 
 
+1.9.0 (beta2)
+=============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1512109    DNS record doesn't get created against the PXE interface
+
+LP: #1510334    bcache cache_mode setting not configured on servers
+
+LP: #1510210    Administrators unable to delete users using the API
+
+LP: #1509536    Can create a VolumeGroup (vg0) without having created a partition
+                on the boot disk
+
+LP: #1501400    set-boot-disk yields in a machine not being able to deploy
+
+LP: #1504956    Deploying Other OS' (CentOS, Windows) should not configure custom storage
+
+LP: #1509164    Add RAID 10 support
+
+LP: #1511437    MAAS should download grub from grub-efi-amd64-signed package instead
+                of the archive path
+
+LP: #1510120    Fails to deploy with UEFI
+
+LP: #1507586    previous owner of node can use oauth creds to retrieve current
+                owner's user-data
+
+LP: #1507630    IP range validation for too small ranges
+
+LP: #1511610    TestReleaseAutoIPs.test__calls_update_host_maps_for_next_ip_managed_subnet
+                can fail randomly
+
+LP: #1511071    No way to disable maas-proxy
+
+LP: #1505034    [UI] HWE naming needs to be clearer
+
+LP: #1509476    [UI] Angular $digest loop issue on node details page
+
+LP: #1509473    [UI] New nodes interfaces doesn't show which interface is the PXE interface
+
+LP: #1510471    [UI] When partitioning, there should be 20px padding between the sizing fields
+
+LP: #1510467    [UI] On the available table, add model and serial to the name column
+
+LP: #1510466    [UI] On the available table, change “available space” to “size” for consistency
+
+LP: #1510472    [UI] when formatting/mounting, the button says “Format & Mount”
+                this should just be “Mount”
+
+LP: #1503533    [UI] Tickbox on create bond networking
+
+LP: #1510447    [UI] On the file system table, change name to “File system” (lower case S)
+
+LP: #1510474    [UI] When creating bcache and raid, remove the empty column between the
+                config fields and
+
+LP: #1510488    [UI] On the available table, make sure all buttons are lowercase
+
+LP: #1511174    [UI] Subnets filter doesn't show network, it shows name instead
+
+LP: #1509417    [UI] can't edit / add storage tags
+
+LP: #1510891    [UI] Hover state for networking doesn't work
+
+LP: #1510458    [UI] change "edit tag" link to icon storage
+
+LP: #1510629    [UI] Can no longer see the IP address PXE interface gets on commissioning
+
+
 1.9.0 (beta1)
 =============
 

@@ -227,9 +227,9 @@ def pxeconfig(request):
         # we give precedence to any kernel defined in the subarchitecture field
         if subarch == "generic" and node.hwe_kernel:
             subarch = node.hwe_kernel
-        elif(subarch == "generic"
-             and node.get_boot_purpose() == "commissioning"
-             and node.min_hwe_kernel):
+        elif(subarch == "generic" and
+             node.get_boot_purpose() == "commissioning" and
+             node.min_hwe_kernel):
             subarch = node.min_hwe_kernel
     else:
         nodegroup = find_nodegroup_for_pxeconfig_request(request)

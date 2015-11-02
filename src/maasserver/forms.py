@@ -376,8 +376,8 @@ def find_osystem_and_release_from_release_name(name):
                 possible_short_names.append({
                     'osystem': osystem,
                     'release': release})
-            elif (osystem['name'] != "ubuntu"
-                  and release['name'].startswith(name)):
+            elif (osystem['name'] != "ubuntu" and
+                  release['name'].startswith(name)):
                 # Check if the given name is a shortened version of a known
                 # name. e.g centos7 for centos70.  We don't allow short names
                 # for Ubuntu releases
