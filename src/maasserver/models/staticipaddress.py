@@ -362,11 +362,13 @@ class StaticIPAddressManager(Manager):
                 END,
                 CASE
                     WHEN interface.type = 'bond' THEN 1
-                    WHEN interface.type = 'physical' THEN 2
-                    WHEN interface.type = 'vlan' THEN 3
-                    WHEN interface.type = 'alias' THEN 4
-                    WHEN interface.type = 'unknown' THEN 5
-                    ELSE 6
+                    WHEN interface.type = 'physical' AND
+                        interface.id = node.boot_interface_id THEN 2
+                    WHEN interface.type = 'physical' THEN 3
+                    WHEN interface.type = 'vlan' THEN 4
+                    WHEN interface.type = 'alias' THEN 5
+                    WHEN interface.type = 'unknown' THEN 6
+                    ELSE 7
                 END,
                 interface.id
             """, (nodegroup.id,))
