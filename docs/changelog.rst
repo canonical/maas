@@ -9,6 +9,11 @@ Changelog
 Major bugs fixed in this release
 --------------------------------
 
+LP: #1511257    New capabilities for subnets, vlan, spaces and fabrics.
+
+LP: #1509077    Upgrade left a PXE NIC"s on nodes without a subnet associated
+                causing deploy issues.
+
 LP: #1512109    DNS record doesn't get created against the PXE interface
 
 LP: #1510334    bcache cache_mode setting not configured on servers
