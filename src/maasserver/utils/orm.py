@@ -684,6 +684,9 @@ def parse_item_operation(specifier):
 
     If the first character in the specifier is '&', the operator will be AND.
 
+    If the first character in the specifier is '!', or the specifier starts
+    with "not_", the operator will be AND(existing_query, ~(new_query)).
+
     If unspecified, the default operator is OR.
 
     :param specifier: a string containing the specifier.
@@ -693,14 +696,22 @@ def parse_item_operation(specifier):
 
     from operator import (
         and_ as AND,
+        inv as INV,
         or_ as OR,
     )
+    AND_NOT = lambda current, next: AND(current, INV(next))
 
     if specifier.startswith('|'):
         op = OR
         specifier = specifier[1:]
     elif specifier.startswith('&'):
         op = AND
+        specifier = specifier[1:]
+    elif specifier.startswith('not_'):
+        op = AND_NOT
+        specifier = specifier[4:]
+    elif specifier.startswith('!'):
+        op = AND_NOT
         specifier = specifier[1:]
     else:
         # Default to OR.

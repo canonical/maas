@@ -273,6 +273,52 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
                  "interface:id:%s" % iface2.id]),
             [subnet1, subnet2])
 
+    def test__not_operators(self):
+        node1 = factory.make_Node_with_Interface_on_Subnet()
+        node2 = factory.make_Node_with_Interface_on_Subnet()
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        subnet1 = iface1.ip_addresses.first().subnet
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:id:%s" % iface1.id,
+                 "!interface:id:%s" % iface2.id]),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:id:%s" % iface1.id,
+                 "not_interface:id:%s" % iface2.id]),
+            [subnet1])
+
+    def test__not_operators_order_independent(self):
+        node1 = factory.make_Node_with_Interface_on_Subnet()
+        node2 = factory.make_Node_with_Interface_on_Subnet()
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        subnet2 = iface2.ip_addresses.first().subnet
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["!interface:id:%s" % iface1.id,
+                 "interface:id:%s" % iface2.id]),
+            [subnet2])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["not_interface:id:%s" % iface1.id,
+                 "interface:id:%s" % iface2.id]),
+            [subnet2])
+
+    def test__and_operator(self):
+        node1 = factory.make_Node_with_Interface_on_Subnet()
+        node2 = factory.make_Node_with_Interface_on_Subnet()
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        # Try to filter by two mutually exclusive conditions.
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers(
+                ["interface:id:%s" % iface1.id,
+                 "&interface:id:%s" % iface2.id]),
+            [])
+
     def test__craziness_works(self):
         # This test validates that filters can be "chained" to each other
         # in an arbitrary way.

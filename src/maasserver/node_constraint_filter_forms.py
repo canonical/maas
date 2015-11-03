@@ -380,7 +380,7 @@ def nodes_by_storage(storage):
 
 def nodes_by_interface(interfaces_label_map):
     """Determines the set of nodes that match the specified
-    LabeledConstraintMap (which must be a map of storage constraints.)
+    LabeledConstraintMap (which must be a map of interface constraints.)
 
     :param interfaces_label_map: LabeledConstraintMap
     :return: set

@@ -119,6 +119,7 @@ def get_subnet_family(subnet):
 
 
 class InterfaceQueriesMixin(MAASQueriesMixin):
+
     def get_specifiers_q(self, specifiers, separator=':'):
         """Returns a Q object for objects matching the given specifiers.
 
