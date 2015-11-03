@@ -11,8 +11,8 @@ Storage
   This feature is available in MAAS versions 1.9 and above on Ubuntu
   deployments.  If you're writing a client application, you can check
   if MAAS supports this feature via the web API; see the documentation
-  for the ``storage-deployment`` capability
-  :ref:`here<cap-storage-deployment>`.
+  for the ``storage-deployment-ubuntu`` capability
+  :ref:`here<cap-storage-deployment-ubuntu>`.
 
 MAAS has the ability to configure any storage layout during node deployment.
 MAAS doesn't just do simple partitioning it supports complex storage layouts,

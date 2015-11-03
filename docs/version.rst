@@ -54,8 +54,16 @@ the version when creating a client application.
   Management of devices (non-installable nodes).  Available since version 1.8.
   See :ref:`devices` for more about this feature.
 
-.. _cap-storage-deployment:
+.. _cap-storage-deployment-ubuntu:
 
-``storage-deployment``
+``storage-deployment-ubuntu``
   Deploy nodes with custom storage layout and configuration. Available since
-  version 1.9. See :ref:`storage` for more about this feature.
+  version 1.9 on Ubuntu deployments. See :ref:`storage` for more about this
+  feature.
+
+.. _cap-network-deployment-ubuntu:
+
+``network-deployment-ubuntu``
+  Deploy nodes with custom network layout and configuration. Available since
+  version 1.9 on Ubuntu deployments. See :ref:`networking` for more about this
+  feature.

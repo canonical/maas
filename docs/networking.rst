@@ -9,7 +9,10 @@ Networking
 .. note::
 
   This feature is available in MAAS versions 1.9 and above on Ubuntu
-  deployments.
+  deployments. If you're writing a client application, you can check
+  if MAAS supports this feature via the web API; see the documentation
+  for the ``network-deployment-ubuntu`` capability
+  :ref:`here<cap-network-deployment-ubuntu>`.
 
 MAAS 1.9 adds support for the modeling of a wide variety of networking concepts
 and configurations.
