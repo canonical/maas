@@ -336,6 +336,7 @@ from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
 registered_power_drivers = [
     APCPowerDriver(),
+    DLIPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
     MicrosoftOCSPowerDriver(),
@@ -351,7 +352,6 @@ for driver in registered_power_drivers:
 
 unregistered_power_drivers = [
     AMTPowerDriver(),
-    DLIPowerDriver(),
     EtherWakePowerDriver(),
     FenceCDUPowerDriver(),
 ]

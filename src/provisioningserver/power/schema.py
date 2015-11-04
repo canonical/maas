@@ -263,7 +263,7 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'dli',
         'description': 'Digital Loggers, Inc. PDU',
         'fields': [
-            make_json_field('system_id', "Outlet ID"),
+            make_json_field('outlet_id', "Outlet ID"),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
             make_json_field(
