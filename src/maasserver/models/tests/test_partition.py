@@ -328,7 +328,8 @@ class TestPartition(MAASServerTestCase):
                 idx += 1
 
     def test_delete_not_allowed_if_part_of_filesystem_group(self):
-        partition = factory.make_Partition()
+        partition = factory.make_Partition(
+            size=1024 ** 3, block_device_size=2 * 1024 ** 3)
         VolumeGroup.objects.create_volume_group(
             factory.make_name("vg"), [], [partition])
         error = self.assertRaises(ValidationError, partition.delete)

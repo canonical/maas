@@ -47,8 +47,11 @@ class TestFanNetworksAPI(APITestCase):
             '/api/1.0/fannetworks/', get_fannetworks_uri())
 
     def test_read(self):
-        for _ in range(3):
-            factory.make_FanNetwork()
+        # Create specific fan networks so creation doesn't fail because of
+        # randomness. Reported in bug lp:1512832.
+        factory.make_FanNetwork(overlay="10.0.0.0/8", underlay="172.16.0.0/16")
+        factory.make_FanNetwork(overlay="11.0.0.0/8", underlay="172.17.0.0/16")
+        factory.make_FanNetwork(overlay="12.0.0.0/8", underlay="172.18.0.0/16")
         uri = get_fannetworks_uri()
         response = self.client.get(uri)
 
