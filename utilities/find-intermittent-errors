@@ -1,0 +1,105 @@
+#!/bin/bash
+# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+# Author: Lee Trager <lee.trager@canonical.com>
+
+MAAS_HOME="$(cd "$(dirname $0)/.." && pwd)"
+TESTING_PATH=${TESTING_PATH:-$MAAS_HOME}
+OUTPUT_DIR=${OUTPUT_DIR:-$MAAS_HOME/test-dir}
+TEST_CMD=${TEST_CMD:-time make test}
+
+source $MAAS_HOME/templates/script.sh
+
+function run()
+{
+    if [ ! -d "$TESTING_PATH" ]; then
+        echo "ERROR: $TESTING_PATH does not exist!"
+        usage
+    fi
+    cd $TESTING_PATH
+    if [ ! -d $OUTPUT_DIR ]; then
+        mkdir -p $OUTPUT_DIR
+        TEST_RUN=1
+    else
+        TEST_RUN=$(ls $OUTPUT_DIR | cut -d '-' -f2 | sort -n | tail -n1)
+        TEST_RUN=$(($TEST_RUN + 1))
+    fi
+    while true; do
+        run_out="$OUTPUT_DIR/test-${TEST_RUN}"
+        echo "Test run: $((TEST_RUN++))"
+        # Start with a clean environment incase an intermittent error corrects
+        # the database
+        make clean ||:
+        bzr clean-tree --ignored --force ||:
+        make ||:
+        $TEST_CMD 2>&1 | tee -a $run_out
+        # Tests with more than 20 failures tend to be due to Postgres so
+        # discard the test.
+        if [ $(grep 'ERROR:' $run_out | wc -l) -ge 20 ]; then
+            echo "Postgres errors detected, reruning test $((TEST_RUN--))"
+            rm $run_out
+        fi
+        if [ $# -eq 1 ] && [ "$TEST_RUN" -gt "$1" ]; then
+            return
+        fi
+    done        
+}
+
+function stats()
+{
+    if [ ! -d "$OUTPUT_DIR" ]; then
+        echo "Error: $OUTPUT_DIR does not exist!"
+        usage
+    fi
+
+    echo "Tests run: $(ls $OUTPUT_DIR | wc -l)"
+    cat $OUTPUT_DIR/* | awk '/ERROR:/ { print $(NF); }' | sort | uniq -c | \
+        sort -r -n -k 1
+}
+
+function usage()
+{
+    cat <<EOF
+usage: $0 <option> (run|stats|watch)
+  -p    The path to the directory to run testing in, default is "$TESTING_PATH"
+  -o    The output directory for test results, default is "$OUTPUT_DIR"
+  -c    The command to run the tests, default is "$TEST_CMD"
+
+run <runs>  Start running make test in a loop logging to the output directory.
+            You can optionally specify the number of runs you want.
+stats       Show stats on the run tests
+watch       Run stats through the watch command
+EOF
+    exit 1
+}
+
+while getopts "p:o:c:h" option
+do
+    case $option in
+        p) export TESTING_PATH=$OPTARG ;;
+        o) export OUTPUT_DIR=$OPTARG ;;
+        c) export TEST_CMD=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ -z "$OUTPUT_DIR" ]; then
+    echo "ERROR: Please specify the output directory!"
+    usage
+fi
+
+if [ $# -lt 1 ]; then
+    echo "Error: Please specify a command"
+    usage
+elif [ "$1" == "run" ]; then
+    shift 1
+    run $@
+elif [ "$1" == "stats" ]; then
+    stats
+elif [ "$1" == "watch" ]; then
+    watch $0 stats
+else
+    usage
+fi
