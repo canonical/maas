@@ -357,10 +357,14 @@ table {
 
     &.disabled {
 
-      .table__data,
-      .table__input {
+      & > .table__data {
         color: #888;
         pointer-events: none;
+
+        & > .table__input {
+          color: #888;
+          pointer-events: none;
+        }
       }
 
       .table__input {
@@ -604,28 +608,18 @@ table {
   .table__dropdown {
     width: 100%;
     max-height: 0;
-    overflow: hidden;
+    overflow-y: hidden;
 
     .table__dropdown-row {
         border-bottom: 0;
         position: relative;
-        max-height: 3000px;
-        transition-property: max-height;
-        transition-duration: 3.5s;
-        transition-timing-function: linear;
+        max-height: 0;
+        transition: max-height 0.10s ease-out;
+        overflow: hidden;
 
-        &.ng-hide {
-          max-height: 0;
-          overflow: hidden;
-          display: block !important;
-          transition-property: max-height;
-          transition-delay: -1s;
-          transition-duration: 1.25s;
-          transition-timing-function: linear;
-
-          .table__data {
-            opacity: 0;
-          }
+        &.active {
+          max-height: 500px;
+          transition: max-height 0.25s ease-in;
         }
 
         &:before {
@@ -668,9 +662,19 @@ table {
 
     // Info dropdown
     &--info {
+      max-height: 0;
+      overflow-y: hidden;
 
       .table__row {
         border-bottom: 0;
+        max-height: 0;
+        transition: max-height 0.10s ease-out;
+        overflow: hidden;
+
+        &.active {
+          max-height: 500px;
+          transition: max-height 0.25s ease-in;
+        }
       }
 
       .table__data {
