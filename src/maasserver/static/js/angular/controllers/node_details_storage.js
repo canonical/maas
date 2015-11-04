@@ -1080,15 +1080,25 @@ angular.module('MAAS').controller('NodeStorageController', [
                 return;
             }
 
-            // Get the bytes to create the partition. Round down to the
-            // total available on the disk.
-            var removeDisk = false;
+            // Get the bytes to create the partition.
             var bytes = ConverterService.unitsToBytes(
                 disk.$options.size, disk.$options.sizeUnits);
+
+            // Accepting prefilled defaults means use whole disk (lp:1509535).
+            var size_and_units = disk.original.available_size_human.split(" ");
+            if(disk.$options.size === size_and_units[0] &&
+               disk.$options.sizeUnits === size_and_units[1]) {
+                bytes = disk.original.available_size;
+            }
+
+            // Clamp to available space.
             if(bytes > disk.original.available_size) {
                 bytes = disk.original.available_size;
+            }
 
-                // Remove the disk as its going to use all the remaining space.
+            // Remove the disk if it is going to use all the remaining space.
+            var removeDisk = false;
+            if(bytes === disk.original.available_size) {
                 removeDisk = true;
             }
 
@@ -1708,15 +1718,25 @@ angular.module('MAAS').controller('NodeStorageController', [
                 return;
             }
 
-            // Get the bytes to create the partition. Round down to the
-            // total available on the disk.
-            var removeDisk = false;
+            // Get the bytes to create the partition.
             var bytes = ConverterService.unitsToBytes(
                 disk.$options.size, disk.$options.sizeUnits);
+
+            // Accepting prefilled defaults means use whole disk (lp:1509535).
+            var size_and_units = disk.original.available_size_human.split(" ");
+            if(disk.$options.size === size_and_units[0] &&
+               disk.$options.sizeUnits === size_and_units[1]) {
+                bytes = disk.original.available_size;
+            }
+
+            // Clamp to available space.
             if(bytes > disk.original.available_size) {
                 bytes = disk.original.available_size;
+            }
 
-                // Remove the disk as its going to use all the remaining space.
+            // Remove the disk if it is going to use all the remaining space.
+            var removeDisk = false;
+            if(bytes === disk.original.available_size) {
                 removeDisk = true;
             }
 

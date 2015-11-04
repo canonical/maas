@@ -2264,6 +2264,7 @@ describe("NodeStorageController", function() {
                 original: {
                     partition_table_type: "mbr",
                     available_size: 4 * 1000 * 1000 * 1000,
+                    available_size_human: "4.0 GB",
                     block_size: 512
                 },
                 $options: {
@@ -2286,6 +2287,7 @@ describe("NodeStorageController", function() {
                 original: {
                     partition_table_type: "mbr",
                     available_size: 2.6 * 1000 * 1000 * 1000,
+                    available_size_human: "2.6 GB",
                     block_size: 512
                 },
                 $options: {
@@ -2309,6 +2311,7 @@ describe("NodeStorageController", function() {
                     original: {
                         partition_table_type: "",
                         available_size: 2.6 * 1000 * 1000 * 1000,
+                        available_size_human: "2.6 GB",
                         block_size: 512
                     },
                     $options: {
@@ -4196,7 +4199,8 @@ describe("NodeStorageController", function() {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
                 original: {
-                    available_size: 4 * 1000 * 1000 * 1000
+                    available_size: 4 * 1000 * 1000 * 1000,
+                    available_size_human: "4.0 GB"
                 },
                 $options: {
                     name: "vg0-lv0",
@@ -4218,7 +4222,8 @@ describe("NodeStorageController", function() {
                 name: "vg0",
                 block_id: makeInteger(0, 100),
                 original: {
-                    available_size: 2.6 * 1000 * 1000 * 1000
+                    available_size: 2.6 * 1000 * 1000 * 1000,
+                    available_size_human: "2.6 GB"
                 },
                 $options: {
                     name: "vg0-lv0",
@@ -4232,6 +4237,32 @@ describe("NodeStorageController", function() {
 
             expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2.6 * 1000 * 1000 * 1000);
+        });
+
+        // regression test for https://bugs.launchpad.net/maas/+bug/1509535
+        it("calls createLogicalVolume with available_size bytes" +
+            " even when human size gets rounded down", function() {
+
+            var controller = makeController();
+            var disk = {
+                name: "vg0",
+                block_id: makeInteger(0, 100),
+                original: {
+                    available_size: 2.035 * 1000 * 1000 * 1000,
+                    available_size_human: "2.0 GB"
+                },
+                $options: {
+                    name: "vg0-lv0",
+                    size: "2.0",
+                    sizeUnits: "GB"
+                }
+            };
+            spyOn(NodesManager, "createLogicalVolume");
+
+            $scope.availableConfirmLogicalVolume(disk);
+
+            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+                node, disk.block_id, "lv0", 2.035 * 1000 * 1000 * 1000);
         });
     });
 
