@@ -1228,6 +1228,15 @@ describe("NodeStorageController", function() {
             })).toBe(false);
         });
 
+        it("returns false if bcache", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            expect($scope.canAddPartition({
+                type: "virtual",
+                parent_type: "bcache"
+            })).toBe(false);
+        });
+
         it("returns false if formatted", function() {
             var controller = makeController();
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);

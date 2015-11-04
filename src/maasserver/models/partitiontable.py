@@ -181,3 +181,9 @@ class PartitionTable(CleanSave, TimestampedModel):
                             "Cannot create a partition table on a "
                             "logical volume."]
                         })
+                elif block_device.filesystem_group.is_bcache():
+                    raise ValidationError({
+                        "block_device": [
+                            "Cannot create a partition table on a "
+                            "Bcache volume."]
+                        })

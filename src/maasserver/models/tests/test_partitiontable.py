@@ -15,7 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import PARTITION_TABLE_TYPE
+from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    PARTITION_TABLE_TYPE,
+)
 from maasserver.models.blockdevice import (
     BlockDevice,
     MIN_BLOCK_DEVICE_SIZE,
@@ -200,4 +203,18 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEquals({
             "block_device": [
                 "Cannot create a partition table on a logical volume."],
+            }, error.error_dict)
+
+    def test_clean_no_partition_table_on_bcache(self):
+        node = factory.make_Node()
+        bcache_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            node=node)
+        bcache_device = bcache_group.virtual_device
+        error = self.assertRaises(
+            ValidationError,
+            factory.make_PartitionTable, block_device=bcache_device)
+        self.assertEquals({
+            "block_device": [
+                "Cannot create a partition table on a Bcache volume."],
             }, error.error_dict)

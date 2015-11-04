@@ -773,7 +773,8 @@ angular.module('MAAS').controller('NodeStorageController', [
             } else if(disk.type === "partition" || disk.type === "lvm-vg") {
                 return false;
             } else if(disk.type === "virtual" &&
-                disk.parent_type === "lvm-vg") {
+                (disk.parent_type === "lvm-vg" ||
+                    disk.parent_type === "bcache")) {
                 return false;
             } else if(angular.isString(disk.fstype) && disk.fstype !== "") {
                 return false;

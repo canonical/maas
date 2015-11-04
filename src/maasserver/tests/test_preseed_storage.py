@@ -582,32 +582,30 @@ class TestComplexDiskLayout(
             backing_device: sda-part3
             cache_device: sdb-part1
             cache_mode: writethrough
-            ptable: gpt
-          - id: bcache0-part1
-            name: bcache0-part1
+          - id: sdb-part2
+            name: sdb-part2
             type: partition
-            number: 1
-            offset: 2097152B
-            uuid: 17270be2-0db6-41b5-80c9-78a20cbf968e
-            size: 6973030400B
+            number: 2
+            uuid: ea7f96d0-b508-40d9-8495-b2163df35c9b
+            size: 6442450944B
             wipe: superblock
-            device: bcache0
+            device: sdb
           - id: vgroot
             name: vgroot
             type: lvm_volgroup
             uuid: 1793be1b-890a-44cb-9322-057b0d53b53c
             devices:
-              - bcache0-part1
+              - sdb-part2
           - id: vgroot-lvextra
             name: lvextra
             type: lvm_partition
             volgroup: vgroot
-            size: 3221225472B
+            size: 2147483648B
           - id: vgroot-lvroot
             name: lvroot
             type: lvm_partition
             volgroup: vgroot
-            size: 3221225472B
+            size: 2147483648B
           - id: md0-part1
             name: md0-part1
             type: partition
@@ -667,8 +665,8 @@ class TestComplexDiskLayout(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
         ssd_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * 1024 ** 3, name="sdb",
-            model="QEMU SSD", serial="QM00002")  # 2 GiB
+            node=node, size=8 * 1024 ** 3, name="sdb",
+            model="QEMU SSD", serial="QM00002")  # 8 GiB
         raid_5_disk_1 = factory.make_PhysicalBlockDevice(
             node=node, size=1 * 1024 ** 4, name="sdc",
             model="QEMU HARDDISK", serial="QM00003")  # 1 TiB
@@ -709,35 +707,32 @@ class TestComplexDiskLayout(
             partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
             mount_point="/boot")
-        cache_partition_table = factory.make_PartitionTable(
+        ssd_partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.GPT, block_device=ssd_disk)
         cache_partition = factory.make_Partition(
-            partition_table=cache_partition_table,
+            partition_table=ssd_partition_table,
             uuid="f3281144-a0b6-46f1-90af-8541f97f7b1f",
             size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False)
         cache_set = factory.make_CacheSet(partition=cache_partition)
-        bcache0 = Bcache.objects.create_bcache(
+        Bcache.objects.create_bcache(
             name="bcache0", uuid="9e7bdc2d-1567-4e1c-a89a-4e20df099458",
             backing_partition=root_partition, cache_set=cache_set,
             cache_mode=CACHE_MODE_TYPE.WRITETHROUGH)
-        bcache0_partition_table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT,
-            block_device=bcache0.virtual_device)
-        bcache0_partition = factory.make_Partition(
-            partition_table=bcache0_partition_table,
-            uuid="17270be2-0db6-41b5-80c9-78a20cbf968e",
-            size=bcache0_partition_table.get_size(),
+        lvm_partition = factory.make_Partition(
+            partition_table=ssd_partition_table,
+            uuid="ea7f96d0-b508-40d9-8495-b2163df35c9b",
+            size=(6 * 1024 ** 3),
             bootable=False)
         vgroot = VolumeGroup.objects.create_volume_group(
             name="vgroot", uuid="1793be1b-890a-44cb-9322-057b0d53b53c",
-            block_devices=[], partitions=[bcache0_partition])
+            block_devices=[], partitions=[lvm_partition])
         lvroot = vgroot.create_logical_volume(
             name="lvroot", uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
-            size=3 * 1024 ** 3)
+            size=2 * 1024 ** 3)
         vgroot.create_logical_volume(
             name="lvextra", uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
-            size=3 * 1024 ** 3)
+            size=2 * 1024 ** 3)
         factory.make_Filesystem(
             block_device=lvroot, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
