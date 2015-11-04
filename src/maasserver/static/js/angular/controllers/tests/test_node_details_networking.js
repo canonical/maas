@@ -2784,37 +2784,18 @@ describe("NodeNetworkingController", function() {
         });
     });
 
-    describe("isSuperUser", function() {
-        it("returns true if the user is a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
-            expect($scope.isSuperUser()).toBe(true);
-        });
-
-        it("returns false if the user is not a superuser", function() {
-            var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: false });
-            expect($scope.isSuperUser()).toBe(false);
-        });
-    });
-
     describe("isAllNetworkingDisabled", function() {
         it("returns true if the user is not a superuser and the node is ready",
             function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: false });
-            expect($scope.isSuperUser()).toBe(false);
+            $scope.isSuperUser = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(true);
         });
 
         it("return false if the node is Ready and we are a superuser",
             function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
+            $scope.isSuperUser = function() { return true; };
             $scope.node.status = "Ready";
             expect($scope.isAllNetworkingDisabled()).toBe(false);
         });
@@ -2822,8 +2803,7 @@ describe("NodeNetworkingController", function() {
         it("return false if the node is broken and we are a superuser",
             function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
+            $scope.isSuperUser = function() { return true; };
             $scope.node.status = "Broken";
             expect($scope.isAllNetworkingDisabled()).toBe(false);
         });
@@ -2831,8 +2811,7 @@ describe("NodeNetworkingController", function() {
         it("return true if the node is deploying and we are a superuser",
             function() {
             var controller = makeController();
-            spyOn(UsersManager, "getAuthUser").and.returnValue(
-                { is_superuser: true });
+            $scope.isSuperUser = function() { return true; };
             $scope.node.status = "Deploying";
             expect($scope.isAllNetworkingDisabled()).toBe(true);
         });

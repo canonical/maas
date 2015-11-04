@@ -652,6 +652,16 @@
                         </li>
                     </ul>
                 </div>
+                <div class="twelve-col error ng-hide" data-ng-show="isAllStorageDisabled()">
+                    <ul class="flash-messages">
+                        <li class="flash-messages__item info ng-hide" data-ng-show="isSuperUser()">
+                            Storage configuration cannot be modified unless the node is Ready or Allocated.
+                        </li>
+                        <li class="flash-messages__item info ng-hide" data-ng-show="!isSuperUser()">
+                            Storage configuration cannot be modified unless the node is Ready or Allocated and you own the node.
+                        </li>
+                    </ul>
+                </div>
                 <div class="twelve-col error ng-hide" data-ng-show="!isUbuntuOS()">
                     <ul class="flash-messages">
                         <li class="flash-messages__item info">
@@ -665,11 +675,13 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3">
-                                    <input class="checkbox" type="checkbox" id="filesystem-check-all"
-                                        data-ng-checked="filesystemAllSelected"
-                                        data-ng-click="toggleFilesystemAllSelect()"
-                                        data-ng-disabled="isFilesystemsDisabled()" />
-                                    <label class="checkbox-label" for="filesystem-check-all"></label>
+                                   <span data-ng-hide="isFilesystemsDisabled()">
+                                        <input class="checkbox" type="checkbox" id="filesystem-check-all"
+                                            data-ng-checked="filesystemAllSelected"
+                                            data-ng-click="toggleFilesystemAllSelect()"
+                                            data-ng-hide="isFilesystemsDisabled()" />
+                                        <label class="checkbox-label" for="filesystem-check-all"></label>
+                                   </span>
                                 </div>
                                 <div class="table__header table__column--15">Name</div>
                                 <div class="table__header table__column--27">Size</div>
@@ -688,18 +700,20 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: filesystem.$selected }">
                                     <div class="table__data table__column--3">
-                                        <input class="checkbox" type="checkbox" id="{$ filesystem.name $}"
-                                            data-ng-checked="filesystem.$selected"
-                                            data-ng-click="toggleFilesystemSelect(filesystem)"
-                                            data-ng-disabled="isFilesystemsDisabled()" />
-                                        <label class="checkbox-label" for="{$ filesystem.name $}" ></label>
+                                        <span data-ng-hide="isFilesystemsDisabled()">
+                                            <input class="checkbox" type="checkbox" id="{$ filesystem.name $}"
+                                                data-ng-checked="filesystem.$selected"
+                                                data-ng-click="toggleFilesystemSelect(filesystem)"
+                                                data-ng-disabled="isFilesystemsDisabled()" />
+                                            <label class="checkbox-label" for="{$ filesystem.name $}" ></label>
+                                        </span>
                                     </div>
                                     <div class="table__data table__column--15">{$ filesystem.name $}</div>
                                     <div class="table__data table__column--27">{$ filesystem.size_human $}</div>
                                     <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table__column--10">
-                                        <div class="table__controls">
+                                        <div class="table__controls" data-ng-hide="isAllStorageDisabled()">
                                             <a class="icon delete" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
                                         </div>
                                     </div>
@@ -736,7 +750,7 @@
                                     <input class="checkbox" type="checkbox" id="cachesets-check-all"
                                         data-ng-checked="cachesetsAllSelected"
                                         data-ng-click="toggleCacheSetAllSelect()"
-                                        data-ng-disabled="isCacheSetsDisabled()" />
+                                        data-ng-hide="isCacheSetsDisabled()" />
                                     <label class="checkbox-label" for="cachesets-check-all"></label>
                                 </div>
                                 <div class="table__header table__column--15">Name</div>
@@ -753,7 +767,7 @@
                                         <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
                                             data-ng-checked="cacheset.$selected"
                                             data-ng-click="toggleCacheSetSelect(cacheset)"
-                                            data-ng-disabled="isCacheSetsDisabled()" />
+                                            data-ng-hide="isCacheSetsDisabled()" />
                                         <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
                                     </div>
                                     <div class="table__data table__column--15">{$ cacheset.name $}</div>
@@ -797,11 +811,13 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3">
-                                    <input class="checkbox" type="checkbox" id="available-check-all"
-                                        data-ng-checked="availableAllSelected"
-                                        data-ng-click="toggleAvailableAllSelect()"
-                                        data-ng-disabled="isAvailableDisabled()" />
-                                    <label class="checkbox-label" for="available-check-all"></label>
+                                    <span data-ng-hide="isAvailableDisabled()">
+                                        <input class="checkbox" type="checkbox" id="available-check-all"
+                                            data-ng-checked="availableAllSelected"
+                                            data-ng-click="toggleAvailableAllSelect()"
+                                            data-ng-disabled="isAvailableDisabled()" />
+                                        <label class="checkbox-label" for="available-check-all"></label>
+                                    </span>
                                 </div>
                                 <div class="table__header table__column--20">
                                     <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
@@ -827,11 +843,13 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: item.$selected }">
                                     <div class="table__data table__column--3">
-                                        <input class="checkbox" type="checkbox" id="{$ item.name $}"
-                                            data-ng-checked="item.$selected"
-                                            data-ng-click="toggleAvailableSelect(item)"
-                                            data-ng-disabled="isAvailableDisabled()" />
-                                        <label class="checkbox-label" for="{$ item.name $}" ></label>
+                                        <span data-ng-hide="isAvailableDisabled()">
+                                            <input class="checkbox" type="checkbox" id="{$ item.name $}"
+                                                data-ng-checked="item.$selected"
+                                                data-ng-click="toggleAvailableSelect(item)"
+                                                data-ng-disabled="isAvailableDisabled()" />
+                                            <label class="checkbox-label" for="{$ item.name $}" ></label>
+                                        </span>
                                     </div>
                                     <div class="table__data table__column--20" data-ng-show="column === 'name'">
                                         <input type="text" class="table__input"
@@ -839,7 +857,7 @@
                                             data-maas-enter-blur
                                             data-ng-blur="saveAvailableName(item)"
                                             data-ng-class="{ invalid: isNameInvalid(item) }"
-                                            data-ng-disabled="item.type === 'partition'"
+                                            data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
                                     <div class="table__data table__column--20 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
@@ -1224,15 +1242,19 @@
                     </section>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateRAID()"
+                        data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createRAID()">Create RAID</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateVolumeGroup()"
+                        data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createVolumeGroup()">Create volume group</a>
                     <a class="link-cta-ubuntu secondary margin-right"
                         data-ng-disabled="!canCreateCacheSet()"
+                        data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createCacheSet()">Create cache Set</a>
                     <a class="link-cta-ubuntu secondary"
                         data-ng-disabled="!canCreateBcache()"
+                        data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createBcache()">Create bcache</a>
                 </div>
                 <div class="twelve-col padding-bottom">

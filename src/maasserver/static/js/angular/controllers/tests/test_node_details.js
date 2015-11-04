@@ -679,6 +679,22 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isSuperUser", function() {
+        it("returns true if the user is a superuser", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            expect($scope.isSuperUser()).toBe(true);
+        });
+
+        it("returns false if the user is not a superuser", function() {
+            var controller = makeController();
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: false });
+            expect($scope.isSuperUser()).toBe(false);
+        });
+    });
+
     describe("getPowerStateClass", function() {
 
         it("returns blank if no node", function() {

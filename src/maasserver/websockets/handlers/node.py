@@ -730,6 +730,12 @@ class NodeHandler(TimestampedModelHandler):
         fstype = params.get('fstype')
         mount_point = params.get('mount_point')
 
+        if node.status not in [NODE_STATUS.ALLOCATED, NODE_STATUS.READY]:
+            raise HandlerError(
+                "Node must be allocated or ready to edit storage")
+        if not self.user.is_superuser and node.owner_id != self.user.id:
+            raise HandlerPermissionError()
+
         if partition_id:
             self.update_partition_filesystem(
                 node, block_id, partition_id, fstype, mount_point)

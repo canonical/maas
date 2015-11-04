@@ -462,14 +462,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             updateLoaded();
         };
 
-        // Return true if user is a super user/
-        $scope.isSuperUser = function() {
-            var authUser = UsersManager.getAuthUser();
-            if(!angular.isObject(authUser)) {
-                return false;
-            }
-            return authUser.is_superuser;
-        };
 
         // Return true if the networking information cannot be edited.
         // (it can't be changed when the node is in any state other

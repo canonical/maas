@@ -1160,7 +1160,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fs = factory.make_Filesystem(block_device=block_device)
         handler.update_filesystem({
@@ -1176,7 +1179,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fs = factory.make_Filesystem(partition=partition)
         handler.update_filesystem({
@@ -1193,7 +1199,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fs = factory.make_Filesystem(block_device=block_device)
         handler.update_filesystem({
@@ -1209,7 +1218,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fs = factory.make_Filesystem(partition=partition)
         handler.update_filesystem({
@@ -1226,7 +1238,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fs = factory.make_Filesystem(block_device=block_device)
         new_fstype = factory.pick_choice(
@@ -1245,7 +1260,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fs = factory.make_Filesystem(partition=partition)
         new_fstype = factory.pick_choice(
@@ -1265,7 +1283,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         handler.update_filesystem({
@@ -1281,7 +1302,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         handler.update_filesystem({
@@ -1298,7 +1322,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         handler.update_filesystem({
@@ -1314,7 +1341,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
         partition = factory.make_Partition(node=node)
         factory.make_Filesystem(partition=partition)
         handler.update_filesystem({
@@ -1331,7 +1361,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         new_name = factory.make_name("new")
         handler.update_disk({
@@ -1345,7 +1378,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_VirtualBlockDevice(node=node)
         new_name = factory.make_name("new")
         handler.update_disk({
@@ -1359,7 +1395,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         handler.delete_disk({
             'system_id': node.system_id,
@@ -1371,7 +1410,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         handler.delete_partition({
             'system_id': node.system_id,
@@ -1383,7 +1425,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         volume_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
         handler.delete_volume_group({
@@ -1396,7 +1441,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         cache_set = factory.make_CacheSet(node=node)
         handler.delete_cache_set({
             'system_id': node.system_id,
@@ -1408,7 +1456,10 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
         partition_table = factory.make_PartitionTable(node=node)
         size = partition_table.block_device.size / 2
         handler.create_partition({

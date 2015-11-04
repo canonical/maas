@@ -43,8 +43,8 @@ angular.module('MAAS').filter('removeAvailableByNew', function() {
 });
 
 angular.module('MAAS').controller('NodeStorageController', [
-    '$scope', 'NodesManager', 'ConverterService',
-    function($scope, NodesManager, ConverterService) {
+    '$scope', 'NodesManager', 'ConverterService', 'UsersManager',
+    function($scope, NodesManager, ConverterService, UsersManager) {
         var PARTITION_TABLE_EXTRA_SPACE = 3 * 1024 * 1024;
         var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
         var MIN_LOGICAL_VOLUME_SIZE = MIN_PARTITION_SIZE;
@@ -595,10 +595,11 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return true if checkboxes in the filesystem section should be
         // disabled.
         $scope.isFilesystemsDisabled = function() {
-            return (
+            return ((
                 $scope.filesystemMode !== SELECTION_MODE.NONE &&
                 $scope.filesystemMode !== SELECTION_MODE.SINGLE &&
-                $scope.filesystemMode !== SELECTION_MODE.MUTLI);
+                $scope.filesystemMode !== SELECTION_MODE.MUTLI) ||
+                $scope.isAllStorageDisabled());
         };
 
         // Cancel the current filesystem operation.
@@ -730,15 +731,17 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return true if checkboxes in the avaiable section should be
         // disabled.
         $scope.isAvailableDisabled = function() {
-            return (
+            return ((
                 $scope.availableMode !== SELECTION_MODE.NONE &&
                 $scope.availableMode !== SELECTION_MODE.SINGLE &&
-                $scope.availableMode !== SELECTION_MODE.MUTLI);
+                $scope.availableMode !== SELECTION_MODE.MUTLI) ||
+                $scope.isAllStorageDisabled());
         };
 
         // Return true if the disk can be formatted and mounted.
         $scope.canFormatAndMount = function(disk) {
-            if(disk.type === "lvm-vg" || disk.has_partitions) {
+            if($scope.isAllStorageDisabled() ||
+               disk.type === "lvm-vg" || disk.has_partitions) {
                 return false;
             } else {
                 return true;
@@ -765,7 +768,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a partition can be added to disk.
         $scope.canAddPartition = function(disk) {
-            if(disk.type === "partition" || disk.type === "lvm-vg") {
+            if(!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+                return false;
+            } else if(disk.type === "partition" || disk.type === "lvm-vg") {
                 return false;
             } else if(disk.type === "virtual" &&
                 disk.parent_type === "lvm-vg") {
@@ -935,7 +940,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
-            if(disk.type === "lvm-vg") {
+            if(!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+                return false;
+            } else if(disk.type === "lvm-vg") {
                 return disk.original.used_size === 0;
             } else {
                 if(!disk.has_partitions && (
@@ -1166,10 +1173,12 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return true if checkboxes in the cache sets section should be
         // disabled.
         $scope.isCacheSetsDisabled = function() {
-            return (
+            return ((
+                $scope.isAllStorageDisabled() &&
+                !$scope.isSuperUser()) || (
                 $scope.cachesetsMode !== SELECTION_MODE.NONE &&
                 $scope.cachesetsMode !== SELECTION_MODE.SINGLE &&
-                $scope.cachesetsMode !== SELECTION_MODE.MUTLI);
+                $scope.cachesetsMode !== SELECTION_MODE.MUTLI));
         };
 
         // Cancel the current cache set operation.
@@ -1179,7 +1188,9 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Can delete the cache set.
         $scope.canDeleteCacheSet = function(cacheset) {
-            return cacheset.used_by === "";
+            return (cacheset.used_by === "" &&
+                    !$scope.isAllStorageDisabled() &&
+                    $scope.isSuperUser());
         };
 
         // Enter delete mode.
@@ -1207,7 +1218,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a cache set can be created.
         $scope.canCreateCacheSet = function() {
-            if($scope.isAvailableDisabled()) {
+            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
                 return false;
             }
 
@@ -1239,7 +1250,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a bcache can be created.
         $scope.canCreateBcache = function() {
-            if($scope.isAvailableDisabled()) {
+            if($scope.isAvailableDisabled() || ! $scope.isSuperUser()) {
                 return false;
             }
 
@@ -1349,7 +1360,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a RAID can be created.
         $scope.canCreateRAID = function() {
-            if($scope.isAvailableDisabled()) {
+            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
                 return false;
             }
 
@@ -1555,7 +1566,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if a volume group can be created.
         $scope.canCreateVolumeGroup = function() {
-            if($scope.isAvailableDisabled()) {
+            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
                 return false;
             }
 
@@ -1726,7 +1737,10 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true when tags can be edited.
         $scope.canEditTags = function(disk) {
-            return disk.type !== "partition" && disk.type !== "lvm-vg";
+            return (disk.type !== "partition" &&
+                    disk.type !== "lvm-vg" &&
+                    !$scope.isAllStorageDisabled() &&
+                    $scope.isSuperUser());
         };
 
         // Called to enter tag editing mode
@@ -1752,5 +1766,25 @@ angular.module('MAAS').controller('NodeStorageController', [
                 $scope.node, disk.block_id, tags);
             disk.tags = disk.$options.tags;
             disk.$options = {};
+        };
+
+        // Returns true if storage cannot be edited.
+        // (it can't be changed when the node is in any state other
+        //  than Ready or Allocated)
+        $scope.isAllStorageDisabled = function() {
+            var authUser = UsersManager.getAuthUser();
+            if(!angular.isObject(authUser) || !angular.isObject($scope.node) ||
+                (!authUser.is_superuser &&
+                 authUser.username !== $scope.node.owner)) {
+                return true;
+            }else if (angular.isObject($scope.node) &&
+                ["Ready", "Allocated"].indexOf(
+                    $scope.node.status) === -1) {
+                // If the node is not ready or allocated, disable storage panel.
+                return true;
+            } else {
+                // The node must be either ready or broken. Enable it.
+                return false;
+            }
         };
     }]);

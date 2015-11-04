@@ -669,6 +669,7 @@ describe("NodeStorageController", function() {
         it("returns false for NONE", function() {
             var controller = makeController();
             $scope.filesystemMode = null;
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isFilesystemsDisabled()).toBe(false);
         });
@@ -676,6 +677,7 @@ describe("NodeStorageController", function() {
         it("returns false for SINGLE", function() {
             var controller = makeController();
             $scope.filesystemMode = "single";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isFilesystemsDisabled()).toBe(false);
         });
@@ -683,6 +685,7 @@ describe("NodeStorageController", function() {
         it("returns false for MULTI", function() {
             var controller = makeController();
             $scope.filesystemMode = "multi";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isFilesystemsDisabled()).toBe(false);
         });
@@ -690,6 +693,15 @@ describe("NodeStorageController", function() {
         it("returns true for UNMOUNT", function() {
             var controller = makeController();
             $scope.filesystemMode = "unmount";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.isFilesystemsDisabled()).toBe(true);
+        });
+
+        it("returns true when isAllStorageDisabled", function() {
+            var controller = makeController();
+            $scope.filesystemMode = "multi";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
 
             expect($scope.isFilesystemsDisabled()).toBe(true);
         });
@@ -1100,6 +1112,7 @@ describe("NodeStorageController", function() {
         it("returns false for NONE", function() {
             var controller = makeController();
             $scope.availableMode = null;
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isAvailableDisabled()).toBe(false);
         });
@@ -1107,6 +1120,7 @@ describe("NodeStorageController", function() {
         it("returns false for SINGLE", function() {
             var controller = makeController();
             $scope.availableMode = "single";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isAvailableDisabled()).toBe(false);
         });
@@ -1114,6 +1128,7 @@ describe("NodeStorageController", function() {
         it("returns false for MULTI", function() {
             var controller = makeController();
             $scope.availableMode = "multi";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isAvailableDisabled()).toBe(false);
         });
@@ -1121,6 +1136,7 @@ describe("NodeStorageController", function() {
         it("returns true for UNMOUNT", function() {
             var controller = makeController();
             $scope.availableMode = "unmount";
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isAvailableDisabled()).toBe(true);
         });
@@ -1131,18 +1147,21 @@ describe("NodeStorageController", function() {
         it("returns false if lvm-vg", function() {
             var controller = makeController();
             var disk = { type: "lvm-vg" };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(false);
         });
 
         it("returns false if has_partitions", function() {
             var controller = makeController();
             var disk = { type: "physical", has_partitions: true };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(false);
         });
 
         it("returns true otherwise", function() {
             var controller = makeController();
             var disk = { type: "physical", has_partitions: false };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(true);
         });
     });
@@ -1183,6 +1202,8 @@ describe("NodeStorageController", function() {
 
         it("returns false if partition", function() {
             var controller = makeController();
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canAddPartition({
                 type: "partition"
             })).toBe(false);
@@ -1190,6 +1211,8 @@ describe("NodeStorageController", function() {
 
         it("returns false if lvm-vg", function() {
             var controller = makeController();
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canAddPartition({
                 type: "lvm-vg"
             })).toBe(false);
@@ -1197,6 +1220,8 @@ describe("NodeStorageController", function() {
 
         it("returns false if logical volume", function() {
             var controller = makeController();
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canAddPartition({
                 type: "virtual",
                 parent_type: "lvm-vg"
@@ -1205,6 +1230,8 @@ describe("NodeStorageController", function() {
 
         it("returns false if formatted", function() {
             var controller = makeController();
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canAddPartition({
                 type: "physical",
                 fstype: "ext4"
@@ -1223,6 +1250,8 @@ describe("NodeStorageController", function() {
                         block_size: 1024
                     }
                 };
+                spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+                $scope.isSuperUser = function() { return true; };
                 expect($scope.canAddPartition(disk)).toBe(false);
             });
 
@@ -1238,8 +1267,42 @@ describe("NodeStorageController", function() {
                         block_size: 1024
                     }
                 };
+                spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+                $scope.isSuperUser = function() { return true; };
                 expect($scope.canAddPartition(disk)).toBe(false);
             });
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                fstype: "",
+                original: {
+                    partition_table_type: null,
+                    available_size: 10 * 1024 * 1024,
+                    block_size: 1024
+                }
+            };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return false; };
+            expect($scope.canAddPartition(disk)).toBe(false);
+        });
+
+        it("returns false if isAllStorageDisabled", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                fstype: "",
+                original: {
+                    partition_table_type: null,
+                    available_size: 10 * 1024 * 1024,
+                    block_size: 1024
+                }
+            };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
+            expect($scope.canAddPartition(disk)).toBe(false);
+        });
 
         it("returns true otherwise", function() {
             var controller = makeController();
@@ -1252,6 +1315,8 @@ describe("NodeStorageController", function() {
                     block_size: 1024
                 }
             };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canAddPartition(disk)).toBe(true);
         });
     });
@@ -1706,8 +1771,42 @@ describe("NodeStorageController", function() {
                     used_size: 0
                 }
             };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(true);
+        });
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                fstype: null,
+                has_partitions: false,
+                original: {
+                    used_size: 0
+                }
+            };
+            $scope.isSuperUser = function() { return false; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.canDelete(disk)).toBe(false);
+        });
+
+        it("returns false if isAllStorageDisabled", function() {
+            var controller = makeController();
+            var disk = {
+                type: "lvm-vg",
+                fstype: null,
+                has_partitions: false,
+                original: {
+                    used_size: 0
+                }
+            };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
+
+            expect($scope.canDelete(disk)).toBe(false);
         });
 
         it("returns false if volume group used", function() {
@@ -1720,6 +1819,8 @@ describe("NodeStorageController", function() {
                     used_size: makeInteger(100, 10000)
                 }
             };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(false);
         });
@@ -1727,6 +1828,8 @@ describe("NodeStorageController", function() {
         it("returns true if fstype is null", function() {
             var controller = makeController();
             var disk = { fstype: null, has_partitions: false };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(true);
         });
@@ -1734,6 +1837,8 @@ describe("NodeStorageController", function() {
         it("returns true if fstype is empty", function() {
             var controller = makeController();
             var disk = { fstype: "", has_partitions: false };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(true);
         });
@@ -1741,6 +1846,8 @@ describe("NodeStorageController", function() {
         it("returns false if has_partitions is true", function() {
             var controller = makeController();
             var disk = { fstype: "", has_partitions: true };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(false);
         });
@@ -1748,6 +1855,8 @@ describe("NodeStorageController", function() {
         it("returns false if fstype is not empty", function() {
             var controller = makeController();
             var disk = { fstype: "ext4" };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDelete(disk)).toBe(false);
         });
@@ -2377,6 +2486,8 @@ describe("NodeStorageController", function() {
         it("returns false for NONE", function() {
             var controller = makeController();
             $scope.cachesetsMode = null;
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isCacheSetsDisabled()).toBe(false);
         });
@@ -2384,6 +2495,8 @@ describe("NodeStorageController", function() {
         it("returns false for SINGLE", function() {
             var controller = makeController();
             $scope.cachesetsMode = "single";
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isCacheSetsDisabled()).toBe(false);
         });
@@ -2391,13 +2504,35 @@ describe("NodeStorageController", function() {
         it("returns false for MULTI", function() {
             var controller = makeController();
             $scope.cachesetsMode = "multi";
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isCacheSetsDisabled()).toBe(false);
+        });
+
+        it("returns true for when not super user", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "delete";
+            $scope.isSuperUser = function() { return false; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.isCacheSetsDisabled()).toBe(true);
+        });
+
+        it("returns true for when isAllStorageDisabled", function() {
+            var controller = makeController();
+            $scope.cachesetsMode = "delete";
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
+
+            expect($scope.isCacheSetsDisabled()).toBe(true);
         });
 
         it("returns true for DELETE", function() {
             var controller = makeController();
             $scope.cachesetsMode = "delete";
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.isCacheSetsDisabled()).toBe(true);
         });
@@ -2421,6 +2556,8 @@ describe("NodeStorageController", function() {
         it("returns true when not being used", function() {
             var controller = makeController();
             var cacheset = { used_by: "" };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
 
             expect($scope.canDeleteCacheSet(cacheset)).toBe(true);
         });
@@ -2428,6 +2565,26 @@ describe("NodeStorageController", function() {
         it("returns false when being used", function() {
             var controller = makeController();
             var cacheset = { used_by: "bcache0" };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.canDeleteCacheSet(cacheset)).toBe(false);
+        });
+
+        it("returns false when not super user", function() {
+            var controller = makeController();
+            var cacheset = { used_by: "" };
+            $scope.isSuperUser = function() { return false; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.canDeleteCacheSet(cacheset)).toBe(false);
+        });
+
+        it("returns false when isAllStorageDisabled", function() {
+            var controller = makeController();
+            var cacheset = { used_by: "" };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
 
             expect($scope.canDeleteCacheSet(cacheset)).toBe(false);
         });
@@ -2490,6 +2647,7 @@ describe("NodeStorageController", function() {
         it("returns false if isAvailableDisabled returns true", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateCacheSet()).toBe(false);
         });
@@ -2498,6 +2656,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [ { $selected: true }, { $selected: true }];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateCacheSet()).toBe(false);
         });
@@ -2511,6 +2670,7 @@ describe("NodeStorageController", function() {
                     $selected: true
                 }
             ];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateCacheSet()).toBe(false);
         });
@@ -2525,6 +2685,21 @@ describe("NodeStorageController", function() {
                     $selected: true
                 }
             ];
+            $scope.isSuperUser = function() { return true; };
+
+            expect($scope.canCreateCacheSet()).toBe(false);
+        });
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    fstype: null,
+                    $selected: true
+                }
+            ];
+            $scope.isSuperUser = function() { return false; };
 
             expect($scope.canCreateCacheSet()).toBe(false);
         });
@@ -2538,6 +2713,7 @@ describe("NodeStorageController", function() {
                     $selected: true
                 }
             ];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateCacheSet()).toBe(true);
         });
@@ -2584,6 +2760,7 @@ describe("NodeStorageController", function() {
         it("returns false when isAvailableDisabled is true", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateBcache()).toBe(false);
         });
@@ -2592,6 +2769,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             $scope.available = [ { $selected: true }, { $selected: true }];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateBcache()).toBe(false);
         });
@@ -2606,6 +2784,7 @@ describe("NodeStorageController", function() {
                 }
             ];
             $scope.cachesets = [{}];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateBcache()).toBe(false);
         });
@@ -2621,6 +2800,7 @@ describe("NodeStorageController", function() {
                 }
             ];
             $scope.cachesets = [{}];
+            $scope.isSuperUser = function() { return true; };
 
             expect($scope.canCreateBcache()).toBe(false);
         });
@@ -2636,6 +2816,23 @@ describe("NodeStorageController", function() {
                     }
                 ];
                 $scope.cachesets = [];
+                $scope.isSuperUser = function() { return true; };
+
+                expect($scope.canCreateBcache()).toBe(false);
+            });
+
+        it("returns false if not super user ",
+            function() {
+                var controller = makeController();
+                spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+                $scope.available = [
+                    {
+                        fstype: null,
+                        $selected: true
+                    }
+                ];
+                $scope.cachesets = [{}];
+                $scope.isSuperUser = function() { return false; };
 
                 expect($scope.canCreateBcache()).toBe(false);
             });
@@ -2651,6 +2848,7 @@ describe("NodeStorageController", function() {
                     }
                 ];
                 $scope.cachesets = [{}];
+                $scope.isSuperUser = function() { return true; };
 
                 expect($scope.canCreateBcache()).toBe(true);
             });
@@ -2915,6 +3113,7 @@ describe("NodeStorageController", function() {
         it("returns false isAvailableDisabled returns true", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateRAID()).toBe(false);
         });
 
@@ -2922,6 +3121,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateRAID()).toBe(false);
         });
 
@@ -2930,6 +3130,7 @@ describe("NodeStorageController", function() {
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateRAID()).toBe(false);
         });
 
@@ -2945,6 +3146,16 @@ describe("NodeStorageController", function() {
                 }
             ]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
+            expect($scope.canCreateRAID()).toBe(false);
+        });
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return false; };
             expect($scope.canCreateRAID()).toBe(false);
         });
 
@@ -2953,6 +3164,8 @@ describe("NodeStorageController", function() {
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}, {}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canCreateRAID()).toBe(true);
         });
     });
@@ -3596,6 +3809,7 @@ describe("NodeStorageController", function() {
         it("returns false isAvailableDisabled returns true", function() {
             var controller = makeController();
             spyOn($scope, "isAvailableDisabled").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateVolumeGroup()).toBe(false);
         });
 
@@ -3604,6 +3818,7 @@ describe("NodeStorageController", function() {
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateVolumeGroup()).toBe(false);
         });
 
@@ -3619,6 +3834,16 @@ describe("NodeStorageController", function() {
                 }
             ]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
+            expect($scope.canCreateVolumeGroup()).toBe(false);
+        });
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
+            spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return false; };
             expect($scope.canCreateVolumeGroup()).toBe(false);
         });
 
@@ -3627,6 +3852,7 @@ describe("NodeStorageController", function() {
             spyOn($scope, "isAvailableDisabled").and.returnValue(false);
             spyOn($scope, "getSelectedAvailable").and.returnValue([{}]);
             spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
+            $scope.isSuperUser = function() { return true; };
             expect($scope.canCreateVolumeGroup()).toBe(true);
         });
     });
@@ -4025,8 +4251,28 @@ describe("NodeStorageController", function() {
             })).toBe(false);
         });
 
+        it("returns false when not super user", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return false; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            expect($scope.canEditTags({
+                type: "physical"
+            })).toBe(false);
+        });
+
+        it("returns false when isAllStorageDisabled", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(true);
+            expect($scope.canEditTags({
+                type: "physical"
+            })).toBe(false);
+        });
+
         it("returns true for physical", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canEditTags({
                 type: "physical"
             })).toBe(true);
@@ -4034,6 +4280,8 @@ describe("NodeStorageController", function() {
 
         it("returns true for virtual", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canEditTags({
                 type: "virtual"
             })).toBe(true);
@@ -4093,6 +4341,62 @@ describe("NodeStorageController", function() {
                 node, disk.block_id, ["new", "old"]);
             expect(disk.$options).toEqual({});
             expect(disk.tags).toEqual(tags);
+        });
+    });
+
+    describe("isAllStorageDisabled", function() {
+
+        var RegionConnection, UserManager;
+        beforeEach(inject(function($injector) {
+            UsersManager = $injector.get("UsersManager");
+            RegionConnection = $injector.get("RegionConnection");
+
+            // Mock buildSocket so an actual connection is not made.
+            webSocket = new MockWebSocket();
+            spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
+        }));
+
+        it("false when status is Ready", function() {
+            var controller = makeController();
+            $scope.node.status = "Ready";
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            expect($scope.isAllStorageDisabled()).toBe(false);
+        });
+
+        it("false when status is Allocated", function() {
+            var controller = makeController();
+            $scope.node.status = "Allocated";
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            expect($scope.isAllStorageDisabled()).toBe(false);
+        });
+
+        it("false when Allocated and owned", function() {
+            var controller = makeController();
+            var user = makeName("user");
+            $scope.node.status = "Allocated";
+            $scope.node.owner = user;
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: false, username: user });
+            expect($scope.isAllStorageDisabled()).toBe(false);
+        });
+
+        it("true when not admin", function() {
+            var controller = makeController();
+            $scope.node.status = "Allocated";
+            $scope.node.owner = makeName("user");
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: false, username: makeName("user") });
+            expect($scope.isAllStorageDisabled()).toBe(true);
+        });
+
+        it("true otherwise", function() {
+            var controller = makeController();
+            $scope.node.status = makeName("status");
+            spyOn(UsersManager, "getAuthUser").and.returnValue(
+                { is_superuser: true });
+            expect($scope.isAllStorageDisabled()).toBe(true);
         });
     });
 });

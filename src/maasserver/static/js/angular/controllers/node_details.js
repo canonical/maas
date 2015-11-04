@@ -477,6 +477,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         }
 
+        // Return true if user is a super user/
+        $scope.isSuperUser = function() {
+            var authUser = UsersManager.getAuthUser();
+            if(!angular.isObject(authUser)) {
+                return false;
+            }
+            return authUser.is_superuser;
+        };
+
         // Called for autocomplete when the user is typing a tag name.
         $scope.tagsAutocomplete = function(query) {
             return TagsManager.autocomplete(query);
