@@ -27,8 +27,11 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
 )
 from maasserver.fields import CaseInsensitiveChoiceField
-from maasserver.models.interface import Interface
-from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models import (
+    BondInterface,
+    Interface,
+    StaticIPAddress,
+)
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
     set_form_error,
@@ -65,6 +68,12 @@ class InterfaceLinkForm(forms.Form):
         self.fields['subnet'].queryset = self.instance.vlan.subnet_set.all()
 
     def clean(self):
+        for interface_set in self.instance.interface_set.all():
+            if isinstance(interface_set, BondInterface):
+                set_form_error(
+                    self, "bond",
+                    ("Cannot link interface(%s) when interface is in a "
+                     "bond(%s)." % (self.instance.name, interface_set.name)))
         cleaned_data = super(InterfaceLinkForm, self).clean()
         mode = cleaned_data.get("mode", None)
         if mode is None:

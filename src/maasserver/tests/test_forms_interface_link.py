@@ -433,6 +433,29 @@ class TestInterfaceLinkForm(MAASServerTestCase):
                 "Cannot use in mode '%s'." % (INTERFACE_LINK_TYPE.LINK_UP)]
             }, form.errors)
 
+    def test_linking_when_no_bond_not_allowed(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[eth0, eth1], node=node)
+        subnet = factory.make_Subnet(vlan=eth0.vlan)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet)
+        ip_in_static = IPAddress(ngi.get_static_ip_range().first)
+        form = InterfaceLinkForm(instance=eth0, data={
+            "mode": INTERFACE_LINK_TYPE.STATIC,
+            "subnet": subnet.id,
+            "ip_address": "%s" % ip_in_static,
+            })
+        self.assertFalse(form.is_valid())
+        self.assertEquals({
+            "bond": [("Cannot link interface(%s) when interface is in a "
+                      "bond(%s)." % (eth0.name, bond0.name))]},
+            form.errors)
+
 
 class TestInterfaceUnlinkForm(MAASServerTestCase):
 
