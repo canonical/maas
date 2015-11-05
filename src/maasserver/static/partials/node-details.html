@@ -602,7 +602,7 @@
                                 <div class="table__data table__column--15">Bond</div>
                                 <div class="table__data table__column--67"></div>
                                 <div class="table__dropdown">
-                                    <div class="table__row table__dropdown-row">
+                                    <div class="table__row table__dropdown-row active">
                                         <div class="table__data table__column--3">
                                         </div>
                                         <div class="table__data table__column--15">
@@ -633,13 +633,13 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="table__row table__dropdown-row table__dropdown-row--head">
+                                    <div class="table__row table__dropdown-row table__dropdown-row--head active">
                                         <div class="table__header table__column--3"></div>
                                         <div class="table__header table__column--15">Name</div>
                                         <div class="table__header table__column--15">Type</div>
                                         <div class="table__header table__column--67">Primary</div>
                                     </div>
-                                    <div class="table__row table__dropdown-row no-border"
+                                    <div class="table__row table__dropdown-row no-border active"
                                         data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
                                         <div class="table__data no-padding-top table__column--3"></div>
                                         <div class="table__data no-padding-top table__column--15">{$ parent.name $}</div>
@@ -648,7 +648,7 @@
                                             <input type="radio" name="bondPrimary" data-ng-model="newBondInterface.primary" data-ng-value="parent">
                                         </div>
                                     </div>
-                                    <div class="table__row table__dropdown-row">
+                                    <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
                                             <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
                                             <button class="cta-ubuntu" data-ng-click="addBond()">Save</button>
@@ -745,7 +745,7 @@
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
-                                        <div class="table__row table__dropdown-row">
+                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: filesystemMode !== null && filesystemMode !== 'multi' }">
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'single'">
                                                 <div class="table__data left">
                                                       <a class="link-cta-ubuntu text-button"
