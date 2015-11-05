@@ -2312,6 +2312,32 @@ describe("NodeStorageController", function() {
                 node, disk.block_id, 2.6 * 1000 * 1000 * 1000);
         });
 
+        // regression test for https://bugs.launchpad.net/maas/+bug/1509535
+        it("calls createPartition with available_size bytes" +
+            " even when human size gets rounded down", function() {
+
+                var controller = makeController();
+                var disk = {
+                    block_id: makeInteger(0, 100),
+                    original: {
+                        partition_table_type: "mbr",
+                        available_size: 2.035 * 1000 * 1000 * 1000,
+                        available_size_human: "2.0 GB",
+                        block_size: 512
+                    },
+                    $options: {
+                        size: "2.0",
+                        sizeUnits: "GB"
+                    }
+                };
+                spyOn(NodesManager, "createPartition");
+
+                $scope.availableConfirmPartition(disk);
+
+                expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                    node, disk.block_id, 2.035 * 1000 * 1000 * 1000);
+        });
+
         it("calls createPartition with bytes minus partition table extra",
             function() {
                 var controller = makeController();
