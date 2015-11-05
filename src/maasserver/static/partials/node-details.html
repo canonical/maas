@@ -272,6 +272,31 @@
             </form>
         </div>
     </div>
+    <div class="row" data-ng-show="devices.length">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <h2 class="title">Containers and VMs</h2>
+            </div>
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--30">Name</div>
+                            <div class="table__header table__column--30">MAC</div>
+                            <div class="table__header table__column--40">IP Address</div>
+                        </div>
+                    </header>
+                    <main class="table__body" data-selected-rows>
+                        <div class="table__row" data-ng-repeat="device in devices">
+                            <div class="table__data table__column--30">{$ device.name $}</div>
+                            <div class="table__data table__column--30">{$ device.mac_address $}</div>
+                            <div class="table__data table__column--40">{$ device.ip_address $}</div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row ng-hide" data-ng-show="isSuperUser()">
         <div class="inner-wrapper">
             <form class="disabled">

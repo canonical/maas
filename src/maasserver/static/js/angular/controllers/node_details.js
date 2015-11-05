@@ -38,7 +38,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             skipStorage: false
         };
         $scope.checkingPower = false;
-
+        $scope.devices = [];
 
         // Holds errors that are displayed on the details page.
         $scope.errors = {
@@ -361,6 +361,56 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         }
 
+        // Update the devices array on the scope based on the device children
+        // on the node.
+        function updateDevices() {
+            $scope.devices = [];
+            angular.forEach($scope.node.devices, function(child) {
+                var device = {
+                    name: child.fqdn
+                };
+
+                // Add the interfaces to the device object if any exists.
+                if(angular.isArray(child.interfaces) &&
+                    child.interfaces.length > 0) {
+                    angular.forEach(child.interfaces, function(nic, nicIdx) {
+                        var deviceWithMAC = angular.copy(device);
+                        deviceWithMAC.mac_address = nic.mac_address;
+
+                        // Remove device name so it is not duplicated in the
+                        // table since this is another MAC address on this
+                        // device.
+                        if(nicIdx > 0) {
+                            deviceWithMAC.name = "";
+                        }
+
+                        // Add this links to the device object if any exists.
+                        if(angular.isArray(nic.links) &&
+                            nic.links.length > 0) {
+                            angular.forEach(nic.links, function(link, lIdx) {
+                                var deviceWithLink = angular.copy(
+                                    deviceWithMAC);
+                                deviceWithLink.ip_address = link.ip_address;
+
+                                // Remove the MAC address so it is not
+                                // duplicated in the table since this is
+                                // another link on this interface.
+                                if(lIdx > 0) {
+                                    deviceWithLink.mac_address = "";
+                                }
+
+                                $scope.devices.push(deviceWithLink);
+                            });
+                        } else {
+                            $scope.devices.push(deviceWithMAC);
+                        }
+                    });
+                } else {
+                    $scope.devices.push(device);
+                }
+            });
+        }
+
         // Starts the watchers on the scope.
         function startWatching() {
             // Update the title and name when the node fqdn changes.
@@ -368,6 +418,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 updateTitle();
                 updateName();
             });
+
+            // Update the devices on the node.
+            $scope.$watch("node.devices", updateDevices);
 
             // Update the availableActionOptions when the node actions change.
             $scope.$watch("node.actions", updateAvailableActionOptions);

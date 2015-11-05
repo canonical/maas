@@ -204,6 +204,8 @@ describe("NodeDetailsController", function() {
             skipNetworking: false,
             skipStorage: false
         });
+        expect($scope.checkingPower).toBe(false);
+        expect($scope.devices).toEqual([]);
     });
 
     it("sets initial values for summary section", function() {
@@ -625,6 +627,7 @@ describe("NodeDetailsController", function() {
 
         expect(watches).toEqual([
             "node.fqdn",
+            "node.devices",
             "node.actions",
             "node.nodegroup.id",
             "node.architecture",
@@ -666,6 +669,87 @@ describe("NodeDetailsController", function() {
         $scope.$destroy();
         expect(GeneralManager.stopPolling.calls.allArgs()).toEqual(
             [["architectures"], ["hwe_kernels"], ["osinfo"]]);
+    });
+
+    it("updates $scope.devices", function() {
+        var setActiveDefer = $q.defer();
+        spyOn(NodesManager, "setActiveItem").and.returnValue(
+            setActiveDefer.promise);
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        node.devices = [
+            {
+                fqdn: "device1.maas",
+                interfaces: []
+            },
+            {
+                fqdn: "device2.maas",
+                interfaces: [
+                    {
+                        mac_address: "00:11:22:33:44:55",
+                        links: []
+                    }
+                ]
+            },
+            {
+                fqdn: "device3.maas",
+                interfaces: [
+                    {
+                        mac_address: "00:11:22:33:44:66",
+                        links: []
+                    },
+                    {
+                        mac_address: "00:11:22:33:44:77",
+                        links: [
+                            {
+                                ip_address: "192.168.122.1"
+                            },
+                            {
+                                ip_address: "192.168.122.2"
+                            },
+                            {
+                                ip_address: "192.168.122.3"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        defer.resolve();
+        $rootScope.$digest();
+        setActiveDefer.resolve(node);
+        $rootScope.$digest();
+
+        expect($scope.devices).toEqual([
+            {
+                name: "device1.maas"
+            },
+            {
+                name: "device2.maas",
+                mac_address: "00:11:22:33:44:55"
+            },
+            {
+                name: "device3.maas",
+                mac_address: "00:11:22:33:44:66"
+            },
+            {
+                name: "",
+                mac_address: "00:11:22:33:44:77",
+                ip_address: "192.168.122.1"
+            },
+            {
+                name: "",
+                mac_address: "",
+                ip_address: "192.168.122.2"
+            },
+            {
+                name: "",
+                mac_address: "",
+                ip_address: "192.168.122.3"
+            }
+        ]);
     });
 
     describe("tagsAutocomplete", function() {
