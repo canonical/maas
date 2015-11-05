@@ -31,6 +31,7 @@ from urlparse import urlparse
 
 from crochet import TimeoutError
 from curtin.commands import block_meta
+from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
 from maasserver import logger
@@ -216,14 +217,8 @@ def compose_curtin_verbose_preseed():
         return []
 
 
-def get_curtin_userdata(node):
-    """Return the curtin user-data.
-
-    :param node: The node for which to generate the user-data.
-    :return: The rendered user-data string.
-    :rtype: unicode.
-    """
-    installer_url = get_curtin_installer_url(node)
+def get_curtin_yaml_config(node):
+    """Return the curtin configration for the node."""
     main_config = get_curtin_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
     swap_config = compose_curtin_swap_preseed(node)
@@ -253,13 +248,32 @@ def get_curtin_userdata(node):
     else:
         storage_config = []
 
+    return (
+        [main_config] + reporter_config + storage_config + network_config +
+        swap_config + kernel_config + verbose_config)
+
+
+def get_curtin_merged_config(node):
+    """Return the merged curtin configuration for the node."""
+    yaml_config = get_curtin_yaml_config(node)
+    config = {}
+    for cfg in yaml_config:
+        merge_config(config, yaml.load(cfg))
+    return config
+
+
+def get_curtin_userdata(node):
+    """Return the curtin user-data.
+
+    :param node: The node for which to generate the user-data.
+    :return: The rendered user-data string.
+    :rtype: unicode.
+    """
     # Pack the curtin and the configuration into a script to execute on the
     # deploying node.
     return pack_install(
-        configs=(
-            [main_config] + reporter_config + storage_config + network_config +
-            swap_config + kernel_config + verbose_config),
-        args=[installer_url])
+        configs=get_curtin_yaml_config(node),
+        args=[get_curtin_installer_url(node)])
 
 
 def get_curtin_image(node):

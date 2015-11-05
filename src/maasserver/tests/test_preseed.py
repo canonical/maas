@@ -53,6 +53,7 @@ from maasserver.preseed import (
     get_curtin_context,
     get_curtin_image,
     get_curtin_installer_url,
+    get_curtin_merged_config,
     get_curtin_userdata,
     get_enlist_preseed,
     get_netloc_and_path,
@@ -83,6 +84,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.models import NodeKey
+from mock import sentinel
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
@@ -731,6 +733,38 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
             "verbosity": 3,
             "showtrace": True,
             }, yaml.load(preseed[0]))
+
+
+class TestGetCurtinMergedConfig(MAASServerTestCase):
+
+    def test__merges_configs_together(self):
+        configs = [
+            yaml.safe_dump({
+                "maas": {
+                    "test": "data"
+                },
+                "override": "data",
+            }),
+            yaml.safe_dump({
+                "maas2": {
+                    "test": "data2"
+                },
+                "override": "data2",
+            }),
+        ]
+        mock_yaml_config = self.patch_autospec(
+            preseed_module, "get_curtin_yaml_config")
+        mock_yaml_config.return_value = configs
+        self.assertEquals({
+            "maas": {
+                "test": "data"
+            },
+            "maas2": {
+                "test": "data2"
+            },
+            "override": "data2",
+        }, get_curtin_merged_config(sentinel.node))
+        self.assertThat(mock_yaml_config, MockCalledOnceWith(sentinel.node))
 
 
 class TestGetCurtinUserData(

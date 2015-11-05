@@ -24,6 +24,7 @@ import bson
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
+from maasserver.api import nodes as nodes_module
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -83,6 +84,7 @@ from testtools.matchers import (
     HasLength,
     Not,
 )
+import yaml
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -2186,3 +2188,43 @@ class TestClearDefaultGateways(APITestCase):
         node = reload_object(node)
         self.assertIsNone(node.gateway_link_ipv4)
         self.assertIsNone(node.gateway_link_ipv6)
+
+
+class TestGetCurtinConfig(APITestCase):
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test__500_when_node_not_in_deployment_state(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user,
+            status=factory.pick_enum(
+                NODE_STATUS, but_not=[
+                    NODE_STATUS.DEPLOYING,
+                    NODE_STATUS.DEPLOYED,
+                    NODE_STATUS.FAILED_DEPLOYMENT,
+                ]))
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'get_curtin_config'})
+        self.assertEquals(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test__returns_curtin_config_in_yaml(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=NODE_STATUS.DEPLOYING)
+        fake_config = {
+            "config": factory.make_name("config")
+        }
+        mock_get_curtin_merged_config = self.patch(
+            nodes_module, "get_curtin_merged_config")
+        mock_get_curtin_merged_config.return_value = fake_config
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'get_curtin_config'})
+        self.assertEquals(
+            httplib.OK, response.status_code, response.content)
+        self.assertEquals(
+            yaml.safe_dump(fake_config, default_flow_style=False),
+            response.content)
+        self.assertThat(
+            mock_get_curtin_merged_config, MockCalledOnceWith(node))

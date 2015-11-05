@@ -323,6 +323,7 @@ class TestDescribingAPI(MAASServerTestCase):
             "POST set_storage_layout op=set_storage_layout restful=False",
             "POST clear_default_gateways op=clear_default_gateways "
             "restful=False",
+            "GET get_curtin_config op=get_curtin_config restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action

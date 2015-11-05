@@ -78,6 +78,7 @@ from maasserver.models import (
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
+from maasserver.preseed import get_curtin_merged_config
 from maasserver.rpc import getClientFor
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -96,6 +97,7 @@ from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
+import yaml
 
 # Node's fields exposed on the API.
 DISPLAYED_NODE_FIELDS = (
@@ -930,6 +932,10 @@ class NodeHandler(OperationsHandler):
         If the default gateways need to be specific for this node you can set
         which interface and subnet's gateway to use when this node is deployed
         with the `node-interfaces set-default-gateway` API.
+
+        Returns 404 if the node could not be found.
+        Returns 403 if the user does not have permission to clear the default
+        gateways.
         """
         node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
@@ -937,6 +943,27 @@ class NodeHandler(OperationsHandler):
         node.gateway_link_ipv6 = None
         node.save()
         return node
+
+    @operation(idempotent=True)
+    def get_curtin_config(self, request, system_id):
+        """Return the rendered curtin configuration for the node.
+
+        Returns 404 if the node could not be found.
+        Returns 403 if the user does not have permission to get the curtin
+        configuration.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+        if node.status not in [
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.FAILED_DEPLOYMENT]:
+            raise MAASAPIBadRequest(
+                "Node %s is not in a deployment state." % node.hostname)
+        return HttpResponse(
+            yaml.safe_dump(
+                get_curtin_merged_config(node), default_flow_style=False),
+            content_type='text/plain')
 
 
 def create_node(request):
