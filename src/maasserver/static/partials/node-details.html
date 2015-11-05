@@ -479,10 +479,11 @@
                                 </div>
                                 <div class="table__data table__column--6">
                                     <div class="table__controls align-right">
-                                        <a class="icon add"
+                                        <a class="icon add tooltip"
+                                            data-tooltip="Add"
                                             data-ng-click="quickAdd(interface)"
                                             data-ng-show="canAddAlias(interface) || canAddVLAN(interface)"></a>
-                                        <a class="icon delete" data-ng-click="quickRemove(interface)"></a>
+                                        <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickRemove(interface)"></a>
                                     </div>
                                 </div>
                                 <div class="table__dropdown--info" data-ng-show="isShowingMembers(interface)">
@@ -740,8 +741,8 @@
                                     <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table__column--10">
-                                        <div class="table__controls" data-ng-hide="isAllStorageDisabled()">
-                                            <a class="icon delete" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
+                                        <div class="table__controls">
+                                            <a class="icon delete tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -802,7 +803,7 @@
                                     <div class="table__data table__column--45">{$ cacheset.used_by $}</div>
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
-                                            <a class="icon delete"
+                                            <a class="icon delete tooltip" data-tooltip="Remove"
                                                 data-ng-show="canDeleteCacheSet(cacheset)"
                                                 data-ng-click="quickCacheSetDelete(cacheset)">Remove</a>
                                         </div>
@@ -913,10 +914,12 @@
                                     </div>
                                     <div class="table__data table__column--7">
                                         <div class="table__controls">
-                                            <a class="icon partition ng-hide"
+                                            <a class="icon partition tooltip ng-hide"
+                                                data-tooltip="Partition"
                                                 data-ng-show="canAddPartition(item)"
                                                 data-ng-click="availableQuickPartition(item)">Partition</a>
-                                            <a class="icon delete"
+                                            <a class="icon delete tooltip"  data-tooltip="Remove"
+                                                data-tooltip="Delete"
                                                 data-ng-show="hasUnmountedFilesystem(item) || canDelete(item)"
                                                 data-ng-click="availableQuickDelete(item)">Remove</a>
                                         </div>
@@ -1265,19 +1268,23 @@
                             </div>
                         </main>
                     </section>
-                    <a class="link-cta-ubuntu secondary margin-right"
+                    <a class="link-cta-ubuntu secondary margin-right tooltip"
+                        data-tooltip="Select two or more physical devices to create a RAID"
                         data-ng-disabled="!canCreateRAID()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createRAID()">Create RAID</a>
-                    <a class="link-cta-ubuntu secondary margin-right"
+                    <a class="link-cta-ubuntu secondary margin-right tooltip"
+                        data-tooltip="Select one or more devices to create a volume group"
                         data-ng-disabled="!canCreateVolumeGroup()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createVolumeGroup()">Create volume group</a>
-                    <a class="link-cta-ubuntu secondary margin-right"
+                    <a class="link-cta-ubuntu secondary margin-right tooltip"
+                        data-tooltip="Select one device to create a cache set"
                         data-ng-disabled="!canCreateCacheSet()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createCacheSet()">Create cache Set</a>
-                    <a class="link-cta-ubuntu secondary"
+                    <a class="link-cta-ubuntu secondary tooltip"
+                        data-tooltip="Create at least one cache set, then select your backing device to create bcache"
                         data-ng-disabled="!canCreateBcache()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createBcache()">Create bcache</a>
@@ -1342,7 +1349,7 @@
                     <div class="table__data table__column--7">
                         <div class="table__controls">
                             <a href="" class="icon add">Add logic volume</a>
-                            <a class="icon delete">Delete</a>
+                            <a class="icon delete tooltip" data-tooltip="Remove">Delete</a>
                         </div>
                     </div>
                     <div class="table__dropdown--info">

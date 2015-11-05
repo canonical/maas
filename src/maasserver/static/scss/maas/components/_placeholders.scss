@@ -15,7 +15,6 @@
     height: 16px;
     display: inline-block;
     text-indent: 999em;
-    overflow: hidden;
     background-repeat: no-repeat;
     background-size: 16px 16px;
     vertical-align: middle;
@@ -243,4 +242,72 @@
 
 .no-margin-bottom {
     margin-bottom: 0;
+}
+
+.tooltip {
+  position: relative;
+
+  &::before {
+    content: attr(data-tooltip) ;
+    font-size: 13px;
+    font-weight: 400;
+    position:absolute;
+    z-index: 999;
+    white-space:nowrap;
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    -ms-transform: translateX(-50%);
+    transform: translateX(-50%);
+    background:#333;
+    color:#FFF;
+    padding: 10px;
+    text-indent: 0;
+    opacity: 0;
+    transition:opacity 0.4s ease-out;
+    border-radius: 5px;
+    box-shadow: 0px 1px 3px 0 rgba(51,51,51,0.2);
+    top: -9999em;
+  }
+
+  &::after {
+    position: absolute;
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    -ms-transform: translateX(-50%);
+    transform: translateX(-50%);
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    z-index: 1000;
+
+    transition:opacity 0.4s ease-out;
+
+    border-top: 5px solid #333;
+    opacity: 0;
+    top: -9999em;
+  }
+
+
+  &:hover::before {
+    opacity: 1 !important;
+    top: -47px;
+  }
+
+  &:hover::after {
+    opacity: 1 !important;
+    top: -10px;
+  }
+}
+
+.link-cta-ubuntu,
+.cta-ubuntu {
+
+    &.tooltip {
+
+      &:hover::before {
+        top: -50px;
+      }
+    }
 }
