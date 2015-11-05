@@ -382,10 +382,21 @@ def nodes_by_interface(interfaces_label_map):
     """Determines the set of nodes that match the specified
     LabeledConstraintMap (which must be a map of interface constraints.)
 
+    Returns a dictionary in the format:
+    {
+        <label1>: {
+            <node1>: [<interface1>, <interface2>, ...]
+            <node2>: ...
+            ...
+        }
+        <label2>: ...
+    }
+
     :param interfaces_label_map: LabeledConstraintMap
-    :return: set
+    :return: dict
     """
     node_ids = None
+    label_map = {}
     for label in interfaces_label_map:
         specifiers = []
         constraints = interfaces_label_map[label]
@@ -398,18 +409,22 @@ def nodes_by_interface(interfaces_label_map):
         if node_ids is None:
             # The first time through the filter, build the list
             # of candidate nodes.
-            nodes = Interface.objects.filter_by_specifiers(
+            node_ids, node_map = Interface.objects.get_matching_node_map(
                 specifiers)
-            node_ids = set(nodes.values_list('node__id', flat=True))
+            label_map[label] = node_map
         else:
             # For subsequent labels, only match nodes that already matched a
-            # preceding label.
-            current_matching_nodes = Interface.objects.filter(
-                node__id__in=node_ids)
-            filtered_nodes = current_matching_nodes.filter_by_specifiers(
+            # preceding label. Use the set intersection operator to do this,
+            # because that will yield more complete data in the label_map.
+            # (which is less efficient, but may be needed for troubleshooting.)
+            # If a more efficient approach is desired, this could be changed
+            # to filter the nodes starting from an 'id__in' filter using the
+            # current 'node_ids' set.
+            new_node_ids, node_map = Interface.objects.get_matching_node_map(
                 specifiers)
-            node_ids = filtered_nodes.values_list('node__id', flat=True)
-    return node_ids
+            label_map[label] = node_map
+            node_ids &= new_node_ids
+    return node_ids, label_map
 
 
 class LabeledConstraintMapField(Field):
@@ -801,10 +816,12 @@ class AcquireNodeForm(RenamableFieldsForm):
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
         # Filter by interfaces (networking)
+        compatible_interfaces = {}
         interfaces_label_map = self.cleaned_data.get(
             self.get_field_name('interfaces'))
         if interfaces_label_map is not None:
-            node_ids = nodes_by_interface(interfaces_label_map)
+            node_ids, compatible_interfaces = nodes_by_interface(
+                interfaces_label_map)
             if node_ids is not None:
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
@@ -816,4 +833,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         # constraints.
         filtered_nodes = filtered_nodes.distinct().extra(
             select={'cost': "cpu_count + memory / 1024"})
-        return filtered_nodes.order_by("cost"), compatible_nodes
+        return (
+            filtered_nodes.order_by("cost"), compatible_nodes,
+            compatible_interfaces
+        )

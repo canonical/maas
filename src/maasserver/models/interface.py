@@ -180,6 +180,22 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             current_q,
             Q(ip_addresses__ip__isnull=True) | Q(ip_addresses__ip=''))
 
+    def get_matching_node_map(self, specifiers):
+        """Returns a tuple where the first element is a set of matching node
+        IDs, and the second element is a dictionary mapping a node ID to a list
+        of matching interfaces, such as:
+
+        {
+            <node1>: [<interface1>, <interface2>, ...]
+            <node2>: [<interface3>, ...]
+            ...
+        }
+
+        :returns: tuple (set, dict)
+        """
+        return super(InterfaceQueriesMixin, self).get_matching_object_map(
+            specifiers, 'node__id')
+
 
 class InterfaceQuerySet(InterfaceQueriesMixin, QuerySet):
     """Custom QuerySet which mixes in some additional queries specific to

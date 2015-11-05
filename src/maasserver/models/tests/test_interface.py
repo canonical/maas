@@ -333,6 +333,58 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             Interface.objects.filter_by_specifiers(
                 "mode:unconfigured"))
 
+    def test__get_matching_node_map(self):
+        space1 = factory.make_Space()
+        space2 = factory.make_Space()
+        subnet1 = factory.make_Subnet(space=space1)
+        subnet2 = factory.make_Subnet(space=space2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        nodes1, map1 = Interface.objects.get_matching_node_map(
+            "space:%s" % space1.name)
+        self.assertItemsEqual(nodes1, [node1.id])
+        self.assertItemsEqual(map1, {node1.id: [iface1.id]})
+        nodes2, map2 = Interface.objects.get_matching_node_map(
+            "space:%s" % space2.name)
+        self.assertItemsEqual(nodes2, [node2.id])
+        self.assertItemsEqual(map2, {node2.id: [iface2.id]})
+        nodes3, map3 = Interface.objects.get_matching_node_map(
+            ["space:%s" % space1.name, "space:%s" % space2.name])
+        self.assertItemsEqual(nodes3, [node1.id, node2.id])
+        self.assertItemsEqual(map3, {
+            node1.id: [iface1.id],
+            node2.id: [iface2.id],
+        })
+
+    def test__get_matching_node_map_with_multiple_interfaces(self):
+        space1 = factory.make_Space()
+        space2 = factory.make_Space()
+        subnet1 = factory.make_Subnet(space=space1)
+        subnet2 = factory.make_Subnet(space=space2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        iface3 = factory.make_Interface(node=node1)
+        factory.make_StaticIPAddress(interface=iface3, subnet=subnet1)
+        nodes1, map1 = Interface.objects.get_matching_node_map(
+            "space:%s" % space1.name)
+        self.assertItemsEqual(nodes1, [node1.id])
+        self.assertItemsEqual(map1, {node1.id: [iface1.id, iface3.id]})
+        nodes2, map2 = Interface.objects.get_matching_node_map(
+            "space:%s" % space2.name)
+        self.assertItemsEqual(nodes2, [node2.id])
+        self.assertItemsEqual(map2, {node2.id: [iface2.id]})
+        nodes3, map3 = Interface.objects.get_matching_node_map(
+            ["space:%s" % space1.name, "space:%s" % space2.name])
+        self.assertItemsEqual(nodes3, [node1.id, node2.id])
+        self.assertItemsEqual(map3, {
+            node1.id: [iface1.id, iface3.id],
+            node2.id: [iface2.id],
+        })
+
 
 class InterfaceTest(MAASServerTestCase):
 

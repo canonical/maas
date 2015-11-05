@@ -80,6 +80,7 @@ from testtools.matchers import (
     Equals,
     HasLength,
     MatchesListwise,
+    Not,
 )
 
 
@@ -1139,6 +1140,9 @@ class TestNodesAPI(APITestCase):
         """Storage label is returned alongside node data"""
         node = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=False)
+        # The ID may always be '1', which won't be interesting for testing.
+        for _ in range(1, random.choice([1, 3, 5])):
+            factory.make_PhysicalBlockDevice()
         factory.make_PhysicalBlockDevice(
             node=node, size=11 * (1000 ** 3), tags=['ssd'])
         response = self.client.post(reverse('nodes_handler'), {
@@ -1147,9 +1151,131 @@ class TestNodesAPI(APITestCase):
         })
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
-        device_id = response_json['physicalblockdevice_set'][0]['id'].__str__()
-        constraint_name = response_json['constraint_map'][device_id]
+        device_id = response_json['physicalblockdevice_set'][0]['id']
+        constraint_map = response_json.get('constraint_map')
+        constraint_name = constraint_map[unicode(device_id)]
         self.assertItemsEqual(constraint_name, 'needed')
+        constraints = response_json['constraints_by_type']
+        self.expectThat(constraints, Contains('storage'))
+        self.expectThat(constraints['storage'], Contains('needed'))
+        self.expectThat(constraints['storage']['needed'], Contains(device_id))
+        self.expectThat(constraints, Not(Contains('verbose_storage')))
+
+    def test_POST_acquire_allocates_node_by_storage_with_verbose(self):
+        """Storage label is returned alongside node data"""
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False)
+        # The ID may always be '1', which won't be interesting for testing.
+        for _ in range(1, random.choice([1, 3, 5])):
+            factory.make_PhysicalBlockDevice()
+        factory.make_PhysicalBlockDevice(
+            node=node, size=11 * (1000 ** 3), tags=['ssd'])
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'storage': 'needed:10(ssd)',
+            'verbose': 'true',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        device_id = response_json['physicalblockdevice_set'][0]['id']
+        constraint_map = response_json.get('constraint_map')
+        constraint_name = constraint_map[unicode(device_id)]
+        self.assertItemsEqual(constraint_name, 'needed')
+        constraints = response_json['constraints_by_type']
+        self.expectThat(constraints, Contains('storage'))
+        self.expectThat(constraints['storage'], Contains('needed'))
+        self.expectThat(constraints['storage']['needed'], Contains(device_id))
+        verbose_storage = constraints.get('verbose_storage')
+        self.expectThat(verbose_storage, Contains(unicode(node.id)))
+        self.expectThat(
+            verbose_storage[unicode(node.id)], Equals(constraint_map))
+
+    def test_POST_acquire_allocates_node_by_interfaces(self):
+        """Interface label is returned alongside node data"""
+        fabric = factory.make_Fabric('ubuntu')
+        # The ID may always be '1', which won't be interesting for testing.
+        for _ in range(1, random.choice([1, 3, 5])):
+            factory.make_Interface()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, fabric=fabric)
+        iface = node.get_boot_interface()
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'interfaces': 'needed:fabric=ubuntu',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.expectThat(
+            response_json['substatus'], Equals(NODE_STATUS.ALLOCATED))
+        constraints = response_json['constraints_by_type']
+        self.expectThat(constraints, Contains('interfaces'))
+        interfaces = constraints.get('interfaces')
+        self.expectThat(interfaces, Contains('needed'))
+        self.expectThat(interfaces['needed'], Contains(iface.id))
+        self.expectThat(constraints, Not(Contains('verbose_interfaces')))
+
+    def test_POST_acquire_allocates_node_by_interfaces_dry_run_with_verbose(
+            self):
+        """Interface label is returned alongside node data"""
+        fabric = factory.make_Fabric('ubuntu')
+        # The ID may always be '1', which won't be interesting for testing.
+        for _ in range(1, random.choice([1, 3, 5])):
+            factory.make_Interface()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, fabric=fabric)
+        iface = node.get_boot_interface()
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'interfaces': 'needed:fabric=ubuntu',
+            'verbose': 'true',
+            'dry_run': 'true',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.expectThat(
+            response_json['substatus'], Equals(NODE_STATUS.READY))
+        # Check that we still got the verbose constraints output even if
+        # it was a dry run.
+        constraints = response_json['constraints_by_type']
+        self.expectThat(constraints, Contains('interfaces'))
+        interfaces = constraints.get('interfaces')
+        self.expectThat(interfaces, Contains('needed'))
+        self.expectThat(interfaces['needed'], Contains(iface.id))
+        verbose_interfaces = constraints.get('verbose_interfaces')
+        self.expectThat(
+            verbose_interfaces['needed'], Contains(unicode(node.id)))
+        self.expectThat(
+            verbose_interfaces['needed'][unicode(node.id)],
+            Contains(iface.id))
+
+    def test_POST_acquire_allocates_node_by_interfaces_with_verbose(self):
+        """Interface label is returned alongside node data"""
+        fabric = factory.make_Fabric('ubuntu')
+        # The ID may always be '1', which won't be interesting for testing.
+        for _ in range(1, random.choice([1, 3, 5])):
+            factory.make_Interface()
+        factory.make_Node()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, fabric=fabric)
+        iface = node.get_boot_interface()
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'interfaces': 'needed:fabric=ubuntu',
+            'verbose': 'true',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        constraints = response_json['constraints_by_type']
+        self.expectThat(constraints, Contains('interfaces'))
+        interfaces = constraints.get('interfaces')
+        self.expectThat(interfaces, Contains('needed'))
+        self.expectThat(interfaces['needed'], Equals([iface.id]))
+        verbose_interfaces = constraints.get('verbose_interfaces')
+        self.expectThat(
+            verbose_interfaces['needed'], Contains(unicode(node.id)))
+        self.expectThat(
+            verbose_interfaces['needed'][unicode(node.id)],
+            Contains(iface.id))
 
     def test_POST_acquire_fails_without_all_tags(self):
         # Asking for particular tags does not acquire if no node has all tags.

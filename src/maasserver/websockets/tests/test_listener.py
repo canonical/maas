@@ -2915,6 +2915,7 @@ class TestNodeFilesystemgroupListener(
     def test__calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
+        yield deferToDatabase(self.create_partitiontable, {'node': node})
 
         listener = PostgresListener()
         dv = DeferredValue()
@@ -2932,6 +2933,7 @@ class TestNodeFilesystemgroupListener(
     def test__calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
+        yield deferToDatabase(self.create_partitiontable, {'node': node})
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})
@@ -2953,6 +2955,7 @@ class TestNodeFilesystemgroupListener(
     def test__calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
+        yield deferToDatabase(self.create_partitiontable, {'node': node})
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})

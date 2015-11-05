@@ -234,7 +234,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def assertConstrainedNodes(self, nodes, data):
         form = AcquireNodeForm(data=data)
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.objects.all())
+        filtered_nodes, _, _ = form.filter_nodes(Node.objects.all())
         self.assertItemsEqual(nodes, filtered_nodes)
 
     def test_no_constraints(self):
@@ -921,7 +921,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'fabrics': [u'fabric2']})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_not_fabrics_constraint(self):
@@ -932,7 +932,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'not_fabrics': [u'fabric1']})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_fabric_classes_constraint(self):
@@ -943,7 +943,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'fabric_classes': [u'1g']})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_not_fabric_classes_constraint(self):
@@ -954,7 +954,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'not_fabric_classes': [u'10g']})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_interfaces_constraint_rejected_if_syntax_is_invalid(self):
@@ -995,13 +995,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'interfaces': u'label:fabric_class=10g'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
         form = AcquireNodeForm({
             u'interfaces': u'label:fabric_class=1g'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node1], filtered_nodes)
 
     def test_interfaces_filters_work_with_multiple_labels(self):
@@ -1017,13 +1017,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({
             u'interfaces': u'fabric:fabric_class=1g;vlan:vid=1'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node1], filtered_nodes)
 
         form = AcquireNodeForm({
             u'interfaces': u'label:fabric_class=10g;vlan:vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_interfaces_filters_multiples_treated_as_OR_operation(self):
@@ -1040,14 +1040,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
             u'interfaces':
             u'fabric:fabric_class=1g,fabric_class=10g;vlan:vid=1'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node1], filtered_nodes)
 
         form = AcquireNodeForm({
             u'interfaces':
             u'label:fabric_class=10g,fabric_class=1g;vlan:vid=2'})
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _ = form.filter_nodes(Node.nodes)
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
     def test_combined_constraints(self):
@@ -1186,7 +1186,7 @@ class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
         # in here is the ordering.
         form = AcquireNodeForm(data={'cpu_count': 4})
         self.assertTrue(form.is_valid(), form.errors)
-        filtered_nodes, _ = form.filter_nodes(Node.objects.all())
+        filtered_nodes, _, _ = form.filter_nodes(Node.objects.all())
         self.assertEqual(
             sorted_nodes,
             list(filtered_nodes))

@@ -888,3 +888,29 @@ class MAASQueriesMixin(object):
                 "(0-4094; 0 for untagged.)")
         current_q = op(current_q, Q(vlan__vid=vid))
         return current_q
+
+    def get_matching_object_map(self, specifiers, query):
+        filter = self.filter_by_specifiers(specifiers)
+        # We'll be looping through the list assuming a particular order later
+        # in this function, so make sure the interfaces are grouped by their
+        # attached nodes.
+        matches = filter.order_by(query)
+        matches = matches.values_list('id', query)
+        foreign_object_map = {}
+        object_ids = set()
+        object_id = None
+        foreign_object_matches = None
+        for foreign_id, current_id in matches:
+            if foreign_id is None:
+                # Skip objects that do not have a corresponding foreign key.
+                continue
+            if current_id != object_id:
+                # Encountered a new node ID in the list, so create an empty
+                # list and add it to the map. (and add it to the set of matched
+                # nodes)
+                foreign_object_matches = []
+                foreign_object_map[current_id] = foreign_object_matches
+                object_ids.add(current_id)
+                object_id = current_id
+            foreign_object_matches.append(foreign_id)
+        return object_ids, foreign_object_map

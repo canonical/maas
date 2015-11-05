@@ -26,6 +26,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from formencode.validators import StringBool
 from maasserver import (
     eventloop,
     locks,
@@ -138,6 +139,7 @@ DISPLAYED_NODE_FIELDS = (
     'zone',
     'disable_ipv4',
     'constraint_map',
+    'constraints_by_type',
     'boot_disk',
     'blockdevice_set',
     'physicalblockdevice_set',
@@ -1398,6 +1400,16 @@ class NodesHandler(OperationsHandler):
         :type agent_name: unicode
         :param comment: Optional comment for the event log.
         :type comment: unicode
+        :param dry_run: Optional boolean to indicate that the node should not
+            actually be acquired (this is for support/troubleshooting, or users
+            who want to see which node would match a constraint, without
+            acquiring a node). Defaults to False.
+        :type dry_run: bool
+        :param verbose: Optional boolean to indicate that the user would like
+            additional verbosity in the constraints_by_type field (each
+            constraint will be prefixed by `verbose_`, and contain the full
+            data structure that indicates which node(s) matched).
+        :type verbose: bool
 
         Returns 409 if a suitable node matching the constraints could not be
         found.
@@ -1407,6 +1419,10 @@ class NodesHandler(OperationsHandler):
         maaslog.info(
             "Request from user %s to acquire a node with constraints %s",
             request.user.username, request.data)
+        verbose = get_optional_param(
+            request.POST, 'verbose', default=False, validator=StringBool)
+        dry_run = get_optional_param(
+            request.POST, 'dry_run', default=False, validator=StringBool)
 
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -1416,7 +1432,7 @@ class NodesHandler(OperationsHandler):
         with locks.node_acquire:
             nodes = Node.nodes.get_available_nodes_for_acquisition(
                 request.user)
-            nodes, constraint_map = form.filter_nodes(nodes)
+            nodes, storage, interfaces = form.filter_nodes(nodes)
             node = get_first(nodes)
             if node is None:
                 constraints = form.describe_constraints()
@@ -1430,10 +1446,37 @@ class NodesHandler(OperationsHandler):
                         % constraints)
                 raise NodesNotAvailable(message)
             agent_name = request.data.get('agent_name', '')
-            node.acquire(
-                request.user, get_oauth_token(request),
-                agent_name=agent_name, comment=comment)
-            node.constraint_map = constraint_map.get(node.id, {})
+            if not dry_run:
+                node.acquire(
+                    request.user, get_oauth_token(request),
+                    agent_name=agent_name, comment=comment)
+            node.constraint_map = storage.get(node.id, {})
+            node.constraints_by_type = {}
+            # Need to get the interface constraints map into the proper format
+            # to return it here.
+            # Backward compatibility: provide the storage constraints in both
+            # formats.
+            if len(node.constraint_map) > 0:
+                node.constraints_by_type['storage'] = {}
+                new_storage = node.constraints_by_type['storage']
+                # Convert this to the "new style" constraints map format.
+                for storage_key in node.constraint_map.iterkeys():
+                    # Each key in the storage map is actually a value which
+                    # contains the ID of the matching storage device.
+                    # Convert this to a label: list-of-matches format, to
+                    # match how the constraints will be done going forward.
+                    new_key = node.constraint_map[storage_key]
+                    matches = new_storage.get(new_key, [])
+                    matches.append(storage_key)
+                    new_storage[new_key] = matches
+            if len(interfaces) > 0:
+                node.constraints_by_type['interfaces'] = {
+                    label: interfaces.get(label, {}).get(node.id)
+                    for label in interfaces
+                }
+            if verbose:
+                node.constraints_by_type['verbose_storage'] = storage
+                node.constraints_by_type['verbose_interfaces'] = interfaces
             return node
 
     @admin_method
