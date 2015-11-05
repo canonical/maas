@@ -353,10 +353,10 @@ class TestBlockDeviceAPI(APITestCase):
         # Use PartitionTable methods that auto-size and position partitions
         partition1 = partition_table.add_partition(size=50000 * block_size)
         partition2 = partition_table.add_partition()
-        filesystem1 = factory.make_Filesystem(partition=partition1,
-                                              fstype='ext4')
-        filesystem2 = factory.make_Filesystem(partition=partition2,
-                                              fstype='ext3')
+        filesystem1 = factory.make_Filesystem(
+            partition=partition1, fstype=FILESYSTEM_TYPE.EXT4)
+        filesystem2 = factory.make_Filesystem(
+            partition=partition2, fstype=FILESYSTEM_TYPE.EXT2)
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
         self.assertEqual(httplib.OK, response.status_code, response.content)

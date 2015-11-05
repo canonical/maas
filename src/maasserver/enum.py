@@ -393,14 +393,17 @@ PARTITION_TABLE_TYPE_CHOICES = (
 
 class FILESYSTEM_TYPE:
     """The vocabulary of possible partition types for `Filesystem`."""
-    #: Third extended filesystem.
-    EXT3 = 'ext3'
+    #: Second extended filesystem.
+    EXT2 = 'ext2'
 
     #: Fourth extended filesystem.
     EXT4 = 'ext4'
 
     #: FAT32
     FAT32 = 'fat32'
+
+    #: VFAT
+    VFAT = 'vfat'
 
     #: LVM Physical Volume.
     LVM_PV = 'lvm-pv'
@@ -421,9 +424,10 @@ class FILESYSTEM_TYPE:
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation).
 FILESYSTEM_TYPE_CHOICES = (
-    (FILESYSTEM_TYPE.EXT3, "ext3"),
+    (FILESYSTEM_TYPE.EXT2, "ext2"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
+    (FILESYSTEM_TYPE.VFAT, "vfat"),
     (FILESYSTEM_TYPE.LVM_PV, "lvm"),
     (FILESYSTEM_TYPE.RAID, "raid"),
     (FILESYSTEM_TYPE.RAID_SPARE, "raid-spare"),
@@ -436,9 +440,10 @@ FILESYSTEM_TYPE_CHOICES = (
 # representation). When a user does a format operation only these values
 # are allowed. The other values are reserved for internal use.
 FILESYSTEM_FORMAT_TYPE_CHOICES = (
-    (FILESYSTEM_TYPE.EXT3, "ext3"),
+    (FILESYSTEM_TYPE.EXT2, "ext2"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
+    (FILESYSTEM_TYPE.VFAT, "vfat"),
     )
 
 
