@@ -16,15 +16,20 @@ __all__ = []
 
 from codecs import getwriter
 from io import BytesIO
+import StringIO
 
 from apiclient.creds import convert_tuple_to_string
 import django
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from maasserver.management.commands import createadmin
+from maasserver.management.commands import (
+    changepasswords,
+    createadmin,
+)
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
 from testtools.matchers import StartsWith
@@ -180,6 +185,49 @@ class TestCommands(DjangoTestCase):
         self.assertRaises(
             createadmin.EmptyEmail,
             createadmin.prompt_for_email)
+
+
+class TestChangePasswords(DjangoTestCase):
+
+    def test_bad_input(self):
+        stdin = StringIO.StringIO("nobody")
+        self.patch(changepasswords, 'input').return_value = stdin
+        error_text = assertCommandErrors(self, 'changepasswords')
+        self.assertIn(
+            "Invalid input provided. "
+            "Format is 'username:password', one per line.", error_text)
+
+    def test_nonexistent_user(self):
+        stdin = StringIO.StringIO("nobody:nopass")
+        self.patch(changepasswords, 'input').return_value = stdin
+        error_text = assertCommandErrors(self, 'changepasswords')
+        self.assertIn("User 'nobody' does not exist.", error_text)
+
+    def test_changes_one_password(self):
+        username = factory.make_username()
+        password = factory.make_string(size=16, spaces=True, prefix="password")
+        user = factory.make_User(username=username, password=password)
+        self.assertTrue(user.check_password(password))
+        newpass = factory.make_string(size=16, spaces=True, prefix="newpass")
+        stdin = StringIO.StringIO("%s:%s" % (username, newpass))
+        self.patch(changepasswords, 'input').return_value = stdin
+        call_command('changepasswords')
+        self.assertTrue(reload_object(user).check_password(newpass))
+
+    def test_changes_ten_passwords(self):
+        users_passwords = []
+        stringio = StringIO.StringIO()
+        for _ in range(10):
+            username = factory.make_username()
+            user = factory.make_User(username=username)
+            newpass = factory.make_string(spaces=True, prefix="newpass")
+            users_passwords.append((user, newpass))
+            stringio.write("%s:%s\n" % (username, newpass))
+        stringio.seek(0)
+        self.patch(changepasswords, 'input').return_value = stringio
+        call_command('changepasswords')
+        for user, newpass in users_passwords:
+            self.assertTrue(reload_object(user).check_password(newpass))
 
 
 class TestApikeyCommand(DjangoTestCase):
