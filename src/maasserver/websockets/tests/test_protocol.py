@@ -19,6 +19,7 @@ import json
 import random
 
 from crochet import wait_for_reactor
+from django.core.exceptions import ValidationError
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.testcase import (
@@ -545,6 +546,37 @@ class TestWebSocketProtocol(MAASServerTestCase):
         self.expectThat(sent_obj["request_id"], Equals(1))
         self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.SUCCESS))
         self.expectThat(sent_obj["result"]["hostname"], Equals(node.hostname))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_handleRequest_sends_validation_error(self):
+        node = yield deferToDatabase(self.make_node)
+        # Need to delete the node as the transaction is committed
+        self.addCleanup(self.clean_node, node)
+        protocol, factory = self.make_protocol()
+        protocol.user = MagicMock()
+
+        error_dict = {
+            "error": "bad"
+        }
+        self.patch(Handler, "execute").return_value = fail(
+            ValidationError(error_dict))
+
+        message = {
+            "type": MSG_TYPE.REQUEST,
+            "request_id": 1,
+            "method": "node.get",
+            "params": {
+                "system_id": node.system_id,
+                }
+            }
+
+        yield protocol.handleRequest(message)
+        sent_obj = self.get_written_transport_message(protocol)
+        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
+        self.expectThat(sent_obj["request_id"], Equals(1))
+        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
+        self.expectThat(sent_obj["error"], Equals(json.dumps(error_dict)))
 
     @wait_for_reactor
     @inlineCallbacks

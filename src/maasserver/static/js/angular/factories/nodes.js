@@ -80,6 +80,17 @@ angular.module('MAAS').factory(
                 });
         };
 
+        // Create the physical interface on the node.
+        NodesManager.prototype.createPhysicalInterface = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    "node.create_physical", params);
+            };
+
         // Create the VLAN interface on the node.
         NodesManager.prototype.createVLANInterface = function(
             node, params) {

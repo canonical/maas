@@ -61,6 +61,7 @@ def static_resources(context):
             'js/angular/services/validation.js',
             'js/angular/services/browser.js',
             'js/angular/services/converter.js',
+            'js/angular/services/json.js',
             'js/angular/directives/error_overlay.js',
             'js/angular/directives/code_lines.js',
             'js/angular/directives/error_toggle.js',

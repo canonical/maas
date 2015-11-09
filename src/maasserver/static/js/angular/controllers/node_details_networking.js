@@ -120,11 +120,11 @@ angular.module('MAAS').filter('filterLinkModes', function() {
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
     'NodesManager', 'GeneralManager', 'UsersManager', 'ManagerHelperService',
-    'ValidationService',
+    'ValidationService', 'JSONService',
     function(
         $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
         NodesManager, GeneralManager, UsersManager, ManagerHelperService,
-        ValidationService) {
+        ValidationService, JSONService) {
 
         // Different interface types.
         var INTERFACE_TYPE = {
@@ -161,7 +161,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             MULTI: "multi",
             DELETE: "delete",
             ADD: "add",
-            CREATE_BOND: "create-bond"
+            CREATE_BOND: "create-bond",
+            CREATE_PHYSICAL: "create-physical"
         };
 
         // Set the initial values for this scope.
@@ -444,15 +445,15 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return interfaces;
         }
 
-        // Get the next available bond name.
-        function getNextBondName() {
+        // Get the next available name.
+        function getNextName(prefix) {
             var idx = 0;
             angular.forEach($scope.originalInterfaces, function(nic) {
-                if(nic.name === "bond" + idx) {
+                if(nic.name === prefix + idx) {
                     idx++;
                 }
             });
-            return "bond" + idx;
+            return prefix + idx;
         }
 
         // Called by $parent when the node has been loaded.
@@ -488,7 +489,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return false;
             }
 
-            if(nic.is_boot) {
+            if(nic.is_boot && nic.type !== INTERFACE_TYPE.ALIAS) {
                 return true;
             } else if(nic.type === INTERFACE_TYPE.BOND) {
                 var i;
@@ -857,6 +858,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.newBondInterface = {};
             if($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
                 $scope.selectedMode = SELECTION_MODE.MULTI;
+            } else if($scope.selectedMode === SELECTION_MODE.CREATE_PHYSICAL) {
+                $scope.selectedMode = SELECTION_MODE.NONE;
             } else {
                 $scope.selectedMode = SELECTION_MODE.SINGLE;
             }
@@ -1055,7 +1058,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
                 var parents = getSelectedInterfaces();
                 $scope.newBondInterface = {
-                    name: getNextBondName(),
+                    name: getNextName("bond"),
                     parents: parents,
                     primary: parents[0],
                     macAddress: "",
@@ -1093,13 +1096,14 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return true if the user has inputed a value in the MAC address field
         // but it is invalid.
-        $scope.isBondMACAddressInvalid = function() {
-            if(!angular.isString($scope.newBondInterface.macAddress) ||
-                $scope.newBondInterface.macAddress === "") {
-                return false;
+        $scope.isMACAddressInvalid = function(macAddress, invalidEmpty) {
+            if(angular.isUndefined(invalidEmpty)) {
+                invalidEmpty = false;
             }
-            return !ValidationService.validateMAC(
-                $scope.newBondInterface.macAddress);
+            if(!angular.isString(macAddress) || macAddress === "") {
+                return invalidEmpty;
+            }
+            return !ValidationService.validateMAC(macAddress);
         };
 
         // Return true when the LACR rate selection should be shown.
@@ -1115,8 +1119,19 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 $scope.newBondInterface.mode === "balance-tlb");
         };
 
+        // Return true if cannot add the bond.
+        $scope.cannotAddBond = function() {
+            return (
+                $scope.isInterfaceNameInvalid($scope.newBondInterface) ||
+                $scope.isMACAddressInvalid($scope.newBondInterface.macAddress));
+        };
+
         // Actually add the bond.
         $scope.addBond = function() {
+            if($scope.cannotAddBond()) {
+               return;
+            }
+
             var parents = $scope.newBondInterface.parents.map(
                 function(nic) { return nic.id; });
             var macAddress = $scope.newBondInterface.macAddress;
@@ -1152,6 +1167,90 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.newBondInterface = {};
             $scope.selectedInterfaces = [];
             $scope.selectedMode = SELECTION_MODE.NONE;
+        };
+
+        // Return true when the create physical interface view is being shown.
+        $scope.isShowingCreatePhysical = function() {
+            return $scope.selectedMode === SELECTION_MODE.CREATE_PHYSICAL;
+        };
+
+        // Show the create interface view.
+        $scope.showCreatePhysical = function() {
+            if($scope.selectedMode === SELECTION_MODE.NONE) {
+                $scope.selectedMode = SELECTION_MODE.CREATE_PHYSICAL;
+                $scope.newInterface = {
+                    name: getNextName("eth"),
+                    macAddress: "",
+                    macError: false,
+                    errorMsg: null,
+                    fabric: $scope.fabrics[0],
+                    vlan: getDefaultVLAN($scope.fabrics[0]),
+                    subnet: null,
+                    mode: LINK_MODE.LINK_UP
+                };
+            }
+        };
+
+        // Called when the fabric changes on the new interface.
+        $scope.newPhysicalFabricChanged = function() {
+            $scope.newInterface.vlan = getDefaultVLAN(
+                $scope.newInterface.fabric);
+            $scope.newInterface.subnet = null;
+            $scope.newInterface.mode = LINK_MODE.LINK_UP;
+        };
+
+        // Called when the subnet changes on the new interface.
+        $scope.newPhysicalSubnetChanged = function() {
+            if(!angular.isObject($scope.newInterface.subnet)) {
+                $scope.newInterface.mode = LINK_MODE.LINK_UP;
+            }
+        };
+
+        // Return true if cannot add the interface.
+        $scope.cannotAddPhysicalInterface = function() {
+            return (
+                $scope.isInterfaceNameInvalid($scope.newInterface) ||
+                $scope.isMACAddressInvalid(
+                    $scope.newInterface.macAddress, true));
+        };
+
+        // Actually add the new physical interface.
+        $scope.addPhysicalInterface = function() {
+            if($scope.cannotAddPhysicalInterface()) {
+               return;
+            }
+
+            var params = {
+                name: $scope.newInterface.name,
+                mac_address: $scope.newInterface.macAddress,
+                vlan: $scope.newInterface.vlan.id,
+                mode: $scope.newInterface.mode
+            };
+            if(angular.isObject($scope.newInterface.subnet)) {
+                params.subnet = $scope.newInterface.subnet.id;
+            }
+            $scope.newInterface.macError = false;
+            $scope.newInterface.errorMsg = null;
+            NodesManager.createPhysicalInterface($scope.node, params).then(
+                function() {
+                    // Clear the interface and reset the mode.
+                    $scope.newInterface = {};
+                    $scope.selectedMode = SELECTION_MODE.NONE;
+                },
+                function(errorStr) {
+                    error = JSONService.tryParse(errorStr);
+                    if(!angular.isObject(error)) {
+                        // Was not a JSON error. This is wrong here as it
+                        // should be, so just log to the console.
+                        console.log(errorStr);
+                    } else {
+                        macError = error.mac_address;
+                        if(angular.isArray(macError)) {
+                            $scope.newInterface.macError = true;
+                            $scope.newInterface.errorMsg = macError[0];
+                        }
+                    }
+                });
         };
 
         // Load all the required managers. NodesManager and GeneralManager are

@@ -552,7 +552,7 @@
                                             <div class="table__data left margin-left--thirty">
                                                   <button class="cta-ubuntu secondary"
                                                     data-ng-click="add('alias', interface)"
-                                                    data-ng-show="canAddAlias(interface)">Add Alias</button>
+                                                    data-ng-show="canAddAlias(interface)">Add alias</button>
                                                   <button class="cta-ubuntu secondary"
                                                     data-ng-click="add('vlan', interface)"
                                                     data-ng-show="canAddVLAN(interface)">Add VLAN</button>
@@ -573,7 +573,7 @@
                                             <div class="table__data left margin-left--thirty">
                                                 <button class="cta-ubuntu secondary"
                                                     data-ng-click="addInterface('alias')"
-                                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>Alias</button>
+                                                    data-ng-show="canAddAlias(interface)">Add <span data-ng-show="newInterface.type === 'alias'">another </span>alias</button>
                                                 <button class="cta-ubuntu secondary"
                                                     data-ng-click="addInterface('vlan')"
                                                     data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
@@ -600,8 +600,8 @@
                                     <input class="align-center" type="radio" name="bondBootInterface" checked
                                         data-ng-if="getBondIsBootInterface()">
                                 </div>
-                                <div class="table__data table__column--15">Bond</div>
-                                <div class="table__data table__column--67"></div>
+                                <div class="table__data table__column--9">Bond</div>
+                                <div class="table__data table__column--73"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data table__column--3">
@@ -616,7 +616,7 @@
                                         <div class="table__data table__column--15">
                                             <label for="mac">MAC address</label>
                                             <input type="text" data-ng-model="newBondInterface.macAddress"
-                                                data-ng-class="{ invalid: isBondMACAddressInvalid() }"
+                                                data-ng-class="{ invalid: isMACAddressInvalid(newBondInterface.macAddress) }"
                                                 data-ng-placeholder="getBondPlaceholderMACAddress()">
                                         </div>
                                         <div class="table__data table__column--15" data-ng-show="showLACPRate()">
@@ -652,17 +652,88 @@
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
                                             <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
-                                            <button class="cta-ubuntu" data-ng-click="addBond()">Save</button>
+                                            <button class="cta-ubuntu"
+                                                data-ng-click="addBond()"
+                                                data-ng-disabled="cannotAddBond()">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row active" data-ng-show="isShowingCreatePhysical()">
+                                <div class="table__data table__column--3">
+                                    <input class="checkbox" type="checkbox" id="interface-create" disabled="disabled" checked />
+                                    <label class="checkbox-label" for="interface-create"></label>
+                                </div>
+                                <div class="table__data table__column--12">
+                                    <input type="text" class="table__input"
+                                        data-ng-class="{ invalid: isInterfaceNameInvalid(newInterface) }"
+                                        data-ng-model="newInterface.name">
+                                </div>
+                                <div class="table__data table__column--3"></div>
+                                <div class="table__data table__column--9">Physical</div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="fabric" id="fabric"
+                                        data-ng-model="newInterface.fabric"
+                                        data-ng-change="newPhysicalFabricChanged()"
+                                        data-ng-options="fabric as fabric.name for fabric in fabrics">
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="vlan" id="vlan" disabled="disabled">
+                                        <option value="" selected>untagged</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--18">
+                                    <select class="table__input" name="subnet" id="subnet"
+                                        data-ng-model="newInterface.subnet"
+                                        data-ng-change="newPhysicalSubnetChanged()"
+                                        data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
+                                        <option value="">Unconfigured</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--14">
+                                    <select class="table__input" name="link-mode" id="link-mode"
+                                        data-ng-model="newInterface.mode"
+                                        data-ng-disabled="isLinkModeDisabled(newInterface)"
+                                        data-ng-options="mode.mode as mode.text for mode in modes">
+                                    </select>
+                                </div>
+                                <div class="table__data table__column--13"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row active">
+                                        <div class="table__data table__column--3">
+                                        </div>
+                                        <div class="table__data table__column--12">
+                                            <label>MAC address</label>
+                                            <input type="text" data-ng-model="newInterface.macAddress"
+                                                data-ng-class="{ invalid: isMACAddressInvalid(newInterface.macAddress, false) || newInterface.macError }">
+                                        </div>
+                                        <div class="table__data table__column--85"></div>
+                                    </div>
+                                    <div class="table__row table__dropdown-row active">
+                                        <div class="table__data left" data-ng-show="newInterface.errorMsg">
+                                            <span class="icon error"></span> {$ newInterface.errorMsg $}
+                                        </div>
+                                        <div class="table__data right">
+
+                                            <a class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
+                                            <button class="cta-ubuntu"
+                                                data-ng-click="addPhysicalInterface()"
+                                                data-ng-disabled="cannotAddPhysicalInterface()">Save</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </main>
                     </div>
-                    <a class="link-cta-ubuntu secondary margin-right"
-                        data-ng-class="{ disabled: !canCreateBond() }"
-                        data-ng-click="showCreateBond()"
-                        data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond()">Create Bond</a>
+                    <div data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                        <a class="link-cta-ubuntu secondary margin-right"
+                            data-ng-class="{ disabled: selectedMode !== null }"
+                            data-ng-click="showCreatePhysical()">Add interface</a>
+                        <a class="link-cta-ubuntu secondary margin-right"
+                            data-ng-class="{ disabled: !canCreateBond() }"
+                            data-ng-click="showCreateBond()">Create bond</a>
+                    </div>
                 </div>
             </form>
         </div>

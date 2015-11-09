@@ -1795,6 +1795,87 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(
             node.distro_series, Equals(osystem["releases"][0]["name"]))
 
+    def test_create_physical_creates_interface(self):
+        user = factory.make_admin()
+        node = factory.make_Node(interface=False)
+        handler = NodeHandler(user, {})
+        name = factory.make_name("eth")
+        mac_address = factory.make_mac_address()
+        vlan = factory.make_VLAN()
+        handler.create_physical({
+            "system_id": node.system_id,
+            "name": name,
+            "mac_address": mac_address,
+            "vlan": vlan.id,
+            })
+        self.assertEquals(
+            1, node.interface_set.count(),
+            "Should have one interface on the node.")
+
+    def test_create_physical_creates_link_auto(self):
+        user = factory.make_admin()
+        node = factory.make_Node(interface=False)
+        handler = NodeHandler(user, {})
+        name = factory.make_name("eth")
+        mac_address = factory.make_mac_address()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        handler.create_physical({
+            "system_id": node.system_id,
+            "name": name,
+            "mac_address": mac_address,
+            "vlan": vlan.id,
+            "mode": INTERFACE_LINK_TYPE.AUTO,
+            "subnet": subnet.id,
+            })
+        new_interface = node.interface_set.first()
+        self.assertIsNotNone(new_interface)
+        auto_ip = new_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet)
+        self.assertIsNotNone(auto_ip)
+
+    def test_create_physical_creates_link_up(self):
+        user = factory.make_admin()
+        node = factory.make_Node(interface=False)
+        handler = NodeHandler(user, {})
+        name = factory.make_name("eth")
+        mac_address = factory.make_mac_address()
+        vlan = factory.make_VLAN()
+        handler.create_physical({
+            "system_id": node.system_id,
+            "name": name,
+            "mac_address": mac_address,
+            "vlan": vlan.id,
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            })
+        new_interface = node.interface_set.first()
+        self.assertIsNotNone(new_interface)
+        link_up_ip = new_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=None)
+        self.assertIsNotNone(link_up_ip)
+
+    def test_create_physical_creates_link_up_with_subnet(self):
+        user = factory.make_admin()
+        node = factory.make_Node(interface=False)
+        handler = NodeHandler(user, {})
+        name = factory.make_name("eth")
+        mac_address = factory.make_mac_address()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        handler.create_physical({
+            "system_id": node.system_id,
+            "name": name,
+            "mac_address": mac_address,
+            "vlan": vlan.id,
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        new_interface = node.interface_set.first()
+        self.assertIsNotNone(new_interface)
+        link_up_ip = new_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet)
+        self.assertIsNotNone(link_up_ip)
+
     def test_create_vlan_creates_vlan(self):
         user = factory.make_admin()
         node = factory.make_Node()

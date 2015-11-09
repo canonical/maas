@@ -881,9 +881,19 @@ describe("NodeNetworkingController", function() {
         it("returns true if is_boot is true", function() {
             var controller = makeController();
             var nic = {
+                type: "physical",
                 is_boot: true
             };
             expect($scope.isBootInterface(nic)).toBe(true);
+        });
+
+        it("returns true if is_boot is true and alias", function() {
+            var controller = makeController();
+            var nic = {
+                type: "alias",
+                is_boot: true
+            };
+            expect($scope.isBootInterface(nic)).toBe(false);
         });
 
         it("returns false if is_boot is false", function() {
@@ -2264,6 +2274,16 @@ describe("NodeNetworkingController", function() {
             expect($scope.selectedMode).toBe("single");
         });
 
+        it("clears newInterface and create resets to none", function() {
+            var controller = makeController();
+            var newInterface = {};
+            $scope.newInterface = newInterface;
+            $scope.selectedMode = "create-physical";
+            $scope.cancel();
+            expect($scope.newInterface).not.toBe(newInterface);
+            expect($scope.selectedMode).toBeNull();
+        });
+
         it("clears newBondInterface and sets selectedMode to multi",
             function() {
                 var controller = makeController();
@@ -3037,24 +3057,28 @@ describe("NodeNetworkingController", function() {
         });
     });
 
-    describe("isBondMACAddressInvalid", function() {
+    describe("isMACAddressInvalid", function() {
 
-        it("returns false when the macAddress is blank", function() {
-            var controller = makeController();
-            $scope.newBondInterface.macAddress = "";
-            expect($scope.isBondMACAddressInvalid()).toBe(false);
-        });
+        it("returns false when the macAddress blank and not invalidEmpty",
+            function() {
+                var controller = makeController();
+                expect($scope.isMACAddressInvalid("")).toBe(false);
+            });
+
+        it("returns truw when the macAddress is blank and invalidEmpty",
+            function() {
+                var controller = makeController();
+                expect($scope.isMACAddressInvalid("", true)).toBe(true);
+            });
 
         it("returns false if valid macAddress", function() {
             var controller = makeController();
-            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
-            expect($scope.isBondMACAddressInvalid()).toBe(false);
+            expect($scope.isMACAddressInvalid("00:11:22:33:44:55")).toBe(false);
         });
 
         it("returns true if invalid macAddress", function() {
             var controller = makeController();
-            $scope.newBondInterface.macAddress = "00:11:22:33:44";
-            expect($scope.isBondMACAddressInvalid()).toBe(true);
+            expect($scope.isMACAddressInvalid("00:11:22:33:44")).toBe(true);
         });
     });
 
@@ -3100,7 +3124,67 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("cannotAddBond", function() {
+
+        it("returns true when isInterfaceNameInvalid is true", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(true);
+            expect($scope.cannotAddBond()).toBe(true);
+        });
+
+        it("returns true when isMACAddressInvalid is true", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
+            spyOn($scope, "isMACAddressInvalid").and.returnValue(true);
+            expect($scope.cannotAddBond()).toBe(true);
+        });
+
+        it("returns false when both are false", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
+            spyOn($scope, "isMACAddressInvalid").and.returnValue(false);
+            expect($scope.cannotAddBond()).toBe(false);
+        });
+    });
+
     describe("addBond", function() {
+
+        it("deos nothing if cannotAddBond returns true", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            var nic2 = {
+                id: makeInteger(101, 200),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: vlan
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            $scope.showCreateBond();
+
+            spyOn(NodesManager, "createBondInterface").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "cannotAddBond").and.returnValue(true);
+            $scope.newBondInterface.name = "bond0";
+            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+
+            $scope.addBond();
+            expect(NodesManager.createBondInterface).not.toHaveBeenCalled();
+        });
 
         it("calls createBondInterface and removes selection", function() {
             var controller = makeController();
@@ -3131,6 +3215,7 @@ describe("NodeNetworkingController", function() {
 
             spyOn(NodesManager, "createBondInterface").and.returnValue(
                 $q.defer().promise);
+            spyOn($scope, "cannotAddBond").and.returnValue(false);
             $scope.newBondInterface.name = "bond0";
             $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
             $scope.addBond();
@@ -3149,6 +3234,239 @@ describe("NodeNetworkingController", function() {
             expect($scope.newBondInterface).toEqual({});
             expect($scope.selectedInterfaces).toEqual([]);
             expect($scope.selectedMode).toBeNull();
+        });
+    });
+
+    describe("isShowingCreatePhysical", function() {
+
+        it("returns true in create-physical mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "create-physical";
+            expect($scope.isShowingCreatePhysical()).toBe(true);
+        });
+
+        it("returns false in single mode", function() {
+            var controller = makeController();
+            $scope.selectedMode = "single";
+            expect($scope.isShowingCreatePhysical()).toBe(false);
+        });
+    });
+
+    describe("showCreatePhysical", function() {
+
+        it("sets mode to create-physical", function() {
+            var controller = makeController();
+            var vlan = { id: 0, fabric: 0 };
+            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            VLANsManager._items = [vlan];
+            $scope.fabrics = [fabric];
+            $scope.selectedMode = null;
+            $scope.showCreatePhysical();
+            expect($scope.selectedMode).toBe("create-physical");
+        });
+
+        it("creates the newInterface", function() {
+            var controller = makeController();
+            var vlan = { id: 0, fabric: 0 };
+            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            VLANsManager._items = [vlan];
+            $scope.fabrics = [fabric];
+            $scope.selectedMode = null;
+            $scope.showCreatePhysical();
+            expect($scope.newInterface).toEqual({
+                name: "eth0",
+                macAddress: "",
+                macError: false,
+                errorMsg: null,
+                fabric: fabric,
+                vlan: vlan,
+                subnet: null,
+                mode: "link_up"
+            });
+        });
+    });
+
+    describe("newPhysicalFabricChanged", function() {
+
+        it("sets newInterface.vlan with new fabric", function() {
+            var controller = makeController();
+            var vlan = { id: 0, fabric: 0 };
+            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            VLANsManager._items = [vlan];
+            $scope.newInterface.fabric = fabric;
+            $scope.newInterface.subnet = {};
+            $scope.newInterface.mode = "auto";
+            $scope.newPhysicalFabricChanged();
+            expect($scope.newInterface.vlan).toBe(vlan);
+            expect($scope.newInterface.subnet).toBeNull();
+            expect($scope.newInterface.mode).toBe("link_up");
+        });
+    });
+
+    describe("newPhysicalSubnetChanged", function() {
+
+        it("sets mode to link_up when no subnet", function() {
+            var controller = makeController();
+            $scope.newInterface.subnet = null;
+            $scope.newInterface.mode = "auto";
+            $scope.newPhysicalSubnetChanged();
+            expect($scope.newInterface.mode).toBe("link_up");
+        });
+
+        it("leaves mode to original when subnet", function() {
+            var controller = makeController();
+            $scope.newInterface.subnet = {};
+            $scope.newInterface.mode = "auto";
+            $scope.newPhysicalSubnetChanged();
+            expect($scope.newInterface.mode).toBe("auto");
+        });
+    });
+
+    describe("cannotAddPhysicalInterface", function() {
+
+        it("returns true when isInterfaceNameInvalid is true", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(true);
+            expect($scope.cannotAddPhysicalInterface()).toBe(true);
+        });
+
+        it("returns true when isMACAddressInvalid is true", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
+            spyOn($scope, "isMACAddressInvalid").and.returnValue(true);
+            expect($scope.cannotAddPhysicalInterface()).toBe(true);
+        });
+
+        it("returns false when both are false", function() {
+            var controller = makeController();
+            spyOn($scope, "isInterfaceNameInvalid").and.returnValue(false);
+            spyOn($scope, "isMACAddressInvalid").and.returnValue(false);
+            expect($scope.cannotAddPhysicalInterface()).toBe(false);
+        });
+    });
+
+    describe("addPhysicalInterface", function() {
+
+        it("deos nothing if cannotAddInterface returns true", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                name: "eth0",
+                macAddress: "00:11:22:33:44:55",
+                vlan: vlan,
+                subnet: subnet,
+                mode: "auto"
+            };
+
+            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(true);
+            $scope.addPhysicalInterface();
+
+            expect(NodesManager.createPhysicalInterface).not.toHaveBeenCalled();
+        });
+
+        it("calls createPhysicalInterface and removes selection", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                name: "eth0",
+                macAddress: "00:11:22:33:44:55",
+                vlan: vlan,
+                subnet: subnet,
+                mode: "auto"
+            };
+            $scope.selectedMode = "create-physical";
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+                defer.promise);
+            spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
+            $scope.addPhysicalInterface();
+            defer.resolve();
+            $scope.$digest();
+
+            expect(NodesManager.createPhysicalInterface).toHaveBeenCalledWith(
+                node, {
+                    name: "eth0",
+                    mac_address: "00:11:22:33:44:55",
+                    vlan: vlan.id,
+                    subnet: subnet.id,
+                    mode: "auto"
+                });
+            expect($scope.newInterface).toEqual({});
+            expect($scope.selectedMode).toBeNull();
+        });
+
+        it("clears error on call", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                name: "eth0",
+                macAddress: "00:11:22:33:44:55",
+                vlan: vlan,
+                subnet: subnet,
+                mode: "auto",
+                macError: true,
+                errorMsg: "error"
+            };
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+                defer.promise);
+            spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
+            $scope.addPhysicalInterface();
+
+            expect($scope.newInterface.macError).toBe(false);
+            expect($scope.newInterface.errorMsg).toBeNull();
+        });
+
+        it("handles macAddress error", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.newInterface = {
+                name: "eth0",
+                macAddress: "00:11:22:33:44:55",
+                vlan: vlan,
+                subnet: subnet,
+                mode: "auto"
+            };
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+                defer.promise);
+            spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
+            $scope.addPhysicalInterface();
+
+            var error = {
+                "mac_address": ["MACAddress is already in use"]
+            };
+            defer.reject(angular.toJson(error));
+            $scope.$digest();
+
+            expect($scope.newInterface.macError).toBe(true);
+            expect($scope.newInterface.errorMsg).toBe(
+                "MACAddress is already in use");
         });
     });
 });

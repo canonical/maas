@@ -31,6 +31,7 @@ from django.contrib.auth import (
     SESSION_KEY,
 )
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils.importlib import import_module
 from maasserver.eventloop import services
 from maasserver.models.nodegroup import NodeGroup
@@ -295,7 +296,13 @@ class WebSocketProtocol(Protocol):
 
     def sendError(self, request_id, handler, method, failure):
         """Log and send error to client."""
-        error = failure.getErrorMessage()
+        if isinstance(failure.value, ValidationError):
+            # When the error is a validation issue, send the error as a JSON
+            # object. The client will use this to JSON to render the error
+            # messages for the correct fields.
+            error = json.dumps(failure.value.error_dict)
+        else:
+            error = failure.getErrorMessage()
         why = "Error on request (%s) %s.%s: %s" % (
             request_id, handler._meta.handler_name, method, error)
         log.err(failure, _why=why)
