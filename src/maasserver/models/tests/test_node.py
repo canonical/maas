@@ -2124,7 +2124,8 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
     def test_start_deployment_changes_state(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
         node._start_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -2132,6 +2133,7 @@ class TestNode(MAASServerTestCase):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
         register_event = self.patch(node, '_register_request_event')
+        self.patch(node, 'on_managed_network').return_value = True
         node.start(admin)
         self.assertThat(register_event, MockCalledOnceWith(
             admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT, action='start',
@@ -3568,6 +3570,7 @@ class TestNode_Start(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         node = self.make_acquired_node_with_interface(user, nodegroup)
+        self.patch(node, 'on_managed_network').return_value = True
         user_data = factory.make_bytes()
 
         with post_commit_hooks:
@@ -3581,6 +3584,7 @@ class TestNode_Start(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         node = self.make_acquired_node_with_interface(user, nodegroup)
+        self.patch(node, 'on_managed_network').return_value = True
         user_data = factory.make_bytes()
         NodeUserData.objects.set_user_data(node, user_data)
 
@@ -3594,6 +3598,7 @@ class TestNode_Start(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         node = self.make_acquired_node_with_interface(user, nodegroup)
+        self.patch(node, 'on_managed_network').return_value = True
 
         claim_auto_ips = self.patch_autospec(
             node, "claim_auto_ips")
@@ -3770,6 +3775,15 @@ class TestNode_Start(MAASServerTestCase):
                 node.start(user)
 
         self.assertThat(release_auto_ips, MockCalledOnceWith())
+
+    def test_connected_to_managed_network_true_when_connected(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
+        self.assertTrue(node.on_managed_network())
+
+    def test_connected_to_managed_network_false_when_not_connected(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.assertFalse(node.on_managed_network())
 
 
 class TestNode_Stop(MAASServerTestCase):

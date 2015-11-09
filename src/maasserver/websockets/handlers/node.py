@@ -286,6 +286,7 @@ class NodeHandler(TimestampedModelHandler):
                 self.dehydrate_interface(interface, obj)
                 for interface in obj.interface_set.all().order_by('name')
             ]
+            data["on_managed_network"] = obj.on_managed_network()
 
             # Devices
             devices = [

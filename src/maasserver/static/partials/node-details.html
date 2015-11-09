@@ -348,6 +348,13 @@
                             </li>
                         </ul>
                     </div>
+                    <div class="twelve-col error ng-hide" data-ng-show="!node.on_managed_network">
+                        <ul class="flash-messages">
+                            <li class="flash-messages__item error">
+                                Node must be connected to a managed network.
+                            </li>
+                        </ul>
+                    </div>
                     <div class="twelve-col error ng-hide" data-ng-show="!isUbuntuOS()">
                         <ul class="flash-messages">
                             <li class="flash-messages__item info">
