@@ -47,7 +47,7 @@
                         </div>
                     </header>
                     <main class="table-body">
-                        <div class="table__row"
+                        <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['vlan.vid','space.name','subnet.cidr'])">
                             <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
                             <div class="table__data table__column--15">{$ getSpaceName(row, data.sortedData) $}</div>
@@ -83,10 +83,10 @@
                         </div>
                     </header>
                     <main class="table-body">
-                        <div class="table__row" data-ng-show="data.rows.length == 0">
+                        <div class="table__row table__row--no-hover" data-ng-show="data.rows.length == 0">
                             <div class="table__data table__column--100">There are currently no subnets in this space.</div>
                         </div>
-                        <div class="table__row"
+                        <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['fabric.name','vlan.vid','subnet.cidr'])">
                             <div class="table__data table__column--15">{$ getFabricName(row, data.sortedData) $}</div>
                             <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>

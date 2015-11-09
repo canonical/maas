@@ -261,6 +261,13 @@ table {
       }
     }
 
+    &.table__row--no-hover {
+
+        &:hover {
+          background-color: transparent;
+        }
+    }
+
     &.active {
       background-color: #FFF;
 

@@ -711,10 +711,10 @@
                                         <label class="checkbox-label" for="filesystem-check-all"></label>
                                    </span>
                                 </div>
-                                <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--27">Size</div>
-                                <div class="table__header table__column--15">File system</div>
-                                <div class="table__header table__column--40">Mountpoint</div>
+                                <div class="table__header table__column--20">Name</div>
+                                <div class="table__header table__column--15">Size</div>
+                                <div class="table__header table__column--15">Mountpoint</div>
+                                <div class="table__header table__column--47">File system</div>
                             </div>
 
                         </header>
@@ -736,10 +736,10 @@
                                             <label class="checkbox-label" for="{$ filesystem.name $}" ></label>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--15">{$ filesystem.name $}</div>
-                                    <div class="table__data table__column--27">{$ filesystem.size_human $}</div>
-                                    <div class="table__data table__column--15">{$ filesystem.fstype $}</div>
-                                    <div class="table__data table__column--30">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table__column--20">{$ filesystem.name $}</div>
+                                    <div class="table__data table__column--15">{$ filesystem.size_human $}</div>
+                                    <div class="table__data table__column--15">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table__column--37">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
                                             <a class="icon delete tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
@@ -1040,16 +1040,16 @@
                                             </div>
                                             <div data-ng-show="availableMode === 'single'">
                                                 <div class="table__data left margin-left--thirty">
-                                                    <button class="cta-ubuntu secondary"
+                                                    <button class="cta-ubuntu secondary margin-right"
                                                         data-ng-show="canFormatAndMount(item)"
                                                         data-ng-click="availableFormatAndMount(item)">{$ getFormatAndMountButtonText (item) $}</button>
-                                                    <button class="cta-ubuntu secondary"
+                                                    <button class="cta-ubuntu secondary margin-right"
                                                         data-ng-show="canAddPartition(item)"
                                                         data-ng-click="availablePartiton(item)">{$ getPartitionButtonText(item) $}</button>
-                                                    <button class="cta-ubuntu secondary"
+                                                    <button class="cta-ubuntu secondary margin-right"
                                                         data-ng-show="canAddLogicalVolume(item)"
                                                         data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
-                                                    <a class="link-cta-ubuntu text-button"
+                                                    <a class="link-cta-ubuntu text-button margin-right"
                                                         data-ng-show="hasUnmountedFilesystem(item)"
                                                         data-ng-click="availableUnformat()">Unformat</a>
                                                     <a class="link-cta-ubuntu text-button"
