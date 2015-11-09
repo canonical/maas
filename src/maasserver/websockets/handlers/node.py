@@ -169,7 +169,6 @@ class NodeHandler(TimestampedModelHandler):
             "power_state_updated",
             "gateway_link_ipv4",
             "gateway_link_ipv6",
-            "block_poweroff",
             "enable_ssh",
             "skip_networking",
             "skip_storage",

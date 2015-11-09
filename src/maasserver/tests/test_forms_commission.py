@@ -65,7 +65,6 @@ class TestCommissionForm(MAASServerTestCase):
             node, "start_commissioning")
         form = CommissionForm(instance=node, user=user, data={
             "enable_ssh": True,
-            "block_poweroff": True,
             "skip_networking": True,
             "skip_storage": True,
             })
@@ -75,5 +74,5 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertThat(
             mock_start_commissioning,
             MockCalledOnceWith(
-                user, enable_ssh=True, block_poweroff=True,
-                skip_networking=True, skip_storage=True))
+                user, enable_ssh=True, skip_networking=True,
+                skip_storage=True))

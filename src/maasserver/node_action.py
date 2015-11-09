@@ -238,8 +238,8 @@ class Commission(NodeAction):
     installable_only = True
 
     def execute(
-            self, enable_ssh=False, block_poweroff=False,
-            skip_networking=False, skip_storage=False):
+            self, enable_ssh=False, skip_networking=False,
+            skip_storage=False):
         """See `NodeAction.execute`."""
         if self.node.power_state == POWER_STATE.ON:
             raise NodeActionError(
@@ -249,7 +249,6 @@ class Commission(NodeAction):
             self.node.start_commissioning(
                 self.user,
                 enable_ssh=enable_ssh,
-                block_poweroff=block_poweroff,
                 skip_networking=skip_networking,
                 skip_storage=skip_storage)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:

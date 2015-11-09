@@ -278,7 +278,6 @@ describe("NodesListController", function() {
                     expect(tabScope.osSelection.release).toBeNull();
                     expect(tabScope.commissionOptions).toEqual({
                         enableSSH: false,
-                        blockPoweroff: false,
                         skipNetworking: false,
                         skipStorage: false
                     });
@@ -1234,14 +1233,12 @@ describe("NodesListController", function() {
                     $scope.tabs.nodes.actionOption = { name: "commission" };
                     $scope.tabs.nodes.selectedItems = [object];
                     $scope.tabs.nodes.commissionOptions.enableSSH = true;
-                    $scope.tabs.nodes.commissionOptions.blockPoweroff = true;
                     $scope.tabs.nodes.commissionOptions.skipNetworking = false;
                     $scope.tabs.nodes.commissionOptions.skipStorage = false;
                     $scope.actionGo("nodes");
                     expect(spy).toHaveBeenCalledWith(
                         object, "commission", {
                             enable_ssh: true,
-                            block_poweroff: true,
                             skip_networking: false,
                             skip_storage: false
                         });
@@ -1258,7 +1255,6 @@ describe("NodesListController", function() {
                 NodesManager._selectedItems.push(object);
                 $scope.tabs.nodes.actionOption = { name: "commission" };
                 $scope.tabs.nodes.commissionOptions.enableSSH = true;
-                $scope.tabs.nodes.commissionOptions.blockPoweroff = true;
                 $scope.tabs.nodes.commissionOptions.skipNetworking = true;
                 $scope.tabs.nodes.commissionOptions.skipStorage = true;
                 $scope.actionGo("nodes");
@@ -1266,7 +1262,6 @@ describe("NodesListController", function() {
                 $scope.$digest();
                 expect($scope.tabs.nodes.commissionOptions).toEqual({
                     enableSSH: false,
-                    blockPoweroff: false,
                     skipNetworking: false,
                     skipStorage: false
                 });

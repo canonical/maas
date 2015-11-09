@@ -8085,7 +8085,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 1
@@ -8128,7 +8127,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 3
@@ -8171,7 +8169,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 5
@@ -8214,7 +8211,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 6
@@ -8257,7 +8253,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 7
@@ -8300,7 +8295,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 8
@@ -8343,7 +8337,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 9
@@ -8386,7 +8379,6 @@
     agent_name: ''
     architecture: amd64/generic
     bios_boot_method: pxe
-    block_poweroff: false
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 10
@@ -8429,7 +8421,6 @@
     agent_name: ''
     architecture: null
     bios_boot_method: null
-    block_poweroff: false
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null
@@ -8472,7 +8463,6 @@
     agent_name: ''
     architecture: null
     bios_boot_method: null
-    block_poweroff: false
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null
@@ -8513,7 +8503,6 @@
     agent_name: ''
     architecture: null
     bios_boot_method: null
-    block_poweroff: false
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null

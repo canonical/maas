@@ -147,7 +147,7 @@ write_block_poweroff() {
 }
 
 main() {
-   {{if node.block_poweroff}}
+   {{if node.enable_ssh}}
    write_block_poweroff
    {{endif}}
    write_poweroff_job

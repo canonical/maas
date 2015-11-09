@@ -549,9 +549,6 @@ class NodeHandler(OperationsHandler):
         :param enable_ssh: Whether to enable SSH for the commissioning
             environment using the user's SSH key(s).
         :type enable_ssh: bool ('0' for False, '1' for True)
-        :param block_poweroff: Whether to prevent the power off the node
-            after the commissioning has completed.
-        :type block_poweroff: bool ('0' for False, '1' for True)
         :param skip_networking: Whether to skip re-configuring the networking
             on the node after the commissioning has completed.
         :type skip_networking: bool ('0' for False, '1' for True)

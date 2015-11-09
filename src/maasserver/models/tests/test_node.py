@@ -1463,17 +1463,15 @@ class TestNode(MAASServerTestCase):
         node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
-        block_poweroff = factory.pick_bool()
         skip_networking = factory.pick_bool()
         skip_storage = factory.pick_bool()
         node.start_commissioning(
-            admin, enable_ssh=enable_ssh, block_poweroff=block_poweroff,
-            skip_networking=skip_networking, skip_storage=skip_storage)
+            admin, enable_ssh=enable_ssh, skip_networking=skip_networking,
+            skip_storage=skip_storage)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
         expected_attrs = {
             'enable_ssh': enable_ssh,
-            'block_poweroff': block_poweroff,
             'skip_networking': skip_networking,
             'skip_storage': skip_storage,
         }

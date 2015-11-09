@@ -887,13 +887,11 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(self.get_node_uri(node), {
             'op': 'commission',
             'enable_ssh': "true",
-            'block_poweroff': True,
             'skip_networking': 1,
             })
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertTrue(node.enable_ssh)
-        self.assertTrue(node.block_poweroff)
         self.assertTrue(node.skip_networking)
 
     def test_PUT_updates_node(self):

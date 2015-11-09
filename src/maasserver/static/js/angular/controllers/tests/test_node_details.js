@@ -200,7 +200,6 @@ describe("NodeDetailsController", function() {
         expect($scope.osSelection.release).toBeNull();
         expect($scope.commissionOptions).toEqual({
             enableSSH: false,
-            blockPoweroff: false,
             skipNetworking: false,
             skipStorage: false
         });
@@ -1136,14 +1135,12 @@ describe("NodeDetailsController", function() {
                 name: "commission"
             };
             $scope.commissionOptions.enableSSH = true;
-            $scope.commissionOptions.blockPoweroff = true;
             $scope.commissionOptions.skipNetworking = false;
             $scope.commissionOptions.skipStorage = false;
             $scope.actionGo();
             expect(NodesManager.performAction).toHaveBeenCalledWith(
                 node, "commission", {
                     enable_ssh: true,
-                    block_poweroff: true,
                     skip_networking: false,
                     skip_storage: false
                 });
@@ -1191,7 +1188,6 @@ describe("NodeDetailsController", function() {
                 name: "commission"
             };
             $scope.commissionOptions.enableSSH = true;
-            $scope.commissionOptions.blockPoweroff = true;
             $scope.commissionOptions.skipNetworking = true;
             $scope.commissionOptions.skipStorage = true;
             $scope.actionGo();
@@ -1199,7 +1195,6 @@ describe("NodeDetailsController", function() {
             $rootScope.$digest();
             expect($scope.commissionOptions).toEqual({
                 enableSSH: false,
-                blockPoweroff: false,
                 skipNetworking: false,
                 skipStorage: false
             });

@@ -33,7 +33,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
         $scope.commissionOptions = {
             enableSSH: false,
-            blockPoweroff: false,
             skipNetworking: false,
             skipStorage: false
         };
@@ -714,7 +713,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
             } else if($scope.actionOption.name === "commission") {
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
-                extra.block_poweroff = $scope.commissionOptions.blockPoweroff;
                 extra.skip_networking = (
                     $scope.commissionOptions.skipNetworking);
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
@@ -730,7 +728,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.actionError = null;
                     $scope.osSelection.$reset();
                     $scope.commissionOptions.enableSSH = false;
-                    $scope.commissionOptions.blockPoweroff = false;
                     $scope.commissionOptions.skipNetworking = false;
                     $scope.commissionOptions.skipStorage = false;
                 }, function(error) {
