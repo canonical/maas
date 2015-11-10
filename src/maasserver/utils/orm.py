@@ -46,6 +46,7 @@ from itertools import (
     repeat,
     takewhile,
 )
+import re
 import threading
 from time import sleep
 import types
@@ -62,6 +63,11 @@ from django.db import (
 from django.db.models import Q
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
+from django.http import Http404
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIForbidden,
+)
 from maasserver.utils.async import DeferredHooks
 from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import (
@@ -86,7 +92,7 @@ def get_exception_class(items):
     return getattr(model, 'MultipleObjectsReturned', MultipleObjectsReturned)
 
 
-def get_one(items):
+def get_one(items, exception_class=None):
     """Assume there's at most one item in `items`, and return it (or None).
 
     If `items` contains more than one item, raise an error.  If `items` looks
@@ -95,6 +101,9 @@ def get_one(items):
     Otherwise, a plain Django :class:`MultipleObjectsReturned` error.
 
     :param items: Any sequence.
+    :param exception_class: The exception class to raise if there is an error.
+        If not specified, will use MultipleObjectsReturned (from the
+        appropriate model class, if it can be determined).
     :return: The one item in that sequence, or None if it was empty.
     """
     # The only numbers we care about are zero, one, and "many."  Fetch
@@ -107,7 +116,12 @@ def get_one(items):
     elif length == 1:
         return retrieved_items[0]
     else:
-        raise get_exception_class(items)("Got more than one item.")
+        if exception_class is None:
+            exception_class = get_exception_class(items)
+        object_name = get_model_object_name(items)
+        if object_name is None:
+            object_name = "item"
+        raise exception_class("Got more than one %s." % object_name.lower())
 
 
 def get_first(items):
@@ -745,6 +759,18 @@ def parse_item_specifier_type(specifier, spec_types={}, separator=':'):
     return specifier, specifier_type
 
 
+def get_model_object_name(queryset):
+    """Returns the model object name for the given `QuerySet`, or None if
+    it cannot be determined.
+    """
+    if hasattr(queryset, 'model'):
+        if hasattr(queryset.model, '_meta'):
+            metadata = getattr(queryset.model, '_meta')
+            if hasattr(metadata, 'object_name'):
+                return metadata.object_name
+    return None
+
+
 class MAASQueriesMixin(object):
     """Contains utility functions that any mixin for model object manager
     queries may need to make use of."""
@@ -767,6 +793,25 @@ class MAASQueriesMixin(object):
         """
         ids = self.get_id_list(raw_query)
         return self.filter(id__in=ids)
+
+    def format_specifiers(self, specifiers):
+        """Formats the given specifiers into a list.
+
+        If the list of specifiers is given as a comma-separated list, it is
+        inferred that the user would like a set of queries joined with
+        logical AND operators.
+
+        For example, 'name:eth0,hostname:tasty-buscuits' might match interface
+        eth0 on node 'tasty-biscuits'; that is, both constraints are required.
+        """
+        if isinstance(specifiers, types.IntType):
+            return [unicode(specifiers)]
+        elif isinstance(specifiers, unicode):
+            return [
+                '&' + specifier.strip() for specifier in specifiers.split(',')
+            ]
+        else:
+            return list(flatten(specifiers))
 
     def get_filter_function(
             self, specifier_type, spec_types, item, separator=':'):
@@ -839,7 +884,7 @@ class MAASQueriesMixin(object):
         return None
 
     def get_specifiers_q(
-            self, specifiers, specifier_types=None, separator=':'):
+            self, specifiers, specifier_types=None, separator=':', **kwargs):
         """Returns a Q object for objects matching the given specifiers.
 
         See documentation for `filter_by_specifiers()`.
@@ -849,8 +894,6 @@ class MAASQueriesMixin(object):
         if specifier_types is None:
             raise NotImplementedError("Subclass must specify specifier_types.")
         current_q = Q()
-        # Handle a single item, or a list.
-        specifiers = list(flatten(specifiers))
         for item in specifiers:
             item, op = parse_item_operation(item)
             item, specifier_type = parse_item_specifier_type(
@@ -858,26 +901,46 @@ class MAASQueriesMixin(object):
             query = self.get_filter_function(
                 specifier_type, specifier_types, item, separator=separator)
             current_q = query(current_q, op, item)
+        if len(kwargs) > 0:
+            current_q &= Q(**kwargs)
         return current_q
 
-    def filter_by_specifiers(self, specifiers, separator=':'):
-        query = self.get_specifiers_q(specifiers, separator=separator)
+    def filter_by_specifiers(self, specifiers, separator=':', **kwargs):
+        """Filters this object by the given specifiers.
+
+        If additional keyword arguments are supplied, they will also be queried
+        for, and treated as an AND.
+
+        :return:QuerySet
+        """
+        specifiers = self.format_specifiers(specifiers)
+        query = self.get_specifiers_q(
+            specifiers, separator=separator, **kwargs)
         return self.filter(query)
 
-    def exclude_by_specifiers(self, specifiers):
+    def exclude_by_specifiers(self, specifiers, **kwargs):
         """Excludes subnets by the given list of specifiers (or single
         specifier).
 
         See documentation for `filter_by_specifiers()`.
 
-        :raise:AddrFormatError:If a specific IP address or CIDR is requested,
-            but the address could not be parsed.
+        If additional keyword arguments are supplied, they will also be queried
+        for, and treated as an AND.
+
         :return:QuerySet
         """
-        query = self.get_specifiers_q(specifiers)
+        specifiers = self.format_specifiers(specifiers)
+        query = self.get_specifiers_q(specifiers, **kwargs)
         return self.exclude(query)
 
     def _add_vlan_vid_query(self, current_q, op, item):
+        """Query for a related VLAN with a specified VID (vlan__vid).
+
+        Even though this is a rather specific query, it was placed in orm.py
+        since it is shared by multiple subclasses. (It will not be used unless
+        referred to by the specifier_types dictionary passed into
+        get_specifiers_q() by the subclass.)
+        """
         if item.lower() == 'untagged':
             vid = 0
         else:
@@ -890,6 +953,21 @@ class MAASQueriesMixin(object):
         return current_q
 
     def get_matching_object_map(self, specifiers, query):
+        """This method is intended to be called with a query for foreign object
+        IDs. For example, if called from the Interface object (with a list
+        of interface specifiers), it might be called with a query string like
+        'node__id' (a "foreign" object ID). In general, this you will get a
+        dictionary from this method in the form:
+
+        {
+            <foreign_id>: [<object_id1>, [<object_id2>], ...]]
+            ...
+        }
+
+        In other words, call this method when you want a map from a related
+        object IDs (specified by 'query') to a list of objects (of the current
+        type) which match a query.
+        """
         filter = self.filter_by_specifiers(specifiers)
         # We'll be looping through the list assuming a particular order later
         # in this function, so make sure the interfaces are grouped by their
@@ -905,7 +983,7 @@ class MAASQueriesMixin(object):
                 # Skip objects that do not have a corresponding foreign key.
                 continue
             if current_id != object_id:
-                # Encountered a new node ID in the list, so create an empty
+                # Encountered a new foreign ID in the list, so create an empty
                 # list and add it to the map. (and add it to the set of matched
                 # nodes)
                 foreign_object_matches = []
@@ -914,3 +992,77 @@ class MAASQueriesMixin(object):
                 object_id = current_id
             foreign_object_matches.append(foreign_id)
         return object_ids, foreign_object_map
+
+    def get_object_by_specifiers_or_raise(self, specifiers, **kwargs):
+        """Gets an object using the given specifier(s).
+
+        If the specifier is empty, raises Http400.
+        If multiple objects are returned, raises Http403.
+        If the object cannot be found, raises Http404.
+
+        :param:specifiers: unicode
+        """
+        object_name = get_model_object_name(self)
+        if isinstance(specifiers, unicode):
+            specifiers = specifiers.strip()
+        if specifiers is None or specifiers == "":
+            raise MAASAPIBadRequest(
+                "%s specifier required." % object_name)
+        try:
+            object = get_one(self.filter_by_specifiers(specifiers, **kwargs))
+            if object is None:
+                raise Http404(
+                    'No %s matches the given query.' % object_name)
+        except self.model.MultipleObjectsReturned:
+            raise MAASAPIForbidden(
+                "Too many %s objects match the given query." % object_name)
+        return object
+
+    def get_object_id(self, name, prefix=None):
+        """
+        Given the specified name and prefix, attempts to derive an object ID.
+
+        By default (if a prefix is not supplied), uses the lowercase version
+        of the current model object name as a prefix.
+
+        For example, if the current model object name is "Fabric", and a string
+        such as 'fabric-10' is supplied, int(10) will be returned. If an
+        incorrect prefix is supplied, None will be returned. If an integer is
+        supplied, the integer will be returned. If a string is supplied, that
+        string will be parsed as an integer and returned (before trying to
+        match against 'prefix-<int>').
+
+        :param name: str
+        :param prefix: str
+        :return: int
+        """
+        if name is None:
+            return None
+        if isinstance(name, types.IntType):
+            return name
+        try:
+            object_id = parse_integer(name)
+            return object_id
+        except ValueError:
+            # Move on to check if this is a "name" like "object-10".
+            pass
+        if prefix is None:
+            prefix = get_model_object_name(self).lower()
+        name = name.strip()
+        match = re.match(r'%s-(\d+)$' % prefix, name)
+        if match is not None:
+            (object_id,) = match.groups()
+            object_id = int(object_id)
+            return object_id
+        else:
+            return None
+
+    def _add_default_query(self, current_q, op, item):
+        """If the item we're matching is an integer, first try to locate the
+        object by its ID. Otherwise, search by name.
+        """
+        object_id = self.get_object_id(item)
+        if object_id is not None:
+            return op(current_q, Q(id=object_id))
+        else:
+            return op(current_q, Q(name=item))

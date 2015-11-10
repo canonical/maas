@@ -26,12 +26,16 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
+    Q,
 )
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import VLANInterface
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
+from provisioningserver.utils.network import parse_integer
 
 
 VLAN_NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
@@ -41,8 +45,87 @@ DEFAULT_VID = 0
 DEFAULT_MTU = 1500
 
 
-class VLANManager(Manager):
+def validate_vid(vid):
+    """Raises a ValidationError if the given VID is not valid."""
+    if vid < 0 or vid >= 0xfff:
+        raise ValidationError(
+            "VLAN tag (VID) out of range "
+            "(0-4094; 0 for untagged.)")
+
+
+class VLANQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # Circular imports.
+        from maasserver.models import (
+            Fabric,
+            Subnet,
+        )
+
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'fabric': (Fabric.objects, 'vlan'),
+            'id': "__id",
+            'name': "__name",
+            'subnet': (Subnet.objects, 'vlan'),
+            'vid': self._add_vid_query,
+        }
+        return super(VLANQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+    def _add_default_query(self, current_q, op, item):
+        """If the item we're matching is an integer, first try to locate the
+        object by its ID. Otherwise, search by name.
+        """
+        try:
+            # Check if the user passed in a VID.
+            vid = parse_integer(item)
+        except ValueError:
+            vid = None
+            pass
+        if item == "untagged":
+            vid = 0
+
+        if vid is not None:
+            # We could do something like this here, if you actually need to
+            # look up the VLAN by its ID:
+            # if isinstance(item, unicode) and item.strip().startswith('vlan-')
+            # ... but it's better to use VID, since that means something to
+            # the user (and you always need to qualify a VLAN with its fabric
+            # anyway).
+            validate_vid(vid)
+            return op(current_q, Q(vid=vid))
+        else:
+            return op(current_q, Q(name=item))
+
+    def _add_vid_query(self, current_q, op, item):
+        if item.lower() == 'untagged':
+            vid = 0
+        else:
+            vid = parse_integer(item)
+        validate_vid(vid)
+        current_q = op(current_q, Q(vid=vid))
+        return current_q
+
+
+class VLANQuerySet(QuerySet, VLANQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    this object. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager.
+    """
+
+
+class VLANManager(Manager, VLANQueriesMixin):
     """Manager for :class:`VLAN` model."""
+
+    def get_queryset(self):
+        queryset = VLANQuerySet(self.model, using=self._db)
+        return queryset
 
     def get_default_vlan(self):
         """Return the default VLAN of the default fabric."""

@@ -14,7 +14,7 @@ class Migration(DataMigration):
             'maasserver.models.migrations.populate_subnets_helper')
 
         default_fabric = orm.Fabric.objects.get(id=0)
-        default_vlan = orm.VLAN.objects.get(id=0)
+        default_vlan = orm.VLAN.objects.filter(fabric__id=0, vid=0).first()
         default_space = orm.Space.objects.get(id=0)
 
         Network = orm.Network

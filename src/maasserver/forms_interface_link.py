@@ -26,7 +26,10 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
-from maasserver.fields import CaseInsensitiveChoiceField
+from maasserver.fields import (
+    CaseInsensitiveChoiceField,
+    SpecifierOrModelChoiceField,
+)
 from maasserver.models import (
     BondInterface,
     Interface,
@@ -56,7 +59,7 @@ class InterfaceLinkForm(forms.Form):
                 'mode', INTERFACE_LINK_TYPE_CHOICES),
         })
 
-    subnet = forms.ModelChoiceField(queryset=None, required=False)
+    subnet = SpecifierOrModelChoiceField(queryset=None, required=False)
 
     ip_address = forms.GenericIPAddressField(required=False)
 

@@ -31,7 +31,6 @@ from django.db.models import (
     Q,
 )
 from django.db.models.query import QuerySet
-from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -57,7 +56,8 @@ from provisioningserver.utils.network import (
     parse_integer,
 )
 
-
+# Note: since subnets can be referenced in the API by name, if this regex is
+# updated, then the regex in urls_api.py also needs to be udpated.
 SUBNET_NAME_VALIDATOR = RegexValidator('^[.: \w/-]+$')
 
 
@@ -172,7 +172,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         except (ValueError, AddrFormatError) as e:
             raise ValidationError(e.message)
 
-    def get_specifiers_q(self, specifiers, separator=':'):
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
         """Returns a Q object for objects matching the given specifiers.
 
         Allows a number of types to be prefixed in front of each specifier:
@@ -195,36 +195,49 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         :return:django.db.models.Q
         """
         # Circular imports.
-        from maasserver.models import Interface
+        from maasserver.models import (
+            Fabric,
+            Interface,
+            Space,
+            VLAN,
+        )
 
-        # This dict is used by the constraints code in order to identify
-        # subnets with particular properties. Please note that changing
-        # the keys here can impact backward compatibility, so use caution.
-        subnet_specifier_types = {
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
             None: self._add_default_query,
             'cidr': self._add_unvalidated_cidr_query,
+            'fabric': (Fabric.objects, 'vlan__subnet'),
             'id': self._add_subnet_id_query,
             'interface': (Interface.objects, 'ip_addresses__subnet'),
             'ip': self._add_ip_in_subnet_query,
             'name': "__name",
+            'space': (Space.objects, 'subnet'),
             'vid': self._add_vlan_vid_query,
-            'vlan': 'vid',
-            'space': "space__name",
+            'vlan': (VLAN.objects, 'subnet'),
         }
         return super(SubnetQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=subnet_specifier_types, separator=':')
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
 
     def _add_default_query(self, current_q, op, item):
-        # By default, search for a specific CIDR first, then
-        # fall back to the name.
+        """If the item we're matching is an integer, first try to locate the
+        subnet by its ID. Otherwise, try to parse it as a CIDR. If all else
+        fails, search by the name.
+        """
+        id = self.get_object_id(item)
+        if id is not None:
+            return op(current_q, Q(id=id))
+
         try:
             ip = IPNetwork(item)
-        except AddrFormatError:
-            current_q = op(current_q, Q(name=item))
+        except (AddrFormatError, ValueError):
+            # The user didn't pass in a valid CIDR, so try the subnet name.
+            return op(current_q, Q(name=item))
         else:
             cidr = unicode(ip.cidr)
-            current_q = op(current_q, Q(cidr=cidr))
-        return current_q
+            return op(current_q, Q(cidr=cidr))
 
     def _add_unvalidated_cidr_query(self, current_q, op, item):
         ip = IPNetwork(item)
@@ -289,13 +302,13 @@ class SubnetManager(Manager, SubnetQueriesMixin):
             fabric = int(fabric)
         return fabric
 
-    def get_subnet_or_404(self, id, user, perm):
+    def get_subnet_or_404(self, specifiers, user, perm):
         """Fetch a `Subnet` by its id.  Raise exceptions if no `Subnet` with
         this id exists or if the provided user has not the required permission
         to access this `Subnet`.
 
-        :param id: The subnet_id.
-        :type id: int
+        :param specifiers: A specifier to uniquely locate the Subnet.
+        :type specifiers: unicode
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
@@ -307,7 +320,7 @@ class SubnetManager(Manager, SubnetQueriesMixin):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        subnet = get_object_or_404(self.model, id=id)
+        subnet = self.get_object_by_specifiers_or_raise(specifiers)
         if user.has_perm(perm, subnet):
             return subnet
         else:

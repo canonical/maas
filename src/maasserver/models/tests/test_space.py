@@ -83,6 +83,57 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
                 space.id, admin, NODE_PERMISSION.ADMIN))
 
 
+class TestSpaceManager(MAASServerTestCase):
+
+    def test__default_specifier_matches_id(self):
+        factory.make_Space()
+        space = factory.make_Space()
+        factory.make_Space()
+        id = space.id
+        self.assertItemsEqual(
+            Space.objects.filter_by_specifiers('%s' % id),
+            [space]
+        )
+
+    def test__default_specifier_matches_name_with_id(self):
+        factory.make_Space()
+        space = factory.make_Space()
+        factory.make_Space()
+        id = space.id
+        self.assertItemsEqual(
+            Space.objects.filter_by_specifiers('space-%s' % id),
+            [space]
+        )
+
+    def test__default_specifier_matches_name(self):
+        factory.make_Space()
+        space = factory.make_Space(name='infinite-improbability')
+        factory.make_Space()
+        self.assertItemsEqual(
+            Space.objects.filter_by_specifiers('infinite-improbability'),
+            [space]
+        )
+
+    def test__name_specifier_matches_name(self):
+        factory.make_Space()
+        space = factory.make_Space(name='infinite-improbability')
+        factory.make_Space()
+        self.assertItemsEqual(
+            Space.objects.filter_by_specifiers('name:infinite-improbability'),
+            [space]
+        )
+
+    def test__class_specifier_matches_attached_subnet(self):
+        factory.make_Space()
+        space = factory.make_Space()
+        subnet = factory.make_Subnet(space=space)
+        factory.make_Space()
+        self.assertItemsEqual(
+            Space.objects.filter_by_specifiers('subnet:%s' % subnet.id),
+            [space]
+        )
+
+
 class SpaceTest(MAASServerTestCase):
 
     def test_creates_space(self):

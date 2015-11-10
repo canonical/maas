@@ -11,7 +11,11 @@ class Migration(DataMigration):
         now = datetime.datetime.now()
         orm['maasserver.Fabric'](name="fabric-0", id=0, created=now,
                                  updated=now).save()
+        # We don't want VLAN IDs in the range 0-4095, since this makes it easy
+        # to confuse them with VIDs. (it's more a usability issue than a
+        # technical one.) However, the default VLAN still needs to be 0.
         orm['maasserver.VLAN'](name="Default VLAN", id=0, fabric_id=0, vid=0, created=now, updated=now).save()
+        db.execute("SELECT pg_catalog.setval('maasserver_vlan_id_seq', 5001, false);")
 
     def backwards(self, orm):
         pass

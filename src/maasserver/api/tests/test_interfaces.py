@@ -25,6 +25,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
+from maasserver.models import Interface
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -44,13 +45,15 @@ def get_node_interfaces_uri(node):
 
 def get_node_interface_uri(interface, node=None):
     """Return a Node's interface URI on the API."""
-    if node is None:
-        node = interface.get_node()
+    if isinstance(interface, Interface):
+        if node is None:
+            node = interface.get_node()
+        interface = interface.id
     return reverse(
-        'node_interface_handler', args=[node.system_id, interface.id])
+        'node_interface_handler', args=[node.system_id, interface])
 
 
-def make_complex_interface(node):
+def make_complex_interface(node, name=None):
     """Makes interface with parents and children."""
     fabric = factory.make_Fabric()
     vlan_5 = factory.make_VLAN(vid=5, fabric=fabric)
@@ -61,7 +64,7 @@ def make_complex_interface(node):
     parents = [nic_0, nic_1]
     bond_interface = factory.make_Interface(
         INTERFACE_TYPE.BOND, mac_address=nic_0.mac_address, vlan=vlan_5,
-        parents=parents)
+        parents=parents, name=name)
     vlan_10 = factory.make_VLAN(vid=10, fabric=fabric)
     vlan_nic_10 = factory.make_Interface(
         INTERFACE_TYPE.VLAN, vlan=vlan_10, parents=[bond_interface])
@@ -400,7 +403,7 @@ class TestNodeInterfacesAPI(APITestCase):
         uri = get_node_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_vlan",
-            "vlan": tagged_vlan.id,
+            "vlan": tagged_vlan.vid,
             "parent": parent_iface.id,
             })
         self.assertEqual(
@@ -527,6 +530,16 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertEquals(dhcp_subnet.id, json_discovered["subnet"]["id"])
         self.assertEquals(discovered_ip, json_discovered["ip_address"])
 
+    def test_read_by_specifier(self):
+        node = factory.make_Node(hostname="tasty-biscuits")
+        bond0, _, _ = make_complex_interface(node, name="bond0")
+        uri = get_node_interface_uri(
+            "hostname:tasty-biscuits,name:bond0", node=node)
+        response = self.client.get(uri)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_interface = json.loads(response.content)
+        self.assertEqual(bond0.id, parsed_interface['id'])
+
     def test_read_404_when_invalid_id(self):
         node = factory.make_Node()
         uri = reverse(
@@ -553,7 +566,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 httplib.OK, response.status_code, response.content)
             parsed_interface = json.loads(response.content)
             self.assertEquals(new_name, parsed_interface["name"])
-            self.assertEquals(new_vlan.id, parsed_interface["vlan"]["id"])
+            self.assertEquals(new_vlan.vid, parsed_interface["vlan"]["vid"])
 
     def test_update_bond_interface(self):
         self.become_admin()

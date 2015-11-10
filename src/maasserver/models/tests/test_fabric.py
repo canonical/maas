@@ -88,6 +88,56 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
                 fabric.id, admin, NODE_PERMISSION.ADMIN))
 
 
+class TestFabricManager(MAASServerTestCase):
+
+    def test__default_specifier_matches_id(self):
+        factory.make_Fabric()
+        fabric = factory.make_Fabric()
+        factory.make_Fabric()
+        id = fabric.id
+        self.assertItemsEqual(
+            Fabric.objects.filter_by_specifiers('%s' % id),
+            [fabric]
+        )
+
+    def test__default_specifier_matches_name_with_id(self):
+        factory.make_Fabric()
+        fabric = factory.make_Fabric()
+        factory.make_Fabric()
+        id = fabric.id
+        self.assertItemsEqual(
+            Fabric.objects.filter_by_specifiers('fabric-%s' % id),
+            [fabric]
+        )
+
+    def test__default_specifier_matches_name(self):
+        factory.make_Fabric()
+        fabric = factory.make_Fabric(name='infinite-improbability')
+        factory.make_Fabric()
+        self.assertItemsEqual(
+            Fabric.objects.filter_by_specifiers('infinite-improbability'),
+            [fabric]
+        )
+
+    def test__name_specifier_matches_name(self):
+        factory.make_Fabric()
+        fabric = factory.make_Fabric(name='infinite-improbability')
+        factory.make_Fabric()
+        self.assertItemsEqual(
+            Fabric.objects.filter_by_specifiers('name:infinite-improbability'),
+            [fabric]
+        )
+
+    def test__class_specifier_matches_class(self):
+        factory.make_Fabric(class_type='1 Gbps')
+        fabric = factory.make_Fabric(class_type='400 Tbps')
+        factory.make_Fabric(class_type='10 Gbps')
+        self.assertItemsEqual(
+            Fabric.objects.filter_by_specifiers('class:400 Tbps'),
+            [fabric]
+        )
+
+
 class TestFabric(MAASServerTestCase):
 
     def test_get_name_for_empty_name(self):

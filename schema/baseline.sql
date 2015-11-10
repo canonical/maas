@@ -5767,7 +5767,7 @@ COPY maasserver_vlan (id, created, updated, name, vid, fabric_id) FROM stdin;
 -- Name: maasserver_vlan_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('maasserver_vlan_id_seq', 1, false);
+SELECT pg_catalog.setval('maasserver_vlan_id_seq', 5001, false);
 
 
 --

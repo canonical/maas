@@ -154,7 +154,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         factory.make_Subnet(name="subnet4", vid=4)
         self.assertItemsEqual(
             Subnet.objects.filter_by_specifiers(
-                ["vlan:0b1", "vlan:0x2", "vlan:3"]),
+                ["vlan:vid:0b1", "vlan:vid:0x2", "vlan:vid:3"]),
             [subnet1, subnet2, subnet3])
 
     def test__filter_by_specifiers_matches_untagged_vlan_if_requested(self):

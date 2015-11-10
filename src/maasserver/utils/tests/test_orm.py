@@ -31,7 +31,11 @@ from django.db.backends import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
-from maasserver.testing.testcase import SerializationFailureTestCase
+from maasserver.models import Node
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    SerializationFailureTestCase,
+)
 from maasserver.utils import orm
 from maasserver.utils.orm import (
     disable_all_database_connections,
@@ -40,6 +44,7 @@ from maasserver.utils.orm import (
     ExclusivelyConnected,
     FullyConnected,
     get_first,
+    get_model_object_name,
     get_one,
     get_psycopg2_exception,
     get_psycopg2_serialization_exception,
@@ -945,3 +950,17 @@ class TestFullyConnected(DjangoTransactionTestCase):
                 self.assertOpen(alias)
         for alias in connections:
             self.assertClosed(alias)
+
+
+class TestGetModelObjectName(MAASServerTestCase):
+
+    def test__gets_model_object_name_from_manager(self):
+        self.assertThat(get_model_object_name(Node.objects), Equals("Node"))
+
+    def test__gets_model_object_name_from_queryset(self):
+        self.assertThat(
+            get_model_object_name(Node.objects.all()), Equals("Node"))
+
+    def test__gets_model_object_name_returns_none_if_not_found(self):
+        self.assertThat(
+            get_model_object_name("crazytalk"), Is(None))

@@ -38,8 +38,6 @@ from django.db.models import (
     Q,
 )
 from django.db.models.query import QuerySet
-from django.http import Http404
-from django.shortcuts import get_object_or_404
 from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import (
@@ -119,36 +117,40 @@ def get_subnet_family(subnet):
 
 class InterfaceQueriesMixin(MAASQueriesMixin):
 
-    def get_specifiers_q(self, specifiers, separator=':'):
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
         """Returns a Q object for objects matching the given specifiers.
 
         :return:django.db.models.Q
         """
         # Circular imports.
-        from maasserver.models import Subnet
+        from maasserver.models import (
+            Fabric,
+            Subnet,
+            VLAN,
+        )
 
-        # This dict is used by the constraints code in order to identify
-        # interfaces with particular properties. Please note that changing
-        # the keys here can impact backward compatibility, so use caution.
-        interface_specifier_types = {
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
             None: self._add_default_query,
             'id': self._add_interface_id_query,
-            # XXX mpontillo 2015-10-31 the fabric matcher should probably
-            # become a tuple, after we have specifier-based fabric queries.
-            'fabric': 'vlan__fabric__name',
+            'fabric': (Fabric.objects, 'vlan__interface'),
             'fabric_class': 'vlan__fabric__class_type',
             'ip': 'ip_addresses__ip',
             'mode': self._add_mode_query,
             'name': '__name',
+            'hostname': 'node__hostname',
             'subnet': (Subnet.objects, 'staticipaddress__interface'),
             'space': 'subnet{s}space'.format(s=separator),
             'subnet_cidr': 'subnet{s}cidr'.format(s=separator),
             'type': '__type',
+            'vlan': (VLAN.objects, 'interface'),
             'vid': self._add_vlan_vid_query,
         }
         return super(InterfaceQueriesMixin, self).get_specifiers_q(
-            specifiers, specifier_types=interface_specifier_types,
-            separator=separator)
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
 
     def _add_interface_id_query(self, current_q, op, item):
         try:
@@ -156,20 +158,41 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         except ValueError:
             raise ValidationError("Interface ID must be numeric.")
         else:
-            current_q = op(current_q, Q(id=item))
-            return current_q
+            return op(current_q, Q(id=item))
 
     def _add_default_query(self, current_q, op, item):
-        # By default, search for a specific CIDR first, then
-        # fall back to the name.
+        # First, just try treating this as an interface ID.
         try:
-            ip = IPNetwork(item)
-        except AddrFormatError:
-            current_q = op(current_q, Q(name=item))
+            object_id = parse_integer(item)
+        except ValueError:
+            pass
         else:
-            cidr = unicode(ip.cidr)
-            current_q = op(current_q, Q(ip_addresses__subnet__cidr=cidr))
-        return current_q
+            return op(current_q, Q(id=object_id))
+
+        if '/' in item:
+            # The user may have tried to pass in a CIDR.
+            # That means we need to check both the IP address and the subnet's
+            # CIDR.
+            try:
+                ip_cidr = IPNetwork(item)
+            except (AddrFormatError, ValueError):
+                pass
+            else:
+                cidr = unicode(ip_cidr.cidr)
+                ip = unicode(ip_cidr.ip)
+                return op(current_q, Q(
+                    ip_addresses__ip=ip, ip_addresses__subnet__cidr=cidr))
+        else:
+            # Check if the user passed in an IP address.
+            try:
+                ip = IPAddress(item)
+            except (AddrFormatError, ValueError):
+                pass
+            else:
+                return op(current_q, Q(ip_addresses__ip=unicode(ip)))
+
+        # If all else fails, try the interface name.
+        return op(current_q, Q(name=item))
 
     def _add_mode_query(self, current_q, op, item):
         if item.strip().lower() != 'unconfigured':
@@ -226,7 +249,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """
         return self.filter(ip_addresses=static_ip_address)
 
-    def get_interface_or_404(self, system_id, interface_id, user, perm):
+    def get_interface_or_404(self, system_id, specifiers, user, perm):
         """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
         exceptions if no `Interface` with this id exist, if the `Node` with
         system_id doesn't exist, if the `Interface` doesn't exist on the
@@ -235,8 +258,8 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
 
         :param system_id: The system_id.
         :type system_id: string
-        :param interface_id: The interface_id.
-        :type interface_id: int
+        :param specifiers: The interface specifier.
+        :type specifiers: unicode
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
@@ -248,13 +271,10 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        interface = get_object_or_404(Interface, id=interface_id)
-        # get_node() is used here because each type calculates its node
-        # differently.
+        interface = self.get_object_by_specifiers_or_raise(
+            specifiers, node__system_id=system_id)
         node = interface.get_node()
-        if node is None or node.system_id != system_id:
-            raise Http404()
-        if user.has_perm(perm, interface):
+        if user.has_perm(perm, interface) and user.has_perm(perm, node):
             return interface
         else:
             raise PermissionDenied()

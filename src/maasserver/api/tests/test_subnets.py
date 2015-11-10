@@ -48,8 +48,12 @@ def get_subnets_uri():
 
 def get_subnet_uri(subnet):
     """Return a Subnet URI on the API."""
-    return reverse(
-        'subnet_handler', args=[subnet.id])
+    if isinstance(subnet, unicode):
+        return reverse(
+            'subnet_handler', args=[subnet])
+    else:
+        return reverse(
+            'subnet_handler', args=[subnet.id])
 
 
 class TestSubnetsAPI(APITestCase):
@@ -102,7 +106,7 @@ class TestSubnetsAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         created_subnet = json.loads(response.content)
         self.assertEqual(subnet_name, created_subnet['name'])
-        self.assertEqual(vlan.id, created_subnet['vlan']['id'])
+        self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
         self.assertEqual(space.get_name(), created_subnet['space'])
         self.assertEqual(cidr, created_subnet['cidr'])
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
@@ -147,7 +151,7 @@ class TestSubnetAPI(APITestCase):
             "id": Equals(subnet.id),
             "name": Equals(subnet.name),
             "vlan": ContainsDict({
-                "id": Equals(subnet.vlan.id),
+                "vid": Equals(subnet.vlan.vid),
                 }),
             "space": Equals(subnet.space.get_name()),
             "cidr": Equals(subnet.cidr),
@@ -161,6 +165,23 @@ class TestSubnetAPI(APITestCase):
         response = self.client.get(uri)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_read_400_when_blank_id(self):
+        uri = reverse(
+            'subnet_handler', args=[" "])
+        response = self.client.get(uri)
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_read_403_when_ambiguous(self):
+        fabric = factory.make_Fabric(name="foo")
+        factory.make_Subnet(fabric=fabric)
+        factory.make_Subnet(fabric=fabric)
+        uri = reverse(
+            'subnet_handler', args=["fabric:foo"])
+        response = self.client.get(uri)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_update(self):
         self.become_admin()
@@ -188,6 +209,24 @@ class TestSubnetAPI(APITestCase):
         self.become_admin()
         subnet = factory.make_Subnet()
         uri = get_subnet_uri(subnet)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.content)
+        self.assertIsNone(reload_object(subnet))
+
+    def test_delete_deletes_subnet_by_name(self):
+        self.become_admin()
+        subnet = factory.make_Subnet(name=factory.make_name('subnet'))
+        uri = get_subnet_uri("name:%s" % subnet.name)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            httplib.NO_CONTENT, response.status_code, response.content)
+        self.assertIsNone(reload_object(subnet))
+
+    def test_delete_deletes_subnet_by_cidr(self):
+        self.become_admin()
+        subnet = factory.make_Subnet(name=factory.make_name('subnet'))
+        uri = get_subnet_uri("cidr:%s" % subnet.cidr)
         response = self.client.delete(uri)
         self.assertEqual(
             httplib.NO_CONTENT, response.status_code, response.content)

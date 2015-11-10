@@ -370,7 +370,10 @@ urlpatterns += patterns(
         r'^fabrics/(?P<fabric_id>[^/]+)/vlans/$',
         vlans_handler, name='vlans_handler'),
     url(
-        r'^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vlan_id>[^/]+)/$',
+        r'^vlans/(?P<vlan_id>[^/]+)/$',
+        vlan_handler, name='vlanid_handler'),
+    url(
+        r'fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vid>[^/]+)/$',
         vlan_handler, name='vlan_handler'),
     url(
         r'^fannetworks/$',
@@ -387,8 +390,10 @@ urlpatterns += patterns(
     url(
         r'^subnets/$',
         subnets_handler, name='subnets_handler'),
+    # Note: Any changes to the regex here may need to be reflected in
+    # models/subnets.py.
     url(
-        r'^subnets/(?P<subnet_id>[^/]+)/$',
+        r'^subnets/(?P<subnet_id>[.: \w-]+(?:/\d\d\d?)?)/$',
         subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
     url(

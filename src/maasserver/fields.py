@@ -658,3 +658,24 @@ class CaseInsensitiveChoiceField(ChoiceField):
         if value not in self.empty_values:
             value = value.lower()
         return super(CaseInsensitiveChoiceField, self).to_python(value)
+
+
+class SpecifierOrModelChoiceField(ModelChoiceField):
+    """ModelChoiceField which is also able to accept input in the format
+    of a specifiers string.
+    """
+
+    def to_python(self, value):
+        try:
+            return super(SpecifierOrModelChoiceField, self).to_python(value)
+        except ValidationError as e:
+            if isinstance(value, unicode):
+                object_id = self.queryset.get_object_id(value)
+                if object_id is None:
+                    obj = get_one(self.queryset.filter_by_specifiers(
+                        value), exception_class=ValidationError)
+                    if obj is not None:
+                        return obj
+                else:
+                    return self.queryset.get(id=object_id)
+            raise e

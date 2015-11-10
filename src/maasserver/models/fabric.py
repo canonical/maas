@@ -30,29 +30,58 @@ from django.db.models import (
     CharField,
     Manager,
 )
-from django.shortcuts import get_object_or_404
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 
 
 def validate_fabric_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile('^[ \w-]+$')
+    namespec = re.compile(r'^[ \w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid fabric name: %s." % value)
 
-NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
+NAME_VALIDATOR = RegexValidator(r'^[ \w-]+$')
 
 # Name of the special, default fabric.  This fabric cannot be deleted.
 DEFAULT_FABRIC_NAME = 'fabric-0'
 
 
-class FabricManager(Manager):
+class FabricQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'name': "__name",
+            'class': "__class_type",
+        }
+        return super(FabricQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class FabricQuerySet(QuerySet, FabricQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    this object. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager.
+    """
+
+
+class FabricManager(Manager, FabricQueriesMixin):
     """Manager for :class:`Fabric` model."""
+
+    def get_queryset(self):
+        queryset = FabricQuerySet(self.model, using=self._db)
+        return queryset
 
     def get_default_fabric(self):
         """Return the default fabric."""
@@ -93,13 +122,13 @@ class FabricManager(Manager):
             vlan__subnet__nodegroupinterface__nodegroup=nodegroup,
             vlan__subnet__nodegroupinterface__interface=ifname)
 
-    def get_fabric_or_404(self, id, user, perm):
+    def get_fabric_or_404(self, specifiers, user, perm):
         """Fetch a `Fabric` by its id.  Raise exceptions if no `Fabric` with
         this id exist or if the provided user has not the required permission
         to access this `Fabric`.
 
-        :param id: The fabric_id.
-        :type id: int
+        :param specifiers: The fabric specifiers.
+        :type specifiers: string
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
@@ -111,7 +140,7 @@ class FabricManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        fabric = get_object_or_404(self.model, id=id)
+        fabric = self.get_object_by_specifiers_or_raise(specifiers)
         if user.has_perm(perm, fabric):
             return fabric
         else:

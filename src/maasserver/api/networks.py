@@ -17,10 +17,7 @@ __all__ = [
     'NetworksHandler',
     ]
 
-import re
-
 from django.core.urlresolvers import reverse
-from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
     operation,
@@ -40,15 +37,6 @@ from piston.utils import rc
 def convert_to_network_name(subnet):
     """Convert the name of the subnet to a network name."""
     return "subnet-%d" % subnet.id
-
-
-def convert_from_network_name(name):
-    """Convert the name of the network to a subnet ID."""
-    match = re.search(r"subnet-(?P<id>[0-9]+)", name)
-    if match is None:
-        return None
-    else:
-        return match.group("id")
 
 
 def render_network_json(subnet):
@@ -83,8 +71,8 @@ class NetworkHandler(OperationsHandler):
 
     def read(self, request, name):
         """Read network definition."""
-        subnet_id = convert_from_network_name(name)
-        return render_network_json(get_object_or_404(Subnet, id=subnet_id))
+        return render_network_json(
+            Subnet.objects.get_object_by_specifiers_or_raise(name))
 
     @admin_method
     def update(self, request, name):
@@ -143,8 +131,7 @@ class NetworkHandler(OperationsHandler):
         Only MAC addresses for nodes visible to the requesting user are
         returned.
         """
-        subnet_id = convert_from_network_name(name)
-        subnet = get_object_or_404(Subnet, id=subnet_id)
+        subnet = Subnet.objects.get_object_by_specifiers_or_raise(name)
         visible_nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW,
             from_nodes=Node.objects.all())

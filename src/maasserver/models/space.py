@@ -28,10 +28,11 @@ from django.db.models import (
     CharField,
     Manager,
 )
-from django.shortcuts import get_object_or_404
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 
 
 def validate_space_name(value):
@@ -46,8 +47,39 @@ def validate_space_name(value):
 DEFAULT_SPACE_NAME = 'space-0'
 
 
-class SpaceManager(Manager):
+class SpaceQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # Circular imports.
+        from maasserver.models import Subnet
+
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'name': "__name",
+            'subnet': (Subnet.objects, 'space'),
+        }
+        return super(SpaceQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class SpaceQuerySet(QuerySet, SpaceQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    this object. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager.
+    """
+
+
+class SpaceManager(Manager, SpaceQueriesMixin):
     """Manager for :class:`Space` model."""
+
+    def get_queryset(self):
+        queryset = SpaceQuerySet(self.model, using=self._db)
+        return queryset
 
     def get_default_space(self):
         """Return the default space."""
@@ -63,13 +95,13 @@ class SpaceManager(Manager):
         )
         return space
 
-    def get_space_or_404(self, id, user, perm):
+    def get_space_or_404(self, specifiers, user, perm):
         """Fetch a `Space` by its id.  Raise exceptions if no `Space` with
         this id exists or if the provided user has not the required permission
         to access this `Space`.
 
-        :param id: The space_id.
-        :type id: int
+        :param specifiers: The space specifiers.
+        :type specifiers: string
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
@@ -81,7 +113,7 @@ class SpaceManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        space = get_object_or_404(self.model, id=id)
+        space = self.get_object_by_specifiers_or_raise(specifiers)
         if user.has_perm(perm, space):
             return space
         else:

@@ -275,6 +275,38 @@ class TestInterfaceLinkForm(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
 
+    def test__STATIC_sets_ip_for_unmanaged_subnet_specifier(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        form = InterfaceLinkForm(instance=interface, data={
+            "mode": INTERFACE_LINK_TYPE.STATIC,
+            "subnet": "%s" % subnet.name,
+            "ip_address": ip,
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertIsNotNone(
+            get_one(
+                interface.ip_addresses.filter(
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
+
+    def test__STATIC_sets_ip_for_unmanaged_subnet_cidr_specifier(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        form = InterfaceLinkForm(instance=interface, data={
+            "mode": INTERFACE_LINK_TYPE.STATIC,
+            "subnet": "cidr:%s" % subnet.cidr,
+            "ip_address": ip,
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertIsNotNone(
+            get_one(
+                interface.ip_addresses.filter(
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
+
     def test__STATIC_sets_ip_in_managed_subnet(self):
         # Silence update_host_maps.
         self.patch_autospec(interface_module, "update_host_maps")

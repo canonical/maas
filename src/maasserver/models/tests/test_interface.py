@@ -138,8 +138,8 @@ class TestInterfaceManager(MAASServerTestCase):
 class TestInterfaceQueriesMixin(MAASServerTestCase):
 
     def test__filter_by_specifiers_default_matches_cidr_or_name(self):
-        subnet1 = factory.make_Subnet()
-        subnet2 = factory.make_Subnet()
+        subnet1 = factory.make_Subnet(cidr='10.0.0.0/24')
+        subnet2 = factory.make_Subnet(cidr='2001:db8::/64')
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1)
         node2 = factory.make_Node_with_Interface_on_Subnet(
@@ -148,18 +148,32 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         iface2 = node2.get_boot_interface()
         iface3 = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND, parents=[iface2], name='bond0')
+        ip1 = factory.make_StaticIPAddress(
+            ip='10.0.0.1', interface=iface1, subnet=subnet1)
+        ip3 = factory.make_StaticIPAddress(
+            ip='2001:db8::1', interface=iface3, subnet=subnet2)
+        # First try with the '/prefixlen' string appended.
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "%s" % subnet1.cidr), [iface1])
+                "%s/24" % ip1.ip), [iface1])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "%s" % subnet2.cidr), [iface2])
+                "%s/64" % ip3.ip), [iface3])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                ["%s" % subnet1.cidr,
-                 "%s" % subnet2.cidr], ), [iface1, iface2])
+                ["%s/24" % ip1.ip, "%s/64" % ip3.ip]), [iface1, iface3])
+        # Next, try plain old IP addresses.
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers("%s" % ip1.ip), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers("%s" % ip3.ip), [iface3])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["%s" % ip1.ip, "%s" % ip3.ip]), [iface1, iface3])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(iface1.name), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(iface2.name), [iface2])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(iface3.name), [iface3])
 
@@ -222,6 +236,20 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
                 ["vid:%s" % iface1.vlan.vid, "vid:%s" % iface2.vlan.vid]),
+            [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_vlan(self):
+        iface1 = factory.make_Interface()
+        iface2 = factory.make_Interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "vlan:%s" % iface1.vlan.vid), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "vlan:%s" % iface2.vlan.vid), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["vlan:%s" % iface1.vlan.vid, "vlan:%s" % iface2.vlan.vid]),
             [iface1, iface2])
 
     def test__filter_by_specifiers_matches_subnet_specifier(self):
