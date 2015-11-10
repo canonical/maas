@@ -227,3 +227,23 @@ class TestVLANVidValidation(MAASServerTestCase):
         else:
             with ExpectedException(ValidationError):
                 vlan.save()
+
+
+class VLANMTUValidationTest(MAASServerTestCase):
+
+    scenarios = [
+        ('551', {'mtu': 551, 'valid': False}),
+        ('552', {'mtu': 552, 'valid': True}),
+        ('65535', {'mtu': 65535, 'valid': True}),
+        ('65536', {'mtu': 65536, 'valid': False}),
+    ]
+
+    def test_validates_mtu(self):
+        vlan = factory.make_VLAN()
+        vlan.mtu = self.mtu
+        if self.valid:
+            # No exception.
+            self.assertIsNone(vlan.save())
+        else:
+            with ExpectedException(ValidationError):
+                vlan.save()

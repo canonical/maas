@@ -181,7 +181,7 @@ class VLAN(CleanSave, TimestampedModel):
 
     def clean_mtu(self):
         # Linux doesn't allow lower than 552 for the MTU.
-        if self.mtu < 552 and self.mtu <= 65535:
+        if self.mtu < 552 or self.mtu > 65535:
             raise ValidationError(
                 {'mtu':
                     ["MTU must be between 552 and 65535."]})
