@@ -336,6 +336,15 @@ class Interface(CleanSave, TimestampedModel):
     def is_enabled(self):
         return self.enabled
 
+    def get_effective_mtu(self):
+        """Return the effective MTU value for this interface."""
+        mtu = None
+        if self.params:
+            mtu = self.params.get('mtu', None)
+        if mtu is None:
+            mtu = self.vlan.mtu
+        return mtu
+
     def get_links(self):
         """Return the definition of links connected to this interface.
 

@@ -64,6 +64,7 @@ DISPLAYED_INTERFACE_FIELDS = (
     'links',
     'params',
     'discovered',
+    'effective_mtu',
 )
 
 
@@ -283,6 +284,10 @@ class NodeInterfaceHandler(OperationsHandler):
     @classmethod
     def discovered(cls, interface):
         return interface.get_discovered()
+
+    @classmethod
+    def effective_mtu(cls, interface):
+        return interface.get_effective_mtu()
 
     def read(self, request, system_id, interface_id):
         """Read interface on node.

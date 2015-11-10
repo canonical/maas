@@ -512,6 +512,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "tags": Equals(bond.tags),
             "resource_uri": Equals(get_node_interface_uri(bond)),
             "params": Equals(bond.params),
+            "effective_mtu": Equals(bond.get_effective_mtu()),
         }))
         self.assertEquals(sorted(
             nic.name

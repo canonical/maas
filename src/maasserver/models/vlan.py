@@ -38,6 +38,7 @@ VLAN_NAME_VALIDATOR = RegexValidator('^[ \w-]+$')
 
 DEFAULT_VLAN_NAME = 'Default VLAN'
 DEFAULT_VID = 0
+DEFAULT_MTU = 1500
 
 
 class VLANManager(Manager):
@@ -84,6 +85,8 @@ class VLAN(CleanSave, TimestampedModel):
 
     fabric = ForeignKey('Fabric', blank=False, editable=True)
 
+    mtu = IntegerField(default=DEFAULT_MTU)
+
     def __unicode__(self):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())
 
@@ -93,8 +96,16 @@ class VLAN(CleanSave, TimestampedModel):
                 {'vid':
                     ["Vid must be between 0 and 4095."]})
 
+    def clean_mtu(self):
+        # Linux doesn't allow lower than 552 for the MTU.
+        if self.mtu < 552 and self.mtu <= 65535:
+            raise ValidationError(
+                {'mtu':
+                    ["MTU must be between 552 and 65535."]})
+
     def clean(self):
         self.clean_vid()
+        self.clean_mtu()
 
     def is_fabric_default(self):
         """Is this the default VLAN in the fabric?"""

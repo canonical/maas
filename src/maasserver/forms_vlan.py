@@ -16,6 +16,7 @@ __all__ = [
     "VLANForm",
 ]
 
+from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.forms import MAASModelForm
 from maasserver.models.vlan import VLAN
@@ -24,11 +25,15 @@ from maasserver.models.vlan import VLAN
 class VLANForm(MAASModelForm):
     """VLAN creation/edition form."""
 
+    # Linux doesn't allow lower than 552 for the MTU.
+    mtu = forms.IntegerField(min_value=552, required=False)
+
     class Meta:
         model = VLAN
         fields = (
             'name',
             'vid',
+            'mtu',
             )
 
     def __init__(self, *args, **kwargs):

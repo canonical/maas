@@ -136,6 +136,7 @@ DISPLAYED_NODE_FIELDS = (
         'links',
         'params',
         'discovered',
+        'effective_mtu',
         )),
     'routers',
     'zone',

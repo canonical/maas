@@ -128,8 +128,9 @@ class AssertNetworkConfigMixin:
         def set_interface_params(iface, ret):
             if iface.params:
                 for key, value in iface.params.items():
-                    if not key.startswith("bond_"):
+                    if not key.startswith("bond_") and key != 'mtu':
                         ret += "  %s: %s\n" % (key, get_param_value(value))
+            ret += "  mtu: %s\n" % iface.get_effective_mtu()
             return ret
 
         def is_link_up(addresses):

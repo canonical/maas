@@ -213,10 +213,11 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids)
 
     def test__volume_group_on_partition(self):
-        block_device = factory.make_PhysicalBlockDevice()
+        block_device = factory.make_PhysicalBlockDevice(size=10 * 1024 ** 3)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
-        partition = factory.make_Partition(partition_table=partition_table)
+        partition = factory.make_Partition(
+            size=5 * 1024 ** 3, partition_table=partition_table)
         filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
         filesystem_group = factory.make_FilesystemGroup(

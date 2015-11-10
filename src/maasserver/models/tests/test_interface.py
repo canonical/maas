@@ -436,6 +436,22 @@ class InterfaceTest(MAASServerTestCase):
         self.assertIsNone(reload_object(bond), "Bond was not deleted.")
         self.assertIsNone(reload_object(vlan), "VLAN was not deleted.")
 
+    def test_get_effective_mtu_returns_interface_mtu(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        nic_mtu = random.randint(552, 4096)
+        nic1.params = {
+            "mtu": nic_mtu
+        }
+        nic1.save()
+        self.assertEquals(nic_mtu, nic1.get_effective_mtu())
+
+    def test_get_effective_mtu_returns_vlan_mtu(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan_mtu = random.randint(552, 4096)
+        nic1.vlan.mtu = vlan_mtu
+        nic1.vlan.save()
+        self.assertEquals(vlan_mtu, nic1.get_effective_mtu())
+
     def test_get_links_returns_links_for_each_type(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         links = []

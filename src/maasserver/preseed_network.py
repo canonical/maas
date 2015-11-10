@@ -116,8 +116,9 @@ class CurtinNetworkGenerator:
         if interface.params:
             for key, value in interface.params.items():
                 # Don't include bond parameters.
-                if not key.startswith("bond_"):
+                if not key.startswith("bond_") and key != 'mtu':
                     params[key] = self._get_param_value(value)
+        params['mtu'] = interface.get_effective_mtu()
         return params
 
     def _get_bond_params(self, interface):
