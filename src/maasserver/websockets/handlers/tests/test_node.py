@@ -125,7 +125,7 @@ class TestNodeHandler(MAASServerTestCase):
             ]
         driver = get_third_party_driver(node)
         disks = [
-            handler.dehydrate_blockdevice(blockdevice)
+            handler.dehydrate_blockdevice(blockdevice, node)
             for blockdevice in blockdevices
         ]
         disks = disks + [
@@ -352,8 +352,10 @@ class TestNodeHandler(MAASServerTestCase):
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
+        is_boot = blockdevice.id == node.get_boot_disk().id
         self.assertEquals({
             "id": blockdevice.id,
+            "is_boot": is_boot,
             "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
             "type": blockdevice.type,
@@ -374,15 +376,17 @@ class TestNodeHandler(MAASServerTestCase):
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
-            }, handler.dehydrate_blockdevice(blockdevice))
+            }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_block_device_with_PhysicalBlockDevice_wo_ptable(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
+        is_boot = blockdevice.id == node.get_boot_disk().id
         self.assertEquals({
             "id": blockdevice.id,
+            "is_boot": is_boot,
             "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
             "type": blockdevice.type,
@@ -403,7 +407,7 @@ class TestNodeHandler(MAASServerTestCase):
                 blockdevice.get_effective_filesystem()),
             "partitions": handler.dehydrate_partitions(
                 blockdevice.get_partitiontable()),
-            }, handler.dehydrate_blockdevice(blockdevice))
+            }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_block_device_with_VirtualBlockDevice(self):
         owner = factory.make_User()
@@ -412,6 +416,7 @@ class TestNodeHandler(MAASServerTestCase):
         blockdevice = factory.make_VirtualBlockDevice(node=node)
         self.assertEquals({
             "id": blockdevice.id,
+            "is_boot": False,
             "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
             "type": blockdevice.type,
@@ -437,7 +442,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "type": blockdevice.filesystem_group.group_type,
                 "uuid": blockdevice.filesystem_group.uuid,
                 },
-            }, handler.dehydrate_blockdevice(blockdevice))
+            }, handler.dehydrate_blockdevice(blockdevice, node))
 
     def test_dehydrate_volume_group(self):
         owner = factory.make_User()
@@ -1475,6 +1480,37 @@ class TestNodeHandler(MAASServerTestCase):
             human_readable_bytes(size),
             human_readable_bytes(Partition.objects.first().size))
 
+    def test_create_partition_with_filesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition_table = factory.make_PartitionTable(node=node)
+        size = partition_table.block_device.size / 2
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        mount_point = factory.make_absolute_path()
+        handler.create_partition({
+            'system_id': node.system_id,
+            'block_id': partition_table.block_device_id,
+            'partition_size': size,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            })
+        self.assertEquals(
+            1, Partition.objects.count())
+        self.assertEquals(
+            human_readable_bytes(size),
+            human_readable_bytes(Partition.objects.first().size))
+        self.assertEquals(
+            fstype,
+            Partition.objects.first().get_effective_filesystem().fstype)
+        self.assertEquals(
+            mount_point,
+            Partition.objects.first().get_effective_filesystem().mount_point)
+
     def test_create_cache_set_for_partition(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
@@ -1716,6 +1752,37 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             "%s-%s" % (volume_group.name, name), logical_volume.get_name())
         self.assertEquals(size, logical_volume.size)
+
+    def test_create_logical_volume_with_filesystem(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        volume_group = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
+        name = factory.make_name("lv")
+        size = volume_group.get_lvm_free_space()
+        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        mount_point = factory.make_absolute_path()
+        handler.create_logical_volume({
+            'system_id': node.system_id,
+            'name': name,
+            'volume_group_id': volume_group.id,
+            'size': size,
+            'fstype': fstype,
+            'mount_point': mount_point,
+            })
+        logical_volume = volume_group.virtual_devices.first()
+        self.assertIsNotNone(logical_volume)
+        self.assertEquals(
+            "%s-%s" % (volume_group.name, name), logical_volume.get_name())
+        self.assertEquals(size, logical_volume.size)
+        self.assertEquals(
+            fstype,
+            logical_volume.get_effective_filesystem().fstype)
+        self.assertEquals(
+            mount_point,
+            logical_volume.get_effective_filesystem().mount_point)
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()

@@ -776,11 +776,11 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3">
-                                   <span data-ng-hide="isFilesystemsDisabled()">
+                                   <span data-ng-hide="isAllStorageDisabled()">
                                         <input class="checkbox" type="checkbox" id="filesystem-check-all"
                                             data-ng-checked="filesystemAllSelected"
                                             data-ng-click="toggleFilesystemAllSelect()"
-                                            data-ng-hide="isFilesystemsDisabled()" />
+                                            data-ng-disabled="isFilesystemsDisabled()" />
                                         <label class="checkbox-label" for="filesystem-check-all"></label>
                                    </span>
                                 </div>
@@ -801,7 +801,7 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: filesystem.$selected }">
                                     <div class="table__data table__column--3">
-                                        <span data-ng-hide="isFilesystemsDisabled()">
+                                        <span data-ng-hide="isAllStorageDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ filesystem.name $}"
                                                 data-ng-checked="filesystem.$selected"
                                                 data-ng-click="toggleFilesystemSelect(filesystem)"
@@ -815,7 +815,7 @@
                                     <div class="table__data table__column--37">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
-                                            <a class="icon delete tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
+                                            <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -848,11 +848,13 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3">
-                                    <input class="checkbox" type="checkbox" id="cachesets-check-all"
-                                        data-ng-checked="cachesetsAllSelected"
-                                        data-ng-click="toggleCacheSetAllSelect()"
-                                        data-ng-hide="isCacheSetsDisabled()" />
-                                    <label class="checkbox-label" for="cachesets-check-all"></label>
+                                    <span data-ng-hide="isAllStorageDisabled()">
+                                        <input class="checkbox" type="checkbox" id="cachesets-check-all"
+                                            data-ng-checked="cachesetsAllSelected"
+                                            data-ng-click="toggleCacheSetAllSelect()"
+                                            data-ng-hide="isCacheSetsDisabled()" />
+                                        <label class="checkbox-label" for="cachesets-check-all"></label>
+                                    </span>
                                 </div>
                                 <div class="table__header table__column--15">Name</div>
                                 <div class="table__header table__column--27">Size</div>
@@ -865,11 +867,13 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: cacheset.$selected }">
                                     <div class="table__data table__column--3">
-                                        <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
-                                            data-ng-checked="cacheset.$selected"
-                                            data-ng-click="toggleCacheSetSelect(cacheset)"
-                                            data-ng-hide="isCacheSetsDisabled()" />
-                                        <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
+                                        <span data-ng-hide="isAllStorageDisabled()">
+                                            <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
+                                                data-ng-checked="cacheset.$selected"
+                                                data-ng-click="toggleCacheSetSelect(cacheset)"
+                                                data-ng-hide="isCacheSetsDisabled()" />
+                                            <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
+                                        </span>
                                     </div>
                                     <div class="table__data table__column--15">{$ cacheset.name $}</div>
                                     <div class="table__data table__column--27">{$ cacheset.size_human $}</div>
@@ -912,7 +916,7 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3">
-                                    <span data-ng-hide="isAvailableDisabled()">
+                                    <span data-ng-hide="isAllStorageDisabled()">
                                         <input class="checkbox" type="checkbox" id="available-check-all"
                                             data-ng-checked="availableAllSelected"
                                             data-ng-click="toggleAvailableAllSelect()"
@@ -944,7 +948,7 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: item.$selected }">
                                     <div class="table__data table__column--3">
-                                        <span data-ng-hide="isAvailableDisabled()">
+                                        <span data-ng-hide="isAllStorageDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ item.name $}"
                                                 data-ng-checked="item.$selected"
                                                 data-ng-click="toggleAvailableSelect(item)"
@@ -1005,7 +1009,7 @@
                                                     {$ getAddPartitionName(item) $}
                                                 </div>
                                                 <div class="table__data table__column--15">
-                                                    <input type="text" id="mountpoint" class="six-col table__input margin-right"
+                                                    <input type="text" class="six-col table__input margin-right"
                                                         ng-model="item.$options.size"
                                                         ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
                                                     <select name="size-units" class="five-col table__input"
@@ -1019,7 +1023,22 @@
                                                 <div class="table__data table__column--15">
                                                     Partition
                                                 </div>
-                                                <div class="table__data table__column--47"></div>
+                                                <div class="table__data table__column--15">
+                                                    <select name="filesys"
+                                                        data-ng-model="item.$options.fstype"
+                                                        data-ng-change="fstypeChanged(item.$options)"
+                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                        <option value="">Unformatted</option>
+                                                    </select>
+                                                </div>
+                                                <div class="table__data table__column--30">
+                                                    <input type="text" id="mountpoint"
+                                                        placeholder="Mount point"
+                                                        data-ng-model="item.$options.mountPoint"
+                                                        data-ng-disabled="item.$options.fstype === null"
+                                                        data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                </div>
+                                                <div class="table__data table__column--2"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'format-mount' }">
@@ -1035,8 +1054,8 @@
                                                 <div class="table__data table__column--30">
                                                     <label for="mountpoint">Mountpoint</label>
                                                     <input type="text" id="mountpoint"
-                                                        ng-model="item.$options.mount_point"
-                                                        ng-class="{ invalid: isMountPointInvalid(item.$options.mount_point) }">
+                                                        ng-model="item.$options.mountPoint"
+                                                        ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
                                                 <div class="table__data table__column--52"></div>
                                             </div>
@@ -1065,7 +1084,22 @@
                                                 <div class="table__data table__column--15">
                                                     Logical volume
                                                 </div>
-                                                <div class="table__data table__column--47"></div>
+                                                <div class="table__data table__column--15">
+                                                    <select name="filesys"
+                                                        data-ng-model="item.$options.fstype"
+                                                        data-ng-change="fstypeChanged(item.$options)"
+                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                        <option value="">Unformatted</option>
+                                                    </select>
+                                                </div>
+                                                <div class="table__data table__column--30">
+                                                    <input type="text" id="mountpoint"
+                                                        placeholder="Mount point"
+                                                        data-ng-model="item.$options.mountPoint"
+                                                        data-ng-disabled="item.$options.fstype === null"
+                                                        data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                </div>
+                                                <div class="table__data table__column--2"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode !== null && activeMode !== 'multi' }">
@@ -1082,7 +1116,7 @@
                                                 <div class="table__data right">
                                                     <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
                                                     <button class="cta-ubuntu"
-                                                        data-ng-disabled="isMountPointInvalid(item.$options.mount_point)"
+                                                        data-ng-disabled="isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmFormatAndMount(item)">{$ getAvailableFormatSubmitText(item) $}</button>
                                                 </div>
                                             </div>
@@ -1099,7 +1133,7 @@
                                                 <div class="table__data right">
                                                     <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
                                                     <button class="cta-ubuntu"
-                                                        data-ng-disabled="isAddPartitionSizeInvalid(item)"
+                                                        data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmPartition(item)">Add partition</button>
                                                 </div>
                                             </div>
@@ -1107,7 +1141,7 @@
                                                 <div class="table__data right">
                                                     <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
                                                     <button class="cta-ubuntu"
-                                                        data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item)"
+                                                        data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
                                                 </div>
                                             </div>
@@ -1127,7 +1161,7 @@
                                                         data-ng-click="availableUnformat()">Unformat</a>
                                                     <a class="link-cta-ubuntu text-button"
                                                         data-ng-show="canDelete(item)"
-                                                        data-ng-click="availableDelete()">Remove</a>
+                                                        data-ng-click="availableDelete()">Remove {$ getRemoveTypeText(item) $}</a>
                                                 </div>
                                             </div>
                                         </div>
@@ -1171,7 +1205,7 @@
                                             <label for="type">File system</label>
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
-                                                data-ng-change="fstypeChanged()"
+                                                data-ng-change="fstypeChanged(availableNew)"
                                                 data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                 <option value="">Unformatted</option>
                                             </select>
@@ -1240,7 +1274,7 @@
                                             <label for="type">File system</label>
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
-                                                data-ng-change="fstypeChanged()"
+                                                data-ng-change="fstypeChanged(availableNew)"
                                                 data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                 <option value="">Unformatted</option>
                                             </select>

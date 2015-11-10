@@ -297,7 +297,7 @@ class NodeHandler(TimestampedModelHandler):
 
             # Storage
             data["disks"] = [
-                self.dehydrate_blockdevice(blockdevice)
+                self.dehydrate_blockdevice(blockdevice, obj)
                 for blockdevice in blockdevices
             ]
             data["disks"] = data["disks"] + [
@@ -355,7 +355,7 @@ class NodeHandler(TimestampedModelHandler):
             ],
         }
 
-    def dehydrate_blockdevice(self, blockdevice):
+    def dehydrate_blockdevice(self, blockdevice, obj):
         """Return `BlockDevice` formatted for JSON encoding."""
         # model and serial are currently only avalible on physical block
         # devices
@@ -369,8 +369,10 @@ class NodeHandler(TimestampedModelHandler):
             partition_table_type = partition_table.table_type
         else:
             partition_table_type = ""
+        is_boot = blockdevice.id == obj.get_boot_disk().id
         data = {
             "id": blockdevice.id,
+            "is_boot": is_boot,
             "name": blockdevice.get_name(),
             "tags": blockdevice.tags,
             "type": blockdevice.type,
@@ -911,7 +913,12 @@ class NodeHandler(TimestampedModelHandler):
         if not form.is_valid():
             raise HandlerError(form.errors)
         else:
-            form.save()
+            partition = form.save()
+
+        if 'fstype' in params:
+            self.update_partition_filesystem(
+                node, disk_obj.id, partition.id,
+                params.get("fstype"), params.get("mount_point"))
 
     def create_cache_set(self, params):
         """Create a cache set."""
@@ -1002,7 +1009,12 @@ class NodeHandler(TimestampedModelHandler):
         if not form.is_valid():
             raise HandlerError(form.errors)
         else:
-            form.save()
+            logical_volume = form.save()
+
+        if 'fstype' in params:
+            self.update_blockdevice_filesystem(
+                node, logical_volume.id,
+                params.get("fstype"), params.get("mount_point"))
 
     def action(self, params):
         """Perform the action on the object."""

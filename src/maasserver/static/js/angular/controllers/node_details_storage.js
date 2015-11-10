@@ -740,8 +740,11 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be formatted and mounted.
         $scope.canFormatAndMount = function(disk) {
-            if($scope.isAllStorageDisabled() ||
-               disk.type === "lvm-vg" || disk.has_partitions) {
+            if($scope.isAllStorageDisabled()) {
+                return false;
+            } else if(disk.type === "lvm-vg" || disk.has_partitions) {
+                return false;
+            } else if(disk.type === "physical" && disk.original.is_boot) {
                 return false;
             } else {
                 return true;
@@ -867,7 +870,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availableFormatAndMount = function(disk) {
             disk.$options = {
                 fstype: disk.fstype || "ext4",
-                mount_point: disk.mount_point || ""
+                mountPoint: disk.mount_point || ""
             };
             $scope.availableMode = SELECTION_MODE.FORMAT_AND_MOUNT;
         };
@@ -882,8 +885,8 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return the text for the submit button in the format and mount mode.
         $scope.getAvailableFormatSubmitText = function(disk) {
-            if(angular.isString(disk.$options.mount_point) &&
-                disk.$options.mount_point !== "") {
+            if(angular.isString(disk.$options.mountPoint) &&
+                disk.$options.mountPoint !== "") {
                 return "Mount";
             } else {
                 return "Format";
@@ -893,7 +896,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Confirm the format and mount action.
         $scope.availableConfirmFormatAndMount = function(disk) {
             // Do nothing if its invalid.
-            if($scope.isMountPointInvalid(disk.$options.mount_point)) {
+            if($scope.isMountPointInvalid(disk.$options.mountPoint)) {
                 return;
             }
 
@@ -901,12 +904,12 @@ angular.module('MAAS').controller('NodeStorageController', [
             NodesManager.updateFilesystem(
                 $scope.node,
                 disk.block_id, disk.partition_id,
-                disk.$options.fstype, disk.$options.mount_point);
+                disk.$options.fstype, disk.$options.mountPoint);
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.
             disk.fstype = disk.$options.fstype;
-            disk.mount_point = disk.$options.mount_point;
+            disk.mount_point = disk.$options.mountPoint;
             $scope.updateAvailableSelection(true);
 
             // If the mount_point is set the we need to transition this to
@@ -929,10 +932,10 @@ angular.module('MAAS').controller('NodeStorageController', [
         };
 
         // Return true if the mount point is invalid.
-        $scope.isMountPointInvalid = function(mount_point) {
-            if(angular.isUndefined(mount_point) || mount_point === "") {
+        $scope.isMountPointInvalid = function(mountPoint) {
+            if(angular.isUndefined(mountPoint) || mountPoint === "") {
                 return false;
-            } else if(mount_point[0] !== "/") {
+            } else if(mountPoint[0] !== "/") {
                 return true;
             } else {
                 return false;
@@ -1021,7 +1024,9 @@ angular.module('MAAS').controller('NodeStorageController', [
             var size_and_units = disk.available_size_human.split(" ");
             disk.$options = {
                 size: size_and_units[0],
-                sizeUnits: size_and_units[1]
+                sizeUnits: size_and_units[1],
+                fstype: null,
+                mountPoint: ""
             };
         };
 
@@ -1077,7 +1082,8 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Confirm the partition creation.
         $scope.availableConfirmPartition = function(disk) {
             // Do nothing if not valid.
-            if($scope.isAddPartitionSizeInvalid(disk)) {
+            if($scope.isAddPartitionSizeInvalid(disk) ||
+                $scope.isMountPointInvalid(disk.$options.mountPoint)) {
                 return;
             }
 
@@ -1118,7 +1124,16 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
 
             // Create the partition.
-            NodesManager.createPartition($scope.node, disk.block_id, bytes);
+            var params = {};
+            if(angular.isString(disk.$options.fstype) &&
+                disk.$options.fstype !== "") {
+                params.fstype = disk.$options.fstype;
+                if(disk.$options.mountPoint !== "") {
+                    params.mount_point = disk.$options.mountPoint;
+                }
+            }
+            NodesManager.createPartition(
+                $scope.node, disk.block_id, bytes, params);
 
             // Remove the disk if needed.
             if(removeDisk) {
@@ -1292,9 +1307,9 @@ angular.module('MAAS').controller('NodeStorageController', [
         };
 
         // Clear mount point when the fstype is changed.
-        $scope.fstypeChanged = function() {
-            if($scope.availableNew.fstype === null) {
-                $scope.availableNew.mountPoint = "";
+        $scope.fstypeChanged = function(options) {
+            if(options.fstype === null) {
+                options.mountPoint = "";
             }
         };
 
@@ -1715,7 +1730,9 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Confirm the logical volume creation.
         $scope.availableConfirmLogicalVolume = function(disk) {
             // Do nothing if not valid.
-            if($scope.isAddLogicalVolumeSizeInvalid(disk)) {
+            if($scope.isLogicalVolumeNameInvalid(disk) ||
+                $scope.isAddLogicalVolumeSizeInvalid(disk) ||
+                $scope.isMountPointInvalid(disk.$options.mountPoint)) {
                 return;
             }
 
@@ -1745,8 +1762,16 @@ angular.module('MAAS').controller('NodeStorageController', [
             var name = disk.$options.name.slice(disk.name.length + 1);
 
             // Create the logical volume.
+            var params = {};
+            if(angular.isString(disk.$options.fstype) &&
+                disk.$options.fstype !== "") {
+                params.fstype = disk.$options.fstype;
+                if(disk.$options.mountPoint !== "") {
+                    params.mount_point = disk.$options.mountPoint;
+                }
+            }
             NodesManager.createLogicalVolume(
-                $scope.node, disk.block_id, name, bytes);
+                $scope.node, disk.block_id, name, bytes, params);
 
             // Remove the disk if needed.
             if(removeDisk) {

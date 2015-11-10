@@ -559,6 +559,29 @@ describe("NodesManager", function() {
                         done();
                     });
             });
+
+        it("calls node.create_partition with extra params",
+            function(done) {
+                var params = { fstype: "ext4" };
+                var node = makeNode(), block_id = makeInteger(0, 100);
+                var size = makeInteger(1024 * 1024, 1024 * 1024 * 1024);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                NodesManager.createPartition(node, block_id, size, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "node.create_partition");
+                        expect(sentObject.params.system_id).toBe(
+                            node.system_id);
+                        expect(sentObject.params.block_id).toBe(
+                            block_id);
+                        expect(sentObject.params.partition_size).toBe(
+                            size);
+                        expect(sentObject.params.fstype).toBe("ext4");
+                        done();
+                    });
+            });
     });
 
     describe("createCacheSet", function() {
@@ -712,6 +735,28 @@ describe("NodesManager", function() {
                     volume_group_id);
                 expect(sentObject.params.name).toBe(name);
                 expect(sentObject.params.size).toBe(size);
+                done();
+            });
+        });
+
+        it("calls node.create_logical_volume with extra", function(done) {
+            var fakeNode = makeNode();
+            var volume_group_id = makeInteger(0, 100);
+            var name = makeName("lv");
+            var size = makeInteger(1000 * 1000, 1000 * 1000 * 1000);
+            var extra = { fstype: "ext4" };
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.createLogicalVolume(
+                    fakeNode, volume_group_id, name, size, extra).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create_logical_volume");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.volume_group_id).toBe(
+                    volume_group_id);
+                expect(sentObject.params.name).toBe(name);
+                expect(sentObject.params.size).toBe(size);
+                expect(sentObject.params.fstype).toBe("ext4");
                 done();
             });
         });

@@ -1158,9 +1158,28 @@ describe("NodeStorageController", function() {
             expect($scope.canFormatAndMount(disk)).toBe(false);
         });
 
+        it("returns false if physical and is boot disk", function() {
+            var controller = makeController();
+            var disk = {
+                type: "physical",
+                has_partitions: false,
+                original: {
+                    is_boot: true
+                }
+            };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            expect($scope.canFormatAndMount(disk)).toBe(false);
+        });
+
         it("returns true otherwise", function() {
             var controller = makeController();
-            var disk = { type: "physical", has_partitions: false };
+            var disk = {
+                type: "physical",
+                has_partitions: false,
+                original: {
+                    is_boot: false
+                }
+            };
             spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
             expect($scope.canFormatAndMount(disk)).toBe(true);
         });
@@ -1549,7 +1568,7 @@ describe("NodeStorageController", function() {
 
             expect(disk.$options).toEqual({
                 fstype: "ext4",
-                mount_point: ""
+                mountPoint: ""
             });
         });
 
@@ -1564,7 +1583,7 @@ describe("NodeStorageController", function() {
 
             expect(disk.$options).toEqual({
                 fstype: disk.fstype,
-                mount_point: disk.mount_point
+                mountPoint: disk.mount_point
             });
         });
 
@@ -1624,7 +1643,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             var disk = {
                 $options: {
-                    mount_point: "/"
+                    mountPoint: "/"
                 }
             };
 
@@ -1681,7 +1700,7 @@ describe("NodeStorageController", function() {
                     partition_id: makeInteger(0, 100),
                     $options: {
                         fstype: makeName("fs"),
-                        mount_point: makeName("/path")
+                        mountPoint: makeName("/path")
                     }
                 };
                 spyOn(NodesManager, "updateFilesystem");
@@ -1689,7 +1708,7 @@ describe("NodeStorageController", function() {
                 $scope.availableConfirmFormatAndMount(disk);
                 expect(NodesManager.updateFilesystem).toHaveBeenCalledWith(
                     node, disk.block_id, disk.partition_id,
-                    disk.$options.fstype, disk.$options.mount_point);
+                    disk.$options.fstype, disk.$options.mountPoint);
             });
 
         it("sets new values on disk", function() {
@@ -1699,7 +1718,7 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100),
                 $options: {
                     fstype: makeName("fs"),
-                    mount_point: makeName("/path")
+                    mountPoint: makeName("/path")
                 }
             };
             spyOn(NodesManager, "updateFilesystem");
@@ -1707,7 +1726,7 @@ describe("NodeStorageController", function() {
 
             $scope.availableConfirmFormatAndMount(disk);
             expect(disk.fstype).toBe(disk.$options.fstype);
-            expect(disk.mount_point).toBe(disk.$options.mount_point);
+            expect(disk.mount_point).toBe(disk.$options.mountPoint);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
@@ -1722,7 +1741,7 @@ describe("NodeStorageController", function() {
                 used_size_human: makeName("used_size"),
                 $options: {
                     fstype: makeName("fs"),
-                    mount_point: makeName("/path")
+                    mountPoint: makeName("/path")
                 }
             };
             spyOn(NodesManager, "updateFilesystem");
@@ -2072,7 +2091,9 @@ describe("NodeStorageController", function() {
             $scope.availablePartiton(disk);
             expect(disk.$options).toEqual({
                 size: "10",
-                sizeUnits: "GB"
+                sizeUnits: "GB",
+                fstype: null,
+                mountPoint: ""
             });
         });
     });
@@ -2286,7 +2307,35 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmPartition(disk);
 
             expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, 2 * 1000 * 1000 * 1000);
+                node, disk.block_id, 2 * 1000 * 1000 * 1000, {});
+        });
+
+        it("calls createPartition with fstype and mountPoint", function() {
+            var controller = makeController();
+            var disk = {
+                block_id: makeInteger(0, 100),
+                original: {
+                    partition_table_type: "mbr",
+                    available_size: 4 * 1000 * 1000 * 1000,
+                    available_size_human: "4.0 GB",
+                    block_size: 512
+                },
+                $options: {
+                    size: "2",
+                    sizeUnits: "GB",
+                    fstype: "ext4",
+                    mountPoint: "/"
+                }
+            };
+            spyOn(NodesManager, "createPartition");
+
+            $scope.availableConfirmPartition(disk);
+
+            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                node, disk.block_id, 2 * 1000 * 1000 * 1000, {
+                    fstype: "ext4",
+                    mount_point: "/"
+                });
         });
 
         it("calls createPartition with available_size bytes", function() {
@@ -2309,7 +2358,7 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmPartition(disk);
 
             expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, 2.6 * 1000 * 1000 * 1000);
+                node, disk.block_id, 2.6 * 1000 * 1000 * 1000, {});
         });
 
         // regression test for https://bugs.launchpad.net/maas/+bug/1509535
@@ -2335,7 +2384,7 @@ describe("NodeStorageController", function() {
                 $scope.availableConfirmPartition(disk);
 
                 expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                    node, disk.block_id, 2.035 * 1000 * 1000 * 1000);
+                    node, disk.block_id, 2.035 * 1000 * 1000 * 1000, {});
         });
 
         it("calls createPartition with bytes minus partition table extra",
@@ -2360,7 +2409,7 @@ describe("NodeStorageController", function() {
 
                 expect(NodesManager.createPartition).toHaveBeenCalledWith(
                     node, disk.block_id,
-                    (2.6 * 1000 * 1000 * 1000) - (3 * 1024 * 1024));
+                    (2.6 * 1000 * 1000 * 1000) - (3 * 1024 * 1024), {});
             });
     });
 
@@ -2949,7 +2998,7 @@ describe("NodeStorageController", function() {
                 mountPoint: mountPoint
             };
 
-            $scope.fstypeChanged();
+            $scope.fstypeChanged($scope.availableNew);
             expect($scope.availableNew.mountPoint).toBe(mountPoint);
         });
 
@@ -2960,7 +3009,7 @@ describe("NodeStorageController", function() {
                 mountPoint: makeName("srv")
             };
 
-            $scope.fstypeChanged();
+            $scope.fstypeChanged($scope.availableNew);
             expect($scope.availableNew.mountPoint).toBe("");
         });
     });
@@ -4240,7 +4289,9 @@ describe("NodeStorageController", function() {
                 $options: {
                     name: "vg0-lv0",
                     size: "2",
-                    sizeUnits: "GB"
+                    sizeUnits: "GB",
+                    fstype: null,
+                    mountPoint: ""
                 }
             };
             spyOn(NodesManager, "createLogicalVolume");
@@ -4248,7 +4299,35 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmLogicalVolume(disk);
 
             expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
-                node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000);
+                node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {});
+        });
+
+        it("calls createLogicalVolume with fstype and mountPoint", function() {
+            var controller = makeController();
+            var disk = {
+                name: "vg0",
+                block_id: makeInteger(0, 100),
+                original: {
+                    available_size: 4 * 1000 * 1000 * 1000,
+                    available_size_human: "4.0 GB"
+                },
+                $options: {
+                    name: "vg0-lv0",
+                    size: "2",
+                    sizeUnits: "GB",
+                    fstype: "ext4",
+                    mountPoint: "/"
+                }
+            };
+            spyOn(NodesManager, "createLogicalVolume");
+
+            $scope.availableConfirmLogicalVolume(disk);
+
+            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+                node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {
+                    fstype: "ext4",
+                    mount_point: "/"
+                });
         });
 
         it("calls createLogicalVolume with available_size bytes", function() {
@@ -4263,7 +4342,9 @@ describe("NodeStorageController", function() {
                 $options: {
                     name: "vg0-lv0",
                     size: "2.62",
-                    sizeUnits: "GB"
+                    sizeUnits: "GB",
+                    fstype: null,
+                    mountPoint: ""
                 }
             };
             spyOn(NodesManager, "createLogicalVolume");
@@ -4271,7 +4352,7 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmLogicalVolume(disk);
 
             expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
-                node, disk.block_id, "lv0", 2.6 * 1000 * 1000 * 1000);
+                node, disk.block_id, "lv0", 2.6 * 1000 * 1000 * 1000, {});
         });
 
         // regression test for https://bugs.launchpad.net/maas/+bug/1509535
@@ -4289,7 +4370,9 @@ describe("NodeStorageController", function() {
                 $options: {
                     name: "vg0-lv0",
                     size: "2.0",
-                    sizeUnits: "GB"
+                    sizeUnits: "GB",
+                    fstype: null,
+                    mountPoint: ""
                 }
             };
             spyOn(NodesManager, "createLogicalVolume");
@@ -4297,7 +4380,7 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmLogicalVolume(disk);
 
             expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
-                node, disk.block_id, "lv0", 2.035 * 1000 * 1000 * 1000);
+                node, disk.block_id, "lv0", 2.035 * 1000 * 1000 * 1000, {});
         });
     });
 

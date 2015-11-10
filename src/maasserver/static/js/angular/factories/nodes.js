@@ -238,14 +238,15 @@ angular.module('MAAS').factory(
 
         // Create a new partition.
         NodesManager.prototype.createPartition = function(
-            node, block_id, size) {
+            node, block_id, size, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
                 var self = this;
                 var method = this._handler + ".create_partition";
-                var params = {
-                    system_id: node.system_id,
-                    block_id: block_id,
-                    partition_size: size
-                };
+                params.system_id = node.system_id;
+                params.block_id = block_id;
+                params.partition_size = size;
                 return RegionConnection.callMethod(method, params);
             };
 
@@ -297,15 +298,16 @@ angular.module('MAAS').factory(
 
         // Create a new logical volume.
         NodesManager.prototype.createLogicalVolume = function(
-            node, volume_group_id, name, size) {
+            node, volume_group_id, name, size, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
                 var self = this;
                 var method = this._handler + ".create_logical_volume";
-                var params = {
-                    system_id: node.system_id,
-                    volume_group_id: volume_group_id,
-                    name: name,
-                    size: size
-                };
+                params.system_id = node.system_id;
+                params.volume_group_id = volume_group_id;
+                params.name = name;
+                params.size = size;
                 return RegionConnection.callMethod(method, params);
             };
 
