@@ -1784,6 +1784,31 @@ class TestNodeHandler(MAASServerTestCase):
             mount_point,
             logical_volume.get_effective_filesystem().mount_point)
 
+    def test_set_boot_disk(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        handler.set_boot_disk({
+            'system_id': node.system_id,
+            'block_id': boot_disk.id,
+            })
+        self.assertEquals(boot_disk.id, reload_object(node).get_boot_disk().id)
+
+    def test_set_boot_disk_raises_error_for_none_physical(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(interface=True, architecture=architecture)
+        boot_disk = factory.make_VirtualBlockDevice(node=node)
+        error = self.assertRaises(HandlerError, handler.set_boot_disk, {
+            'system_id': node.system_id,
+            'block_id': boot_disk.id,
+            })
+        self.assertEquals(
+            error.message, "Only a physical disk can be set as the boot disk.")
+
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})

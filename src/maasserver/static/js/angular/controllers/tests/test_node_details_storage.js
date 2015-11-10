@@ -127,6 +127,7 @@ describe("NodeStorageController", function() {
             {
                 // Blank disk
                 id: 0,
+                is_boot: true,
                 name: makeName("name"),
                 model: makeName("model"),
                 serial: makeName("serial"),
@@ -146,6 +147,7 @@ describe("NodeStorageController", function() {
             {
                 // Disk with filesystem, no mount point
                 id: 1,
+                is_boot: false,
                 name: makeName("name"),
                 model: makeName("model"),
                 serial: makeName("serial"),
@@ -169,6 +171,7 @@ describe("NodeStorageController", function() {
             {
                 // Disk with mounted filesystem
                 id: 2,
+                is_boot: false,
                 name: makeName("name"),
                 model: makeName("model"),
                 serial: makeName("serial"),
@@ -192,6 +195,7 @@ describe("NodeStorageController", function() {
             {
                 // Partitioned disk, one partition free one used
                 id: 3,
+                is_boot: false,
                 name: makeName("name"),
                 model: makeName("model"),
                 serial: makeName("serial"),
@@ -231,6 +235,7 @@ describe("NodeStorageController", function() {
             {
                 // Disk that is a cache set.
                 id: 4,
+                is_boot: false,
                 name: "cache0",
                 model: "",
                 serial: "",
@@ -297,6 +302,8 @@ describe("NodeStorageController", function() {
                 mount_point: disks[2].filesystem.mount_point,
                 block_id: disks[2].id,
                 partition_id: null,
+                original_type: disks[2].type,
+                original: disks[2],
                 $selected: false
             },
             {
@@ -307,6 +314,8 @@ describe("NodeStorageController", function() {
                 mount_point: disks[3].partitions[1].filesystem.mount_point,
                 block_id: disks[3].id,
                 partition_id: disks[3].partitions[1].id,
+                original_type: "partition",
+                original: disks[3].partitions[1],
                 $selected: false
             }
         ];
@@ -323,6 +332,7 @@ describe("NodeStorageController", function() {
         var available = [
             {
                 name: disks[0].name,
+                is_boot: disks[0].is_boot,
                 size_human: disks[0].size_human,
                 available_size_human: disks[0].available_size_human,
                 used_size_human: disks[0].used_size_human,
@@ -341,6 +351,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[1].name,
+                is_boot: disks[1].is_boot,
                 size_human: disks[1].size_human,
                 available_size_human: disks[1].available_size_human,
                 used_size_human: disks[1].used_size_human,
@@ -359,6 +370,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[3].partitions[0].name,
+                is_boot: false,
                 size_human: disks[3].partitions[0].size_human,
                 available_size_human: (
                     disks[3].partitions[0].available_size_human),
@@ -380,6 +392,7 @@ describe("NodeStorageController", function() {
         var used = [
             {
                 name: disks[2].name,
+                is_boot: disks[2].is_boot,
                 type: disks[2].type,
                 model: disks[2].model,
                 serial: disks[2].serial,
@@ -388,6 +401,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[3].name,
+                is_boot: disks[3].is_boot,
                 type: disks[3].type,
                 model: disks[3].model,
                 serial: disks[3].serial,
@@ -396,6 +410,7 @@ describe("NodeStorageController", function() {
             },
             {
                 name: disks[3].partitions[1].name,
+                is_boot: false,
                 type: "partition",
                 model: "",
                 serial: "",
@@ -507,6 +522,74 @@ describe("NodeStorageController", function() {
         expect($scope.availableNew.devices[0]).not.toBe(disk0);
         expect($scope.availableNew.devices[1]).toEqual(disk1);
         expect($scope.availableNew.devices[1]).not.toBe(disk1);
+    });
+
+    describe("isBootDiskDisabled", function() {
+
+        it("returns true if not physical", function() {
+            var controller = makeController();
+            var disk = { type: "virtual" };
+
+            expect($scope.isBootDiskDisabled(disk, "available")).toBe(true);
+        });
+
+        it("returns false if in available", function() {
+            var controller = makeController();
+            var disk = { type: "physical" };
+
+            expect($scope.isBootDiskDisabled(disk, "available")).toBe(false);
+        });
+
+        it("returns true when used and no partitions", function() {
+            var controller = makeController();
+            var disk = { type: "physical", has_partitions: false };
+
+            expect($scope.isBootDiskDisabled(disk, "used")).toBe(true);
+        });
+
+        it("returns false when used and partitions", function() {
+            var controller = makeController();
+            var disk = { type: "physical", has_partitions: true };
+
+            expect($scope.isBootDiskDisabled(disk, "used")).toBe(false);
+        });
+    });
+
+    describe("setAsBootDisk", function() {
+
+        it("does nothing if already boot disk", function() {
+            var controller = makeController();
+            var disk = { is_boot: true };
+            spyOn(NodesManager, "setBootDisk");
+            spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
+
+            $scope.setAsBootDisk(disk);
+
+            expect(NodesManager.setBootDisk).not.toHaveBeenCalled();
+        });
+
+        it("does nothing if set boot disk disabled", function() {
+            var controller = makeController();
+            var disk = { is_boot: false };
+            spyOn(NodesManager, "setBootDisk");
+            spyOn($scope, "isBootDiskDisabled").and.returnValue(true);
+
+            $scope.setAsBootDisk(disk);
+
+            expect(NodesManager.setBootDisk).not.toHaveBeenCalled();
+        });
+
+        it("calls NodesManager.setBootDisk", function() {
+            var controller = makeController();
+            var disk = { block_id: makeInteger(0, 100), is_boot: false };
+            spyOn(NodesManager, "setBootDisk");
+            spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
+
+            $scope.setAsBootDisk(disk);
+
+            expect(NodesManager.setBootDisk).toHaveBeenCalledWith(
+                node, disk.block_id);
+        });
     });
 
     describe("getSelectedFilesystems", function() {
@@ -784,6 +867,78 @@ describe("NodeStorageController", function() {
 
             $scope.filesystemConfirmUnmount(filesystem);
 
+            expect($scope.filesystems).toEqual([]);
+            expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
+        });
+    });
+
+    describe("filesystemDelete", function() {
+
+        it("sets filesystemMode to DELETE", function() {
+            var controller = makeController();
+            $scope.filesystemMode = "other";
+
+            $scope.filesystemDelete();
+
+            expect($scope.filesystemMode).toBe("delete");
+        });
+    });
+
+    describe("quickFilesystemDelete", function() {
+
+        it("selects filesystem and calls filesystemDelete", function() {
+            var controller = makeController();
+            var filesystems = [{ $selected: true }, { $selected: false }];
+            $scope.filesystems = filesystems;
+            spyOn($scope, "updateFilesystemSelection");
+            spyOn($scope, "filesystemDelete");
+
+            $scope.quickFilesystemDelete(filesystems[1]);
+
+            expect(filesystems[0].$selected).toBe(false);
+            expect(filesystems[1].$selected).toBe(true);
+            expect($scope.updateFilesystemSelection).toHaveBeenCalledWith(
+                true);
+            expect($scope.filesystemDelete).toHaveBeenCalled();
+        });
+    });
+
+    describe("filesystemConfirmDelete", function() {
+
+        it("calls NodesManager.deletePartition for partition", function() {
+            var controller = makeController();
+            var filesystem = {
+                original_type: "partition",
+                original: {
+                    id: makeInteger(0, 100)
+                }
+            };
+            $scope.filesystems = [filesystem];
+            spyOn(NodesManager, "deletePartition");
+            spyOn($scope, "updateFilesystemSelection");
+
+            $scope.filesystemConfirmDelete(filesystem);
+            expect(NodesManager.deletePartition).toHaveBeenCalledWith(
+                node, filesystem.original.id);
+            expect($scope.filesystems).toEqual([]);
+            expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
+        });
+
+        it("calls NodesManager.deleteDisk for disk", function() {
+            var controller = makeController();
+            var filesystem = {
+                original_type: "physical",
+                original: {
+                    id: makeInteger(0, 100)
+                }
+            };
+            $scope.filesystems = [filesystem];
+            spyOn(NodesManager, "deleteDisk");
+            spyOn($scope, "updateFilesystemSelection");
+
+            $scope.filesystemConfirmDelete(filesystem);
+            expect(NodesManager.deleteDisk).toHaveBeenCalledWith(
+                node, filesystem.original.id);
             expect($scope.filesystems).toEqual([]);
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
         });
@@ -1871,6 +2026,15 @@ describe("NodeStorageController", function() {
             expect($scope.canDelete(disk)).toBe(true);
         });
 
+        it("returns true if fstype is not empty", function() {
+            var controller = makeController();
+            var disk = { fstype: "ext4" };
+            $scope.isSuperUser = function() { return true; };
+            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+
+            expect($scope.canDelete(disk)).toBe(true);
+        });
+
         it("returns false if has_partitions is true", function() {
             var controller = makeController();
             var disk = { fstype: "", has_partitions: true };
@@ -1879,15 +2043,58 @@ describe("NodeStorageController", function() {
 
             expect($scope.canDelete(disk)).toBe(false);
         });
+    });
 
-        it("returns false if fstype is not empty", function() {
+    describe("availableUnformat", function() {
+
+        it("sets availableMode to UNFORMAT", function() {
             var controller = makeController();
-            var disk = { fstype: "ext4" };
-            $scope.isSuperUser = function() { return true; };
-            spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+            $scope.availableMode = "other";
 
-            expect($scope.canDelete(disk)).toBe(false);
+            $scope.availableUnformat();
+
+            expect($scope.availableMode).toBe("unformat");
         });
+    });
+
+    describe("availableQuickUnformat", function() {
+
+        it("selects disks and deselects others", function() {
+            var controller = makeController();
+            var available = [{ $selected: false }, { $selected: true }];
+            $scope.available = available;
+            spyOn($scope, "updateAvailableSelection");
+            spyOn($scope, "availableUnformat");
+
+            $scope.availableQuickUnformat(available[0]);
+
+            expect(available[0].$selected).toBe(true);
+            expect(available[1].$selected).toBe(false);
+        });
+
+        it("calls updateAvailableSelection with force true", function() {
+            var controller = makeController();
+            var available = [{ $selected: false }, { $selected: true }];
+            spyOn($scope, "updateAvailableSelection");
+            spyOn($scope, "availableUnformat");
+
+            $scope.availableQuickUnformat(available[0]);
+
+            expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
+                true);
+        });
+
+        it("calls availableUnformat",
+            function() {
+                var controller = makeController();
+                var available = [{ $selected: false }, { $selected: true }];
+                spyOn($scope, "updateAvailableSelection");
+                spyOn($scope, "availableUnformat");
+
+                $scope.availableQuickUnformat(available[0]);
+
+                expect($scope.availableUnformat).toHaveBeenCalledWith();
+            });
     });
 
     describe("availableDelete", function() {
@@ -1909,7 +2116,6 @@ describe("NodeStorageController", function() {
             var available = [{ $selected: false }, { $selected: true }];
             $scope.available = available;
             spyOn($scope, "updateAvailableSelection");
-            spyOn($scope, "availableUnformat");
             spyOn($scope, "availableDelete");
 
             $scope.availableQuickDelete(available[0]);
@@ -1922,7 +2128,6 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
-            spyOn($scope, "availableUnformat");
             spyOn($scope, "availableDelete");
 
             $scope.availableQuickDelete(available[0]);
@@ -1931,39 +2136,30 @@ describe("NodeStorageController", function() {
                 true);
         });
 
-        it("calls availableUnformat when hasUnmountedFilesystem returns true",
+        it("calls availableDelete",
             function() {
                 var controller = makeController();
                 var available = [{ $selected: false }, { $selected: true }];
                 spyOn($scope, "updateAvailableSelection");
-                spyOn($scope, "availableUnformat");
                 spyOn($scope, "availableDelete");
-                spyOn($scope, "hasUnmountedFilesystem").and.returnValue(true);
-
-                $scope.availableQuickDelete(available[0]);
-
-                expect($scope.availableUnformat).toHaveBeenCalledWith(
-                    available[0]);
-                expect($scope.availableDelete).not.toHaveBeenCalled();
-            });
-
-        it("calls availableDelete when hasUnmountedFilesystem returns true",
-            function() {
-                var controller = makeController();
-                var available = [{ $selected: false }, { $selected: true }];
-                spyOn($scope, "updateAvailableSelection");
-                spyOn($scope, "availableUnformat");
-                spyOn($scope, "availableDelete");
-                spyOn($scope, "hasUnmountedFilesystem").and.returnValue(false);
 
                 $scope.availableQuickDelete(available[0]);
 
                 expect($scope.availableDelete).toHaveBeenCalledWith();
-                expect($scope.availableUnformat).not.toHaveBeenCalled();
             });
     });
 
     describe("getRemoveTypeText", function() {
+
+        it("returns 'physical disk' for physical on filesystem", function() {
+            var controller = makeController();
+            expect($scope.getRemoveTypeText({
+                type: "filesystem",
+                original: {
+                    type: "physical"
+                }
+            })).toBe("physical disk");
+        });
 
         it("returns 'physical disk' for physical", function() {
             var controller = makeController();

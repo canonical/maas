@@ -201,15 +201,21 @@ angular.module('MAAS').controller('NodeStorageController', [
             var filesystems = [];
             angular.forEach($scope.node.disks, function(disk) {
                 if(hasMountedFilesystem(disk)) {
-                    filesystems.push({
+                    var data = {
                         "type": "filesystem",
                         "name": disk.name,
                         "size_human": disk.size_human,
                         "fstype": disk.filesystem.fstype,
                         "mount_point": disk.filesystem.mount_point,
                         "block_id": disk.id,
-                        "partition_id": null
-                    });
+                        "partition_id": null,
+                        "original_type": disk.type,
+                        "original": disk
+                    };
+                    if(disk.type === "virtual") {
+                        disk.parent_type = disk.parent.type;
+                    }
+                    filesystems.push(data);
                 }
                 angular.forEach(disk.partitions, function(partition) {
                     if(hasMountedFilesystem(partition)) {
@@ -220,7 +226,9 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "fstype": partition.filesystem.fstype,
                             "mount_point": partition.filesystem.mount_point,
                             "block_id": disk.id,
-                            "partition_id": partition.id
+                            "partition_id": partition.id,
+                            "original_type": "partition",
+                            "original": partition
                         });
                     }
                 });
@@ -312,6 +320,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "block_id": disk.id,
                         "partition_id": null,
                         "has_partitions": has_partitions,
+                        "is_boot": disk.is_boot,
                         "original": disk
                     };
                     if(disk.type === "virtual") {
@@ -337,6 +346,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "block_id": disk.id,
                             "partition_id": partition.id,
                             "has_partitions": false,
+                            "is_boot": false,
                             "original": partition
                         });
                     }
@@ -402,7 +412,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "model": disk.model,
                         "serial": disk.serial,
                         "tags": getTags(disk),
-                        "used_for": disk.used_for
+                        "used_for": disk.used_for,
+                        "is_boot": disk.is_boot
                     };
                     if(disk.type === "virtual") {
                         data.parent_type = disk.parent.type;
@@ -417,7 +428,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "model": "",
                             "serial": "",
                             "tags": [],
-                            "used_for": partition.used_for
+                            "used_for": partition.used_for,
+                            "is_boot": false
                         });
                     }
                 });
@@ -539,6 +551,37 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.$watch("node.disks", updateDisks);
         };
 
+        // Return true if the item can be a boot disk.
+        $scope.isBootDiskDisabled = function(item, section) {
+            if(item.type !== "physical") {
+                return true;
+            }
+
+            // If the disk is in the used section and does not have any
+            // partitions then it cannot be a boot disk. Boot disk either
+            // require that it be unused or that some partitions exists
+            // on the disk. This is because the boot disk has to have a
+            // partition table header.
+            if(section === "used") {
+                return !item.has_partitions;
+            }
+            return false;
+        };
+
+        // Called to change the disk to a boot disk.
+        $scope.setAsBootDisk = function(item) {
+            // Do nothing if already the boot disk.
+            if(item.is_boot) {
+                return;
+            }
+            // Do nothing if disabled.
+            if($scope.isBootDiskDisabled(item)) {
+                return;
+            }
+
+            NodesManager.setBootDisk($scope.node, item.block_id);
+        };
+
         // Return array of selected filesystems.
         $scope.getSelectedFilesystems = function() {
             var filesystems = [];
@@ -626,6 +669,36 @@ angular.module('MAAS').controller('NodeStorageController', [
                 $scope.node,
                 filesystem.block_id, filesystem.partition_id,
                 filesystem.fstype, null);
+
+            var idx = $scope.filesystems.indexOf(filesystem);
+            $scope.filesystems.splice(idx, 1);
+            $scope.updateFilesystemSelection();
+        };
+
+        // Enter delete mode.
+        $scope.filesystemDelete = function() {
+            $scope.filesystemMode = SELECTION_MODE.DELETE;
+        };
+
+        // Quickly enter delete by selecting the filesystem first.
+        $scope.quickFilesystemDelete = function(filesystem) {
+            deselectAll($scope.filesystems);
+            filesystem.$selected = true;
+            $scope.updateFilesystemSelection(true);
+            $scope.filesystemDelete();
+        };
+
+        // Confirm the delete action for filesystem.
+        $scope.filesystemConfirmDelete = function(filesystem) {
+            if(filesystem.original_type === "partition") {
+                // Delete the partition.
+                NodesManager.deletePartition(
+                    $scope.node, filesystem.original.id);
+            } else {
+                // Delete the disk.
+                NodesManager.deleteDisk(
+                    $scope.node, filesystem.original.id);
+            }
 
             var idx = $scope.filesystems.indexOf(filesystem);
             $scope.filesystems.splice(idx, 1);
@@ -850,7 +923,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         };
 
         // Enter unformat mode.
-        $scope.availableUnformat = function(disk) {
+        $scope.availableUnformat = function() {
             $scope.availableMode = SELECTION_MODE.UNFORMAT;
         };
 
@@ -949,13 +1022,21 @@ angular.module('MAAS').controller('NodeStorageController', [
             } else if(disk.type === "lvm-vg") {
                 return disk.original.used_size === 0;
             } else {
-                if(!disk.has_partitions && (
-                    !angular.isString(disk.fstype) || disk.fstype === "")) {
-                    return true;
-                } else {
-                    return false;
-                }
+                return !disk.has_partitions;
             }
+        };
+
+        // Enter unformat mode.
+        $scope.availableUnformat = function() {
+            $scope.availableMode = SELECTION_MODE.UNFORMAT;
+        };
+
+        // Quickly enter unformat mode.
+        $scope.availableQuickUnformat = function(disk) {
+            deselectAll($scope.available);
+            disk.$selected = true;
+            $scope.updateAvailableSelection(true);
+            $scope.availableUnformat();
         };
 
         // Enter delete mode.
@@ -963,21 +1044,20 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.availableMode = SELECTION_MODE.DELETE;
         };
 
-        // Quickly enter delete mode. If the disk has a filesystem it will
-        // enter unformat mode.
+        // Quickly enter delete mode.
         $scope.availableQuickDelete = function(disk) {
             deselectAll($scope.available);
             disk.$selected = true;
             $scope.updateAvailableSelection(true);
-            if($scope.hasUnmountedFilesystem(disk)) {
-                $scope.availableUnformat(disk);
-            } else {
-                $scope.availableDelete();
-            }
+            $scope.availableDelete();
         };
 
         // Return the text for remove confirmation message.
         $scope.getRemoveTypeText = function(disk) {
+            if(disk.type === "filesystem") {
+                disk = disk.original;
+            }
+
             if(disk.type === "physical") {
                 return "physical disk";
             } else if(disk.type === "partition") {

@@ -156,6 +156,7 @@ class NodeHandler(TimestampedModelHandler):
             'create_raid',
             'create_volume_group',
             'create_logical_volume',
+            'set_boot_disk',
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
@@ -904,6 +905,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_partition(self, params):
         """Create a partition."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
         form = AddPartitionForm(
@@ -922,6 +927,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_cache_set(self, params):
         """Create a cache set."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         block_id = params.get('block_id')
         partition_id = params.get('partition_id')
@@ -943,6 +952,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_bcache(self, params):
         """Create a bcache."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         block_id = params.get('block_id')
         partition_id = params.get('partition_id')
@@ -974,6 +987,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_raid(self, params):
         """Create a RAID."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         form = CreateRaidForm(node=node, data=params)
         if not form.is_valid():
@@ -988,6 +1005,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_volume_group(self, params):
         """Create a volume group."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         form = CreateVolumeGroupForm(node=node, data=params)
         if not form.is_valid():
@@ -997,6 +1018,10 @@ class NodeHandler(TimestampedModelHandler):
 
     def create_logical_volume(self, params):
         """Create a logical volume."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
         node = self.get_object(params)
         volume_group = VolumeGroup.objects.get(id=params['volume_group_id'])
         if volume_group.get_node() != node:
@@ -1015,6 +1040,21 @@ class NodeHandler(TimestampedModelHandler):
             self.update_blockdevice_filesystem(
                 node, logical_volume.id,
                 params.get("fstype"), params.get("mount_point"))
+
+    def set_boot_disk(self, params):
+        """Set the disk as the boot disk."""
+        # Only admin users can perform delete.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        device = BlockDevice.objects.get(
+            id=params['block_id'], node=node).actual_instance
+        if device.type != 'physical':
+            raise HandlerError(
+                "Only a physical disk can be set as the boot disk.")
+        node.boot_disk = device
+        node.save()
 
     def action(self, params):
         """Perform the action on the object."""

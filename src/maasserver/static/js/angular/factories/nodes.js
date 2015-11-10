@@ -323,5 +323,16 @@ angular.module('MAAS').factory(
                     "node.update_disk", params);
             };
 
+        // Set disk as the boot disk.
+        NodesManager.prototype.setBootDisk = function(
+            node, block_id) {
+                var params = {
+                    system_id: node.system_id,
+                    block_id: block_id
+                };
+                return RegionConnection.callMethod(
+                    "node.set_boot_disk", params);
+            };
+
         return new NodesManager();
     }]);

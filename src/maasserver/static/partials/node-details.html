@@ -771,7 +771,7 @@
                     </ul>
                 </div>
                 <div class="twelve-col padding-bottom no-margin">
-                    <h3>File System</h3>
+                    <h3>File systems</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
@@ -816,23 +816,35 @@
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
                                             <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
+                                            <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: filesystemMode !== null && filesystemMode !== 'multi' }">
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'single'">
                                                 <div class="table__data left">
-                                                      <a class="link-cta-ubuntu text-button"
-                                                        data-ng-click="filesystemUnmount()">Unmount</a>
+                                                    <button class="cta-ubuntu secondary margin-right"
+                                                        data-ng-click="filesystemUnmount()">Unmount</button>
+                                                    <a class="link-cta-ubuntu text-button"
+                                                        data-ng-click="filesystemDelete()">Remove {$ getRemoveTypeText(filesystem) $}</a>
                                                 </div>
                                             </div>
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'unmount'">
                                                 <div class="table__data left margin-top--five">
-                                                      <p><span class="icon warning margin-right--ten"></span> Are you sure you want to unmount this filesystem?</p>
+                                                    <p><span class="icon warning margin-right--ten"></span> Are you sure you want to unmount this filesystem?</p>
                                                 </div>
                                                 <div class="table__data right">
-                                                      <a class="link-cta-ubuntu text-button" data-ng-click="filesystemCancel()">Cancel</a>
-                                                      <button class="cta-ubuntu" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="filesystemCancel()">Cancel</a>
+                                                    <button class="cta-ubuntu" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
+                                                </div>
+                                            </div>
+                                            <div class="ng-hide" data-ng-show="filesystemMode === 'delete'">
+                                                <div class="table__data left margin-top--five">
+                                                    <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this {$ getRemoveTypeText(filesystem) $}?</p>
+                                                </div>
+                                                <div class="table__data right">
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="filesystemCancel()">Cancel</a>
+                                                    <button class="cta-ubuntu" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -889,18 +901,18 @@
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: cachesetsMode !== null && cachesetsMode !== 'multi' }">
                                             <div data-ng-show="cachesetsMode === 'single' && canDeleteCacheSet(cacheset)">
                                                 <div class="table__data left">
-                                                      <a class="link-cta-ubuntu text-button"
+                                                    <a class="link-cta-ubuntu text-button"
                                                         data-ng-show="canDeleteCacheSet(cacheset)"
                                                         data-ng-click="cacheSetDelete()">Remove</a>
                                                 </div>
                                             </div>
                                             <div class="ng-hide" data-ng-show="cachesetsMode === 'delete'">
                                                 <div class="table__data left margin-top--five">
-                                                      <p><span class="icon warning margin-right--ten"></span> Are you sure you want to delete this cache set?</p>
+                                                    <p><span class="icon warning margin-right--ten"></span> Are you sure you want to delete this cache set?</p>
                                                 </div>
                                                 <div class="table__data right">
-                                                      <a class="link-cta-ubuntu text-button" data-ng-click="cacheSetCancel()">Cancel</a>
-                                                      <button class="cta-ubuntu" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="cacheSetCancel()">Cancel</a>
+                                                    <button class="cta-ubuntu" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -924,13 +936,14 @@
                                         <label class="checkbox-label" for="available-check-all"></label>
                                     </span>
                                 </div>
-                                <div class="table__header table__column--20">
+                                <div class="table__header table__column--17">
                                     <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
+                                <div class="table__header table__column--3">Boot</div>
                                 <div class="table__header table__column--15">Size</div>
                                 <div class="table__header table__column--15">Device Type</div>
                                 <div class="table__header table__column--15">File system</div>
@@ -956,7 +969,7 @@
                                             <label class="checkbox-label" for="{$ item.name $}" ></label>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--20" data-ng-show="column === 'name'">
+                                    <div class="table__data table__column--17" data-ng-show="column === 'name'">
                                         <input type="text" class="table__input"
                                             data-ng-model="item.name"
                                             data-maas-enter-blur
@@ -965,8 +978,15 @@
                                             data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
-                                    <div class="table__data table__column--20 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--20 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--17 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--17 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--3">
+                                        <input class="align-center" type="radio"
+                                            data-ng-click="setAsBootDisk(item)"
+                                            data-ng-checked="item.is_boot"
+                                            data-ng-if="item.type === 'physical'"
+                                            data-ng-disabled="isBootDiskDisabled(item, 'available')">
+                                    </div>
                                     <div class="table__data table__column--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table__column--15">
@@ -995,9 +1015,13 @@
                                                 data-tooltip="Partition"
                                                 data-ng-show="canAddPartition(item)"
                                                 data-ng-click="availableQuickPartition(item)">Partition</a>
-                                            <a class="icon delete tooltip"  data-tooltip="Remove"
-                                                data-tooltip="Delete"
-                                                data-ng-show="hasUnmountedFilesystem(item) || canDelete(item)"
+                                            <a class="icon unmount tooltip ng-hide"
+                                                data-tooltip="Unformat"
+                                                data-ng-show="hasUnmountedFilesystem(item)"
+                                                data-ng-click="availableQuickUnformat(item)">Unformat</a>
+                                            <a class="icon delete tooltip ng-hide"
+                                                data-tooltip="Remove"
+                                                data-ng-show="canDelete(item)"
                                                 data-ng-click="availableQuickDelete(item)">Remove</a>
                                         </div>
                                     </div>
@@ -1156,9 +1180,9 @@
                                                     <button class="cta-ubuntu secondary margin-right"
                                                         data-ng-show="canAddLogicalVolume(item)"
                                                         data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
-                                                    <a class="link-cta-ubuntu text-button margin-right"
+                                                    <button class="cta-ubuntu secondary margin-right"
                                                         data-ng-show="hasUnmountedFilesystem(item)"
-                                                        data-ng-click="availableUnformat()">Unformat</a>
+                                                        data-ng-click="availableUnformat()">Unformat</button>
                                                     <a class="link-cta-ubuntu text-button"
                                                         data-ng-show="canDelete(item)"
                                                         data-ng-click="availableDelete()">Remove {$ getRemoveTypeText(item) $}</a>
@@ -1402,13 +1426,14 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--20">
+                                <div class="table__header table__column--17">
                                     <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
                                     <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
+                                <div class="table__header table__column--3">Boot</div>
                                 <div class="table__header table__column--15">Device type</div>
                                 <div class="table__header table__column--52">Used for</div>
                             </div>
@@ -1422,9 +1447,16 @@
                             <div data-ng-repeat="item in used">
                                 <div class="table__row details__used">
                                     <div class="table__data table__column--3"></div>
-                                    <div class="table__data table__column--20" data-ng-show="column === 'name'">{$ item.name $}</div>
-                                    <div class="table__data table__column--20" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--20" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--17" data-ng-show="column === 'name'">{$ item.name $}</div>
+                                    <div class="table__data table__column--17" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table__column--17" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table__column--3">
+                                        <input class="align-center" type="radio"
+                                            data-ng-click="setAsBootDisk(item)"
+                                            data-ng-checked="item.is_boot"
+                                            data-ng-if="item.type === 'physical'"
+                                            data-ng-disabled="isBootDiskDisabled(item, 'used')">
+                                    </div>
                                     <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
                                     <div class="table__data table__column--52">{$ item.used_for $}</div>
                                 </div>

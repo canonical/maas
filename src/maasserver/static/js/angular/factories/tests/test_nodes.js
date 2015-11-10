@@ -761,4 +761,23 @@ describe("NodesManager", function() {
             });
         });
     });
+
+    describe("setBootDisk", function() {
+
+        it("calls node.set_boot_disk", function(done) {
+            var fakeNode = makeNode();
+            var block_id = makeInteger(0, 100);
+            webSocket.returnData.push(makeFakeResponse(null));
+            NodesManager.setBootDisk(
+                    fakeNode, block_id).then(
+                        function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.set_boot_disk");
+                expect(sentObject.params.system_id).toBe(fakeNode.system_id);
+                expect(sentObject.params.block_id).toBe(
+                    block_id);
+                done();
+            });
+        });
+    });
 });
