@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 from collections import defaultdict
+import logging
 import threading
 
 from django.conf import settings
@@ -35,10 +36,14 @@ from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
 )
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.twisted import (
     callOut,
     synchronous,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def split_ipv4_ipv6_interfaces(interfaces):
@@ -80,13 +85,14 @@ def make_subnet_config(interface, dns_servers, ntp_server):
 
 
 @synchronous
-def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server):
+def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server, client):
     """Write DHCP configuration and restart the DHCP server.
 
     Delegates the work to the cluster controller, and waits for it
     to complete.
 
     :param ip_version: The IP version to configure for, either 4 or 6.
+    :param client: An RPC client for the given cluster.
 
     :raise NoConnectionsAvailable: if the region controller could not get
         an RPC connection to the cluster controller.
@@ -122,36 +128,43 @@ def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server):
         make_subnet_config(interface, dns_servers, ntp_server)
         for interface in interfaces
         ]
-    client = getClientFor(nodegroup.uuid)
     # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
     # needs to be reported gracefully to the caller.
     client(command, omapi_key=omapi_key, subnet_configs=subnets).wait(60)
 
 
-def configure_dhcpv4(nodegroup, interfaces, ntp_server):
+def configure_dhcpv4(nodegroup, interfaces, ntp_server, client):
     """Call `do_configure_dhcp` for IPv4.
 
     This serves mainly as a convenience for testing.
     """
-    return do_configure_dhcp(4, nodegroup, interfaces, ntp_server)
+    return do_configure_dhcp(4, nodegroup, interfaces, ntp_server, client)
 
 
-def configure_dhcpv6(nodegroup, interfaces, ntp_server):
+def configure_dhcpv6(nodegroup, interfaces, ntp_server, client):
     """Call `do_configure_dhcp` for IPv6.
 
     This serves mainly as a convenience for testing.
     """
-    return do_configure_dhcp(6, nodegroup, interfaces, ntp_server)
+    return do_configure_dhcp(6, nodegroup, interfaces, ntp_server, client)
 
 
 def configure_dhcp_now(nodegroup):
-    """Write the DHCP configuration files and restart the DHCP servers."""
+    """Write the DHCP configuration files and restart the DHCP servers.
+
+    :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
+        are no open connections to the specified cluster controller.
+    """
     # Let's get this out of the way first up shall we?
     if not settings.DHCP_CONNECT:
         # For the uninitiated, DHCP_CONNECT is set, by default, to False
         # in all tests and True in non-tests.  This avoids unnecessary
         # calls to async tasks.
         return
+
+    # Get the client early; it's a cheap operation that may raise an
+    # exception, meaning we can avoid some work if it fails.
+    client = getClientFor(nodegroup.uuid)
 
     if nodegroup.status == NODEGROUP_STATUS.ENABLED:
         # Cluster is an accepted one.  Control DHCP for its managed interfaces.
@@ -168,8 +181,8 @@ def configure_dhcp_now(nodegroup):
 
     ipv4_interfaces, ipv6_interfaces = split_ipv4_ipv6_interfaces(interfaces)
 
-    configure_dhcpv4(nodegroup, ipv4_interfaces, ntp_server)
-    configure_dhcpv6(nodegroup, ipv6_interfaces, ntp_server)
+    configure_dhcpv4(nodegroup, ipv4_interfaces, ntp_server, client)
+    configure_dhcpv6(nodegroup, ipv6_interfaces, ntp_server, client)
 
 
 class Changes:
@@ -206,7 +219,13 @@ class Changes:
         """Apply all requested changes."""
         clusters = {cluster.id: cluster for cluster in self.clusters}
         for cluster in clusters.viewvalues():
-            configure_dhcp_now(cluster)
+            try:
+                configure_dhcp_now(cluster)
+            except NoConnectionsAvailable:
+                logger.info(
+                    "Cluster %s (%s) is not connected at present so cannot "
+                    "be configured; it will catch up when it next connects.",
+                    cluster.cluster_name, cluster.uuid)
 
 
 class ChangeConsolidator(threading.local):

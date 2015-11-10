@@ -18,6 +18,7 @@ import random
 
 from django.conf import settings
 from django.db import transaction
+from fixtures import LoggerFixture
 from maasserver import dhcp
 from maasserver.dhcp import (
     configure_dhcp,
@@ -34,6 +35,7 @@ from maasserver.models import (
     Config,
     NodeGroup,
 )
+from maasserver.rpc import getClientFor
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -270,7 +272,9 @@ class TestDoConfigureDHCP(MAASServerTestCase):
 
         # Although the above nodegroup has managed interfaces, we pass the
         # empty list here; do_configure_dhcp() dutifully believes us.
-        do_configure_dhcp(self.ip_version, nodegroup, [], ntp_server)
+        do_configure_dhcp(
+            self.ip_version, nodegroup, [], ntp_server,
+            getClientFor(nodegroup.uuid))
 
         self.assertThat(
             command_stub, MockCalledOnceWith(
@@ -297,7 +301,9 @@ class TestDoConfigureDHCP(MAASServerTestCase):
         protocol, command_stub = self.prepare_rpc(nodegroup)
         command_stub.side_effect = always_succeed_with({})
 
-        do_configure_dhcp(self.ip_version, nodegroup, interfaces, ntp_server)
+        do_configure_dhcp(
+            self.ip_version, nodegroup, interfaces, ntp_server,
+            getClientFor(nodegroup.uuid))
 
         expected_subnet_configs = [
             make_subnet_config(interface, dns_server, ntp_server)
@@ -317,16 +323,20 @@ class TestDoConfigureDHCPWrappers(MAASServerTestCase):
     def test_configure_dhcpv4_calls_do_configure_dhcp(self):
         do_configure_dhcp = self.patch_autospec(dhcp, "do_configure_dhcp")
         dhcp.configure_dhcpv4(
-            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server)
+            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
+            sentinel.client)
         self.assertThat(do_configure_dhcp, MockCalledOnceWith(
-            4, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server))
+            4, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
+            sentinel.client))
 
     def test_configure_dhcpv6_calls_do_configure_dhcp(self):
         do_configure_dhcp = self.patch_autospec(dhcp, "do_configure_dhcp")
         dhcp.configure_dhcpv6(
-            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server)
+            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
+            sentinel.client)
         self.assertThat(do_configure_dhcp, MockCalledOnceWith(
-            6, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server))
+            6, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
+            sentinel.client))
 
 
 def patch_configure_funcs(test):
@@ -383,6 +393,11 @@ def make_ipv6_interface(test, cluster=None, **kwargs):
 class TestConfigureDHCP(MAASServerTestCase):
     """Tests for `configure_dhcp`."""
 
+    def setUp(self):
+        super(TestConfigureDHCP, self).setUp()
+        # Suppress checks for cluster availability.
+        self.patch_autospec(dhcp, "getClientFor")
+
     def test__obeys_DHCP_CONNECT(self):
         configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
         cluster = make_cluster(self)
@@ -406,11 +421,12 @@ class TestConfigureDHCP(MAASServerTestCase):
         with post_commit_hooks:
             configure_dhcp(cluster)
 
-        self.expectThat(configure_dhcpv4, MockCalledOnceWith(cluster, [], ANY))
-        self.expectThat(configure_dhcpv6, MockCalledOnceWith(cluster, [], ANY))
+        self.expectThat(configure_dhcpv4, MockCalledOnceWith(
+            cluster, [], ANY, dhcp.getClientFor.return_value))
+        self.expectThat(configure_dhcpv6, MockCalledOnceWith(
+            cluster, [], ANY, dhcp.getClientFor.return_value))
 
     def test__configures_dhcpv4(self):
-        getClientFor = self.patch_autospec(dhcp, "getClientFor")
         ip = factory.make_ipv4_address()
         cluster = make_cluster(self, maas_url='http://%s/' % ip)
         make_ipv4_interface(self, cluster)
@@ -419,9 +435,8 @@ class TestConfigureDHCP(MAASServerTestCase):
         with post_commit_hooks:
             configure_dhcp(cluster)
 
-        self.assertThat(getClientFor, MockCallsMatch(
-            call(cluster.uuid), call(cluster.uuid)))
-        client = getClientFor.return_value
+        self.assertThat(dhcp.getClientFor, MockCalledOnceWith(cluster.uuid))
+        client = dhcp.getClientFor.return_value
         self.assertThat(client, MockCallsMatch(
             call(ANY, omapi_key=ANY, subnet_configs=ANY),
             call(ANY, omapi_key=ANY, subnet_configs=ANY),
@@ -447,11 +462,30 @@ class TestConfigureDHCP(MAASServerTestCase):
 
         ntp_server = Config.objects.get_config('ntp_server')
         self.assertThat(
-            configure_dhcpv4,
-            MockCalledOnceWith(ANY, ANY, ntp_server))
+            configure_dhcpv4, MockCalledOnceWith(
+                ANY, ANY, ntp_server, dhcp.getClientFor.return_value))
         self.assertThat(
-            configure_dhcpv6,
-            MockCalledOnceWith(ANY, ANY, ntp_server))
+            configure_dhcpv6, MockCalledOnceWith(
+                ANY, ANY, ntp_server, dhcp.getClientFor.return_value))
+
+
+class TestConfigureDHCPWithDisconnectedCluster(MAASServerTestCase):
+    """Behaviour when the target cluster is not connected."""
+
+    def test__logs_about_disconnected_cluster(self):
+        cluster = make_cluster(self)
+        self.patch(settings, "DHCP_CONNECT", True)
+
+        with LoggerFixture(dhcp.__name__) as logger:
+            with post_commit_hooks:
+                configure_dhcp(cluster)
+
+        self.assertDocTestMatches(
+            """\
+            Cluster ... (...) is not connected at present so cannot be
+            configured; it will catch up when it next connects.
+            """,
+            logger.output)
 
 
 class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
@@ -461,6 +495,14 @@ class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
     must be committed to the database in order that they're visible elsewhere.
     """
 
+    def setUp(self):
+        super(TestConfigureDHCPTransactional, self).setUp()
+        # Suppress checks for cluster availability.
+        getClientFor = self.patch_autospec(dhcp, "getClientFor")
+        getClientFor.return_value = sentinel.client
+        # Connect DHCP changes.
+        self.patch(settings, "DHCP_CONNECT", True)
+
     def test__passes_only_IPv4_interfaces_to_DHCPv4(self):
         configure_dhcpv4, _ = patch_configure_funcs(self)
 
@@ -468,14 +510,12 @@ class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
             cluster = make_cluster(self)
             ipv4_interface = make_ipv4_interface(self, cluster)
             make_ipv6_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
 
         with post_commit_hooks:
             configure_dhcp(cluster)
 
-        self.assertThat(
-            configure_dhcpv4,
-            MockCalledOnceWith(cluster, [ipv4_interface], ANY))
+        self.assertThat(configure_dhcpv4, MockCalledOnceWith(
+            cluster, [ipv4_interface], ANY, sentinel.client))
 
     def test__passes_only_IPv6_interfaces_to_DHCPv6(self):
         _, configure_dhcpv6 = patch_configure_funcs(self)
@@ -484,14 +524,12 @@ class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
             cluster = make_cluster(self)
             ipv6_interface = make_ipv6_interface(self, cluster)
             make_ipv4_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
 
         with post_commit_hooks:
             configure_dhcp(cluster)
 
-        self.assertThat(
-            configure_dhcpv6,
-            MockCalledOnceWith(cluster, [ipv6_interface], ANY))
+        self.assertThat(configure_dhcpv6, MockCalledOnceWith(
+            cluster, [ipv6_interface], ANY, sentinel.client))
 
 
 class TestDHCPConnect(MAASServerTestCase):

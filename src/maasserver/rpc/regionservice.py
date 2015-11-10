@@ -34,6 +34,8 @@ from maasserver import (
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
+from maasserver.dhcp import configure_dhcp_now
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     clusters,
     configuration,
@@ -383,6 +385,31 @@ class Region(RPCProtocol):
         return d
 
 
+@transactional
+def configureCluster(ident):
+    """Configure the cluster.
+
+    Typically this is called once, as soon as a successful handshake is made
+    between the region and cluster. After that configuration can be done at
+    the moment the change is made. In essence, this is "catches-up" the
+    cluster with the region's current idea of how it should be.
+
+    Don't do anything particularly energetic in here because it will be called
+    once for each region<-->cluster connection, of which each cluster can have
+    many.
+
+    :param ident: The cluster's UUID.
+    """
+    try:
+        cluster = NodeGroup.objects.get(uuid=ident)
+    except NodeGroup.DoesNotExist:
+        log.msg("Cluster '%s' is not recognised; cannot configure." % (ident,))
+    else:
+        configure_dhcp_now(cluster)
+        log.msg("Cluster %s (%s) has been configured." % (
+            cluster.cluster_name, cluster.uuid))
+
+
 @implementer(IConnection)
 class RegionServer(Region):
     """The RPC protocol supported by a region controller, server version.
@@ -428,13 +455,18 @@ class RegionServer(Region):
                 "Cluster '%s' FAILED authentication; "
                 "dropping connection." % self.ident)
             yield self.transport.loseConnection()
+        returnValue(authenticated)
 
-    def handshakeSucceeded(self, result):
+    def handshakeSucceeded(self, authenticated):
         """The handshake (identify and authenticate) succeeded.
 
-        This does *NOT* mean that the cluster was successfully authenticated,
-        merely that the process of authentication did not encounter an error.
+        :param authenticated: True if the remote cluster has successfully
+            authenticated.
+        :type authenticated: bool
         """
+        if authenticated:
+            return deferToDatabase(configureCluster, self.ident).addErrback(
+                log.err, "Failed to configure DHCP on %s." % (self.ident,))
 
     def handshakeFailed(self, failure):
         """The handshake (identify and authenticate) failed."""

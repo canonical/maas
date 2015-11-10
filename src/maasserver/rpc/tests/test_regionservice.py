@@ -1104,6 +1104,36 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
                 "'%s'.", name, event_description, mac_address))
 
 
+class TestConfigureCluster(MAASServerTestCase):
+    """Tests for the `configureCluster` function."""
+
+    def test__logs_when_cluster_is_not_known(self):
+        ident = factory.make_UUID()
+        with TwistedLoggerFixture() as logger:
+            regionservice.configureCluster(ident)
+        self.assertDocTestMatches(
+            "Cluster '...' is not recognised; cannot configure.",
+            logger.output)
+
+    def test__logs_when_cluster_has_been_configured(self):
+        ident = factory.make_NodeGroup().uuid
+        with TwistedLoggerFixture() as logger:
+            regionservice.configureCluster(ident)
+        self.assertDocTestMatches(
+            "Cluster ... (...) has been configured.",
+            logger.output)
+
+    def test__configures_dhcp(self):
+        ident = factory.make_NodeGroup().uuid
+        self.patch_autospec(regionservice, "configure_dhcp_now")
+        regionservice.configureCluster(ident)
+        self.assertThat(
+            regionservice.configure_dhcp_now,
+            MockCalledOnceWith(ANY))
+        [cluster] = regionservice.configure_dhcp_now.call_args[0]
+        self.assertThat(cluster.uuid, Equals(ident))
+
+
 class TestRegionServer(MAASServerTestCase):
 
     def test_interfaces(self):
@@ -1245,6 +1275,52 @@ class TestRegionServer(MAASServerTestCase):
             server.handshakeFailed(Failure(ConnectionClosed()))
         # Nothing was logged.
         self.assertEqual("", logger.output)
+
+    def make_handshaking_server(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        service.factory.protocol = HandshakingRegionServer
+        return service.factory.buildProtocol(addr=None)  # addr is unused.
+
+    def test_connectionMade_configures_cluster_if_auth_succeeds(self):
+        self.patch_autospec(regionservice, "configureCluster")
+        protocol = self.make_handshaking_server()
+
+        connectionMade = wait_for_reactor(protocol.connectionMade)
+        connectionMade()
+
+        self.assertThat(
+            regionservice.configureCluster,
+            MockCalledOnceWith(protocol.ident))
+
+    def test_connectionMade_does_not_configure_cluster_if_auth_fails(self):
+        self.patch_autospec(regionservice, "configureCluster")
+        protocol = self.make_handshaking_server()
+        self.patch_authenticate_for_failure(protocol)
+        self.patch(protocol, "transport")
+
+        connectionMade = wait_for_reactor(protocol.connectionMade)
+        connectionMade()
+
+        self.assertThat(regionservice.configureCluster, MockNotCalled())
+
+    def test_connectionMade_logs_cluster_configuration_failure(self):
+        self.patch_autospec(regionservice, "configureCluster")
+        regionservice.configureCluster.side_effect = ZeroDivisionError
+        protocol = self.make_handshaking_server()
+
+        with TwistedLoggerFixture() as logger:
+            connectionMade = wait_for_reactor(protocol.connectionMade)
+            connectionMade()
+
+        self.assertDocTestMatches(
+            """\
+            ...
+            ---
+            Failed to configure DHCP on ...
+            Traceback (most recent call last): ...
+            """,
+            logger.output)
 
     def make_running_server(self):
         service = RegionService()
