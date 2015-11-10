@@ -182,7 +182,7 @@ class TestNodeHandler(MAASServerTestCase):
                 handler.dehydrate_interface(interface, node)
                 for interface in node.interface_set.all().order_by('name')
             ],
-            "on_managed_network": node.on_managed_network(),
+            "on_network": node.on_network(),
             "license_key": node.license_key,
             "memory": node.display_memory(),
             "min_hwe_kernel": node.min_hwe_kernel,
@@ -1849,7 +1849,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_action_performs_action_passing_extra(self):
         user = factory.make_User()
         factory.make_SSHKey(user)
-        self.patch(Node, 'on_managed_network').return_value = True
+        self.patch(Node, 'on_network').return_value = True
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         osystem = make_usable_osystem(self)
         handler = NodeHandler(user, {})

@@ -73,7 +73,6 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
-    NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     POWER_STATE_CHOICES,
     PRESEED_TYPE,
@@ -761,25 +760,19 @@ class Node(CleanSave, TimestampedModel):
                 event_action=action,
                 event_description=description)
 
-    def on_managed_network(self):
+    def on_network(self):
         """Return true if the node is connected to a managed network."""
         for interface in self.interface_set.all():
             for link in interface.get_links():
                 if (link['mode'] != INTERFACE_LINK_TYPE.LINK_UP
                         and 'subnet' in link):
-                    subnet = link['subnet']
-                    ngi = subnet.get_managed_cluster_interface()
-                    if (ngi is not None
-                        and ngi.management !=
-                            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED):
-                        return True
+                    return True
         return False
 
     def _start_deployment(self):
         """Mark a node as being deployed."""
-        if self.on_managed_network() is False:
-            raise ValidationError(
-                "Node must be configured to use a managed network")
+        if self.on_network() is False:
+            raise ValidationError("Node must be configured to use a network")
         self.status = NODE_STATUS.DEPLOYING
         self.save()
 
