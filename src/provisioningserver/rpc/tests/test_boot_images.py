@@ -33,6 +33,7 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
     _run_import,
+    fix_sources_for_cluster,
     get_hosts_from_sources,
     import_boot_images,
     is_import_boot_images_running,
@@ -117,6 +118,72 @@ class TestGetHostsFromSources(PservTestCase):
         self.assertItemsEqual(hosts, get_hosts_from_sources(sources))
 
 
+class TestFixSourcesForCluster(PservTestCase):
+
+    def set_maas_url(self, url):
+        self.useFixture(ClusterConfigurationFixture(maas_url=url))
+
+    def test__removes_matching_path_from_maas_url_with_extra_slashes(self):
+        self.set_maas_url("http://192.168.122.2/MAAS/////")
+        sources = [
+            {
+                "url": "http://localhost/MAAS/images/index.json"
+            }
+        ]
+        observered = fix_sources_for_cluster(sources)
+        self.assertEquals(
+            "http://192.168.122.2/MAAS/images/index.json",
+            observered[0]['url'])
+
+    def test__removes_matching_path_from_maas_url(self):
+        self.set_maas_url("http://192.168.122.2/MAAS/")
+        sources = [
+            {
+                "url": "http://localhost/MAAS/images/index.json"
+            }
+        ]
+        observered = fix_sources_for_cluster(sources)
+        self.assertEquals(
+            "http://192.168.122.2/MAAS/images/index.json",
+            observered[0]['url'])
+
+    def test__removes_matching_path_with_extra_slashes_from_maas_url(self):
+        self.set_maas_url("http://192.168.122.2/MAAS/")
+        sources = [
+            {
+                "url": "http://localhost///MAAS///images/index.json"
+            }
+        ]
+        observered = fix_sources_for_cluster(sources)
+        self.assertEquals(
+            "http://192.168.122.2/MAAS/images/index.json",
+            observered[0]['url'])
+
+    def test__doesnt_remove_non_matching_path_from_maas_url(self):
+        self.set_maas_url("http://192.168.122.2/not-matching/")
+        sources = [
+            {
+                "url": "http://localhost/MAAS/images/index.json"
+            }
+        ]
+        observered = fix_sources_for_cluster(sources)
+        self.assertEquals(
+            "http://192.168.122.2/not-matching/MAAS/images/index.json",
+            observered[0]['url'])
+
+    def test__doesnt_remove_non_matching_path_from_maas_url_with_slashes(self):
+        self.set_maas_url("http://192.168.122.2/not-matching////")
+        sources = [
+            {
+                "url": "http://localhost///MAAS/images/index.json"
+            }
+        ]
+        observered = fix_sources_for_cluster(sources)
+        self.assertEquals(
+            "http://192.168.122.2/not-matching/MAAS/images/index.json",
+            observered[0]['url'])
+
+
 class TestRunImport(PservTestCase):
 
     def make_archive_url(self, name=None):
@@ -169,12 +236,15 @@ class TestRunImport(PservTestCase):
         self.assertEqual(fake.env['no_proxy'], "localhost,127.0.0.1,::1")
 
     def test__run_import_sets_proxy_for_source_host(self):
-        sources, hosts = make_sources()
+        host = factory.make_name("host").lower()
+        maas_url = "http://%s/" % host
+        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
+        sources, _ = make_sources()
         fake = self.patch_boot_resources_function()
         _run_import(sources=sources)
         self.assertItemsEqual(
             fake.env['no_proxy'].split(','),
-            ["localhost", "127.0.0.1", "::1"] + hosts)
+            ["localhost", "127.0.0.1", "::1"] + [host])
 
     def test__run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')

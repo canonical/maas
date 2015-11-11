@@ -67,12 +67,38 @@ def get_hosts_from_sources(sources):
     return hosts
 
 
+def fix_sources_for_cluster(sources):
+    """Return modified sources that use the URL to the region defined in the
+    cluster configuration instead of the one the region suggested."""
+    sources = list(sources)
+    with ClusterConfiguration.open() as config:
+        maas_url = config.maas_url
+    maas_url_parsed = urlparse(maas_url)
+    maas_url_path = maas_url_parsed.path.lstrip('/').rstrip('/')
+    for source in sources:
+        url = urlparse(source['url'])
+        source_path = url.path.lstrip('/')
+        # Most likely they will both have 'MAAS/' at the start. We can't just
+        # append because then the URL would be 'MAAS/MAAS/' which is incorrect.
+        # If the initial part of the URL defined in the config matches the
+        # beginning of what the region told the cluster to use then strip it
+        # out and build the new URL.
+        if source_path.startswith(maas_url_path):
+            source_path = source_path[len(maas_url_path):]
+        url = maas_url.rstrip('/') + '/' + source_path.lstrip('/')
+        source['url'] = url
+    return sources
+
+
 @synchronous
 def _run_import(sources, http_proxy=None, https_proxy=None):
     """Run the import.
 
     This is function is synchronous so it must be called with deferToThread.
     """
+    # Fix the sources to download from the IP address defined in the cluster
+    # configuration, instead of the URL that the region asked it to use.
+    sources = fix_sources_for_cluster(sources)
     variables = {
         'GNUPGHOME': get_maas_user_gpghome(),
         }
