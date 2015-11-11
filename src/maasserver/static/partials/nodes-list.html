@@ -42,20 +42,20 @@
                 <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')">
                     <form class="form-inline">
                         <div class="eight-col no-margin-bottom ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'commission'">
-                            <div class="inline four-col">
+                            <div class="inline width--auto margin-top--ten margin-right left">
                                 <input class="checkbox margin-right" id="enableSSH" type="checkbox"
                                     data-ng-model="tabs.nodes.commissionOptions.enableSSH">
-                                <label class="checkbox-label" for="enableSSH">Enable SSH during commissioning (keeps the machine running after completion)</label>
+                                <label class="checkbox-label" for="enableSSH">Allow SSH access and prevent machine from powering off</label>
                             </div>
-                            <div class="inline four-col">
+                            <div class="inline width--auto margin-top--ten margin-right left">
                                 <input class="checkbox margin-right" id="skipNetworking" type="checkbox"
                                     data-ng-model="tabs.nodes.commissionOptions.skipNetworking">
-                                <label class="checkbox-label" for="skipNetworking">Keep network configuration during commissioning</label>
+                                <label class="checkbox-label" for="skipNetworking">Retain network configuration</label>
                             </div>
-                            <div class="inline four-col last-col">
+                            <div class="inline width--auto margin-top--ten margin-right left">
                                 <input class="checkbox" id="skipStorage" type="checkbox"
                                     data-ng-model="tabs.nodes.commissionOptions.skipStorage">
-                                <label class="checkbox-label" for="skipStorage">Keep storage configuration during commissioning</label>
+                                <label class="checkbox-label" for="skipStorage">Retain storage configuration</label>
                             </div>
                         </div>
                         <span class="ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'deploy'">

@@ -252,6 +252,21 @@
     margin-bottom: 0;
 }
 
+.width {
+
+  &--auto {
+    width: auto;
+  }
+
+  &--half {
+    width: 50%;
+  }
+
+  &--full {
+    width: 100%;
+  }
+}
+
 .tooltip {
   position: relative;
 
