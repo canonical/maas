@@ -1224,15 +1224,14 @@ class Interface(CleanSave, TimestampedModel):
         if len(existing_statics) > 0:
             return existing_statics
 
+        parent = self._get_parent_node()
         # Get the last subnets this interface DHCP'd from. This with be either
         # one IPv4, one IPv6, or both IPv4 and IPv6.
-        if (self.node is not None and
-                not self.node.installable and
-                self.node.parent is not None):
+        if parent is not None:
             # If this interface is on a device then we need to look for
             # discovered addresses on all the Node's interfaces.
             discovered_ips = StaticIPAddress.objects.none()
-            for interface in self.node.parent.interface_set.all():
+            for interface in parent.interface_set.all():
                 ip_addresses = interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.DISCOVERED)
                 ip_addresses = ip_addresses.order_by(
@@ -1244,17 +1243,30 @@ class Interface(CleanSave, TimestampedModel):
             discovered_ips = discovered_ips.order_by(
                 'id').select_related("subnet")
 
+        discovered_subnets = [
+            discovered_ip.subnet for discovered_ip in discovered_ips
+        ]
+
+        if len(discovered_subnets) == 0:
+            # Backward compatibility code. When databases are migrated from 1.8
+            # and earlier, we may not have DISCOVERED addresses yet. So
+            # try to find a subnet on an attached cluster interface.
+            # (Note that get_cluster_interface() handles getting the parent
+            # node, if needed.)
+            for ngi in self.get_cluster_interfaces():
+                if ngi is not None and ngi.subnet is not None:
+                    discovered_subnets.append(ngi.subnet)
+
         if requested_address is None:
             # No requested address so claim a STATIC IP on all DISCOVERED
             # subnets for this interface.
             static_ips = []
-            for discovered_ip in discovered_ips:
-                subnet = discovered_ip.subnet
-                ngi = subnet.get_managed_cluster_interface()
+            for discovered_subnet in discovered_subnets:
+                ngi = discovered_subnet.get_managed_cluster_interface()
                 if ngi is not None:
                     static_ips.append(
                         self.link_subnet(
-                            INTERFACE_LINK_TYPE.STATIC, subnet))
+                            INTERFACE_LINK_TYPE.STATIC, discovered_subnet))
 
             # No valid subnets could be used to claim a STATIC IP address.
             if not any(static_ips):
@@ -1267,10 +1279,10 @@ class Interface(CleanSave, TimestampedModel):
         else:
             # Find the DISCOVERED subnet that the requested_address falls into.
             found_subnet = None
-            for discovered_ip in discovered_ips:
+            for discovered_subnet in discovered_subnets:
                 if (IPAddress(requested_address) in
-                        discovered_ip.subnet.get_ipnetwork()):
-                    found_subnet = discovered_ip.subnet
+                        discovered_subnet.get_ipnetwork()):
+                    found_subnet = discovered_subnet
                     break
 
             if found_subnet:
@@ -1283,6 +1295,17 @@ class Interface(CleanSave, TimestampedModel):
                 raise StaticIPAddressOutOfRange(
                     "requested_address '%s' is not in a managed subnet for "
                     "this interface '%s'" % (requested_address, self.name))
+
+    def _get_parent_node(self):
+        """Return the parent node for this interface, if it exists (and this
+        interface belongs to a Device). Otherwise, return None.
+        """
+        if (self.node is not None and
+                not self.node.installable and
+                self.node.parent is not None):
+            return self.node.parent
+        else:
+            return None
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to

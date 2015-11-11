@@ -26,6 +26,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
+    NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
@@ -75,6 +76,7 @@ from provisioningserver.utils.ipaddr import (
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    HasLength,
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
@@ -2594,3 +2596,17 @@ class TestClaimStaticIPs(MAASServerTestCase):
                 INTERFACE_LINK_TYPE.STATIC, subnet_v4,
                 ip_address=requested_ip))
         self.assertEquals(sentinel.claimed_ip, claimed_ip)
+
+    def test__finds_device_subnet_via_parent_cluster_interface(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYED)
+        # Create a situation that looks like a migration from MAAS 1.8
+        # (no DISCOVERED IP addresses on this node, because it hasn't
+        # recommissioned.)
+        node.get_boot_interface().ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
+        device = factory.make_Device(parent=node)
+        iface = factory.make_Interface(node=device)
+        self.patch_autospec(iface, "link_subnet")
+        claimed_ips = iface.claim_static_ips()
+        self.assertThat(claimed_ips, HasLength(1))
