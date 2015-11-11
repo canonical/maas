@@ -1048,7 +1048,8 @@
                                                     Partition
                                                 </div>
                                                 <div class="table__data table__column--15">
-                                                    <select name="filesys"
+                                                    <select class="table__input"
+                                                        name="filesys"
                                                         data-ng-model="item.$options.fstype"
                                                         data-ng-change="fstypeChanged(item.$options)"
                                                         data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
@@ -1056,7 +1057,8 @@
                                                     </select>
                                                 </div>
                                                 <div class="table__data table__column--30">
-                                                    <input type="text" id="mountpoint"
+                                                    <input class="table__input"
+                                                        type="text" id="mountpoint"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
                                                         data-ng-disabled="item.$options.fstype === null"
@@ -1110,6 +1112,7 @@
                                                 </div>
                                                 <div class="table__data table__column--15">
                                                     <select name="filesys"
+                                                        class="table__input"
                                                         data-ng-model="item.$options.fstype"
                                                         data-ng-change="fstypeChanged(item.$options)"
                                                         data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
@@ -1118,6 +1121,7 @@
                                                 </div>
                                                 <div class="table__data table__column--30">
                                                     <input type="text" id="mountpoint"
+                                                        class="table__input"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
                                                         data-ng-disabled="item.$options.fstype === null"
