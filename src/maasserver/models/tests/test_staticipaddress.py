@@ -395,6 +395,35 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         self.assertIsNone(extra_ip.ip)
         self.assertEquals(subnet, lease_ip.subnet)
 
+    def test_update_leases_handles_multiple_empty_ips(self):
+        cidr = unicode(factory.make_ipv4_network().cidr)
+        node = factory.make_Node_with_Interface_on_Subnet(cidr=cidr)
+        boot_interface = node.get_boot_interface()
+        ip_address = boot_interface.ip_addresses.first()
+        subnet = ip_address.subnet
+        ngi = subnet.nodegroupinterface_set.first()
+        # Create a pre-1.9 condition in the StaticIPAddress table.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+        discovered_ip = unicode(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        macs = [factory.make_mac_address() for i in range(2)]
+        StaticIPAddress.objects.update_leases(
+            node.nodegroup, [(discovered_ip, macs[0])])
+        # Now move to the new MAC, and ensure that the table is correctly
+        # updated, even when multiple empty IP addresses are in the table.
+        # (See also bug #1513485).
+        StaticIPAddress.objects.update_leases(
+            node.nodegroup, [(discovered_ip, macs[1])])
+        new_ips = StaticIPAddress.objects.filter(ip=discovered_ip)
+        self.assertEqual(1, len(new_ips))
+        self.assertEquals(
+            IPADDRESS_TYPE.DISCOVERED, new_ips[0].alloc_type)
+        self.assertEquals(
+            INTERFACE_TYPE.UNKNOWN, new_ips[0].interface_set.first().type)
+        empty_ips = StaticIPAddress.objects.filter(
+            ip=None, alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet)
+        self.assertEqual(2, len(empty_ips))
+
     def test_update_leases_only_keeps_one_DISCOVERED_address(self):
         vlan = VLAN.objects.get_default_vlan()
         node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)

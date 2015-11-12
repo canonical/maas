@@ -470,10 +470,19 @@ class StaticIPAddressManager(Manager):
                     ipaddress.interface_set.exclude(mac_address__in=mac_list))
                 if len(other_interfaces) > 0:
                     # Get or create an empty DISCOVERED IP address for these
-                    # other interfaces, linked to the old subnet.
-                    empty_ip, _ = StaticIPAddress.objects.get_or_create(
-                        alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
-                        subnet=ipaddress.subnet)
+                    # other interfaces, linked to the old subnet.  if we have
+                    # migrated from 1.8 to 1.9, it's possible to have more
+                    # than one empty_ip for the subnet.  Use the first one if
+                    # it is there, if it isn't, then let get_or_create make
+                    # one for us.
+                    empty_ip = StaticIPAddress.objects.filter(
+                        ip=None,
+                        alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                        subnet=ipaddress.subnet).first()
+                    if empty_ip is None:
+                        empty_ip, _ = StaticIPAddress.objects.get_or_create(
+                            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
+                            subnet=ipaddress.subnet)
                     for other_interface in other_interfaces:
                         other_interface.ip_addresses.remove(ipaddress)
                         other_interface.ip_addresses.add(empty_ip)
