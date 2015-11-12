@@ -59,6 +59,7 @@ from maasserver.exceptions import MAASAPIException
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
+from maasserver.views.combo import MERGE_VIEWS
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
@@ -96,9 +97,6 @@ class AccessMiddleware:
             reverse('login'),
             # The combo loaders are publicly accessible.
             reverse('combo-yui'),
-            reverse('combo-maas'),
-            reverse('combo-jquery'),
-            reverse('combo-angularjs'),
             # Static resources are publicly visible.
             settings.STATIC_URL_PATTERN,
             reverse('robots'),
@@ -112,6 +110,9 @@ class AccessMiddleware:
             # API calls are protected by piston.
             settings.API_URL_REGEXP,
             ]
+        # Add the defined combo loaders.
+        for filename in MERGE_VIEWS.keys():
+            public_url_roots.append(reverse('merge', args=[filename]))
         self.public_urls = re.compile("|".join(public_url_roots))
         self.login_url = reverse('login')
 

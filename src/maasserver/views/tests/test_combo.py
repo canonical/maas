@@ -18,7 +18,6 @@ from collections import Callable
 import httplib
 import os
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import config
@@ -29,6 +28,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.combo import (
     get_absolute_location,
     get_combo_view,
+    MERGE_VIEWS,
 )
 from maastesting.fixtures import ImportErrorFixture
 
@@ -152,24 +152,27 @@ class TestComboLoaderView(MAASServerTestCase):
             (httplib.BAD_REQUEST, "Invalid file type requested."),
             (response.status_code, response.content))
 
-    def test_maas_load_js(self):
-        requested_files = ['js/user_panel.js', 'js/enums.js']
-        url = '%s?%s' % (reverse('combo-maas'), '&'.join(requested_files))
-        response = self.client.get(url)
-        # No sign of a missing js file.
-        self.assertNotIn(CONVOY_MISSING_FILE, response.content)
 
-    def test_maas_load_css(self):
-        requested_files = ['css/base.css']
-        url = '%s?%s' % (reverse('combo-maas'), '&'.join(requested_files))
-        response = self.client.get(url)
-        # No sign of a missing css file.
-        self.assertNotIn(CONVOY_MISSING_FILE, response.content)
+class TestMergeLoaderView(MAASServerTestCase):
+    """Test merge loader views."""
 
-    def test_maas_load_image(self):
-        img_path = 'img/bg_dots.png'
-        url = '%s?%s' % (reverse('combo-maas'), img_path)
-        response = self.client.get(url)
-        self.assertEqual(
-            '%s%s' % (settings.STATIC_URL, img_path),
-            extract_redirect(response))
+    def test_loads_all_views_correctly(self):
+        for filename, merge_info in MERGE_VIEWS.items():
+            url = reverse('merge', args=[filename])
+            response = self.client.get(url)
+            self.assertEquals(
+                merge_info["content_type"], response['Content-Type'],
+                "Content-type for %s does not match." % filename)
+
+            # Has all required files.
+            for requested_file in merge_info["files"]:
+                self.assertIn(
+                    requested_file, response.content.decode("utf-8"))
+
+            # No sign of a missing js file.
+            self.assertNotIn(
+                CONVOY_MISSING_FILE, response.content.decode("utf-8"))
+
+    def test_load_unknown_returns_302_blocked_by_middleware(self):
+        response = self.client.get(reverse('merge', args=["unknown.js"]))
+        self.assertEqual(httplib.FOUND, response.status_code)

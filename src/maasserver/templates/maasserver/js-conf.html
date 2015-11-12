@@ -1,14 +1,14 @@
 <script type="text/javascript"
-    src="{% url "combo-jquery" %}?jquery.min.js">
+    src="{% url "merge" filename="jquery.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "combo-angularjs" %}?angular.min.js&angular-route.min.js&angular-cookies.min.js">
+    src="{% url "merge" filename="angular.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "combo-maas" %}?js/angular/3rdparty/ng-tags-input.js">
+    src="{% url "merge" filename="ng-tags-input.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "combo-maas" %}?{{ ANGULAR_LIST|join:"&" }}">
+    src="{% url "merge" filename="maas-angular.js" %}?v={{files_version}}">
 </script>
 
 <script type="text/javascript">
@@ -35,8 +35,8 @@ var MAAS_config = {
 // -->
 </script>
 <script type="text/javascript"
-    src="{% url "combo-yui" %}?yui-base/yui-base-min.js">
+    src="{% url "merge" filename="yui.js" %}?v={{files_version}}">
 </script>
 <script type="text/javascript"
-    src="{% url "combo-maas" %}?{{ JS_LIST|join:"&" }}">
+    src="{% url "merge" filename="maas-yui.js" %}?v={{files_version}}">
 </script>
