@@ -3,6 +3,81 @@ Changelog
 =========
 
 
+1.9.0 (RC1)
+=============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1515498    MAAS uses wrong IP for DNS record (creates against the bond).
+
+LP: #1515671    Local archive ignored for deployment. Works for commissioning and enlistment.
+
+LP: #1513485    Fix handling of multiple StaticIPAddress rows with empty IP addresses.
+
+LP: #1513485    Lease parser failure - doesn't update IP on the PXE NIC.
+
+LP: #1514486    Cannot claim sticky IP address for device with parent.
+
+LP: #1514883    Cluster downloads boot-images from managed network (pxe) instead of network used to connect to Region.
+
+LP: #1510917    Updating/modifying/assigning vlans, spaces, fabrics, subnets doesn't allow specifying names and lock to ID's.
+
+LP: #1513095    MAAS should prevent deploying nodes with PXE interface 'unconfigured'.
+
+LP: #1508056    MTU should be a set on the VLAN, and able to override on the interface.
+
+LP: #1439476    Internal Server Error when creating/editing cluster interface.
+
+LP: #1510224    Non-interactive way to change password.
+
+LP: #1513111    When a bond is created all IP address associated with the bond members should be removed.
+
+LP: #1487135    MAAS does not provide a dump of the config it passes to curtin for networking and storage.
+
+LP: #1512959    MAAS should not offer EXT3, rather VFAT, EXT2, EXT4.
+
+LP: #1505031    Network constraints for juju.
+
+LP: #1509535    Creating a partition or a Volume Group on the whole disk leaves free space.
+
+LP: #1511493    Should not allow partitions to be created on bcache device.
+
+LP: #1503475    Storage section should only be editable when Ready or Allocated.
+
+LP: #1512832    maasserver.api.tests.test_fannetworks.TestFanNetworksAPI.test_read fails randomly.
+
+LP: #1508754    Creating a logical volume on a partition that is too small almost works, resulting in strange error messages.
+
+LP: #1503925    [UI] Keep selected nodes selected after action.
+
+LP: #1515380    [UI] Refresh UI cache after an upgrade to avoid seeing garbage.
+
+LP: #1510106    [UI] Boot disk is not lighted nor can be changed.
+
+LP: #1510118    [UI] Can't remove / delete a partition with a filesystem under 'Available disks and partitions'.
+
+LP: #1510153    [UI] Creating a partition should allow to select filesystem and mountpoint.
+
+LP: #1510468    [UI] When selecting a device, ensure padding between buttons is 20px.
+
+LP: #1510455    [UI] Misaligned mount point column on used disks table.
+
+LP: #1510469    [UI] Align the individual storage actions with the name field, rather than the tickbox.
+
+LP: #1503479    [UI] can't add physical interface.
+
+LP: #1503474    [UI] Containers (lxc, kvm) data missing on node details.
+
+LP: #1513271    [UI] Unable to unmount a filesystem in the UI.
+
+LP: #1503536    [UI] Animation missing on show members and select node.
+
+LP: #1510482    [UI] Add tooltips to icons.
+
+LP: #1510486    [UI] Add tooltips to inactive buttons.
+
+
 1.9.0 (beta2)
 =============
 
