@@ -43,6 +43,42 @@ def get_apt_proxy_for_node(node):
         return None
 
 
+def get_system_info():
+    """Return the system info which includes the APT mirror information."""
+    return {
+        "system_info": {
+            "package_mirrors": [
+                {
+                    "arches": ["i386", "amd64"],
+                    "search": {
+                        "primary": [
+                            Config.objects.get_config("main_archive")],
+                        "security": [
+                            Config.objects.get_config("main_archive")],
+                    },
+                    "failsafe": {
+                        "primary": "http://archive.ubuntu.com/ubuntu",
+                        "security": "http://security.ubuntu.com/ubuntu",
+                    }
+                },
+                {
+                    "arches": ["default"],
+                    "search": {
+                        "primary": [
+                            Config.objects.get_config("ports_archive")],
+                        "security": [
+                            Config.objects.get_config("ports_archive")],
+                    },
+                    "failsafe": {
+                        "primary": "http://ports.ubuntu.com/ubuntu-ports",
+                        "security": "http://ports.ubuntu.com/ubuntu-ports",
+                    }
+                },
+            ]
+        }
+    }
+
+
 def compose_cloud_init_preseed(node, token, base_url=''):
     """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
@@ -75,8 +111,10 @@ def compose_cloud_init_preseed(node, token, base_url=''):
                 'token_key': token.key,
                 'token_secret': token.secret,
             }
-        },
+        }
     }
+    # Add the system configuration information.
+    config.update(get_system_info())
     apt_proxy = get_apt_proxy_for_node(node)
     use_apt_proxy = (
         apt_proxy is not None and len(apt_proxy) > 0 and not
@@ -146,6 +184,8 @@ def _compose_cloud_init_preseed(
             },
         },
     }
+    # Add the system configuration information.
+    cloud_config.update(get_system_info())
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)

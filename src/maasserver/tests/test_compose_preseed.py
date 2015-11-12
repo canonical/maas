@@ -38,13 +38,55 @@ from provisioningserver.rpc.exceptions import (
 )
 from provisioningserver.testing.os import make_osystem
 from testtools.matchers import (
+    ContainsDict,
+    Equals,
     KeysEqual,
+    MatchesDict,
+    MatchesListwise,
     StartsWith,
 )
 import yaml
 
 
 class TestComposePreseed(MAASServerTestCase):
+
+    def assertSystemInfo(self, config):
+        self.assertThat(config, ContainsDict({
+            'system_info': MatchesDict({
+                'package_mirrors': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["i386", "amd64"]),
+                        "search": MatchesDict({
+                            "primary": Equals(
+                                [Config.objects.get_config("main_archive")]),
+                            "security": Equals(
+                                [Config.objects.get_config("main_archive")]),
+                            }),
+                        "failsafe": MatchesDict({
+                            "primary": Equals(
+                                "http://archive.ubuntu.com/ubuntu"),
+                            "security": Equals(
+                                "http://security.ubuntu.com/ubuntu"),
+                            })
+                        }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "search": MatchesDict({
+                            "primary": Equals(
+                                [Config.objects.get_config("ports_archive")]),
+                            "security": Equals(
+                                [Config.objects.get_config("ports_archive")]),
+                            }),
+                        "failsafe": MatchesDict({
+                            "primary": Equals(
+                                "http://ports.ubuntu.com/ubuntu-ports"),
+                            "security": Equals(
+                                "http://ports.ubuntu.com/ubuntu-ports"),
+                            })
+                        }),
+                    ]),
+                }),
+            }))
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -70,6 +112,7 @@ class TestComposePreseed(MAASServerTestCase):
             KeysEqual(
                 'consumer_key', 'endpoint', 'token_key', 'token_secret',
                 'type'))
+        self.assertSystemInfo(preseed)
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -150,6 +193,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertTrue(data["apt_preserve_sources_list"])
         self.assertEqual(apt_proxy, data["apt_proxy"])
         self.assertTrue(data["manual_cache_clean"])
+        self.assertSystemInfo(data)
 
     def test_compose_preseed_skips_apt_proxy(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -178,6 +222,7 @@ class TestComposePreseed(MAASServerTestCase):
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
+        self.assertSystemInfo(preseed)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
         node = factory.make_Node(
