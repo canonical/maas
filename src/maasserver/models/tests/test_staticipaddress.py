@@ -803,18 +803,28 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.nodegroup)
         self.assertEqual({node.hostname: [staticip.ip]}, mapping)
 
-    def test_get_hostname_ip_mapping_prefers_bond_interfaces(self):
+    def test_get_hostname_ip_mapping_prefers_bond_with_no_boot_interface(self):
         self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=unicode(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
             hostname=factory.make_name('host'), subnet=subnet,
             disable_ipv4=False)
+        node.boot_interface = None
+        node.save()
         iface = node.get_boot_interface()
+        iface2 = factory.make_Interface(node=node)
+        iface3 = factory.make_Interface(node=node)
         bondif = factory.make_Interface(
-            INTERFACE_TYPE.BOND, node=node, parents=[iface])
+            INTERFACE_TYPE.BOND, node=node, parents=[iface2, iface3])
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface2,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface3,
             subnet=subnet)
         bond_staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, interface=bondif,
@@ -822,6 +832,58 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
         self.assertEqual({node.hostname: [bond_staticip.ip]}, mapping)
+
+    def test_get_hostname_ip_mapping_prefers_bond_with_boot_interface(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        subnet = factory.make_Subnet(
+            cidr=unicode(factory.make_ipv4_network().cidr))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnet,
+            disable_ipv4=False)
+        iface = node.get_boot_interface()
+        iface2 = factory.make_Interface(node=node)
+        bondif = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[iface, iface2])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface2,
+            subnet=subnet)
+        bond_staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=bondif,
+            subnet=subnet)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: [bond_staticip.ip]}, mapping)
+
+    def test_get_hostname_ip_mapping_ignores_bond_without_boot_interface(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        subnet = factory.make_Subnet(
+            cidr=unicode(factory.make_ipv4_network().cidr))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnet,
+            disable_ipv4=False)
+        iface = node.get_boot_interface()
+        iface2 = factory.make_Interface(node=node)
+        iface3 = factory.make_Interface(node=node)
+        bondif = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[iface2, iface3])
+        boot_staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface2,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface3,
+            subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=bondif,
+            subnet=subnet)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: [boot_staticip.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_boot_interface(self):
         self.patch_autospec(interface_module, "update_host_maps")

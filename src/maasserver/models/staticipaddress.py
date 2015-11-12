@@ -326,6 +326,10 @@ class StaticIPAddressManager(Manager):
             SELECT DISTINCT ON (node.hostname, family(staticip.ip))
                 node.hostname, staticip.ip
             FROM maasserver_interface AS interface
+            LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
+                interface.id = rel.child_id
+            LEFT OUTER JOIN maasserver_interface AS parent ON
+                rel.parent_id = parent.id
             JOIN maasserver_node AS node ON
                 node.id = interface.node_id
             JOIN maasserver_interface_ip_addresses AS link ON
@@ -361,14 +365,16 @@ class StaticIPAddressManager(Manager):
                     ELSE staticip.alloc_type
                 END,
                 CASE
-                    WHEN interface.type = 'bond' THEN 1
+                    WHEN interface.type = 'bond' AND
+                        parent.id = node.boot_interface_id THEN 1
                     WHEN interface.type = 'physical' AND
                         interface.id = node.boot_interface_id THEN 2
-                    WHEN interface.type = 'physical' THEN 3
-                    WHEN interface.type = 'vlan' THEN 4
-                    WHEN interface.type = 'alias' THEN 5
-                    WHEN interface.type = 'unknown' THEN 6
-                    ELSE 7
+                    WHEN interface.type = 'bond' THEN 3
+                    WHEN interface.type = 'physical' THEN 4
+                    WHEN interface.type = 'vlan' THEN 5
+                    WHEN interface.type = 'alias' THEN 6
+                    WHEN interface.type = 'unknown' THEN 7
+                    ELSE 8
                 END,
                 interface.id
             """, (nodegroup.id,))
