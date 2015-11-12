@@ -974,9 +974,12 @@ describe("NodesListController", function() {
                         object, "start", {});
                 });
 
-                it("calls unselectItem after complete", function() {
+                it("calls unselectItem after failed action", function() {
                     var controller = makeController();
                     var object = makeObject(tab);
+                    object.action_failed = false;
+                    spyOn(
+                        $scope, 'hasActionsFailed').and.returnValue(true);
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
@@ -990,6 +993,26 @@ describe("NodesListController", function() {
                     expect(spy).toHaveBeenCalled();
                 });
 
+                it("keeps items selected after success", function() {
+                    var controller = makeController();
+                    var object = makeObject(tab);
+                    spyOn(
+                        $scope, 'hasActionsFailed').and.returnValue(false);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
+                    var defer = $q.defer();
+                    spyOn(
+                        $scope.tabs[tab].manager,
+                        "performAction").and.returnValue(defer.promise);
+                    var spy = spyOn($scope.tabs[tab].manager, "unselectItem");
+                    $scope.tabs[tab].actionOption = { name: "start" };
+                    $scope.tabs[tab].selectedItems = [object];
+                    $scope.actionGo(tab);
+                    defer.resolve();
+                    $scope.$digest();
+                    expect($scope.tabs[tab].selectedItems).toEqual([object]);
+                });
+
                 it("increments actionProgress.completed after action complete",
                     function() {
                         var controller = makeController();
@@ -998,6 +1021,8 @@ describe("NodesListController", function() {
                         spyOn(
                             $scope.tabs[tab].manager,
                             "performAction").and.returnValue(defer.promise);
+                        spyOn(
+                            $scope, 'hasActionsFailed').and.returnValue(true);
                         $scope.tabs[tab].actionOption = { name: "start" };
                         $scope.tabs[tab].selectedItems = [object];
                         $scope.actionGo(tab);
@@ -1007,13 +1032,17 @@ describe("NodesListController", function() {
                             $scope.tabs[tab].actionProgress.completed).toBe(1);
                     });
 
-                it("resets search to previous_search after complete",
+                it("set search to previous search after complete",
                     function() {
                     var controller = makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
                         "performAction").and.returnValue(defer.promise);
+                    spyOn(
+                            $scope, 'hasActionsFailed').and.returnValue(false);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
                     var object = makeObject(tab);
                     var prev_search = makeName("search");
                     $scope.tabs[tab].manager._items.push(object);
@@ -1035,6 +1064,8 @@ describe("NodesListController", function() {
                     spyOn(
                         $scope.tabs[tab].manager,
                         "performAction").and.returnValue(defer.promise);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
                     var object = makeObject(tab);
                     $scope.tabs[tab].manager._items.push(object);
                     $scope.tabs[tab].manager._selectedItems.push(object);
@@ -1052,6 +1083,10 @@ describe("NodesListController", function() {
                     spyOn(
                         $scope.tabs[tab].manager,
                         "performAction").and.returnValue(defer.promise);
+                    spyOn(
+                        $scope, 'hasActionsFailed').and.returnValue(false);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
                     var object = makeObject(tab);
                     $scope.tabs[tab].manager._items.push(object);
                     $scope.tabs[tab].manager._selectedItems.push(object);
@@ -1160,12 +1195,17 @@ describe("NodesListController", function() {
                             object, "set-zone", { zone_id: 1 });
                 });
 
-                it("clears action option when complete", function() {
+                it("clears action option when successfully complete",
+                        function() {
                     var controller = makeController();
                     var defer = $q.defer();
                     spyOn(
                         $scope.tabs[tab].manager,
                         "performAction").and.returnValue(defer.promise);
+                    spyOn(
+                        $scope, 'hasActionsFailed').and.returnValue(false);
+                    spyOn(
+                        $scope, 'hasActionsInProgress').and.returnValue(false);
                     var object = makeObject(tab);
                     $scope.tabs[tab].manager._items.push(object);
                     $scope.tabs[tab].manager._selectedItems.push(object);
@@ -1204,12 +1244,17 @@ describe("NodesListController", function() {
                         });
             });
 
-            it("clears selected os and release when complete", function() {
+            it("clears selected os and release when successfully complete",
+                    function() {
                 var controller = makeController();
                 var defer = $q.defer();
                 spyOn(
                     NodesManager,
                     "performAction").and.returnValue(defer.promise);
+                spyOn(
+                    $scope, 'hasActionsFailed').and.returnValue(false);
+                spyOn(
+                    $scope, 'hasActionsInProgress').and.returnValue(false);
                 var object = makeObject("nodes");
                 NodesManager._items.push(object);
                 NodesManager._selectedItems.push(object);
@@ -1244,12 +1289,17 @@ describe("NodesListController", function() {
                         });
             });
 
-            it("clears commissionOptions when complete", function() {
+            it("clears commissionOptions when successfully complete",
+                    function() {
                 var controller = makeController();
                 var defer = $q.defer();
                 spyOn(
                     NodesManager,
                     "performAction").and.returnValue(defer.promise);
+                spyOn(
+                    $scope, 'hasActionsFailed').and.returnValue(false);
+                spyOn(
+                    $scope, 'hasActionsInProgress').and.returnValue(false);
                 var object = makeObject("nodes");
                 NodesManager._items.push(object);
                 NodesManager._selectedItems.push(object);

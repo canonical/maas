@@ -159,28 +159,31 @@ angular.module('MAAS').controller('NodesListController', [
                     return;
                 }
             }
-            $scope.tabs[tab].allViewableChecked = true;
+            $scope.tabs[tab].allViewableChecked = true;        }
+
+        function clearAction(tab) {
+            resetActionProgress(tab);
+            leaveViewSelected(tab);
+            $scope.tabs[tab].actionOption = null;
+            $scope.tabs[tab].zoneSelection = null;
+            if(tab === "nodes") {
+                // Possible for this to be called before the osSelect
+                // direction is initialized. In that case it has not
+                // created the $reset function on the model object.
+                if(angular.isFunction(
+                    $scope.tabs[tab].osSelection.$reset)) {
+                    $scope.tabs[tab].osSelection.$reset();
+                }
+                $scope.tabs[tab].commissionOptions.enableSSH = false;
+                $scope.tabs[tab].commissionOptions.skipNetworking = false;
+                $scope.tabs[tab].commissionOptions.skipStorage = false;
+            }
         }
 
         // Clear the action if required.
         function shouldClearAction(tab) {
             if($scope.tabs[tab].selectedItems.length === 0) {
-                resetActionProgress(tab);
-                leaveViewSelected(tab);
-                $scope.tabs[tab].actionOption = null;
-                $scope.tabs[tab].zoneSelection = null;
-                if(tab === "nodes") {
-                    // Possible for this to be called before the osSelect
-                    // direction is initialized. In that case it has not
-                    // created the $reset function on the model object.
-                    if(angular.isFunction(
-                        $scope.tabs[tab].osSelection.$reset)) {
-                        $scope.tabs[tab].osSelection.$reset();
-                    }
-                    $scope.tabs[tab].commissionOptions.enableSSH = false;
-                    $scope.tabs[tab].commissionOptions.skipNetworking = false;
-                    $scope.tabs[tab].commissionOptions.skipStorage = false;
-                }
+                clearAction(tab);
             }
             if($scope.tabs[tab].actionOption && !isViewingSelected(tab)) {
                 $scope.tabs[tab].actionOption = null;
@@ -211,6 +214,7 @@ angular.module('MAAS').controller('NodesListController', [
                 if(!supported) {
                     $scope.tabs[tab].actionErrorCount += 1;
                 }
+                $scope.tabs[tab].selectedItems[i].action_failed = false;
             }
         }
 
@@ -231,6 +235,24 @@ angular.module('MAAS').controller('NodesListController', [
             } else {
                 nodes.push(node);
             }
+        }
+
+        // After an action has been performed check if we can leave all nodes
+        // selected or if an error occured and we should only show the failed
+        // nodes.
+        function updateSelectedItems(tab) {
+            if(!$scope.hasActionsFailed(tab)) {
+                if(!$scope.hasActionsInProgress(tab)) {
+                     clearAction(tab);
+                }
+                return;
+            }
+            angular.forEach($scope.tabs[tab].manager.getItems(),
+                    function(node) {
+                if(node.action_failed === false) {
+                    $scope.tabs[tab].manager.unselectItem(node.system_id);
+                }
+            });
         }
 
         // Toggles between the current tab.
@@ -467,10 +489,12 @@ angular.module('MAAS').controller('NodesListController', [
                     node, $scope.tabs[tab].actionOption.name,
                     extra).then(function() {
                         $scope.tabs[tab].actionProgress.completed += 1;
-                        $scope.tabs[tab].manager.unselectItem(node.system_id);
-                        shouldClearAction(tab);
+                        node.action_failed = false;
+                        updateSelectedItems(tab);
                     }, function(error) {
                         addErrorToActionProgress(tab, error, node);
+                        node.action_failed = true;
+                        updateSelectedItems(tab);
                     });
             });
         };
