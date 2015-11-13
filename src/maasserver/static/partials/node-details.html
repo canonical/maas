@@ -488,8 +488,9 @@
                                         <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickRemove(interface)"></a>
                                     </div>
                                 </div>
-                                <div class="table__dropdown--info" data-ng-show="isShowingMembers(interface)">
-                                    <div class="table__row" data-ng-repeat="member in interface.members">
+                                <div class="table__dropdown--info">
+                                    <div class="table__row table__dropdown-row--info" data-ng-class="{ active: isShowingMembers(interface) }" data-ng-repeat="member in interface.members">
+                                        <div data-ng-show="isShowingMembers(interface)">
                                             <div class="table__data no-padding-top table__column--3"></div>
                                             <div class="table__data no-padding-top table__column--15"
                                                 data-ng-show="column == 'name'">{$ member.name $}</div>
@@ -499,6 +500,7 @@
                                             <div class="table__data no-padding-top table__column--67">
                                             </div>
                                         </div>
+                                    </div>
                                 </div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row" data-ng-class="{ active: isShowingAdd() }">

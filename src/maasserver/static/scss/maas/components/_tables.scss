@@ -667,13 +667,15 @@ table {
         }
     }
 
-    // Info dropdown
     &--info {
+      width: 100%;
       max-height: 0;
-      overflow-y: hidden;
+      background-color: transparent;
 
-      .table__row {
+      // Info dropdown
+      .table__dropdown-row--info {
         border-bottom: 0;
+        position: relative;
         max-height: 0;
         transition: max-height 0.10s ease-out;
         overflow: hidden;
@@ -682,10 +684,10 @@ table {
           max-height: 500px;
           transition: max-height 0.25s ease-in;
         }
-      }
 
-      .table__data {
-        color: #BCBCBC;
+        .table__data {
+          color: #BCBCBC;
+        }
       }
     }
   }
