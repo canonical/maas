@@ -224,12 +224,10 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test__filter_by_specifiers_ip_filter_raises_for_invalid_cidr(self):
         factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
-        with ExpectedException(ValueError):
-            # netaddr.IPNetwork should probably raise AddrFormatError here,
-            # but it actually raises a ValueError when it tries to parse "x8".
-            Subnet.objects.filter_by_specifiers("cidr:x8.8.8.0/24"),
         with ExpectedException(AddrFormatError):
-            Subnet.objects.filter_by_specifiers("cidr:x2001:db8::/64"),
+            Subnet.objects.filter_by_specifiers("cidr:x8.8.8.0/24")
+        with ExpectedException(AddrFormatError):
+            Subnet.objects.filter_by_specifiers("cidr:x2001:db8::/64")
 
     def test__filter_by_specifiers_ip_chained_filter_matches_specific_ip(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")

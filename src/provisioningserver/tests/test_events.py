@@ -75,7 +75,7 @@ class TestSendEventNode(MAASTestCase):
     """Tests for `send_event_node`."""
 
     def test__calls_singleton_hub_logByID_directly(self):
-        self.patch_autospec(nodeEventHub, "logByID").return_value = sentinel.d
+        self.patch(nodeEventHub, "logByID").return_value = sentinel.d
         result = send_event_node(
             sentinel.event_type, sentinel.system_id, sentinel.hostname,
             sentinel.description)
@@ -88,7 +88,7 @@ class TestSendEventNodeMACAddress(MAASTestCase):
     """Tests for `send_event_node_mac_address`."""
 
     def test__calls_singleton_hub_logByMAC_directly(self):
-        self.patch_autospec(nodeEventHub, "logByMAC").return_value = sentinel.d
+        self.patch(nodeEventHub, "logByMAC").return_value = sentinel.d
         result = send_event_node_mac_address(
             sentinel.event_type, sentinel.mac_address, sentinel.description)
         self.assertThat(result, Is(sentinel.d))
