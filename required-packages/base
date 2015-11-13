@@ -14,7 +14,6 @@ libpq-dev
 postgresql
 python-apt
 python-bson
-python-bzrlib
 python-convoy
 python-crochet
 python-cssselect

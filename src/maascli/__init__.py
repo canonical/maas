@@ -19,8 +19,8 @@ __all__ = [
 import locale
 import sys
 
-from bzrlib import osutils
 from maascli.parser import prepare_parser
+from maascli.utils import get_unicode_argv
 
 
 def main(argv=None):
@@ -28,7 +28,7 @@ def main(argv=None):
     # arguments in the next step.
     locale.setlocale(locale.LC_ALL, "")
     if argv is None:
-        argv = sys.argv[:1] + osutils.get_unicode_argv()
+        argv = sys.argv[:1] + get_unicode_argv()
 
     if len(argv) == 1:
         # No arguments passed.  Be helpful and point out the --help option.

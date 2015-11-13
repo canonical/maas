@@ -19,15 +19,8 @@ __all__ = [
     ]
 
 import apt_pkg
-
-
-try:
-    from bzrlib.branch import Branch
-    from bzrlib.errors import NotBranchError
-except ImportError:
-    Branch = None
-
 from maasserver.api.logger import maaslog
+from provisioningserver.utils import shell
 
 # Initialize apt_pkg.
 apt_pkg.init()
@@ -67,14 +60,28 @@ def extract_version_subversion(version):
         return version.split("-", 1)[0], ''
 
 
-def get_maas_branch():
-    """Return the `bzrlib.branch.Branch` for this running MAAS."""
-    if Branch is None:
-        return None
+def get_maas_branch_version():
+    """Return the Bazaar revision for this running MAAS.
+
+    :return: An integer if MAAS is running from a Bazaar working tree, else
+        `None`. The revision number is only representative of the BRANCH, not
+        the working tree.
+    """
     try:
-        return Branch.open(".")
-    except NotBranchError:
+        revno = shell.call_and_check(("bzr", "revno", __file__))
+    except shell.ExternalProcessError:
+        # We may not be in a Bazaar working tree, or Bazaar is not installed,
+        # or any manner of other errors. For the purposes of this function we
+        # don't care; simply say we don't know.
         return None
+    else:
+        # `bzr revno` can return '???' when it can't find the working tree's
+        # current revision in the branch. Hopefully a fairly unlikely thing to
+        # happen, but we guard against it, and other ills, here.
+        try:
+            return int(revno)
+        except ValueError:
+            return None
 
 
 _cache = {}
@@ -107,13 +114,13 @@ def get_maas_version_subversion():
         return extract_version_subversion(apt_version)
     else:
         # Get the branch information
-        branch = get_maas_branch()
-        if branch is None:
+        branch_version = get_maas_branch_version()
+        if branch_version is None:
             # Not installed not in branch, then no way to identify. This should
             # not happen, but just in case.
             return "unknown", ''
         else:
-            return "from source (+bzr%s)" % branch.revno(), ''
+            return "from source (+bzr%d)" % branch_version, ''
 
 
 @simple_cache

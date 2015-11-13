@@ -14,10 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import codecs
 import collections
 import httplib
 import io
+import locale
 import random
+import sys
 
 import httplib2
 from maascli import utils
@@ -27,7 +30,9 @@ from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from testtools.matchers import (
     AfterPreprocessing,
+    AllMatch,
     Equals,
+    IsInstance,
     MatchesListwise,
 )
 
@@ -325,3 +330,100 @@ class TestPrintResponseContent(MAASTestCase):
             "Success.\n"
             "Machine-readable output follows:\n" +
             response['content'] + "\n", buf.getvalue())
+
+
+class FakeCodec(object):
+    """Special class that helps testing over several non-existed encodings.
+
+    Clients can add new encoding names, but because of how codecs is
+    implemented they cannot be removed. Be careful with naming to avoid
+    collisions between tests.
+    """
+    _registered = False
+    _enabled_encodings = set()
+
+    def add(self, encoding_name):
+        """Adding encoding name to fake.
+
+        :type   encoding_name:  lowercase plain string
+        """
+        if not self._registered:
+            codecs.register(self)
+            self._registered = True
+        if encoding_name is not None:
+            self._enabled_encodings.add(encoding_name)
+
+    def __call__(self, encoding_name):
+        """Called indirectly by codecs module during lookup"""
+        if encoding_name in self._enabled_encodings:
+            return codecs.lookup('latin-1')
+
+
+fake_codec = FakeCodec()
+
+
+class TestGetUserEncoding(MAASTestCase):
+    """Test detection of default user encoding."""
+
+    def setUp(self):
+        super(TestGetUserEncoding, self).setUp()
+        self.patch(locale, 'getpreferredencoding', self.get_encoding)
+        self.patch(locale, 'CODESET', None)
+        self.patch(sys, 'stderr', io.StringIO())
+
+    def get_encoding(self, do_setlocale=True):
+        return self._encoding
+
+    def test_get_user_encoding(self):
+        self._encoding = 'user_encoding'
+        fake_codec.add('user_encoding')
+        # fake_codec maps to latin-1.
+        self.assertEquals('iso8859-1', utils.get_user_encoding())
+        self.assertEquals('', sys.stderr.getvalue())
+
+    def test_user_cp0(self):
+        self._encoding = 'cp0'
+        self.assertEquals('ascii', utils.get_user_encoding())
+        self.assertEquals('', sys.stderr.getvalue())
+
+    def test_user_cp_unknown(self):
+        self._encoding = 'cp-unknown'
+        self.assertEquals('ascii', utils.get_user_encoding())
+        self.assertEquals(
+            'Warning: unknown encoding cp-unknown. '
+            'Continuing with ASCII encoding.\n',
+            sys.stderr.getvalue())
+
+    def test_user_empty(self):
+        """Running bzr from a vim script gives '' for a preferred locale"""
+        self._encoding = ''
+        self.assertEquals('ascii', utils.get_user_encoding())
+        self.assertEquals('', sys.stderr.getvalue())
+
+
+class TestGetUnicodeArgv(MAASTestCase):
+    """Tests for `get_unicode_argv`."""
+
+    encodings = "utf7", "utf8", "utf16", "utf32"
+    scenarios = tuple((enc, {"encoding": enc}) for enc in encodings)
+
+    def test_decodes_argv(self):
+        args = [factory.make_name("arg%d" % i) for i in xrange(5)]
+        args_encoded = [arg.encode(self.encoding) for arg in args]
+        self.patch(utils, "get_user_encoding").return_value = self.encoding
+        self.patch(sys, "argv", [sentinel.program] + args_encoded)
+        args_observed = utils.get_unicode_argv()
+        self.assertEqual(args, args_observed)
+        self.assertThat(args, AllMatch(IsInstance(unicode)))
+
+
+class TestGetUnicodeArgvErrors(MAASTestCase):
+    """Tests for `get_unicode_argv` under error conditions."""
+
+    def test_rejects_args_it_cannot_decode(self):
+        self.patch(utils, "get_user_encoding").return_value = "ascii"
+        self.patch(sys, "argv", [sentinel.program, b"\xff"])
+        error = self.assertRaises(SystemExit, utils.get_unicode_argv)
+        self.assertEqual(
+            "Command-line argument '\\xff' cannot be decoded using the "
+            "ascii application locale.", unicode(error))

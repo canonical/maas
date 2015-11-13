@@ -14,17 +14,24 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import os.path
 import random
+from unittest import skipUnless
 
-from bzrlib.errors import NotBranchError
 from maasserver.utils import version
+from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     MagicMock,
     sentinel,
 )
-from testtools.matchers import Is
+from provisioningserver.utils import shell
+from testtools.matchers import (
+    GreaterThan,
+    Is,
+    IsInstance,
+)
 
 
 class TestGetVersionFromAPT(MAASTestCase):
@@ -63,22 +70,27 @@ class TestGetVersionFromAPT(MAASTestCase):
             version.get_version_from_apt(version.REGION_PACKAGE_NAME))
 
 
-class TestGetMAASBranch(MAASTestCase):
+class TestGetMAASBranchVersion(MAASTestCase):
 
-    def test__returns_None_if_Branch_is_None(self):
-        self.patch(version, "Branch", None)
-        self.assertIsNone(version.get_maas_branch())
+    def test__returns_None_if_this_is_not_a_branch(self):
+        self.patch(version, "__file__", "/")
+        self.assertIsNone(version.get_maas_branch_version())
 
-    def test__calls_Branch_open_with_current_dir(self):
-        mock_open = self.patch(version.Branch, "open")
-        mock_open.return_value = sentinel.branch
-        self.expectThat(version.get_maas_branch(), Is(sentinel.branch))
-        self.expectThat(mock_open, MockCalledOnceWith("."))
+    def test__returns_None_if_bzr_crashes(self):
+        call_and_check = self.patch(shell, "call_and_check")
+        call_and_check.side_effect = shell.ExternalProcessError(2, "cmd")
+        self.assertIsNone(version.get_maas_branch_version())
 
-    def test__returns_None_on_NotBranchError(self):
-        mock_open = self.patch(version.Branch, "open")
-        mock_open.side_effect = NotBranchError("")
-        self.assertIsNone(version.get_maas_branch())
+    def test__returns_None_if_bzr_emits_something_thats_not_a_number(self):
+        call_and_check = self.patch(shell, "call_and_check")
+        call_and_check.return_value = b"???"
+        self.assertIsNone(version.get_maas_branch_version())
+
+    @skipUnless(os.path.isdir(os.path.join(root, ".bzr")), "Not a branch")
+    def test__returns_revno_for_this_branch(self):
+        revno = version.get_maas_branch_version()
+        self.assertThat(revno, IsInstance(int))
+        self.assertThat(revno, GreaterThan(0))
 
 
 class TestExtractVersionSubversion(MAASTestCase):
@@ -133,8 +145,8 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
     def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        mock_branch = self.patch(version, "get_maas_branch")
-        mock_branch.return_value = None
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = None
         self.assertEquals(
             ("unknown", ""), version.get_maas_version_subversion())
 
@@ -142,8 +154,8 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
         revno = random.randint(1, 5000)
-        mock_branch = self.patch(version, "get_maas_branch")
-        mock_branch.return_value.revno.return_value = revno
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = revno
         self.assertEquals(
             ("from source (+bzr%s)" % revno, ""),
             version.get_maas_version_subversion())
@@ -160,16 +172,16 @@ class TestGetMAASVersionUI(TestVersionTestCase):
     def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
-        mock_branch = self.patch(version, "get_maas_branch")
-        mock_branch.return_value = None
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = None
         self.assertEquals("unknown", version.get_maas_version_ui())
 
     def test__returns_from_source_and_revno_from_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
         revno = random.randint(1, 5000)
-        mock_branch = self.patch(version, "get_maas_branch")
-        mock_branch.return_value.revno.return_value = revno
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = revno
         self.assertEquals(
             "from source (+bzr%s)" % revno, version.get_maas_version_ui())
 
