@@ -206,7 +206,7 @@ class TestPowerAction(MAASTestCase):
 class TestTemplateContext(MAASTestCase):
 
     def make_stubbed_power_action(self):
-        power_action = PowerAction("amt")
+        power_action = PowerAction("ether_wake")
         render_template = self.patch(power_action, "render_template")
         render_template.return_value = "echo done"
         return power_action

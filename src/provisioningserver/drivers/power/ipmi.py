@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
 from subprocess import (
     PIPE,
     Popen,
@@ -22,6 +21,8 @@ from subprocess import (
 from tempfile import NamedTemporaryFile
 
 from provisioningserver.drivers.power import (
+    get_c_environment,
+    is_power_parameter_set,
     PowerAuthError,
     PowerDriver,
     PowerFatalError,
@@ -42,10 +43,6 @@ EndSection
 """
 
 
-def is_set(setting):
-    return not (setting is None or setting == "" or setting.isspace())
-
-
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
@@ -56,11 +53,6 @@ class IPMIPowerDriver(PowerDriver):
         if not shell.has_command_available('ipmipower'):
             return ['freeipmi-tools']
         return []
-
-    def get_c_environment(self):
-        env = os.environ.copy()
-        env['LC_ALL'] = 'C'
-        return env
 
     @staticmethod
     def _issue_ipmi_chassis_config_command(command, change, address, env):
@@ -108,11 +100,12 @@ class IPMIPowerDriver(PowerDriver):
         # before issuing the requested power command. See bug 1171418 for an
         # explanation.
 
-        if is_set(mac_address) and not is_set(power_address):
+        if (is_power_parameter_set(mac_address) and not
+                is_power_parameter_set(power_address)):
             power_address = find_ip_via_arp(mac_address)
 
         # Set environment variables
-        env = self.get_c_environment()
+        env = get_c_environment()
 
         # The `-W opensesspriv` workaround is required on many BMCs, and
         # should have no impact on BMCs that don't require it.
@@ -126,10 +119,10 @@ class IPMIPowerDriver(PowerDriver):
         # https://launchpad.net/bugs/1053391 for details of modifying the
         # command for power_driver and power_user.
         common_args = []
-        if is_set(power_driver):
+        if is_power_parameter_set(power_driver):
             common_args.extend(("--driver-type", power_driver))
         common_args.extend(('-h', power_address))
-        if is_set(power_user):
+        if is_power_parameter_set(power_user):
             common_args.extend(("-u", power_user))
         common_args.extend(('-p', power_pass))
 

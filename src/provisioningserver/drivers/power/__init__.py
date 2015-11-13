@@ -13,6 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "get_c_environment",
+    "is_power_parameter_set",
     "POWER_QUERY_TIMEOUT",
     "PowerActionError",
     "PowerAuthError",
@@ -31,6 +33,7 @@ from abc import (
     abstractproperty,
 )
 from datetime import timedelta
+import os
 import sys
 
 from jsonschema import validate
@@ -63,6 +66,15 @@ JSON_POWER_DRIVERS_SCHEMA = {
 # a power query request.
 # This should be configurable per-BMC.
 POWER_QUERY_TIMEOUT = timedelta(seconds=45).total_seconds()
+
+
+def get_c_environment():
+    """Copy the environment, setting LC_ALL to C."""
+    return dict(os.environ, LC_ALL="C")
+
+
+def is_power_parameter_set(param):
+    return not (param is None or param == "" or param.isspace())
 
 
 class PowerError(Exception):
@@ -335,6 +347,7 @@ from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
 registered_power_drivers = [
+    AMTPowerDriver(),
     APCPowerDriver(),
     DLIPowerDriver(),
     HMCPowerDriver(),
@@ -351,7 +364,6 @@ for driver in registered_power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
 
 unregistered_power_drivers = [
-    AMTPowerDriver(),
     EtherWakePowerDriver(),
     FenceCDUPowerDriver(),
 ]

@@ -1,0 +1,15 @@
+<p:RequestPowerStateChange_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_PowerManagementService">
+  <p:PowerState></p:PowerState>
+  <p:ManagedElement xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+                    xmlns:wsman="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
+    <wsa:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:Address>
+    <wsa:ReferenceParameters>
+      <wsman:ResourceURI>http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ComputerSystem</wsman:ResourceURI>
+      <wsman:SelectorSet>
+        <wsman:Selector Name="CreationClassName">CIM_ComputerSystem</wsman:Selector>
+        <wsman:Selector Name="Name">ManagedSystem</wsman:Selector>
+      </wsman:SelectorSet>
+    </wsa:ReferenceParameters>
+  </p:ManagedElement>
+</p:RequestPowerStateChange_INPUT>
+
