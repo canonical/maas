@@ -347,6 +347,18 @@ class StaticIPAddressManager(Manager):
             ORDER BY
                 node.hostname,
                 family(staticip.ip),
+                CASE
+                    WHEN interface.type = 'bond' AND
+                        parent.id = node.boot_interface_id THEN 1
+                    WHEN interface.type = 'physical' AND
+                        interface.id = node.boot_interface_id THEN 2
+                    WHEN interface.type = 'bond' THEN 3
+                    WHEN interface.type = 'physical' THEN 4
+                    WHEN interface.type = 'vlan' THEN 5
+                    WHEN interface.type = 'alias' THEN 6
+                    WHEN interface.type = 'unknown' THEN 7
+                    ELSE 8
+                END,
                 /*
                  * We want STICKY and USER_RESERVED addresses to be preferred,
                  * followed by AUTO, DHCP, and finally DISCOVERED.
@@ -363,18 +375,6 @@ class StaticIPAddressManager(Manager):
                     WHEN staticip.alloc_type = 6 /* DISCOVERED */
                         THEN 5
                     ELSE staticip.alloc_type
-                END,
-                CASE
-                    WHEN interface.type = 'bond' AND
-                        parent.id = node.boot_interface_id THEN 1
-                    WHEN interface.type = 'physical' AND
-                        interface.id = node.boot_interface_id THEN 2
-                    WHEN interface.type = 'bond' THEN 3
-                    WHEN interface.type = 'physical' THEN 4
-                    WHEN interface.type = 'vlan' THEN 5
-                    WHEN interface.type = 'alias' THEN 6
-                    WHEN interface.type = 'unknown' THEN 7
-                    ELSE 8
                 END,
                 interface.id
             """, (nodegroup.id,))
