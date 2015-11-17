@@ -30,11 +30,11 @@ class AMTPowerDriver(PowerDriver):
                 missing_packages.append(package)
         return missing_packages
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         raise NotImplementedError
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         raise NotImplementedError
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         raise NotImplementedError

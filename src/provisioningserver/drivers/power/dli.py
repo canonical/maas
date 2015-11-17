@@ -91,14 +91,14 @@ class DLIPowerDriver(PowerDriver):
                 "Failed to power query outlet %s: %s" % (
                     outlet_id, e.output_as_unicode))
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on DLI outlet."""
-        self._set_outlet_state('ON', **kwargs)
+        self._set_outlet_state('ON', **context)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off DLI outlet."""
-        self._set_outlet_state('OFF', **kwargs)
+        self._set_outlet_state('OFF', **context)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query DLI outlet."""
-        return self._query_outlet_state(**kwargs)
+        return self._query_outlet_state(**context)

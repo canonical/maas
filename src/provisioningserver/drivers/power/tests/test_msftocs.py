@@ -40,7 +40,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         username = factory.make_name('power_user')
         password = factory.make_name('power_pass')
         blade_id = factory.make_name('blade_id')
-        params = {
+        context = {
             'system_id': system_id,
             'power_address': ip,
             'power_port': port,
@@ -48,24 +48,24 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
             'power_pass': password,
             'blade_id': blade_id,
         }
-        return system_id, ip, port, username, password, blade_id, params
+        return system_id, ip, port, username, password, blade_id, context
 
     def test_extract_msftocs_parameters_extracts_parameters(self):
-        system_id, ip, port, username, password, blade_id, params = (
+        system_id, ip, port, username, password, blade_id, context = (
             self.make_parameters())
 
         self.assertItemsEqual(
             (ip, port, username, password, blade_id),
-            extract_msftocs_parameters(params))
+            extract_msftocs_parameters(context))
 
     def test_power_on_calls_power_control_msftocs(self):
         power_change = 'on'
-        system_id, ip, port, username, password, blade_id, params = (
+        system_id, ip, port, username, password, blade_id, context = (
             self.make_parameters())
         msftocs_power_driver = MicrosoftOCSPowerDriver()
         power_control_msftocs = self.patch(
             msftocs_module, 'power_control_msftocs')
-        msftocs_power_driver.power_on(**params)
+        msftocs_power_driver.power_on(system_id, context)
 
         self.assertThat(
             power_control_msftocs, MockCalledOnceWith(
@@ -73,25 +73,25 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
 
     def test_power_off_calls_power_control_msftocs(self):
         power_change = 'off'
-        system_id, ip, port, username, password, blade_id, params = (
+        system_id, ip, port, username, password, blade_id, context = (
             self.make_parameters())
         msftocs_power_driver = MicrosoftOCSPowerDriver()
         power_control_msftocs = self.patch(
             msftocs_module, 'power_control_msftocs')
-        msftocs_power_driver.power_off(**params)
+        msftocs_power_driver.power_off(system_id, context)
 
         self.assertThat(
             power_control_msftocs, MockCalledOnceWith(
                 ip, port, username, password, power_change))
 
     def test_power_query_calls_power_state_msftocs(self):
-        system_id, ip, port, username, password, blade_id, params = (
+        system_id, ip, port, username, password, blade_id, context = (
             self.make_parameters())
         msftocs_power_driver = MicrosoftOCSPowerDriver()
         power_state_msftocs = self.patch(
             msftocs_module, 'power_state_msftocs')
         power_state_msftocs.return_value = 'off'
-        expected_result = msftocs_power_driver.power_query(**params)
+        expected_result = msftocs_power_driver.power_query(system_id, context)
 
         self.expectThat(
             power_state_msftocs, MockCalledOnceWith(

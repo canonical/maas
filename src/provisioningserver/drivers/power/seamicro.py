@@ -30,12 +30,12 @@ from provisioningserver.utils.shell import (
 )
 
 
-def extract_seamicro_parameters(params):
-    ip = params.get('power_address')
-    username = params.get('power_user')
-    password = params.get('power_pass')
-    server_id = params.get('system_id')
-    power_control = params.get('power_control')
+def extract_seamicro_parameters(context):
+    ip = context.get('power_address')
+    username = context.get('power_user')
+    password = context.get('power_pass')
+    server_id = context.get('system_id')
+    power_control = context.get('power_control')
     return ip, username, password, server_id, power_control
 
 
@@ -65,10 +65,10 @@ class SeaMicroPowerDriver(PowerDriver):
                 "Failed to power %s %s at %s: %s" % (
                     power_change, server_id, ip, e.output_as_unicode))
 
-    def _power(self, power_change, **kwargs):
+    def _power(self, power_change, context):
         """Power SeaMicro node."""
         ip, username, password, server_id, power_control = (
-            extract_seamicro_parameters(kwargs))
+            extract_seamicro_parameters(context))
         if power_control == 'ipmi':
             self._power_control_seamicro15k_ipmi(
                 ip, username, password, server_id, power_change=power_change)
@@ -79,20 +79,20 @@ class SeaMicroPowerDriver(PowerDriver):
             power_control_seamicro15k_v2(
                 ip, username, password, server_id, power_change=power_change)
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on SeaMicro node."""
-        self._power('on', **kwargs)
+        self._power('on', context)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off SeaMicro node."""
-        self._power('off', **kwargs)
+        self._power('off', context)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query SeaMicro node."""
         # Query the state.
         # Only supported by REST v2.
         ip, username, password, _, power_control = (
-            extract_seamicro_parameters(kwargs))
+            extract_seamicro_parameters(context))
         if power_control == 'restapi2':
             return power_query_seamicro15k_v2(
                 ip, username, password, system_id)

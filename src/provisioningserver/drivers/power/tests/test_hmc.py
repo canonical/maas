@@ -49,7 +49,7 @@ class TestHMCPowerDriver(MAASTestCase):
         password = factory.make_name('power_pass')
         server_name = factory.make_name('server_name')
         lpar = factory.make_name('lpar')
-        params = {
+        context = {
             'system_id': system_id,
             'power_address': ip,
             'power_user': username,
@@ -57,47 +57,47 @@ class TestHMCPowerDriver(MAASTestCase):
             'server_name': server_name,
             'lpar': lpar,
         }
-        return system_id, ip, username, password, server_name, lpar, params
+        return system_id, ip, username, password, server_name, lpar, context
 
     def test_extract_hmc_parameters_extracts_parameters(self):
-        system_id, ip, username, password, server_name, lpar, params = (
+        system_id, ip, username, password, server_name, lpar, context = (
             self.make_parameters())
         self.assertItemsEqual(
             (ip, username, password, server_name, lpar),
-            extract_hmc_parameters(params))
+            extract_hmc_parameters(context))
 
     def test_power_on_calls_power_control_hmc(self):
-        system_id, ip, username, password, server_name, lpar, params = (
+        system_id, ip, username, password, server_name, lpar, context = (
             self.make_parameters())
         hmc_power_driver = HMCPowerDriver()
         power_control_hmc = self.patch(
             hmc_module, 'power_control_hmc')
-        hmc_power_driver.power_on(**params)
+        hmc_power_driver.power_on(system_id, context)
 
         self.assertThat(
             power_control_hmc, MockCalledOnceWith(
                 ip, username, password, server_name, lpar, power_change='on'))
 
     def test_power_off_calls_power_control_hmc(self):
-        system_id, ip, username, password, server_name, lpar, params = (
+        system_id, ip, username, password, server_name, lpar, context = (
             self.make_parameters())
         hmc_power_driver = HMCPowerDriver()
         power_control_hmc = self.patch(
             hmc_module, 'power_control_hmc')
-        hmc_power_driver.power_off(**params)
+        hmc_power_driver.power_off(system_id, context)
 
         self.assertThat(
             power_control_hmc, MockCalledOnceWith(
                 ip, username, password, server_name, lpar, power_change='off'))
 
     def test_power_query_calls_power_state_hmc(self):
-        system_id, ip, username, password, server_name, lpar, params = (
+        system_id, ip, username, password, server_name, lpar, context = (
             self.make_parameters())
         hmc_power_driver = HMCPowerDriver()
         power_state_hmc = self.patch(
             hmc_module, 'power_state_hmc')
         power_state_hmc.return_value = 'off'
-        expected_result = hmc_power_driver.power_query(**params)
+        expected_result = hmc_power_driver.power_query(system_id, context)
 
         self.expectThat(
             power_state_hmc, MockCalledOnceWith(

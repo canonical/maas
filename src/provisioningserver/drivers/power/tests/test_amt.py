@@ -38,14 +38,14 @@ class TestAMTPowerDriver(MAASTestCase):
     def test_power_on(self):
         driver = amt_module.AMTPowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_on, "fake_id")
+            NotImplementedError, driver.power_on, "fake_id", {})
 
     def test_power_off(self):
         driver = amt_module.AMTPowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_off, "fake_id")
+            NotImplementedError, driver.power_off, "fake_id", {})
 
     def test_power_query(self):
         driver = amt_module.AMTPowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_query, "fake_id")
+            NotImplementedError, driver.power_query, "fake_id", {})

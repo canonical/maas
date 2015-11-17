@@ -23,10 +23,10 @@ from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils import shell
 
 
-def extract_apc_parameters(params):
-    ip = params.get('power_address')
-    outlet = params.get('node_outlet')
-    power_on_delay = params.get('power_on_delay')
+def extract_apc_parameters(context):
+    ip = context.get('power_address')
+    outlet = context.get('node_outlet')
+    power_on_delay = context.get('power_on_delay')
     return ip, outlet, power_on_delay
 
 
@@ -42,21 +42,21 @@ class APCPowerDriver(PowerDriver):
             return [package]
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on Apc outlet."""
         power_change = 'on'
-        ip, outlet, power_on_delay = extract_apc_parameters(kwargs)
+        ip, outlet, power_on_delay = extract_apc_parameters(context)
         power_control_apc(
             ip, outlet, power_change, power_on_delay)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off APC outlet."""
         power_change = 'off'
-        ip, outlet, power_on_delay = extract_apc_parameters(kwargs)
+        ip, outlet, power_on_delay = extract_apc_parameters(context)
         power_control_apc(
             ip, outlet, power_change, power_on_delay)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query APC outlet."""
-        ip, outlet, _ = extract_apc_parameters(kwargs)
+        ip, outlet, _ = extract_apc_parameters(context)
         return power_state_apc(ip, outlet)

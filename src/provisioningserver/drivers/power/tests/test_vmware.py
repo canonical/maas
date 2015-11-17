@@ -1,5 +1,5 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+# Gnu Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.vmware`."""
 
@@ -50,7 +50,7 @@ class TestVMwarePowerDriver(MAASTestCase):
         vm_name = factory.make_name('power_vm_name')
         uuid = factory.make_name('power_uuid')
         port = protocol = None
-        params = {
+        context = {
             'system_id': system_id,
             'power_address': host,
             'power_user': username,
@@ -61,24 +61,24 @@ class TestVMwarePowerDriver(MAASTestCase):
             'power_protocol': protocol,
         }
         return (system_id, host, username, password,
-                vm_name, uuid, port, protocol, params)
+                vm_name, uuid, port, protocol, context)
 
     def test_extract_vmware_parameters_extracts_parameters(self):
         (system_id, host, username, password,
-         vm_name, uuid, port, protocol, params) = self.make_parameters()
+         vm_name, uuid, port, protocol, context) = self.make_parameters()
 
         self.assertItemsEqual(
             (host, username, password, vm_name, uuid, port, protocol),
-            extract_vmware_parameters(params))
+            extract_vmware_parameters(context))
 
     def test_power_on_calls_power_control_vmware(self):
         power_change = 'on'
         (system_id, host, username, password,
-         vm_name, uuid, port, protocol, params) = self.make_parameters()
+         vm_name, uuid, port, protocol, context) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
         power_control_vmware = self.patch(
             vmware_module, 'power_control_vmware')
-        vmware_power_driver.power_on(**params)
+        vmware_power_driver.power_on(system_id, context)
 
         self.assertThat(
             power_control_vmware, MockCalledOnceWith(
@@ -88,11 +88,11 @@ class TestVMwarePowerDriver(MAASTestCase):
     def test_power_off_calls_power_control_vmware(self):
         power_change = 'off'
         (system_id, host, username, password,
-         vm_name, uuid, port, protocol, params) = self.make_parameters()
+         vm_name, uuid, port, protocol, context) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
         power_control_vmware = self.patch(
             vmware_module, 'power_control_vmware')
-        vmware_power_driver.power_off(**params)
+        vmware_power_driver.power_off(system_id, context)
 
         self.assertThat(
             power_control_vmware, MockCalledOnceWith(
@@ -101,12 +101,12 @@ class TestVMwarePowerDriver(MAASTestCase):
 
     def test_power_query_calls_power_query_vmware(self):
         (system_id, host, username, password,
-         vm_name, uuid, port, protocol, params) = self.make_parameters()
+         vm_name, uuid, port, protocol, context) = self.make_parameters()
         vmware_power_driver = VMwarePowerDriver()
         power_query_vmware = self.patch(
             vmware_module, 'power_query_vmware')
         power_query_vmware.return_value = 'off'
-        expected_result = vmware_power_driver.power_query(**params)
+        expected_result = vmware_power_driver.power_query(system_id, context)
 
         self.expectThat(
             power_query_vmware, MockCalledOnceWith(

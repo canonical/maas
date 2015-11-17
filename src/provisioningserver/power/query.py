@@ -82,7 +82,7 @@ def perform_power_driver_query(system_id, hostname, power_type, context):
     """
     # Get power driver for given power type
     power_driver = PowerDriverRegistry[power_type]
-    return power_driver.query(**context)
+    return power_driver.query(system_id, context)
 
 
 @asynchronous

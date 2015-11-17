@@ -21,11 +21,11 @@ from provisioningserver.drivers.hardware.ucsm import (
 from provisioningserver.drivers.power import PowerDriver
 
 
-def extract_ucsm_parameters(params):
-    url = params.get('power_address')
-    username = params.get('power_user')
-    password = params.get('power_pass')
-    uuid = params.get('uuid')
+def extract_ucsm_parameters(context):
+    url = context.get('power_address')
+    username = context.get('power_user')
+    password = context.get('power_pass')
+    uuid = context.get('uuid')
     return url, username, password, uuid
 
 
@@ -39,19 +39,19 @@ class UCSMPowerDriver(PowerDriver):
         # uses urllib2 http client - nothing to look for!
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on UCSM node."""
-        url, username, password, uuid = extract_ucsm_parameters(kwargs)
+        url, username, password, uuid = extract_ucsm_parameters(context)
         power_control_ucsm(
             url, username, password, uuid, maas_power_mode='on')
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off UCSM node."""
-        url, username, password, uuid = extract_ucsm_parameters(kwargs)
+        url, username, password, uuid = extract_ucsm_parameters(context)
         power_control_ucsm(
             url, username, password, uuid, maas_power_mode='off')
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query UCSM node."""
-        url, username, password, uuid = extract_ucsm_parameters(kwargs)
+        url, username, password, uuid = extract_ucsm_parameters(context)
         return power_state_ucsm(url, username, password, uuid)

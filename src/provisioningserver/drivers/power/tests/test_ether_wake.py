@@ -38,14 +38,14 @@ class TestEtherWakePowerDriver(MAASTestCase):
     def test_power_on(self):
         driver = ether_wake_module.EtherWakePowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_on, "fake_id")
+            NotImplementedError, driver.power_on, "fake_id", {})
 
     def test_power_off(self):
         driver = ether_wake_module.EtherWakePowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_off, "fake_id")
+            NotImplementedError, driver.power_off, "fake_id", {})
 
     def test_power_query(self):
         driver = ether_wake_module.EtherWakePowerDriver()
         self.assertRaises(
-            NotImplementedError, driver.power_query, "fake_id")
+            NotImplementedError, driver.power_query, "fake_id", {})

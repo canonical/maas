@@ -23,12 +23,12 @@ from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils import shell
 
 
-def extract_hmc_parameters(params):
-    ip = params.get('power_address')
-    username = params.get('power_user')
-    password = params.get('power_pass')
-    server_name = params.get('server_name')
-    lpar = params.get('lpar')
+def extract_hmc_parameters(context):
+    ip = context.get('power_address')
+    username = context.get('power_user')
+    password = context.get('power_pass')
+    server_name = context.get('server_name')
+    lpar = context.get('lpar')
     return ip, username, password, server_name, lpar
 
 
@@ -44,19 +44,19 @@ class HMCPowerDriver(PowerDriver):
             return [package]
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(kwargs))
+            extract_hmc_parameters(context))
         power_control_hmc(
             ip, username, password, server_name, lpar, power_change='on')
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(kwargs))
+            extract_hmc_parameters(context))
         power_control_hmc(
             ip, username, password, server_name, lpar, power_change='off')
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(kwargs))
+            extract_hmc_parameters(context))
         return power_state_hmc(ip, username, password, server_name, lpar)

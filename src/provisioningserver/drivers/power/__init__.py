@@ -131,32 +131,32 @@ class PowerDriverBase:
         """List of settings for the driver.
 
         Each setting in this list will be different per user. They are passed
-        to the `on`, `off`, and `query` using the kwargs. It is up
+        to the `on`, `off`, and `query` using the context. It is up
         to the driver to read these options before performing the operation.
         """
 
     @abstractmethod
-    def on(self, system_id, **kwargs):
+    def on(self, system_id, context):
         """Perform the power on action for `system_id`.
 
         :param system_id: `Node.system_id`
-        :param kwargs: Power settings for the node.
+        :param context: Power settings for the node.
         """
 
     @abstractmethod
-    def off(self, system_id, **kwargs):
+    def off(self, system_id, context):
         """Perform the power off action for `system_id`.
 
         :param system_id: `Node.system_id`
-        :param kwargs: Power settings for the node.
+        :param context: Power settings for the node.
         """
 
     @abstractmethod
-    def query(self, system_id, **kwargs):
+    def query(self, system_id, context):
         """Perform the query action for `system_id`.
 
         :param system_id: `Node.system_id`
-        :param kwargs: Power settings for the node.
+        :param context: Power settings for the node.
         :return: status of power on BMC. `on` or `off`.
         :raises PowerError: states unable to get status from BMC. It is
             up to this method to report the actual issue to the Region. The
@@ -201,32 +201,32 @@ class PowerDriver(PowerDriverBase):
         """
 
     @abstractmethod
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Implement this method for the actual implementation
         of the power on command.
         """
 
     @abstractmethod
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Implement this method for the actual implementation
         of the power off command.
         """
 
     @abstractmethod
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Implement this method for the actual implementation
         of the power query command."""
 
-    def on(self, system_id, **kwargs):
+    def on(self, system_id, context):
         """Performs the power on action for `system_id`.
 
         Do not override `on` method unless you want to provide custom logic on
         how retries and error detection is handled. Override `power_on` for
         just the power on action, and `on` will handle the retrying.
         """
-        return self.perform_power(self.power_on, "on", system_id, **kwargs)
+        return self.perform_power(self.power_on, "on", system_id, context)
 
-    def off(self, system_id, **kwargs):
+    def off(self, system_id, context):
         """Performs the power off action for `system_id`.
 
         Do not override `off` method unless you want to provide custom logic on
@@ -234,16 +234,16 @@ class PowerDriver(PowerDriverBase):
         just the power off action, and `off` will handle the retrying and error
         reporting.
         """
-        return self.perform_power(self.power_off, "off", system_id, **kwargs)
+        return self.perform_power(self.power_off, "off", system_id, context)
 
     @inlineCallbacks
-    def query(self, system_id, **kwargs):
+    def query(self, system_id, context):
         """Performs the power query action for `system_id`."""
         exc_info = None, None, None
         for waiting_time in self.wait_time:
             try:
                 state = yield deferToThread(
-                    self.power_query, system_id, **kwargs)
+                    self.power_query, system_id, context)
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -256,7 +256,7 @@ class PowerDriver(PowerDriverBase):
             raise exc_info[0], exc_info[1], exc_info[2]
 
     @inlineCallbacks
-    def perform_power(self, power_func, state_desired, system_id, **kwargs):
+    def perform_power(self, power_func, state_desired, system_id, context):
         """Provides the logic to perform the power actions.
 
         :param power_func: Function used to change the power state of the
@@ -273,7 +273,7 @@ class PowerDriver(PowerDriverBase):
             # Try to change state.
             try:
                 yield deferToThread(
-                    power_func, system_id, **kwargs)
+                    power_func, system_id, context)
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -286,7 +286,7 @@ class PowerDriver(PowerDriverBase):
                 # Try to get power state.
                 try:
                     state = yield deferToThread(
-                        self.power_query, system_id, **kwargs)
+                        self.power_query, system_id, context)
                 except PowerFatalError:
                     raise  # Don't retry.
                 except PowerError:

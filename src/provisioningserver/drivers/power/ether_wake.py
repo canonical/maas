@@ -24,11 +24,11 @@ class EtherWakePowerDriver(PowerDriver):
         # you need one or the other, not both
         return ['wakeonlan or etherwake']
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         raise NotImplementedError
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         raise NotImplementedError
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         raise NotImplementedError
