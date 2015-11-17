@@ -116,9 +116,9 @@ def perform_power_driver_change(
     power_driver = PowerDriverRegistry.get_item(power_type)
 
     if power_change == 'on':
-        d = power_driver.on(**context)
+        d = power_driver.on(system_id, context)
     elif power_change == 'off':
-        d = power_driver.off(**context)
+        d = power_driver.off(system_id, context)
 
     def power_change_failed(failure):
         message = "Node could not be powered %s: %s" % (

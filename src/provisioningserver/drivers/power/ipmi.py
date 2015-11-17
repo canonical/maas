@@ -152,11 +152,11 @@ class IPMIPowerDriver(PowerDriver):
         return self._issue_ipmi_power_command(
             ipmipower_command, power_change, power_address, env)
 
-    def power_on(self, system_id, **kwargs):
-        self._issue_ipmi_command('on', **kwargs)
+    def power_on(self, system_id, context):
+        self._issue_ipmi_command('on', **context)
 
-    def power_off(self, system_id, **kwargs):
-        self._issue_ipmi_command('off', **kwargs)
+    def power_off(self, system_id, context):
+        self._issue_ipmi_command('off', **context)
 
-    def power_query(self, system_id, **kwargs):
-        return self._issue_ipmi_command('query', **kwargs)
+    def power_query(self, system_id, context):
+        return self._issue_ipmi_command('query', **context)

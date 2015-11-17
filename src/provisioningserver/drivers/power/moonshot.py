@@ -60,11 +60,11 @@ class MoonshotIPMIPowerDriver(PowerDriver):
                 raise PowerActionError(
                     "Got unknown power state from ipmipower: %s" % output)
 
-    def power_on(self, system_id, **kwargs):
-        self._issue_ipmitool_command('on', **kwargs)
+    def power_on(self, system_id, context):
+        self._issue_ipmitool_command('on', **context)
 
-    def power_off(self, system_id, **kwargs):
-        self._issue_ipmitool_command('off', **kwargs)
+    def power_off(self, system_id, context):
+        self._issue_ipmitool_command('off', **context)
 
-    def power_query(self, system_id, **kwargs):
-        return self._issue_ipmitool_command('status', **kwargs)
+    def power_query(self, system_id, context):
+        return self._issue_ipmitool_command('status', **context)

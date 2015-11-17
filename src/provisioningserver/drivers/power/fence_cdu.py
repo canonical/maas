@@ -22,11 +22,11 @@ class FenceCDUPowerDriver(PowerDriver):
             return ['fence-agents']
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         raise NotImplementedError
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         raise NotImplementedError
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         raise NotImplementedError

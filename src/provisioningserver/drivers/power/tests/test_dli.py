@@ -142,20 +142,26 @@ class TestDLIPowerDriver(MAASTestCase):
     def test_power_on(self):
         driver = dli_module.DLIPowerDriver()
         system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
         _set_outlet_state_mock = self.patch(driver, '_set_outlet_state')
-        driver.power_on(system_id)
-        self.assertThat(_set_outlet_state_mock, MockCalledOnceWith('ON'))
+        driver.power_on(system_id, context)
+        self.assertThat(
+            _set_outlet_state_mock, MockCalledOnceWith('ON', **context))
 
     def test_power_off(self):
         driver = dli_module.DLIPowerDriver()
         system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
         _set_outlet_state_mock = self.patch(driver, '_set_outlet_state')
-        driver.power_off(system_id)
-        self.assertThat(_set_outlet_state_mock, MockCalledOnceWith('OFF'))
+        driver.power_off(system_id, context)
+        self.assertThat(
+            _set_outlet_state_mock, MockCalledOnceWith('OFF', **context))
 
     def test_power_query(self):
         driver = dli_module.DLIPowerDriver()
         system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
         _query_outlet_state_mock = self.patch(driver, '_query_outlet_state')
-        driver.power_query(system_id)
-        self.assertThat(_query_outlet_state_mock, MockCalledOnceWith())
+        driver.power_query(system_id, context)
+        self.assertThat(
+            _query_outlet_state_mock, MockCalledOnceWith(**context))

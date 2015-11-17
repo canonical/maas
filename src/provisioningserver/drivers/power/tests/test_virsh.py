@@ -47,30 +47,30 @@ class TestVirshPowerDriver(MAASTestCase):
         poweraddr = factory.make_name('power_address')
         machine = factory.make_name('power_id')
         password = factory.make_name('power_pass')
-        params = {
+        context = {
             'system_id': system_id,
             'power_address': poweraddr,
             'power_id': machine,
             'power_pass': password,
         }
-        return system_id, poweraddr, machine, password, params
+        return system_id, poweraddr, machine, password, context
 
     def test_extract_virsh_parameters_extracts_parameters(self):
-        system_id, poweraddr, machine, password, params = (
+        system_id, poweraddr, machine, password, context = (
             self.make_parameters())
 
         self.assertItemsEqual(
             (poweraddr, machine, password),
-            extract_virsh_parameters(params))
+            extract_virsh_parameters(context))
 
     def test_power_on_calls_power_control_virsh(self):
         power_change = 'on'
-        system_id, poweraddr, machine, password, params = (
+        system_id, poweraddr, machine, password, context = (
             self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_control_virsh = self.patch(
             virsh_module, 'power_control_virsh')
-        virsh_power_driver.power_on(**params)
+        virsh_power_driver.power_on(system_id, context)
 
         self.assertThat(
             power_control_virsh, MockCalledOnceWith(
@@ -78,25 +78,25 @@ class TestVirshPowerDriver(MAASTestCase):
 
     def test_power_off_calls_power_control_virsh(self):
         power_change = 'off'
-        system_id, poweraddr, machine, password, params = (
+        system_id, poweraddr, machine, password, context = (
             self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_control_virsh = self.patch(
             virsh_module, 'power_control_virsh')
-        virsh_power_driver.power_off(**params)
+        virsh_power_driver.power_off(system_id, context)
 
         self.assertThat(
             power_control_virsh, MockCalledOnceWith(
                 poweraddr, machine, power_change, password))
 
     def test_power_query_calls_power_state_virsh(self):
-        system_id, poweraddr, machine, password, params = (
+        system_id, poweraddr, machine, password, context = (
             self.make_parameters())
         virsh_power_driver = VirshPowerDriver()
         power_state_virsh = self.patch(
             virsh_module, 'power_state_virsh')
         power_state_virsh.return_value = 'off'
-        expected_result = virsh_power_driver.power_query(**params)
+        expected_result = virsh_power_driver.power_query(system_id, context)
 
         self.expectThat(
             power_state_virsh, MockCalledOnceWith(

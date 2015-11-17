@@ -26,10 +26,10 @@ REQUIRED_PACKAGES = [["virsh", "libvirt-bin"],
                      ["virt-login-shell", "libvirt-bin"]]
 
 
-def extract_virsh_parameters(params):
-    poweraddr = params.get('power_address')
-    machine = params.get('power_id')
-    password = params.get('power_pass')
+def extract_virsh_parameters(context):
+    poweraddr = context.get('power_address')
+    machine = context.get('power_id')
+    password = context.get('power_pass')
     return poweraddr, machine, password
 
 
@@ -46,21 +46,21 @@ class VirshPowerDriver(PowerDriver):
                 missing_packages.add(package)
         return list(missing_packages)
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on Virsh node."""
         power_change = 'on'
-        poweraddr, machine, password = extract_virsh_parameters(kwargs)
+        poweraddr, machine, password = extract_virsh_parameters(context)
         power_control_virsh(
             poweraddr, machine, power_change, password)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off Virsh node."""
         power_change = 'off'
-        poweraddr, machine, password = extract_virsh_parameters(kwargs)
+        poweraddr, machine, password = extract_virsh_parameters(context)
         power_control_virsh(
             poweraddr, machine, power_change, password)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query Virsh node."""
-        poweraddr, machine, password = extract_virsh_parameters(kwargs)
+        poweraddr, machine, password = extract_virsh_parameters(context)
         return power_state_virsh(poweraddr, machine, password)

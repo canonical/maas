@@ -49,28 +49,28 @@ class TestAPCPowerDriver(MAASTestCase):
         ip = factory.make_ipv4_address()
         outlet = '%d' % randint(1, 16)
         power_on_delay = '%d' % randint(1, 5)
-        params = {
+        context = {
             'system_id': system_id,
             'power_address': ip,
             'node_outlet': outlet,
             'power_on_delay': power_on_delay,
         }
-        return system_id, ip, outlet, power_on_delay, params
+        return system_id, ip, outlet, power_on_delay, context
 
     def test_extract_apc_parameters_extracts_parameters(self):
-        system_id, ip, outlet, power_on_delay, params = self.make_parameters()
+        system_id, ip, outlet, power_on_delay, context = self.make_parameters()
 
         self.assertItemsEqual(
             (ip, outlet, power_on_delay),
-            extract_apc_parameters(params))
+            extract_apc_parameters(context))
 
     def test_power_on_calls_power_control_apc(self):
         power_change = 'on'
-        system_id, ip, outlet, power_on_delay, params = self.make_parameters()
+        system_id, ip, outlet, power_on_delay, context = self.make_parameters()
         apc_power_driver = APCPowerDriver()
         power_control_apc = self.patch(
             apc_module, 'power_control_apc')
-        apc_power_driver.power_on(**params)
+        apc_power_driver.power_on(system_id, context)
 
         self.assertThat(
             power_control_apc, MockCalledOnceWith(
@@ -78,23 +78,23 @@ class TestAPCPowerDriver(MAASTestCase):
 
     def test_power_off_calls_power_control_apc(self):
         power_change = 'off'
-        system_id, ip, outlet, power_on_delay, params = self.make_parameters()
+        system_id, ip, outlet, power_on_delay, context = self.make_parameters()
         apc_power_driver = APCPowerDriver()
         power_control_apc = self.patch(
             apc_module, 'power_control_apc')
-        apc_power_driver.power_off(**params)
+        apc_power_driver.power_off(system_id, context)
 
         self.assertThat(
             power_control_apc, MockCalledOnceWith(
                 ip, outlet, power_change, power_on_delay))
 
     def test_power_query_calls_power_state_apc(self):
-        system_id, ip, outlet, power_on_delay, params = self.make_parameters()
+        system_id, ip, outlet, power_on_delay, context = self.make_parameters()
         apc_power_driver = APCPowerDriver()
         power_state_apc = self.patch(
             apc_module, 'power_state_apc')
         power_state_apc.return_value = 'off'
-        expected_result = apc_power_driver.power_query(**params)
+        expected_result = apc_power_driver.power_query(system_id, context)
 
         self.expectThat(
             power_state_apc, MockCalledOnceWith(ip, outlet))

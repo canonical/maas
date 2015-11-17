@@ -50,30 +50,30 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def make_parameters(self):
+    def make_context(self):
         ip = factory.make_name('power_address')
         username = factory.make_name('power_user')
         password = factory.make_name('power_pass')
         server_id = factory.make_name('system_id')
-        params = {
+        context = {
             'power_address': ip,
             'power_user': username,
             'power_pass': password,
             'system_id': server_id,
         }
-        return ip, username, password, server_id, params
+        return ip, username, password, server_id, context
 
     def test_extract_seamicro_parameters_extracts_parameters(self):
-        ip, username, password, server_id, params = self.make_parameters()
+        ip, username, password, server_id, context = self.make_context()
         power_control = choice(['ipmi', 'restapi', 'restapi2'])
-        params['power_control'] = power_control
+        context['power_control'] = power_control
 
         self.assertItemsEqual(
             (ip, username, password, server_id, power_control),
-            extract_seamicro_parameters(params))
+            extract_seamicro_parameters(context))
 
     def test__power_control_seamicro15k_ipmi_calls_call_and_check(self):
-        ip, username, password, server_id, _ = self.make_parameters()
+        ip, username, password, server_id, _ = self.make_context()
         power_change = choice(['on', 'off'])
         seamicro_power_driver = SeaMicroPowerDriver()
         call_and_check_mock = self.patch(seamicro_module, 'call_and_check')
@@ -89,7 +89,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ]))
 
     def test__power_control_seamicro15k_ipmi_raises_PowerFatalError(self):
-        ip, username, password, server_id, _ = self.make_parameters()
+        ip, username, password, server_id, _ = self.make_context()
         power_change = choice(['on', 'off'])
         seamicro_power_driver = SeaMicroPowerDriver()
         call_and_check_mock = self.patch(seamicro_module, 'call_and_check')
@@ -102,74 +102,73 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ip, username, password, server_id, power_change)
 
     def test__power_calls__power_control_seamicro15k_ipmi(self):
-        ip, username, password, server_id, params = self.make_parameters()
-        params['power_control'] = 'ipmi'
+        ip, username, password, server_id, context = self.make_context()
+        context['power_control'] = 'ipmi'
         power_change = choice(['on', 'off'])
         seamicro_power_driver = SeaMicroPowerDriver()
         _power_control_seamicro15k_ipmi_mock = self.patch(
             seamicro_power_driver, '_power_control_seamicro15k_ipmi')
-        seamicro_power_driver._power(power_change, **params)
+        seamicro_power_driver._power(power_change, context)
 
         self.assertThat(
             _power_control_seamicro15k_ipmi_mock, MockCalledOnceWith(
                 ip, username, password, server_id, power_change=power_change))
 
     def test__power_calls_power_control_seamicro15k_v09(self):
-        ip, username, password, server_id, params = self.make_parameters()
-        params['power_control'] = 'restapi'
+        ip, username, password, server_id, context = self.make_context()
+        context['power_control'] = 'restapi'
         power_change = choice(['on', 'off'])
         seamicro_power_driver = SeaMicroPowerDriver()
         power_control_seamicro15k_v09_mock = self.patch(
             seamicro_module, 'power_control_seamicro15k_v09')
-        seamicro_power_driver._power(power_change, **params)
+        seamicro_power_driver._power(power_change, context)
 
         self.assertThat(
             power_control_seamicro15k_v09_mock, MockCalledOnceWith(
                 ip, username, password, server_id, power_change=power_change))
 
     def test__power_calls_power_control_seamicro15k_v2(self):
-        ip, username, password, server_id, params = self.make_parameters()
-        params['power_control'] = 'restapi2'
+        ip, username, password, server_id, context = self.make_context()
+        context['power_control'] = 'restapi2'
         power_change = choice(['on', 'off'])
         seamicro_power_driver = SeaMicroPowerDriver()
         power_control_seamicro15k_v2_mock = self.patch(
             seamicro_module, 'power_control_seamicro15k_v2')
-        seamicro_power_driver._power(power_change, **params)
+        seamicro_power_driver._power(power_change, context)
 
         self.assertThat(
             power_control_seamicro15k_v2_mock, MockCalledOnceWith(
                 ip, username, password, server_id, power_change=power_change))
 
     def test_power_on_calls_power(self):
-        _, _, _, _, params = self.make_parameters()
-        params['power_control'] = factory.make_name('power_control')
+        _, _, _, _, context = self.make_context()
+        context['power_control'] = factory.make_name('power_control')
         seamicro_power_driver = SeaMicroPowerDriver()
         power_mock = self.patch(seamicro_power_driver, '_power')
-        seamicro_power_driver.power_on(**params)
-        del params['system_id']
+        seamicro_power_driver.power_on(context['system_id'], context)
 
         self.assertThat(
-            power_mock, MockCalledOnceWith('on', **params))
+            power_mock, MockCalledOnceWith('on', context))
 
     def test_power_off_calls_power(self):
-        _, _, _, _, params = self.make_parameters()
-        params['power_control'] = factory.make_name('power_control')
+        _, _, _, _, context = self.make_context()
+        context['power_control'] = factory.make_name('power_control')
         seamicro_power_driver = SeaMicroPowerDriver()
         power_mock = self.patch(seamicro_power_driver, '_power')
-        seamicro_power_driver.power_off(**params)
-        del params['system_id']
+        seamicro_power_driver.power_off(context['system_id'], context)
 
         self.assertThat(
-            power_mock, MockCalledOnceWith('off', **params))
+            power_mock, MockCalledOnceWith('off', context))
 
     def test_power_query_calls_power_query_seamicro15k_v2(self):
-        ip, username, password, server_id, params = self.make_parameters()
-        params['power_control'] = 'restapi2'
+        ip, username, password, server_id, context = self.make_context()
+        context['power_control'] = 'restapi2'
         seamicro_power_driver = SeaMicroPowerDriver()
         power_query_seamicro15k_v2_mock = self.patch(
             seamicro_module, 'power_query_seamicro15k_v2')
         power_query_seamicro15k_v2_mock.return_value = 'on'
-        power_state = seamicro_power_driver.power_query(**params)
+        power_state = seamicro_power_driver.power_query(
+            context['system_id'], context)
 
         self.expectThat(
             power_query_seamicro15k_v2_mock, MockCalledOnceWith(
@@ -177,9 +176,10 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         self.expectThat(power_state, Equals('on'))
 
     def test_power_query_returns_unknown_if_not_restapi2(self):
-        ip, username, password, server_id, params = self.make_parameters()
-        params['power_control'] = factory.make_name('power_control')
+        ip, username, password, server_id, context = self.make_context()
+        context['power_control'] = factory.make_name('power_control')
         seamicro_power_driver = SeaMicroPowerDriver()
-        power_state = seamicro_power_driver.power_query(**params)
+        power_state = seamicro_power_driver.power_query(
+            context['system_id'], context)
 
         self.assertThat(power_state, Equals('unknown'))

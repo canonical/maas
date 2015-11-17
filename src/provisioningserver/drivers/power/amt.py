@@ -330,15 +330,15 @@ class AMTPowerDriver(PowerDriver):
         else:
             raise PowerFatalError('No host provided')
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on AMT node."""
         ip_address = self._get_ip_address(
-            kwargs.get('power_address'), kwargs.get('ip_address'))
-        power_pass = kwargs.get('power_pass')
+            context.get('power_address'), context.get('ip_address'))
+        power_pass = context.get('power_pass')
         amt_command = self._get_amt_command(ip_address, power_pass)
         if amt_command == 'amttool':
             amttool_boot_mode = self._get_amttool_boot_mode(
-                kwargs.get('boot_mode'))
+                context.get('boot_mode'))
             if self.amttool_query_state(ip_address, power_pass) == 'on':
                 self.amttool_restart(ip_address, power_pass, amttool_boot_mode)
             else:
@@ -350,11 +350,11 @@ class AMTPowerDriver(PowerDriver):
             else:
                 self.wsman_power_on(ip_address, power_pass)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off AMT node."""
         ip_address = self._get_ip_address(
-            kwargs.get('power_address'), kwargs.get('ip_address'))
-        power_pass = kwargs.get('power_pass')
+            context.get('power_address'), context.get('ip_address'))
+        power_pass = context.get('power_pass')
         amt_command = self._get_amt_command(ip_address, power_pass)
         if amt_command == 'amttool':
             if self.amttool_query_state(ip_address, power_pass) != 'off':
@@ -363,11 +363,11 @@ class AMTPowerDriver(PowerDriver):
             if self.wsman_query_state(ip_address, power_pass) != 'off':
                 self.wsman_power_off(ip_address, power_pass)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query AMT node."""
         ip_address = self._get_ip_address(
-            kwargs.get('power_address'), kwargs.get('ip_address'))
-        power_pass = kwargs.get('power_pass')
+            context.get('power_address'), context.get('ip_address'))
+        power_pass = context.get('power_pass')
         amt_command = self._get_amt_command(ip_address, power_pass)
         if amt_command == 'amttool':
             return self.amttool_query_state(ip_address, power_pass)

@@ -22,14 +22,14 @@ from provisioningserver.drivers.hardware.vmware import (
 from provisioningserver.drivers.power import PowerDriver
 
 
-def extract_vmware_parameters(params):
-    host = params.get('power_address')
-    username = params.get('power_user')
-    password = params.get('power_pass')
-    vm_name = params.get('power_vm_name')
-    uuid = params.get('power_uuid')
-    port = params.get('power_port')
-    protocol = params.get('power_protocol')
+def extract_vmware_parameters(context):
+    host = context.get('power_address')
+    username = context.get('power_user')
+    password = context.get('power_pass')
+    vm_name = context.get('power_vm_name')
+    uuid = context.get('power_uuid')
+    port = context.get('power_port')
+    protocol = context.get('power_protocol')
     return host, username, password, vm_name, uuid, port, protocol
 
 
@@ -44,27 +44,27 @@ class VMwarePowerDriver(PowerDriver):
             return ["python-pyvmomi"]
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on VMware node."""
         power_change = 'on'
         host, username, password, vm_name, uuid, port, protocol = (
-            extract_vmware_parameters(kwargs))
+            extract_vmware_parameters(context))
         power_control_vmware(
             host, username, password, vm_name,
             uuid, power_change, port, protocol)
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off VMware node."""
         power_change = 'off'
         host, username, password, vm_name, uuid, port, protocol = (
-            extract_vmware_parameters(kwargs))
+            extract_vmware_parameters(context))
         power_control_vmware(
             host, username, password, vm_name,
             uuid, power_change, port, protocol)
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query VMware node."""
         host, username, password, vm_name, uuid, port, protocol = (
-            extract_vmware_parameters(kwargs))
+            extract_vmware_parameters(context))
         return power_query_vmware(
             host, username, password, vm_name, uuid, port, protocol)

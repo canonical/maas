@@ -21,11 +21,11 @@ from provisioningserver.drivers.hardware.mscm import (
 from provisioningserver.drivers.power import PowerDriver
 
 
-def extract_mscm_parameters(params):
-    host = params.get('power_address')
-    username = params.get('power_user')
-    password = params.get('power_pass')
-    node_id = params.get('node_id')
+def extract_mscm_parameters(context):
+    host = context.get('power_address')
+    username = context.get('power_user')
+    password = context.get('power_pass')
+    node_id = context.get('node_id')
     return host, username, password, node_id
 
 
@@ -39,19 +39,19 @@ class MSCMPowerDriver(PowerDriver):
         # uses pure-python paramiko ssh client - nothing to look for!
         return []
 
-    def power_on(self, system_id, **kwargs):
+    def power_on(self, system_id, context):
         """Power on MSCM node."""
-        host, username, password, node_id = extract_mscm_parameters(kwargs)
+        host, username, password, node_id = extract_mscm_parameters(context)
         power_control_mscm(
             host, username, password, node_id, power_change='on')
 
-    def power_off(self, system_id, **kwargs):
+    def power_off(self, system_id, context):
         """Power off MSCM node."""
-        host, username, password, node_id = extract_mscm_parameters(kwargs)
+        host, username, password, node_id = extract_mscm_parameters(context)
         power_control_mscm(
             host, username, password, node_id, power_change='off')
 
-    def power_query(self, system_id, **kwargs):
+    def power_query(self, system_id, context):
         """Power query MSCM node."""
-        host, username, password, node_id = extract_mscm_parameters(kwargs)
+        host, username, password, node_id = extract_mscm_parameters(context)
         return power_state_mscm(host, username, password, node_id)
