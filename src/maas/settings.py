@@ -30,6 +30,10 @@ from provisioningserver.logger import (
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 django.template.add_to_builtins('django.templatetags.future')
 
+# Enable HA which uses the new rack controller and BMC code paths. This is a
+# temporary measure to prevent conflicts during MAAS 2.0 development.
+ENABLE_HA = True if int(os.environ.get('ENABLE_HA', 0)) == 1 else False
+
 # Production mode.
 DEBUG = False
 
