@@ -908,6 +908,29 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             node.nodegroup)
         self.assertEqual({node.hostname: [boot_sip.ip]}, mapping)
 
+    def test_get_hostname_ip_mapping_prefers_boot_interface_to_alias(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        subnet = factory.make_Subnet(
+            cidr=unicode(factory.make_ipv4_network().cidr))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnet,
+            disable_ipv4=False)
+        iface = node.get_boot_interface()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
+            subnet=subnet)
+        new_boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        node.boot_interface = new_boot_interface
+        node.save()
+        # IP address should be selected over the other STICKY IP address.
+        boot_sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=new_boot_interface,
+            subnet=subnet)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: [boot_sip.ip]}, mapping)
+
     def test_get_hostname_ip_mapping_prefers_physical_interfaces_to_vlan(self):
         self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
