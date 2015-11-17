@@ -30,7 +30,11 @@ from maasserver.models.blockdevice import (
 )
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.node import Node
-from maasserver.utils.converters import human_readable_bytes
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.utils.converters import (
+    human_readable_bytes,
+    round_size_to_nearest_block,
+)
 from maasserver.utils.orm import get_one
 
 
@@ -109,16 +113,22 @@ class VirtualBlockDevice(BlockDevice):
 
         # Check if the size of this is not larger than the free size of
         # its filesystem group if its lvm.
-        if (self.filesystem_group.is_lvm() and
-                self.size > self.filesystem_group.get_lvm_free_space(
-                    skip_volumes=[self])):
-            raise ValidationError(
-                "There is not enough free space (%s) "
-                "on volume group %s." % (
-                    human_readable_bytes(self.size),
-                    self.filesystem_group.name,
-                    ))
-        elif not self.filesystem_group.is_lvm():
+        if self.filesystem_group.is_lvm():
+
+            # align virtual partition to partition alignment size
+            # otherwise on creation it may be rounded up, overfilling group
+            self.size = round_size_to_nearest_block(
+                self.size, PARTITION_ALIGNMENT_SIZE, False)
+
+            if self.size > self.filesystem_group.get_lvm_free_space(
+                    skip_volumes=[self]):
+                raise ValidationError(
+                    "There is not enough free space (%s) "
+                    "on volume group %s." % (
+                        human_readable_bytes(self.size),
+                        self.filesystem_group.name,
+                        ))
+        else:
             # If not a volume group the size of the virtual block device
             # must equal the size of the filesystem group.
             assert self.size == self.filesystem_group.get_size()

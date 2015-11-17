@@ -48,7 +48,10 @@ from maasserver.models.filesystemgroup import (
 from maasserver.models.interface import Interface
 from maasserver.models.node import Node
 from maasserver.models.nodeprobeddetails import get_single_probed_details
-from maasserver.models.partition import Partition
+from maasserver.models.partition import (
+    Partition,
+    PARTITION_ALIGNMENT_SIZE,
+)
 from maasserver.node_action import compile_node_actions
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -66,6 +69,7 @@ from maasserver.testing.testcase import (
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import (
     human_readable_bytes,
+    round_size_to_nearest_block,
     XMLToYAML,
 )
 from maasserver.utils.orm import (
@@ -1477,7 +1481,9 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             1, Partition.objects.count())
         self.assertEquals(
-            human_readable_bytes(size),
+            human_readable_bytes(
+                round_size_to_nearest_block(
+                    size, PARTITION_ALIGNMENT_SIZE, False)),
             human_readable_bytes(Partition.objects.first().size))
 
     def test_create_partition_with_filesystem(self):
@@ -1502,7 +1508,9 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             1, Partition.objects.count())
         self.assertEquals(
-            human_readable_bytes(size),
+            human_readable_bytes(
+                round_size_to_nearest_block(
+                    size, PARTITION_ALIGNMENT_SIZE, False)),
             human_readable_bytes(Partition.objects.first().size))
         self.assertEquals(
             fstype,

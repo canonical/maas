@@ -26,9 +26,11 @@ from maasserver.forms import (
 )
 from maasserver.models import Filesystem
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one
 
 
@@ -84,15 +86,13 @@ class TestAddPartitionForm(MAASServerTestCase):
             form.is_valid(),
             "Should be valid because size is large enough and a string.")
 
-    def test_size_rounded_up_and_placed_on_block_boundry(self):
+    def test_size_rounded_down_and_placed_on_alignment_boundry(self):
         block_size = 4096
         block_device = factory.make_PhysicalBlockDevice(block_size=block_size)
         k_size = (MIN_BLOCK_DEVICE_SIZE / 1000) + 1
         size = "%sk" % k_size
-        block_count = (k_size * 1000) / block_size
-        if (k_size * 1000) % block_size > 0:
-            block_count += 1
-        rounded_size = block_count * block_size
+        rounded_size = round_size_to_nearest_block(
+            k_size * 1000, PARTITION_ALIGNMENT_SIZE, False)
         data = {
             'size': size,
             }

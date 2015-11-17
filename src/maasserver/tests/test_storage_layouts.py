@@ -25,7 +25,10 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.partition import MAX_PARTITION_SIZE_FOR_MBR
+from maasserver.models.partition import (
+    MAX_PARTITION_SIZE_FOR_MBR,
+    PARTITION_ALIGNMENT_SIZE,
+)
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
@@ -46,18 +49,12 @@ from maasserver.storage_layouts import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import round_size_to_nearest_block
 from maastesting.matchers import MockCalledOnceWith
 from testtools.matchers import MatchesStructure
 
 
 LARGE_BLOCK_DEVICE = 10 * 1024 * 1024 * 1024  # 10 GiB
-
-
-def round_size_by_blocks(size, block_size):
-    number_of_blocks = size / block_size
-    if size % block_size > 0:
-        number_of_blocks += 1
-    return number_of_blocks * block_size
 
 
 def make_Node_with_uefi_boot_method(*args, **kwargs):
@@ -435,7 +432,8 @@ class LayoutHelpersMixin:
     def assertEFIPartition(self, partition, boot_disk):
         self.assertIsNotNone(partition)
         self.assertEquals(
-            round_size_by_blocks(EFI_PARTITION_SIZE, boot_disk.block_size),
+            round_size_to_nearest_block(
+                EFI_PARTITION_SIZE, boot_disk.block_size),
             partition.size)
         self.assertThat(
             partition.get_effective_filesystem(), MatchesStructure.byEquality(
@@ -474,9 +472,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[0]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(
+            round_size_to_nearest_block(
                 boot_disk.size - PARTITION_TABLE_EXTRA_SPACE,
-                boot_disk.block_size),
+                PARTITION_ALIGNMENT_SIZE,
+                False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -500,10 +499,12 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         # Validate root partition.
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[0]
-        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / boot_disk.block_size
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            (boot_disk.block_size * (number_of_blocks - 1)),
+            round_size_to_nearest_block(
+                MAX_PARTITION_SIZE_FOR_MBR,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -533,10 +534,11 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(
+            round_size_to_nearest_block(
                 boot_disk.size - EFI_PARTITION_SIZE -
                 PARTITION_TABLE_EXTRA_SPACE,
-                boot_disk.block_size),
+                PARTITION_ALIGNMENT_SIZE,
+                False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -570,8 +572,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         boot_partition = partitions[1]
         self.assertIsNotNone(boot_partition)
         self.assertEquals(
-            round_size_by_blocks(
-                boot_size, boot_disk.block_size),
+            round_size_to_nearest_block(
+                boot_size, PARTITION_ALIGNMENT_SIZE, False),
             boot_partition.size)
         self.assertThat(
             boot_partition.get_effective_filesystem(),
@@ -585,10 +587,11 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[2]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(
+            round_size_to_nearest_block(
                 boot_disk.size - boot_partition.size -
                 EFI_PARTITION_SIZE - PARTITION_TABLE_EXTRA_SPACE,
-                boot_disk.block_size),
+                PARTITION_ALIGNMENT_SIZE,
+                False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -622,7 +625,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(root_size, boot_disk.block_size),
+            round_size_to_nearest_block(
+                root_size, PARTITION_ALIGNMENT_SIZE, False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -659,8 +663,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         boot_partition = partitions[1]
         self.assertIsNotNone(boot_partition)
         self.assertEquals(
-            round_size_by_blocks(
-                boot_size, boot_disk.block_size),
+            round_size_to_nearest_block(
+                boot_size, PARTITION_ALIGNMENT_SIZE, False),
             boot_partition.size)
         self.assertThat(
             boot_partition.get_effective_filesystem(),
@@ -674,7 +678,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[2]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(root_size, boot_disk.block_size),
+            round_size_to_nearest_block(
+                root_size, PARTITION_ALIGNMENT_SIZE, False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -716,7 +721,8 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             'id').all()[0]
         self.assertIsNotNone(root_partition)
         self.assertEquals(
-            round_size_by_blocks(root_size, root_device.block_size),
+            round_size_to_nearest_block(
+                root_size, PARTITION_ALIGNMENT_SIZE, False),
             root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
@@ -980,7 +986,9 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             1, volume_group.virtual_devices.count(),
             "Should have only 1 logical volume.")
         logical_volume = volume_group.virtual_devices.first()
-        self.assertEquals(lv_size, logical_volume.size)
+        expected_size = round_size_to_nearest_block(
+            lv_size, PARTITION_ALIGNMENT_SIZE, False)
+        self.assertEquals(expected_size, logical_volume.size)
         self.assertEquals(layout.DEFAULT_LV_NAME, logical_volume.name)
         self.assertThat(
             logical_volume.get_effective_filesystem(),
@@ -1003,14 +1011,13 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         root_partition = partitions[0]
         volume_group = VolumeGroup.objects.get(
             filesystems__partition=root_partition)
-        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / boot_disk.block_size
         self.assertIsNotNone(volume_group)
         self.assertEquals(
             4, partition_table.partitions.count(),
             "Should have 4 partitions.")
-        self.assertEquals(
-            boot_disk.block_size * (number_of_blocks - 1),
-            root_partition.size)
+        expected_size = round_size_to_nearest_block(
+            MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False)
+        self.assertEquals(expected_size, root_partition.size)
 
 
 class TestBcacheStorageLayoutBase(MAASServerTestCase):
@@ -1185,7 +1192,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=5 * 1024 * 1024 * 1024, block_size=4096,
             tags=['ssd'])
-        cache_size = round_size_by_blocks(
+        cache_size = round_size_to_nearest_block(
             random.randint(
                 3 * 1024 * 1024 * 1024, 5 * 1024 * 1024 * 1024),
             4096)
@@ -1200,7 +1207,10 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertIsNotNone(partition_table)
         partition = partition_table.partitions.order_by('id').all()[0]
         self.assertEquals(partition, cache_device)
-        self.assertEquals(cache_size, partition.size)
+        self.assertEquals(
+            round_size_to_nearest_block(
+                cache_size, PARTITION_ALIGNMENT_SIZE, False),
+            partition.size)
 
     def test_raises_error_when_invalid_cache_device(self):
         node = make_Node_with_uefi_boot_method()
@@ -1234,7 +1244,8 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
                 "Cannot use cache_size and cache_no_part at the same time."],
             "cache_no_part": [
                 "Cannot use cache_size and cache_no_part at the same time."],
-            }, layout.errors)
+            },
+            layout.errors)
 
     def test_raises_error_when_precentage_to_low_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()

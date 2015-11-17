@@ -24,9 +24,11 @@ from maasserver.forms import (
     UpdateVolumeGroupForm,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import round_size_to_nearest_block
 from testtools.matchers import MatchesStructure
 
 
@@ -512,9 +514,10 @@ class TestCreateLogicalVolumeForm(MAASServerTestCase):
             factory.make_name("lv"),
             size=volume_group.get_size() - MIN_BLOCK_DEVICE_SIZE - 1)
         name = factory.make_name("lv")
+        free_space = volume_group.get_lvm_free_space()
         data = {
             'name': name,
-            'size': MIN_BLOCK_DEVICE_SIZE + 2,
+            'size': free_space + 2,
             }
         form = CreateLogicalVolumeForm(volume_group, data=data)
         self.assertFalse(
@@ -560,9 +563,11 @@ class TestCreateLogicalVolumeForm(MAASServerTestCase):
         form = CreateLogicalVolumeForm(volume_group, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         logical_volume = form.save()
+        expected_size = round_size_to_nearest_block(
+            size, PARTITION_ALIGNMENT_SIZE, False)
         self.assertThat(
             logical_volume, MatchesStructure.byEquality(
                 name=name,
                 uuid=vguuid,
-                size=size,
+                size=expected_size,
                 ))

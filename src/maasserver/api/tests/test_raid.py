@@ -403,10 +403,8 @@ class TestRaidsAPI(APITestCase):
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        # Size is equivalent to 7 devices of 9 TB each.
-        self.assertEqual(
-            7 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
-            parsed_device['size'])
+        # Size is equivalent to 7 of the smallest device (the partitions).
+        self.assertEqual(7 * large_partitions[0].size, parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)
@@ -450,10 +448,8 @@ class TestRaidsAPI(APITestCase):
         (parsed_block_devices, parsed_partitions,
          parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        # Size is equivalent to 6 devices of 9 TB each.
-        self.assertEqual(
-            6 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
-            parsed_device['size'])
+        # Size is equivalent to 6 of the smallest device (the partitions).
+        self.assertEqual(6 * large_partitions[0].size, parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)
@@ -497,10 +493,8 @@ class TestRaidsAPI(APITestCase):
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
-        # Size is equivalent to 4 devices of 9 TB each.
-        self.assertEqual(
-            4 * ((9 * 1000 ** 4) - PARTITION_TABLE_EXTRA_SPACE),
-            parsed_device['size'])
+        # Size is equivalent to 4 of the smallest device (the partitions).
+        self.assertEqual(4 * large_partitions[0].size, parsed_device['size'])
         self.assertItemsEqual(block_devices, parsed_block_devices)
         self.assertItemsEqual(partitions, parsed_partitions)
         self.assertItemsEqual(spare_devices, parsed_block_device_spares)

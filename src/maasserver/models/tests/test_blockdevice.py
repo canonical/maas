@@ -34,6 +34,7 @@ from maasserver.models import (
     VirtualBlockDevice,
     VolumeGroup,
 )
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -428,8 +429,9 @@ class TestBlockDevice(MAASServerTestCase):
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition = boot_disk.create_partition_if_boot_disk()
         self.assertIsNotNone(partition)
-        self.assertEquals(
-            boot_disk.get_available_size(), 0,
+        available_size = boot_disk.get_available_size()
+        self.assertTrue(
+            available_size >= 0 and available_size < PARTITION_ALIGNMENT_SIZE,
             "Should create a partition for the entire disk.")
 
 

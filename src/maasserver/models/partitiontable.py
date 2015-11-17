@@ -29,13 +29,17 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.partition import Partition
+from maasserver.models.partition import (
+    Partition,
+    PARTITION_ALIGNMENT_SIZE,
+)
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import round_size_to_nearest_block
 
-# The first partition on the disk must start at 2MiB, as all previous bytes
-# will be used by the partition table and grub.
-INITIAL_PARTITION_OFFSET = 2 * 1024 * 1024
+# The first 2MiB of the device are used by the partition table and grub. We'll
+# reserve the first 4MiB to make sure all partitions stay aligned to 4MB across
+# the device.
+INITIAL_PARTITION_OFFSET = 4 * 1024 * 1024
 
 # An additional 1MiB of space is left open at the end of the disk to allow for
 # the extra MBR table.
@@ -67,11 +71,11 @@ class PartitionTable(CleanSave, TimestampedModel):
         return self.block_device.node
 
     def get_size(self):
-        """Size of partition table."""
-        return (
-            self.block_device.size -
-            round_size_to_nearest_block(
-                PARTITION_TABLE_EXTRA_SPACE, self.get_block_size()))
+        """Total usable size of partition table."""
+        return round_size_to_nearest_block(
+            self.block_device.size - PARTITION_TABLE_EXTRA_SPACE,
+            PARTITION_ALIGNMENT_SIZE,
+            False)
 
     def get_block_size(self):
         """Block size of partition table."""
@@ -89,15 +93,15 @@ class PartitionTable(CleanSave, TimestampedModel):
         if used_size is None:
             used_size = 0
         # The extra space taken by the partition table header is used space.
-        used_size += round_size_to_nearest_block(
-            PARTITION_TABLE_EXTRA_SPACE, self.get_block_size())
-        return round_size_to_nearest_block(
-            used_size, self.get_block_size())
+        return used_size + PARTITION_TABLE_EXTRA_SPACE
 
     def get_available_size(self, ignore_partitions=[]):
         """Return the remaining size available for partitions."""
         used_size = self.get_used_size(ignore_partitions=ignore_partitions)
-        return self.block_device.size - used_size
+        # Only report 'alignable' space as available for new partitions
+        return round_size_to_nearest_block(
+            self.block_device.size - used_size,
+            PARTITION_ALIGNMENT_SIZE, False)
 
     def add_partition(self, size=None, bootable=False, uuid=None):
         """Adds a partition to this partition table, returns the added
@@ -105,15 +109,15 @@ class PartitionTable(CleanSave, TimestampedModel):
 
         If size is omitted, the partition will extend to the end of the device.
 
-        If size is not a multiple of the device's block size, the size will be
-        rounded up to the next multiple.
+        All partition sizes will be aligned down to PARTITION_ALIGNMENT_SIZE.
         """
         if size is None:
             size = self.get_available_size()
             if self.table_type == PARTITION_TABLE_TYPE.MBR:
                 size = min(size, Partition._get_mbr_max_for_block_device(
                     self.block_device))
-        size = round_size_to_nearest_block(size, self.get_block_size())
+        size = round_size_to_nearest_block(
+            size, PARTITION_ALIGNMENT_SIZE, False)
         return Partition.objects.create(
             partition_table=self, size=size, uuid=uuid, bootable=bootable)
 

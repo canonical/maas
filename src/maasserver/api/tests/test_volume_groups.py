@@ -26,11 +26,18 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import (
+    MIN_PARTITION_SIZE,
+    PARTITION_ALIGNMENT_SIZE,
+)
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.converters import (
+    human_readable_bytes,
+    round_size_to_nearest_block,
+)
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -132,11 +139,11 @@ class TestVolumeGroups(APITestCase):
         ]
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_BLOCK_DEVICE_SIZE * 3) + PARTITION_TABLE_EXTRA_SPACE)
+            size=MIN_PARTITION_SIZE * 3 + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partitions = [
-            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            partition_table.add_partition(size=MIN_PARTITION_SIZE)
             for _ in range(2)
         ]
         partition_ids = [
@@ -411,10 +418,12 @@ class TestVolumeGroupAPI(APITestCase):
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         logical_volume = json.loads(response.content)
+        expected_size = round_size_to_nearest_block(
+            size, PARTITION_ALIGNMENT_SIZE, False)
         self.assertThat(logical_volume, ContainsDict({
             "name": Equals("%s-%s" % (volume_group.name, name)),
             "uuid": Equals(vguuid),
-            "size": Equals(size),
+            "size": Equals(expected_size),
             }))
 
     def test_delete_logical_volume_204_when_invalid_id(self):
