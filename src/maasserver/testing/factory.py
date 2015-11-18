@@ -32,6 +32,7 @@ from django.test.client import RequestFactory
 from django.utils import timezone
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    ALLOCATED_NODE_STATUSES,
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE,
@@ -330,7 +331,10 @@ class Factory(maastesting.factory.Factory):
             self.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan, fabric=fabric)
         if installable and with_boot_disk:
-            self.make_PhysicalBlockDevice(node=node)
+            root_partition = self.make_Partition(node=node)
+            acquired = node.status in ALLOCATED_NODE_STATUSES
+            self.make_Filesystem(
+                partition=root_partition, mount_point='/', acquired=acquired)
 
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.

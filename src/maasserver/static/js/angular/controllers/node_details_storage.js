@@ -1913,4 +1913,12 @@ angular.module('MAAS').controller('NodeStorageController', [
                 return false;
             }
         };
+
+        // Returns true if there are storage layout errors
+        $scope.hasStorageLayoutIssues = function() {
+            if(angular.isObject($scope.node)) {
+                return $scope.node.storage_layout_issues.length > 0;
+            }
+            return false;
+        };
     }]);

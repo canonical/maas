@@ -159,3 +159,17 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         uuid = uuid4()
         block_device = factory.make_VirtualBlockDevice(uuid=uuid)
         self.assertEquals('%s' % uuid, block_device.uuid)
+
+    def test_get_parents_finds_devices(self):
+        node = factory.make_Node()
+        factory.make_FilesystemGroup(
+            node=node,
+            group_type=factory.pick_enum(
+                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
+        fs_group_disks = [block_device.blockdevice_ptr
+                          for block_device in
+                          node.physicalblockdevice_set.all()
+                          if not block_device.is_boot_disk()]
+        virtualblockdevice = node.virtualblockdevice_set.first()
+        self.assertEqual(
+            len(fs_group_disks), len(virtualblockdevice.get_parents()))

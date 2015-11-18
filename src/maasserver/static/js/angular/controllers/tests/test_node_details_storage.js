@@ -4744,4 +4744,18 @@ describe("NodeStorageController", function() {
             expect($scope.isAllStorageDisabled()).toBe(true);
         });
     });
+
+    describe("hasStorageLayoutIssues", function() {
+        it("true when node.storage_layout_issues has issues", function() {
+            var controller = makeController();
+            $scope.node.storage_layout_issues = [makeName("issue")];
+            expect($scope.hasStorageLayoutIssues()).toBe(true);
+        });
+
+        it("false when node.storage_layout_issues has no issues", function() {
+            var controller = makeController();
+            $scope.node.storage_layout_issues = [];
+            expect($scope.hasStorageLayoutIssues()).toBe(false);
+        });
+    });
 });

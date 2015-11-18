@@ -29,6 +29,9 @@ class TestFilesystemManager(MAASServerTestCase):
 
     def test_filter_by_node(self):
         node = factory.make_Node()
+        boot_bd = node.blockdevice_set.first()
+        root_partition = boot_bd.partitiontable_set.first().partitions.first()
+        root_fs = root_partition.filesystem_set.first()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         bd_for_partitions = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
@@ -37,7 +40,7 @@ class TestFilesystemManager(MAASServerTestCase):
         filesystem_on_bd = factory.make_Filesystem(block_device=block_device)
         filesystem_on_partition = factory.make_Filesystem(partition=partition)
         self.assertItemsEqual(
-            [filesystem_on_bd, filesystem_on_partition],
+            [root_fs, filesystem_on_bd, filesystem_on_partition],
             Filesystem.objects.filter_by_node(node))
 
 
