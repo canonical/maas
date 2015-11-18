@@ -165,6 +165,7 @@ class TestNodeHandler(MAASServerTestCase):
             "disable_ipv4": node.disable_ipv4,
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,
+            "storage_layout_issues": node.storage_layout_issues(),
             "supported_filesystems": [
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES],
@@ -1471,20 +1472,23 @@ class TestNodeHandler(MAASServerTestCase):
             interface=True,
             architecture=architecture,
             status=NODE_STATUS.ALLOCATED)
-        partition_table = factory.make_PartitionTable(node=node)
+        block_device = factory.make_BlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, node=node)
         size = partition_table.block_device.size / 2
         handler.create_partition({
             'system_id': node.system_id,
             'block_id': partition_table.block_device_id,
             'partition_size': size
             })
+        partition = partition_table.partitions.first()
         self.assertEquals(
-            1, Partition.objects.count())
+            2, Partition.objects.count())
         self.assertEquals(
             human_readable_bytes(
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
-            human_readable_bytes(Partition.objects.first().size))
+            human_readable_bytes(partition.size))
 
     def test_create_partition_with_filesystem(self):
         user = factory.make_admin()
@@ -1494,7 +1498,10 @@ class TestNodeHandler(MAASServerTestCase):
             interface=True,
             architecture=architecture,
             status=NODE_STATUS.ALLOCATED)
-        partition_table = factory.make_PartitionTable(node=node)
+        block_device = factory.make_BlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, node=node)
+        partition = partition_table.partitions.first()
         size = partition_table.block_device.size / 2
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         mount_point = factory.make_absolute_path()
@@ -1505,19 +1512,20 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fstype,
             'mount_point': mount_point,
             })
+        partition = partition_table.partitions.first()
         self.assertEquals(
-            1, Partition.objects.count())
+            2, Partition.objects.count())
         self.assertEquals(
             human_readable_bytes(
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
-            human_readable_bytes(Partition.objects.first().size))
+            human_readable_bytes(partition.size))
         self.assertEquals(
             fstype,
-            Partition.objects.first().get_effective_filesystem().fstype)
+            partition.get_effective_filesystem().fstype)
         self.assertEquals(
             mount_point,
-            Partition.objects.first().get_effective_filesystem().mount_point)
+            partition.get_effective_filesystem().mount_point)
 
     def test_create_cache_set_for_partition(self):
         user = factory.make_admin()

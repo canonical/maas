@@ -313,6 +313,7 @@ class NodeHandler(TimestampedModelHandler):
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES
             ]
+            data["storage_layout_issues"] = obj.storage_layout_issues()
 
             # Events
             data["events"] = self.dehydrate_events(obj)

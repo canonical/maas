@@ -137,3 +137,37 @@ class VirtualBlockDevice(BlockDevice):
         if not self.uuid:
             self.uuid = uuid4()
         return super(VirtualBlockDevice, self).save(*args, **kwargs)
+
+    def get_parents(self):
+        """Return the blockdevices and partition which make up this device."""
+        def check_fs_group(obj):
+            fs = obj.get_effective_filesystem()
+            if fs is None:
+                return False
+            if fs.filesystem_group is not None:
+                fs_group = fs.filesystem_group
+            elif fs.cache_set is not None:
+                # A block device/partition can only have one cache_set
+                fs_group = fs.cache_set.filesystemgroup_set.first()
+            else:
+                return False
+            for virtual_device in fs_group.virtual_devices.all():
+                if virtual_device.id == self.id:
+                    return True
+            return False
+
+        parents = []
+        # We need to check all of the nodes block devices incase
+        # we have nested virtual block devices.
+        for block_device in self.node.blockdevice_set.all():
+            if block_device.id == self.id:
+                continue
+            if check_fs_group(block_device):
+                parents.append(block_device)
+            pt = block_device.get_partitiontable()
+            if pt is None:
+                continue
+            for partition in pt.partitions.all():
+                if check_fs_group(partition):
+                    parents.append(partition)
+        return parents

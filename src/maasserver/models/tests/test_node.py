@@ -3774,14 +3774,45 @@ class TestNode_Start(MAASServerTestCase):
 
         self.assertThat(release_auto_ips, MockCalledOnceWith())
 
-    def test_connected_to_managed_network_true_when_connected(self):
+    def test_on_network_returns_true_when_connected(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED)
         self.assertTrue(node.on_network())
 
-    def test_connected_to_managed_network_false_when_not_connected(self):
+    def test_on_network_returns_false_when_not_connected(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         self.assertFalse(node.on_network())
+
+    def test_storage_layout_issues_is_valid_when_flat(self):
+        node = factory.make_Node()
+        self.assertEquals([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_partition = factory.make_Partition(node=node)
+        factory.make_Filesystem(partition=boot_partition, mount_point='/boot')
+        fs_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        bcache = fs_group.virtual_device
+        factory.make_Filesystem(block_device=bcache, mount_point="/")
+        self.assertEquals([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_invalid_when_no_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        self.assertEquals(["Node must have boot disk.",
+                           "Node must have / mounted."],
+                          node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_invalid_when_root_on_bcache(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_Partition(node=node)
+        fs_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        bcache = fs_group.virtual_device
+        factory.make_Filesystem(block_device=bcache, mount_point="/")
+        self.assertEquals(["Because / is on a bcache volume you must create "
+                          "/boot on a non-bcache volume"],
+                          node.storage_layout_issues())
 
 
 class TestNode_Stop(MAASServerTestCase):

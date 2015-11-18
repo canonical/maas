@@ -772,6 +772,15 @@
                         </li>
                     </ul>
                 </div>
+                <div class="twelve-col error ng-hide" data-ng-show="hasStorageLayoutIssues()">
+                    <div data-ng-repeat="issue in node.storage_layout_issues">
+                        <ul class="flash-messages">
+                            <li class="flash-messages__item error">
+                                {$ issue $}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
                 <div class="twelve-col padding-bottom no-margin">
                     <h3>File systems</h3>
                     <section class="table">

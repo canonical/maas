@@ -63,6 +63,7 @@ from maasserver.clusterrpc.power import (
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
+    FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -760,6 +761,73 @@ class Node(CleanSave, TimestampedModel):
                 event_action=action,
                 event_description=description)
 
+    def storage_layout_issues(self):
+        """Return any errors with the storage layout.
+
+        Checks that the node has / mounted. If / is mounted on bcache check
+        that /boot is mounted and is not on bcache."""
+        def on_bcache(obj):
+            if obj.type == "physical":
+                return False
+            elif obj.type == "partition":
+                return on_bcache(obj.partition_table.block_device)
+            for parent in obj.virtualblockdevice.get_parents():
+                if((parent.type != "physical" and on_bcache(parent)) or
+                    (parent.get_effective_filesystem().fstype in
+                     [FILESYSTEM_TYPE.BCACHE_CACHE,
+                      FILESYSTEM_TYPE.BCACHE_BACKING])):
+                    return True
+            return False
+
+        has_boot = False
+        root_mounted = False
+        root_on_bcache = False
+        boot_mounted = False
+
+        for block_device in self.blockdevice_set.all():
+            if block_device.is_boot_disk():
+                has_boot = True
+            pt = block_device.get_partitiontable()
+            if pt is not None:
+                for partition in pt.partitions.all():
+                    fs = partition.get_effective_filesystem()
+                    if fs is None:
+                        continue
+                    if fs.mount_point == '/':
+                        root_mounted = True
+                        if on_bcache(block_device):
+                            root_on_bcache = True
+                        else:
+                            # If / is mounted and its not on bcache the system
+                            # is bootable
+                            return []
+                    elif (fs.mount_point == '/boot' and
+                          not on_bcache(block_device)):
+                        boot_mounted = True
+            else:
+                fs = block_device.get_effective_filesystem()
+                if fs is None:
+                    continue
+                if fs.mount_point == '/':
+                    root_mounted = True
+                    if on_bcache(block_device):
+                        root_on_bcache = True
+                    else:
+                        # If / is mounted and its not on bcache the system
+                        # is bootable.
+                        return []
+                elif fs.mount_point == '/boot' and not on_bcache(block_device):
+                    boot_mounted = True
+        issues = []
+        if not has_boot:
+            issues.append("Node must have boot disk.")
+        if not root_mounted:
+            issues.append("Node must have / mounted.")
+        if root_mounted and root_on_bcache and not boot_mounted:
+            issues.append("Because / is on a bcache volume you must create "
+                          "/boot on a non-bcache volume")
+        return issues
+
     def on_network(self):
         """Return true if the node is connected to a managed network."""
         for interface in self.interface_set.all():
@@ -772,7 +840,12 @@ class Node(CleanSave, TimestampedModel):
     def _start_deployment(self):
         """Mark a node as being deployed."""
         if self.on_network() is False:
-            raise ValidationError("Node must be configured to use a network")
+            raise ValidationError(
+                {"network":
+                 ["Node must be configured to use a network"]})
+        storage_layout_issues = self.storage_layout_issues()
+        if len(storage_layout_issues) > 0:
+            raise ValidationError({"storage": storage_layout_issues})
         self.status = NODE_STATUS.DEPLOYING
         self.save()
 
