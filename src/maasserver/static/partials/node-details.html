@@ -817,8 +817,8 @@
                                     <div class="table__data table__column--37">{$ filesystem.fstype $}</div>
                                     <div class="table__data table__column--10">
                                         <div class="table__controls">
-                                            <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)">Unmount</a>
-                                            <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)">Remove</a>
+                                            <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)" data-ng-show="!isAllStorageDisabled()">Unmount</a>
+                                            <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)" data-ng-show="!isAllStorageDisabled()">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
