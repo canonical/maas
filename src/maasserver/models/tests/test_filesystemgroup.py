@@ -43,6 +43,7 @@ from maasserver.models.filesystemgroup import (
     VolumeGroup,
     VolumeGroupManager,
 )
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
@@ -52,7 +53,10 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.converters import machine_readable_bytes
+from maasserver.utils.converters import (
+    machine_readable_bytes,
+    round_size_to_nearest_block,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -327,13 +331,16 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
             [filesystem_group.id], result_filesystem_group_ids)
 
     def test__bcache_on_partitions(self):
-        block_device = factory.make_PhysicalBlockDevice()
+        device_size = random.randint(
+            MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024)
+        block_device = factory.make_PhysicalBlockDevice(
+            size=device_size + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         partition_one = factory.make_Partition(
-            partition_table=partition_table)
+            partition_table=partition_table, size=device_size / 2)
         partition_two = factory.make_Partition(
-            partition_table=partition_table)
+            partition_table=partition_table, size=device_size / 2)
         cache_set = factory.make_CacheSet(partition=partition_one)
         filesystem_backing = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.BCACHE_BACKING, partition=partition_two)
@@ -1324,9 +1331,11 @@ class TestFilesystemGroup(MAASServerTestCase):
         factory.make_VirtualBlockDevice(
             filesystem_group=fsgroup, size=5 * 1000 ** 3)
 
-        self.assertEqual(40 * 1000 ** 3, fsgroup.get_lvm_allocated_size())
+        expected_size = round_size_to_nearest_block(
+            40 * 1000 ** 3, PARTITION_ALIGNMENT_SIZE, False)
+        self.assertEqual(expected_size, fsgroup.get_lvm_allocated_size())
         self.assertEqual(
-            usable_size - (40 * 1000 ** 3), fsgroup.get_lvm_free_space())
+            usable_size - expected_size, fsgroup.get_lvm_free_space())
 
     def test_get_virtual_block_device_block_size_returns_backing_for_bc(self):
         # This test is not included in the scenario below
@@ -1567,10 +1576,12 @@ class TestVolumeGroup(MAASServerTestCase):
         logical_volume = volume_group.create_logical_volume(
             name=name, uuid=vguuid, size=size)
         logical_volume = reload_object(logical_volume)
+        expected_size = round_size_to_nearest_block(
+            size, PARTITION_ALIGNMENT_SIZE, False)
         self.assertThat(logical_volume, MatchesStructure.byEquality(
             name=name,
             uuid=vguuid,
-            size=size,
+            size=expected_size,
             block_size=volume_group.get_virtual_block_device_block_size(),
             ))
 
@@ -1597,8 +1608,6 @@ class TestRAID(MAASServerTestCase):
             bd.get_partitiontable().add_partition()
             for bd in block_devices[5:]
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         spare_block_device = block_devices[0]
         spare_partition = partitions[0]
         uuid = unicode(uuid4())
@@ -1611,7 +1620,7 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(6 * partition_size, raid.get_size())
+        self.assertEqual(6 * partitions[1].size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1689,7 +1698,6 @@ class TestRAID(MAASServerTestCase):
             for bd in block_devices[5:]
         ]
         # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         spare_block_device = block_devices[0]
         spare_partition = partitions[0]
         uuid = unicode(uuid4())
@@ -1702,7 +1710,7 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(partition_size, raid.get_size())
+        self.assertEqual(partitions[1].size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_1, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1742,8 +1750,6 @@ class TestRAID(MAASServerTestCase):
             bd.get_partitiontable().add_partition()
             for bd in block_devices[5:]
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         spare_block_device = block_devices[0]
         spare_partition = partitions[0]
         uuid = unicode(uuid4())
@@ -1756,7 +1762,7 @@ class TestRAID(MAASServerTestCase):
             spare_devices=[spare_block_device],
             spare_partitions=[spare_partition])
         self.assertEqual('md0', raid.name)
-        self.assertEqual(7 * partition_size, raid.get_size())
+        self.assertEqual(7 * partitions[1].size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_5, raid.group_type)
         self.assertEqual(uuid, raid.uuid)
         self.assertEqual(10, raid.filesystems.count())
@@ -1906,11 +1912,9 @@ class TestRAID(MAASServerTestCase):
         partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=device_size)).add_partition()
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         raid.add_partition(partition, FILESYSTEM_TYPE.RAID)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(10 * partition_size, raid.get_size())
+        self.assertEqual(10 * partition.size, raid.get_size())
 
     def test_add_spare_partition_to_array(self):
         node = factory.make_Node()
@@ -1928,11 +1932,9 @@ class TestRAID(MAASServerTestCase):
         partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=device_size)).add_partition()
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         raid.add_partition(partition, FILESYSTEM_TYPE.RAID_SPARE)
         self.assertEqual(11, raid.filesystems.count())
-        self.assertEqual(9 * partition_size, raid.get_size())
+        self.assertEqual(9 * partition.size, raid.get_size())
 
     def test_add_device_from_another_node_to_array_fails(self):
         node = factory.make_Node()
@@ -2054,8 +2056,6 @@ class TestRAID(MAASServerTestCase):
                     node=node, size=device_size)).add_partition()
             for _ in range(4)
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         uuid = unicode(uuid4())
         raid = RAID.objects.create_raid(
             name='md0',
@@ -2070,7 +2070,7 @@ class TestRAID(MAASServerTestCase):
                 "devices and any number of spares.']}")):
             raid.remove_partition(partitions[0])
         self.assertEqual(4, raid.filesystems.count())
-        self.assertEqual(2 * partition_size, raid.get_size())
+        self.assertEqual(2 * partitions[0].size, raid.get_size())
         # Ensure the filesystems are the exact same before and after.
         self.assertItemsEqual(
             fsids_before, [fs.id for fs in raid.filesystems.all()])
@@ -2102,8 +2102,6 @@ class TestRAID(MAASServerTestCase):
                     node=node, size=device_size)).add_partition()
             for _ in range(10)
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         uuid = unicode(uuid4())
         raid = RAID.objects.create_raid(
             name='md0',
@@ -2113,7 +2111,7 @@ class TestRAID(MAASServerTestCase):
             spare_partitions=partitions[-2:])
         raid.remove_partition(partitions[0])
         self.assertEqual(9, raid.filesystems.count())
-        self.assertEqual(6 * partition_size, raid.get_size())
+        self.assertEqual(6 * partitions[0].size, raid.get_size())
 
     def test_remove_invalid_partition_from_array_fails(self):
         node = factory.make_Node(bios_boot_method="uefi")
@@ -2125,8 +2123,6 @@ class TestRAID(MAASServerTestCase):
                     node=node, size=device_size)).add_partition()
             for _ in range(10)
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         uuid = unicode(uuid4())
         raid = RAID.objects.create_raid(
             name='md0',
@@ -2142,7 +2138,7 @@ class TestRAID(MAASServerTestCase):
                     block_device=factory.make_PhysicalBlockDevice(
                         node=node, size=device_size)).add_partition())
         self.assertEqual(10, raid.filesystems.count())
-        self.assertEqual(9 * partition_size, raid.get_size())
+        self.assertEqual(9 * partitions[0].size, raid.get_size())
 
     def test_remove_device_from_array_fails(self):
         node = factory.make_Node()
@@ -2251,8 +2247,6 @@ class TestBcache(MAASServerTestCase):
         backing_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=backing_size)).add_partition()
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = backing_size - PARTITION_TABLE_EXTRA_SPACE
         uuid = unicode(uuid4())
         bcache = Bcache.objects.create_bcache(
             name='bcache0',
@@ -2262,7 +2256,7 @@ class TestBcache(MAASServerTestCase):
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
 
         # Verify the filesystems were properly created on the target devices
-        self.assertEqual(partition_size, bcache.get_size())
+        self.assertEqual(backing_partition.size, bcache.get_size())
         self.assertEqual(
             FILESYSTEM_TYPE.BCACHE_CACHE,
             cache_partition.get_effective_filesystem().fstype)

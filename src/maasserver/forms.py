@@ -154,6 +154,7 @@ from maasserver.models.node import (
     nodegroup_fqdn,
 )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
+from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.subnet import (
     create_cidr,
     Subnet,
@@ -3253,7 +3254,7 @@ class AddPartitionForm(Form):
         This needs to be done on the fly so that we can pass the maximum size.
         """
         self.fields['size'] = BytesField(
-            min_value=MIN_BLOCK_DEVICE_SIZE,
+            min_value=MIN_PARTITION_SIZE,
             max_value=self.block_device.size,
             required=True)
 

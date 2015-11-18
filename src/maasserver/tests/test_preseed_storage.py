@@ -83,7 +83,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             size: 536870912B
             device: sda
             wipe: superblock
-            offset: 2097152B
+            offset: 4194304B
             flag: boot
           - id: sda-part2
             name: sda-part2
@@ -99,7 +99,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             type: partition
             number: 3
             uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
-            size: 6976176128B
+            size: 6970933248B
             wipe: superblock
             device: sda
           - id: sda-part1_format
@@ -195,7 +195,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             size: 536870912B
             device: sda
             wipe: superblock
-            offset: 2097152B
+            offset: 4194304B
             flag: boot
           - id: sda-part2
             name: sda-part2
@@ -233,7 +233,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             type: partition
             number: 6
             uuid: 8c365c80-900b-40a1-a8c7-1e445878d19a
-            size: 2144337920B
+            size: 2139095040B
             device: sda
             wipe: superblock
             flag: logical
@@ -370,10 +370,10 @@ class TestSimpleWithEmptyDiskLayout(
             type: partition
             number: 1
             uuid: 6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398
-            size: 8586788864B
+            size: 8581545984B
             device: sda
             wipe: superblock
-            offset: 2097152B
+            offset: 4194304B
           - id: sda-part1_format
             type: format
             fstype: ext4
@@ -435,10 +435,10 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
             type: partition
             number: 1
             uuid: 6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398
-            size: 8586788864B
+            size: 8581545984B
             device: sda
             wipe: superblock
-            offset: 2097152B
+            offset: 4194304B
           - id: sda-part1_format
             type: format
             fstype: ext4
@@ -548,7 +548,7 @@ class TestComplexDiskLayout(
             size: 536870912B
             device: sda
             wipe: superblock
-            offset: 2097152B
+            offset: 4194304B
             flag: boot
           - id: sda-part2
             name: sda-part2
@@ -564,16 +564,16 @@ class TestComplexDiskLayout(
             type: partition
             number: 3
             uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
-            size: 6976176128B
+            size: 6970933248B
             device: sda
             wipe: superblock
           - id: sdb-part1
             name: sdb-part1
             type: partition
             number: 1
-            offset: 2097152B
+            offset: 4194304B
             uuid: f3281144-a0b6-46f1-90af-8541f97f7b1f
-            size: 2144337920B
+            size: 2139095040B
             wipe: superblock
             device: sdb
           - id: bcache0
@@ -610,9 +610,9 @@ class TestComplexDiskLayout(
             name: md0-part1
             type: partition
             number: 1
-            offset: 2097152B
+            offset: 4194304B
             uuid: 18a6e885-3e6d-4505-8a0d-cf34df11a8b0
-            size: 2199020109824B
+            size: 2199014866944B
             wipe: superblock
             device: md0
           - id: sda-part1_format

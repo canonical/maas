@@ -51,7 +51,7 @@ from maasserver.utils.storage import (
 )
 
 
-MIN_BLOCK_DEVICE_SIZE = 2 * 1024 * 1024  # 2MiB
+MIN_BLOCK_DEVICE_SIZE = 4 * 1024 * 1024  # 4MiB
 MIN_BLOCK_DEVICE_BLOCK_SIZE = 512  # A ProDOS block
 
 

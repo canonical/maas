@@ -114,18 +114,34 @@ class TestMachineReadableBytes(MAASTestCase):
 
 class TestRoundSizeToNearestBlock(MAASTestCase):
 
-    def test__adds_extra_block(self):
+    def test__round_up_adds_extra_block(self):
         block_size = 4096
         size = block_size + 1
         self.assertEquals(
             2 * block_size,
-            round_size_to_nearest_block(size, block_size),
-            "Should add another block to the size.")
+            round_size_to_nearest_block(size, block_size, True),
+            "Should add an extra block to the size.")
 
-    def test__doesnt_add_extra_block(self):
+    def test__round_up_doesnt_add_extra_block(self):
         block_size = 4096
         size = block_size
         self.assertEquals(
             size,
-            round_size_to_nearest_block(size, block_size),
-            "Shouldn't add another block to the size.")
+            round_size_to_nearest_block(size, block_size, True),
+            "Shouldn't add an extra block to the size.")
+
+    def test__round_down_removes_block(self):
+        block_size = 4096
+        size = block_size + 1
+        self.assertEquals(
+            1 * block_size,
+            round_size_to_nearest_block(size, block_size, False),
+            "Should remove block from the size.")
+
+    def test__round_down_doesnt_remove_block(self):
+        block_size = 4096
+        size = block_size * 2
+        self.assertEquals(
+            size,
+            round_size_to_nearest_block(size, block_size, False),
+            "Shouldn't remove a block from the size.")

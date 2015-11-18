@@ -29,6 +29,7 @@ from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     Partition,
+    PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
@@ -45,18 +46,18 @@ class TestPartitionManager(MAASServerTestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_BLOCK_DEVICE_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
         free_partitions = [
-            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            partition_table.add_partition(size=MIN_PARTITION_SIZE)
             for _ in range(2)
         ]
         # Make used partitions.
         for _ in range(2):
             factory.make_Filesystem(
                 partition=partition_table.add_partition(
-                    size=MIN_BLOCK_DEVICE_SIZE))
+                    size=MIN_PARTITION_SIZE))
         self.assertItemsEqual(
             free_partitions,
             Partition.objects.get_free_partitions_for_node(node))
@@ -213,12 +214,12 @@ class TestPartition(MAASServerTestCase):
         partition.save()
         self.assertEquals('%s' % uuid, partition.uuid)
 
-    def test_size_is_rounded_to_next_block(self):
+    def test_size_is_rounded_to_current_block(self):
         partition = factory.make_Partition()
-        partition.size = partition.get_block_size() * 4096
+        partition.size = PARTITION_ALIGNMENT_SIZE * 4
         partition.size += 1
         partition.save()
-        self.assertEquals(4097, partition.size / partition.get_block_size())
+        self.assertEquals(PARTITION_ALIGNMENT_SIZE * 4, partition.size)
 
     def test_validate_enough_space_for_new_partition(self):
         partition_table = factory.make_PartitionTable()
@@ -235,7 +236,7 @@ class TestPartition(MAASServerTestCase):
     def test_validate_enough_space_for_resize_partition(self):
         partition_table = factory.make_PartitionTable()
         partition = partition_table.add_partition()
-        partition.size += partition_table.get_block_size() * 2
+        partition.size += PARTITION_ALIGNMENT_SIZE * 2
         error = self.assertRaises(ValidationError, partition.save)
         self.assertEquals({
             "size": [
@@ -298,7 +299,7 @@ class TestPartition(MAASServerTestCase):
         node = factory.make_Node(bios_boot_method="uefi")
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
-            size=(MIN_BLOCK_DEVICE_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
         partitions = [

@@ -32,7 +32,6 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
-from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import (
@@ -45,8 +44,10 @@ from maasserver.utils.storage import (
 )
 
 
-MIN_PARTITION_SIZE = MIN_BLOCK_DEVICE_SIZE
 MAX_PARTITION_SIZE_FOR_MBR = (((2 ** 32) - 1) * 512) - (1024 ** 2)  # 2 TiB
+# All partitions are aligned down to 4MiB blocks for performance (lp:1513085)
+PARTITION_ALIGNMENT_SIZE = 4 * 1024 * 1024
+MIN_PARTITION_SIZE = PARTITION_ALIGNMENT_SIZE
 
 
 class PartitionManager(Manager):
@@ -216,17 +217,16 @@ class Partition(CleanSave, TimestampedModel):
             bd=self.partition_table.block_device.__unicode__())
 
     def _round_size(self):
-        """Round the size of this partition to the nearest block."""
+        """Round the size of this partition down for alignment."""
         if self.size is not None and self.partition_table is not None:
             self.size = round_size_to_nearest_block(
-                self.size, self.partition_table.get_block_size())
+                self.size, PARTITION_ALIGNMENT_SIZE, False)
 
     @classmethod
     def _get_mbr_max_for_block_device(self, block_device):
         """Get the maximum partition size for MBR for this block device."""
-        block_size = block_device.block_size
-        number_of_blocks = MAX_PARTITION_SIZE_FOR_MBR / block_size
-        return block_size * (number_of_blocks - 1)
+        return round_size_to_nearest_block(
+            MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False)
 
     def _get_mbr_max_for_partition(self):
         """Get the maximum partition size for MBR for this partition."""

@@ -1287,9 +1287,7 @@ class Factory(maastesting.factory.Factory):
                 raise ValueError(
                     "Cannot make another partition on partition_table not "
                     "enough free space.")
-            size = round_size_to_nearest_block(
-                random.randint(MIN_PARTITION_SIZE, available_size),
-                partition_table.get_block_size())
+            size = random.randint(MIN_PARTITION_SIZE, available_size)
         if bootable is None:
             bootable = random.choice([True, False])
         return Partition.objects.create(

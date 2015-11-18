@@ -26,7 +26,6 @@ from maasserver.forms import (
     UpdateRaidForm,
 )
 from maasserver.models.filesystemgroup import RAID
-from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -126,12 +125,11 @@ class TestCreateRaidForm(MAASServerTestCase):
             for bd in bds
             if bd.get_partitiontable() is None
         ]
-        partitions = [
-            bd.get_partitiontable().add_partition().id
+        partition_objs = [
+            bd.get_partitiontable().add_partition()
             for bd in bds[5:]
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
+        partitions = [partition.id for partition in partition_objs]
         form = CreateRaidForm(node=node, data={
             'name': 'md1',
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
@@ -141,7 +139,7 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         self.assertEqual('md1', raid.name)
-        self.assertEqual(8 * partition_size, raid.get_size())
+        self.assertEqual(8 * partition_objs[0].size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertItemsEqual(
             block_devices,
@@ -183,8 +181,6 @@ class TestCreateRaidForm(MAASServerTestCase):
             part.name
             for part in partitions
         ]
-        # Partition size will be smaller than the disk, because of overhead.
-        partition_size = device_size - PARTITION_TABLE_EXTRA_SPACE
         form = CreateRaidForm(node=node, data={
             'name': 'md1',
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
@@ -194,7 +190,7 @@ class TestCreateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         self.assertEqual('md1', raid.name)
-        self.assertEqual(8 * partition_size, raid.get_size())
+        self.assertEqual(8 * partitions[0].size, raid.get_size())
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
         self.assertItemsEqual(
             block_devices_ids,
