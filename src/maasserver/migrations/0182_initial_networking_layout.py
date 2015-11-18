@@ -1,27 +1,81 @@
 from django.db import models
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+)
 from maasserver.models.node import Node
 from south.db import db
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
 
 
+def get_managed_ngi_for_subnet(subnet):
+    """Return the cluster interface that manages this subnet."""
+    interfaces = subnet.nodegroupinterface_set.filter(
+        nodegroup__status=NODEGROUP_STATUS.ENABLED)
+    interfaces = interfaces.exclude(
+        management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+    return interfaces.first()
+
+
+def get_managed_subnet_for_interface(interface):
+    """Return the `Subnet` that manages the `VLAN` for this `interface`."""
+    for subnet in interface.vlan.subnet_set.all():
+        ngi = get_managed_ngi_for_subnet(subnet)
+        if ngi is not None:
+            return subnet
+    return None
+
+
 class Migration(DataMigration):
 
     def forwards(self, orm):
-        # We don't use orm here because we want the current Node model to
-        # include all of the networking methods we require. This will break
-        # if the node these methods get removed from the Node, so we assert
-        # that they at least exists.
-        assert hasattr(Node, "_clear_networking_configuration")
-        assert hasattr(Node, "set_initial_networking_configuration")
-        for node in Node.objects.filter(
+        now = datetime.datetime.now()
+
+        # Loop through all ready nodes and fix their interface configuration.
+        # Deploying and deployed nodes will already have an AUTO or STICKY IP
+        # address and on release MAAS will do the correct thing.
+        for node in orm['maasserver.Node'].objects.filter(
                 installable=True, status=NODE_STATUS.READY):
-            # The node has to be ready and we set the default networking
-            # configuration. Deploying or deployed nodes will already have a
-            # configuration with an AUTO IP or STATIC IP.
-            node._clear_networking_configuration()
-            node.set_initial_networking_configuration()
+
+            # Check if any IP addresses already exists for this node.
+            has_ip = False
+            for interface in node.interface_set.all():
+                has_ip = interface.ip_addresses.exclude(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED).exists()
+                if has_ip:
+                    break
+
+            # If already has an IP address then nothing needs to be done. If
+            # not then an AUTO IP address needs to be created on the boot
+            # interface or fallback to DHCP if the boot interface is not on
+            # a managed subnet.
+            if not has_ip:
+                # Get the boot interface for the node.
+                boot_interface = node.boot_interface
+                if boot_interface is None:
+                    boot_interface = node.interface_set.order_by('id').first()
+                if boot_interface is None:
+                    continue
+
+                # Get the subnet that manages the VLAN this interface is
+                # connected to.
+                subnet = get_managed_subnet_for_interface(boot_interface)
+                if subnet is not None:
+                    # Create an AUTO IP address for this subnet.
+                    sip = orm['maasserver.StaticIPAddress'].objects.create(
+                        alloc_type=IPADDRESS_TYPE.AUTO, user=None,
+                        ip=None, subnet=subnet, created=now, updated=now)
+                else:
+                    # No subnet managing the VLAN this interface is connected
+                    # to, so set the boot interface to just DHCP.
+                    sip = orm['maasserver.StaticIPAddress'].objects.create(
+                        alloc_type=IPADDRESS_TYPE.DHCP, user=None,
+                        ip=None, subnet=None, created=now, updated=now)
+                boot_interface.ip_addresses.add(sip)
+                boot_interface.save()
 
     def backwards(self, orm):
         # No need to go backward.
