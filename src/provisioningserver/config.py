@@ -143,11 +143,13 @@ from formencode import (
     ForEach,
     Schema,
 )
-from formencode.api import NoDefault
+from formencode.api import (
+    is_validator,
+    NoDefault,
+)
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Invalid,
-    is_validator,
     Number,
     Set,
     String,
