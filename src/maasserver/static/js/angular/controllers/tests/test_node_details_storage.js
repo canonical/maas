@@ -2536,11 +2536,12 @@ describe("NodeStorageController", function() {
 
         it("calls createPartition with available_size bytes", function() {
             var controller = makeController();
+            var available_size = 2.6 * 1000 * 1000 * 1000;
             var disk = {
                 block_id: makeInteger(0, 100),
                 original: {
                     partition_table_type: "mbr",
-                    available_size: 2.6 * 1000 * 1000 * 1000,
+                    available_size: available_size,
                     available_size_human: "2.6 GB",
                     block_size: 512
                 },
@@ -2553,8 +2554,12 @@ describe("NodeStorageController", function() {
 
             $scope.availableConfirmPartition(disk);
 
+            // Align to 4MiB.
+            var align_size = (4 * 1024 * 1024);
+            var expected = align_size *
+                Math.floor(available_size / align_size);
             expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                node, disk.block_id, 2.6 * 1000 * 1000 * 1000, {});
+                node, disk.block_id, expected, {});
         });
 
         // regression test for https://bugs.launchpad.net/maas/+bug/1509535
@@ -2562,11 +2567,12 @@ describe("NodeStorageController", function() {
             " even when human size gets rounded down", function() {
 
                 var controller = makeController();
+                var available_size = 2.035 * 1000 * 1000 * 1000;
                 var disk = {
                     block_id: makeInteger(0, 100),
                     original: {
                         partition_table_type: "mbr",
-                        available_size: 2.035 * 1000 * 1000 * 1000,
+                        available_size: available_size,
                         available_size_human: "2.0 GB",
                         block_size: 512
                     },
@@ -2579,18 +2585,23 @@ describe("NodeStorageController", function() {
 
                 $scope.availableConfirmPartition(disk);
 
+                // Align to 4MiB.
+                var align_size = (4 * 1024 * 1024);
+                var expected = align_size *
+                    Math.floor(available_size / align_size);
                 expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                    node, disk.block_id, 2.035 * 1000 * 1000 * 1000, {});
+                    node, disk.block_id, expected, {});
         });
 
         it("calls createPartition with bytes minus partition table extra",
             function() {
                 var controller = makeController();
+                var available_size = 2.6 * 1000 * 1000 * 1000;
                 var disk = {
                     block_id: makeInteger(0, 100),
                     original: {
                         partition_table_type: "",
-                        available_size: 2.6 * 1000 * 1000 * 1000,
+                        available_size: available_size,
                         available_size_human: "2.6 GB",
                         block_size: 512
                     },
@@ -2603,9 +2614,13 @@ describe("NodeStorageController", function() {
 
                 $scope.availableConfirmPartition(disk);
 
+                // Remove partition extra space and align to 4MiB.
+                var align_size = (4 * 1024 * 1024);
+                var expected = align_size * Math.floor(
+                    (available_size - (5 * 1024 * 1024)) /
+                    align_size);
                 expect(NodesManager.createPartition).toHaveBeenCalledWith(
-                    node, disk.block_id,
-                    (2.6 * 1000 * 1000 * 1000) - (3 * 1024 * 1024), {});
+                    node, disk.block_id, expected, {});
             });
     });
 
