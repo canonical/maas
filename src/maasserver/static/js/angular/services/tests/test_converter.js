@@ -191,7 +191,7 @@ describe("ConverterService", function() {
             var bytes = 8.1 * 1000 * 1000;
             var block_size = 1024;
             expect(ConverterService.roundByBlockSize(bytes, block_size)).toBe(
-                8100864);
+                8099840);
         });
 
         it("doesnt round down a block", function() {

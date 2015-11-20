@@ -81,10 +81,6 @@ angular.module('MAAS').service('ConverterService', function() {
 
         // Round the bytes down to size based on the block size.
         this.roundByBlockSize = function(bytes, block_size) {
-            number_of_blocks = Math.floor(bytes / block_size);
-            if(bytes % block_size > 0) {
-                number_of_blocks += 1;
-            }
-            return block_size * number_of_blocks;
+            return block_size * Math.floor(bytes / block_size);
         };
     });

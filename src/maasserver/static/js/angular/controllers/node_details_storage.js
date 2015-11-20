@@ -45,9 +45,16 @@ angular.module('MAAS').filter('removeAvailableByNew', function() {
 angular.module('MAAS').controller('NodeStorageController', [
     '$scope', 'NodesManager', 'ConverterService', 'UsersManager',
     function($scope, NodesManager, ConverterService, UsersManager) {
-        var PARTITION_TABLE_EXTRA_SPACE = 3 * 1024 * 1024;
-        var MIN_PARTITION_SIZE = 2 * 1024 * 1024;
-        var MIN_LOGICAL_VOLUME_SIZE = MIN_PARTITION_SIZE;
+
+        // From models/partitiontable.py - must be kept in sync.
+        var INITIAL_PARTITION_OFFSET = 4 * 1024 * 1024;
+        var END_OF_PARTITION_TABLE_SPACE = 1024 * 1024;
+        var PARTITION_TABLE_EXTRA_SPACE = INITIAL_PARTITION_OFFSET +
+            END_OF_PARTITION_TABLE_SPACE;
+
+        // From models/partition.py - must be kept in sync.
+        var PARTITION_ALIGNMENT_SIZE = 4 * 1024 * 1024;
+        var MIN_PARTITION_SIZE = PARTITION_ALIGNMENT_SIZE;
 
         // Different selection modes.
         var SELECTION_MODE = {
@@ -842,6 +849,18 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         };
 
+        $scope.availablePartitionSpace = function(disk) {
+            var space_to_reserve = 0;
+            if(!angular.isString(disk.original.partition_table_type)
+                || disk.original.partition_table_type === "") {
+                // Disk has no partition table, so reserve space for it.
+                space_to_reserve = PARTITION_TABLE_EXTRA_SPACE;
+            }
+            return ConverterService.roundByBlockSize(
+                disk.original.available_size - space_to_reserve,
+                PARTITION_ALIGNMENT_SIZE);
+        };
+
         // Return true if a partition can be added to disk.
         $scope.canAddPartition = function(disk) {
             if(!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
@@ -854,28 +873,10 @@ angular.module('MAAS').controller('NodeStorageController', [
                 return false;
             } else if(angular.isString(disk.fstype) && disk.fstype !== "") {
                 return false;
-            } else if(!angular.isString(disk.original.partition_table_type)
-                || disk.original.partition_table_type === "") {
-                // Has no partition table on the disk, so the available size
-                // needs to be able to hold both the partition and partition
-                // table extra space.
-                if(disk.original.available_size <
-                    ConverterService.roundByBlockSize(
-                        PARTITION_TABLE_EXTRA_SPACE + MIN_PARTITION_SIZE,
-                        disk.original.block_size)) {
-                    return false;
-                }
-            } else {
-                // Needs to have enough space for one partition. The extra
-                // partition header space is already being taken into account.
-                if(disk.original.available_size <
-                    ConverterService.roundByBlockSize(
-                        MIN_PARTITION_SIZE,
-                        disk.original.block_size)) {
-                    return false;
-                }
             }
-            return true;
+            // If we can fit a minimum partition, we're golden.
+            return ($scope.availablePartitionSpace(disk) -
+                MIN_PARTITION_SIZE) >= 0;
         };
 
         // Return true if the name is invalid.
@@ -1178,29 +1179,13 @@ angular.module('MAAS').controller('NodeStorageController', [
                 bytes = disk.original.available_size;
             }
 
-            // Clamp to available space.
-            if(bytes > disk.original.available_size) {
-                bytes = disk.original.available_size;
-            }
-
-            // Remove the disk if it is going to use all the remaining space.
             var removeDisk = false;
-            if(bytes === disk.original.available_size) {
+            var available_space = $scope.availablePartitionSpace(disk);
+            if(bytes >= available_space) {
+                // Clamp to available space.
+                bytes = available_space;
+                // Remove the disk if partition uses all the remaining space.
                 removeDisk = true;
-            }
-
-            // If the disk does not have any partition table yet the extra
-            // partition table space needs to be removed from the size if the
-            // remaining space is less than the required extra.
-            if(!angular.isString(disk.original.partition_table_type) ||
-                disk.original.partition_table_type === "") {
-                var diff = disk.original.available_size - bytes;
-                diff -= ConverterService.roundByBlockSize(
-                    PARTITION_TABLE_EXTRA_SPACE, disk.original.block_size);
-                if(diff < 0) {
-                    // Add because diff is a negative number.
-                    bytes += diff;
-                }
             }
 
             // Create the partition.
@@ -1757,7 +1742,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.canAddLogicalVolume = function(disk) {
             if(disk.type !== "lvm-vg") {
                 return false;
-            } else if(disk.original.available_size < MIN_LOGICAL_VOLUME_SIZE) {
+            } else if(disk.original.available_size < MIN_PARTITION_SIZE) {
                 return false;
             } else {
                 return true;
