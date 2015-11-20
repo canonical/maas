@@ -52,8 +52,8 @@ class TestExecutors(MAASTestCase):
         self.assertThat(result.errors[0], MatchesListwise((
             Is(test),
             DocTestMatches(
-                """...
-                InvalidTest:
+                """\
+                ...InvalidTest:
                     Test returned a generator. Should it be
                     decorated with inlineCallbacks?
                 """
