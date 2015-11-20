@@ -801,6 +801,12 @@ class MAASQueriesMixin(object):
         inferred that the user would like a set of queries joined with
         logical AND operators.
 
+        If the list of specifiers is given as a dict, it is inferred that each
+        key is a specifier type, and each value is a list of specifier values.
+        The specifier values inside each list will be joined with logical OR
+        operators. The lists for each key will be joined with logical AND
+        operators.
+
         For example, 'name:eth0,hostname:tasty-buscuits' might match interface
         eth0 on node 'tasty-biscuits'; that is, both constraints are required.
         """
@@ -810,6 +816,8 @@ class MAASQueriesMixin(object):
             return [
                 '&' + specifier.strip() for specifier in specifiers.split(',')
             ]
+        elif isinstance(specifiers, dict):
+            return specifiers
         else:
             return list(flatten(specifiers))
 
@@ -894,13 +902,28 @@ class MAASQueriesMixin(object):
         if specifier_types is None:
             raise NotImplementedError("Subclass must specify specifier_types.")
         current_q = Q()
-        for item in specifiers:
-            item, op = parse_item_operation(item)
-            item, specifier_type = parse_item_specifier_type(
-                item, spec_types=specifier_types, separator=separator)
-            query = self.get_filter_function(
-                specifier_type, specifier_types, item, separator=separator)
-            current_q = query(current_q, op, item)
+        if isinstance(specifiers, dict):
+            # If we got a dictionary, treat it as one of the entries in a
+            # LabeledConstraintMap. That is, each key is a specifier, and
+            # each value is a list of values (which must be OR'd together).
+            for key in specifiers.iterkeys():
+                assert isinstance(specifiers[key], list)
+                constraints = [
+                    key + separator + value
+                    for value in specifiers[key]
+                ]
+                # Leave off specifier_types here because this recursion
+                # will go back to the subclass to get the types filled in.
+                current_q &= self.get_specifiers_q(
+                    constraints, separator=separator)
+        else:
+            for item in specifiers:
+                item, op = parse_item_operation(item)
+                item, specifier_type = parse_item_specifier_type(
+                    item, spec_types=specifier_types, separator=separator)
+                query = self.get_filter_function(
+                    specifier_type, specifier_types, item, separator=separator)
+                current_q = query(current_q, op, item)
         if len(kwargs) > 0:
             current_q &= Q(**kwargs)
         return current_q

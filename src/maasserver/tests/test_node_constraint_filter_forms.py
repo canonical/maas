@@ -1026,7 +1026,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
 
-    def test_interfaces_filters_multiples_treated_as_OR_operation(self):
+    def test_interfaces_filters_same_key_treated_as_OR_operation(self):
         fabric1 = factory.make_Fabric(class_type="1g")
         fabric2 = factory.make_Fabric(class_type="10g")
         vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
@@ -1049,6 +1049,30 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
         self.assertItemsEqual([node2], filtered_nodes)
+
+    def test_interfaces_filters_different_key_treated_as_AND_operation(self):
+        fabric1 = factory.make_Fabric(class_type="1g")
+        fabric2 = factory.make_Fabric(class_type="10g")
+        vlan1 = factory.make_VLAN(vid=1, fabric=fabric1)
+        vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric1, vlan=vlan1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            fabric=fabric2, vlan=vlan2)
+
+        form = AcquireNodeForm({
+            u'interfaces':
+            u'none:fabric_class=1g,vid=2'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([], filtered_nodes)
+
+        form = AcquireNodeForm({
+            u'interfaces':
+            u'any:fabric_class=10g,fabric_class=1g,vid=1,vid=2'})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _, _ = form.filter_nodes(Node.nodes)
+        self.assertItemsEqual([node1, node2], filtered_nodes)
 
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')
