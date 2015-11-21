@@ -27,6 +27,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.shell import (
@@ -43,6 +44,9 @@ EndSection
 """
 
 
+maaslog = get_maas_logger("drivers.power.ipmi")
+
+
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
@@ -55,7 +59,8 @@ class IPMIPowerDriver(PowerDriver):
         return []
 
     @staticmethod
-    def _issue_ipmi_chassis_config_command(command, change, address, env):
+    def _issue_ipmi_chassis_config_command(
+            command, power_change, power_address, env):
         with NamedTemporaryFile() as tmp_config:
             # Write out the chassis configuration.
             tmp_config.write(IPMI_CONFIG)
@@ -70,18 +75,19 @@ class IPMIPowerDriver(PowerDriver):
         if "password invalid" in stderr:
             raise PowerAuthError("Invalid password.")
         if process.returncode != 0:
-            raise PowerFatalError(
-                "Failed to power %s %s: %s" % (change, address, stderr))
+            maaslog.warning(
+                'Failed to change the boot order to PXE %s: %s' % (
+                    power_address, stderr))
 
     @staticmethod
-    def _issue_ipmi_power_command(command, change, address, env):
+    def _issue_ipmi_power_command(command, power_change, power_address, env):
         command = tuple(command)  # For consistency when testing.
         try:
             output = call_and_check(command, env=env)
         except ExternalProcessError as e:
             raise PowerFatalError(
                 "Failed to power %s %s: %s" % (
-                    change, address, e.output_as_unicode))
+                    power_change, power_address, e.output_as_unicode))
         else:
             if 'on' in output:
                 return 'on'

@@ -281,17 +281,22 @@ class TestIPMIPowerDriver(MAASTestCase):
             PowerAuthError, ipmi_power_driver._issue_ipmi_command,
             'on', **context)
 
-    def test__issue_ipmi_command_issues_raises_power_fatal_error(self):
+    def test__issue_ipmi_command_logs_maaslog_warning(self):
         _, _, _, _, _, _, _, context = make_parameters()
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (None, 'maaslog error')
         process.returncode = -1
+        maaslog = self.patch(ipmi_module, 'maaslog')
+        self.patch(ipmi_power_driver, '_issue_ipmi_power_command')
 
-        self.assertRaises(
-            PowerFatalError, ipmi_power_driver._issue_ipmi_command,
-            'on', **context)
+        ipmi_power_driver._issue_ipmi_command('on', **context)
+
+        self.assertThat(
+            maaslog.warning, MockCalledOnceWith(
+                'Failed to change the boot order to PXE %s: %s' % (
+                    context['power_address'], 'maaslog error')))
 
     def test__issue_ipmi_command_issues_catches_external_process_error(self):
         _, _, _, _, _, _, _, context = make_parameters()
