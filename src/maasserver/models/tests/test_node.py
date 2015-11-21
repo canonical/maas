@@ -3799,9 +3799,10 @@ class TestNode_Start(MAASServerTestCase):
 
     def test_storage_layout_issues_returns_invalid_when_no_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        self.assertEquals(["Node must have boot disk.",
-                           "Node must have / mounted."],
-                          node.storage_layout_issues())
+        self.assertEquals(
+            ["Specify a storage device to be able to deploy this node.",
+             "Mount the root '/' filesystem to be able to deploy this node."],
+            node.storage_layout_issues())
 
     def test_storage_layout_issues_returns_invalid_when_root_on_bcache(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -3810,9 +3811,10 @@ class TestNode_Start(MAASServerTestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         bcache = fs_group.virtual_device
         factory.make_Filesystem(block_device=bcache, mount_point="/")
-        self.assertEquals(["Because / is on a bcache volume you must create "
-                          "/boot on a non-bcache volume"],
-                          node.storage_layout_issues())
+        self.assertEquals(
+            ["This node cannot be deployed because it cannot boot from a "
+             "bcache volume. Mount /boot on a non-bcache device to be able to "
+             "deploy this node."], node.storage_layout_issues())
 
 
 class TestNode_Stop(MAASServerTestCase):

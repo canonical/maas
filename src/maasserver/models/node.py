@@ -820,12 +820,17 @@ class Node(CleanSave, TimestampedModel):
                     boot_mounted = True
         issues = []
         if not has_boot:
-            issues.append("Node must have boot disk.")
+            issues.append(
+                "Specify a storage device to be able to deploy this node.")
         if not root_mounted:
-            issues.append("Node must have / mounted.")
+            issues.append(
+                "Mount the root '/' filesystem to be able to deploy this "
+                "node.")
         if root_mounted and root_on_bcache and not boot_mounted:
-            issues.append("Because / is on a bcache volume you must create "
-                          "/boot on a non-bcache volume")
+            issues.append(
+                "This node cannot be deployed because it cannot boot from a "
+                "bcache volume. Mount /boot on a non-bcache device to be "
+                "able to deploy this node.")
         return issues
 
     def on_network(self):
