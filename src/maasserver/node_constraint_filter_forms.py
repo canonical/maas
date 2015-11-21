@@ -398,19 +398,12 @@ def nodes_by_interface(interfaces_label_map):
     node_ids = None
     label_map = {}
     for label in interfaces_label_map:
-        specifiers = []
         constraints = interfaces_label_map[label]
-        for specifier_type in constraints.iterkeys():
-            # Build constraints string.
-            specifiers.extend([
-                specifier_type + ":" + item
-                for item in constraints[specifier_type]
-            ])
         if node_ids is None:
             # The first time through the filter, build the list
             # of candidate nodes.
             node_ids, node_map = Interface.objects.get_matching_node_map(
-                specifiers)
+                constraints)
             label_map[label] = node_map
         else:
             # For subsequent labels, only match nodes that already matched a
@@ -421,7 +414,7 @@ def nodes_by_interface(interfaces_label_map):
             # to filter the nodes starting from an 'id__in' filter using the
             # current 'node_ids' set.
             new_node_ids, node_map = Interface.objects.get_matching_node_map(
-                specifiers)
+                constraints)
             label_map[label] = node_map
             node_ids &= new_node_ids
     return node_ids, label_map
