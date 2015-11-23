@@ -17,6 +17,12 @@ LP: #1515769    Failed to power on SM15k.
 
 LP: #1516722    Fix migration that might affect upgrade from 1.7.
 
+LP: #1516065    Failed to power control IPMI BMC that does not support setting the boot order.
+
+LP: #1517097    Constraints for acquiring interfaces argument should 'AND' key-value pairs for the same label.
+
+LP: #1517687    [UI] Cannot create a partition using the whole disk.
+
 LP: #1513258    [UI] CSS Broken for Bond Network Device.
 
 LP: #1516173    [UI] Prevent being able to unmount/remove filesystems while node is on.
