@@ -670,7 +670,8 @@ class TestFilesystemGroup(MAASServerTestCase):
                     fstype=FILESYSTEM_TYPE.LVM_PV, block_device=block_device))
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=filesystems)
-        extents = int(total_size / LVM_PE_SIZE) - 1
+        # Reserve one extent per filesystem for LVM headers.
+        extents = int(total_size / LVM_PE_SIZE) - 3
         self.assertEquals(extents * LVM_PE_SIZE, fsgroup.get_size())
 
     def test_get_size_returns_0_if_raid_without_filesystems(self):
@@ -1319,9 +1320,9 @@ class TestFilesystemGroup(MAASServerTestCase):
             factory.make_Filesystem(
                 filesystem_group=fsgroup, fstype=FILESYSTEM_TYPE.LVM_PV,
                 block_device=block_device)
-        # Total space should be 50 GB minus the overhead.
+        # Size should be 50 GB minus one extent per filesystem for LVM headers.
         pv_total_size = 50 * 1000 ** 3
-        extents = int(pv_total_size / LVM_PE_SIZE) - 1
+        extents = int(pv_total_size / LVM_PE_SIZE) - 5
         usable_size = extents * LVM_PE_SIZE
         self.assertEqual(usable_size, fsgroup.get_size())
 
