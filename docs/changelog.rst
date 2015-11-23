@@ -3,6 +3,33 @@ Changelog
 =========
 
 
+1.9.0 (RC2)
+=============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1513085    Partitioning should align for performance.
+
+LP: #1516815    MAAS creates DNS record against Alias (eth0:1) if alias belongs to the PXE Interface.
+
+LP: #1515769    Failed to power on SM15k.
+
+LP: #1516722    Fix migration that might affect upgrade from 1.7.
+
+LP: #1516065    Failed to power control IPMI BMC that does not support setting the boot order.
+
+LP: #1517097    Constraints for acquiring interfaces argument should 'AND' key-value pairs for the same label.
+
+LP: #1517687    [UI] Cannot create a partition using the whole disk.
+
+LP: #1513258    [UI] CSS Broken for Bond Network Device.
+
+LP: #1516173    [UI] Prevent being able to unmount/remove filesystems while node is on.
+
+LP: #1510457    [UI] No error message if there is no boot and/or root disk configured for a node.
+
+
 1.9.0 (RC1)
 =============
 
