@@ -75,14 +75,17 @@ class TestVlansAPI(APITestCase):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("fabric")
         vid = random.randint(1, 1000)
+        mtu = random.randint(512, 1500)
         uri = get_vlans_uri(fabric)
         response = self.client.post(uri, {
             "name": vlan_name,
             "vid": vid,
+            "mtu": mtu,
         })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(vlan_name, json.loads(response.content)['name'])
         self.assertEqual(vid, json.loads(response.content)['vid'])
+        self.assertEqual(mtu, json.loads(response.content)['mtu'])
 
     def test_create_admin_only(self):
         fabric = factory.make_Fabric()
