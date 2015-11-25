@@ -23,7 +23,6 @@ from maasserver.enum import (
     NODE_PERMISSION,
 )
 from maasserver.models.bootresource import BootResource
-from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.node_action import ACTIONS_DICT
@@ -37,6 +36,7 @@ from maasserver.utils.osystems import (
 )
 from maasserver.utils.version import get_maas_version_ui
 from maasserver.websockets.base import Handler
+import petname
 
 
 class GeneralHandler(Handler):
@@ -121,7 +121,8 @@ class GeneralHandler(Handler):
 
     def random_hostname(self, params):
         """Return a random hostname."""
-        for new_hostname in gen_candidate_names():
+        while True:
+            new_hostname = petname.Generate(2, "-")
             try:
                 Node.objects.get(hostname=new_hostname)
             except Node.DoesNotExist:

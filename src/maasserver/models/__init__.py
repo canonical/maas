@@ -74,7 +74,6 @@ from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
-from maasserver.models.candidatename import CandidateName
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.downloadprogress import DownloadProgress
@@ -140,7 +139,6 @@ ignore_unused(
     BootResourceFile,
     BootResourceSet,
     CacheSet,
-    CandidateName,
     ComponentError,
     Config,
     DownloadProgress,

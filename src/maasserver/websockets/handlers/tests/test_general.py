@@ -32,6 +32,7 @@ from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
 from mock import sentinel
+import petname
 
 
 class TestGeneralHandler(MAASServerTestCase):
@@ -144,19 +145,9 @@ class TestGeneralHandler(MAASServerTestCase):
         existing_node = factory.make_Node(hostname="hostname")
         hostnames = [existing_node.hostname, "new-hostname"]
         self.patch(
-            general, "gen_candidate_names",
-            lambda: iter(hostnames))
+            petname, "Generate").side_effect = hostnames
         handler = GeneralHandler(factory.make_User(), {})
         self.assertEqual("new-hostname", handler.random_hostname({}))
-
-    def test_random_hostname_returns_empty_string_if_all_used(self):
-        existing_node = factory.make_Node(hostname='hostname')
-        hostnames = [existing_node.hostname]
-        self.patch(
-            general, "gen_candidate_names",
-            lambda: iter(hostnames))
-        handler = GeneralHandler(factory.make_User(), {})
-        self.assertEqual("", handler.random_hostname({}))
 
     def test_bond_options(self):
         handler = GeneralHandler(factory.make_User(), {})

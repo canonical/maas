@@ -63,7 +63,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     # to also include a data fixture. This needs to be representative,
     # but can be a reduced set.
     fixtures = [
-        "candidatenames.yaml",
         "defaultzone.yaml",
     ]
 
