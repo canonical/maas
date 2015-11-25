@@ -122,19 +122,22 @@ def _migrate_nodegroupinterfaces_forward(
 def _create_subnet_from_nodegroupinterface(now, ngi, Subnet, default_space,
                                            default_vlan):
     cidr = _get_cidr_for_nodegroupinterface(ngi)
-    try:
-        subnet = Subnet.objects.get(cidr=cidr)
-    except Subnet.DoesNotExist:
-        subnet = Subnet()
-        subnet.name = cidr
-        # VLAN might have been populated by the migration from Network.
-        subnet.vlan = default_vlan
-        subnet.created = now
-    subnet.cidr = cidr
-    subnet.space = default_space
-    subnet.updated = now
-    subnet.gateway_ip = ngi.router_ip
-    subnet.save()
+    if cidr is not None:
+        try:
+            subnet = Subnet.objects.get(cidr=cidr)
+        except Subnet.DoesNotExist:
+            subnet = Subnet()
+            subnet.name = cidr
+            # VLAN might have been populated by the migration from Network.
+            subnet.vlan = default_vlan
+            subnet.created = now
+        subnet.cidr = cidr
+        subnet.space = default_space
+        subnet.updated = now
+        subnet.gateway_ip = ngi.router_ip
+        subnet.save()
+    else:
+        subnet = None
     ngi.subnet = subnet
     ngi.updated = now
     ngi.save()
