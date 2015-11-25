@@ -219,6 +219,34 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
             find_cluster_interface_responsible_for_ip(
                 interfaces, IPAddress('10.3.3.100')))
 
+    def test__finds_interface_using_static_range(self):
+        nodegroup = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.2.0/24'))
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip='192.168.0.1', subnet_mask='', ip_range_low='',
+            ip_range_high='', static_ip_range_low='192.168.1.10',
+            static_ip_range_high='192.168.1.20')
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.3.0/24'))
+        self.assertEqual(ngi, find_cluster_interface_responsible_for_ip(
+            NodeGroupInterface.objects.all(), IPAddress('192.168.1.15')))
+
+    def test__finds_interface_using_dynamic_range(self):
+        nodegroup = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.2.0/24'))
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip='192.168.0.1', subnet_mask='', static_ip_range_low='',
+            static_ip_range_high='', ip_range_low='192.168.1.10',
+            ip_range_high='192.168.1.20')
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.3.0/24'))
+        self.assertEqual(ngi, find_cluster_interface_responsible_for_ip(
+            NodeGroupInterface.objects.all(), IPAddress('192.168.1.15')))
+
 
 def find_cluster_interface(cluster, ip_version):
     """Find cluster interface for `cluster` with the given IP version.

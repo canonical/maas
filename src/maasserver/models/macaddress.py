@@ -65,8 +65,29 @@ def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
     :return: The cluster interface from `cluster_interfaces` whose subnet
         contains `ip_address`, or `None`.
     """
-    for interface in cluster_interfaces:
-        if ip_address in interface.network:
+    interfaces = list(cluster_interfaces)
+    # On the first pass, just check if the IP address we're looking for
+    # is within an on-link network on the cluster interface. If so, we've got
+    # the best network.
+    for interface in interfaces:
+        network = interface.network
+        if network is not None and ip_address in network:
+            return interface
+    # On the second pass, check if the address is within the dynamic range
+    # on this cluster. This is to handle networks whose IP address may not
+    # match the DHCP range (customers using so-called "one-armed routers"),
+    # or unmanaged interfaces whose cluster interface is not directly on-link
+    # alongside nodes.
+    for interface in interfaces:
+        dynamic_range = interface.get_dynamic_ip_range()
+        if dynamic_range is not None and ip_address in dynamic_range:
+            return interface
+        # Check the static range for good measure; even though this isn't
+        # well-supported for an unmanaged cluster interface, someone might
+        # have added static mappings in the DHCP server configuration, and
+        # they might expect those addresses to fall within this range.
+        static_range = interface.get_static_ip_range()
+        if static_range is not None and ip_address in static_range:
             return interface
     return None
 
