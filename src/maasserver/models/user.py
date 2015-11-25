@@ -21,11 +21,23 @@ __all__ = [
     ]
 
 from maasserver import worker_user
+from maasserver.utils.django import has_builtin_migrations
 from metadataserver import nodeinituser
-from piston.models import (
-    Consumer,
-    Token,
-)
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.models import (
+        Consumer,
+        Token,
+    )
+else:
+    from piston.models import (
+        Consumer,
+        Token,
+    )
 
 # Special users internal to MAAS.
 SYSTEM_USERS = [

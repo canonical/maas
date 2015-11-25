@@ -21,7 +21,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_fabric import FabricForm
 from maasserver.models import Fabric
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_FABRIC_FIELDS = (

@@ -120,7 +120,16 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
-from piston.doc import HandlerDocumentation
+from maasserver.utils.django import has_builtin_migrations
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.doc import HandlerDocumentation
+else:
+    from piston.doc import HandlerDocumentation
 
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.

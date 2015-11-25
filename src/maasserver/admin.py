@@ -23,15 +23,10 @@ __metaclass__ = type
 __all__ = []
 
 
+from django.apps import apps
 from django.contrib import admin
-from django.db.models import (
-    get_app,
-    get_models,
-)
-from piston.models import Consumer
 
 # Register models in the admin site.  When the DEBUG setting is enabled, the
 # webapp will serve an administrator UI at /admin.
-admin.site.register(Consumer)
-for model in get_models(get_app('maasserver')):
+for model in apps.get_app_config('maasserver').models.values():
     admin.site.register(model)

@@ -149,12 +149,6 @@ class TestLargeFile(MAASServerTestCase):
         largefile.delete()
         self.assertTrue(LargeFile.objects.filter(id=largefile.id).exists())
 
-    def test_delete_deletes_if_not_linked(self):
-        largefile = factory.make_LargeFile()
-        with post_commit_hooks:
-            largefile.delete()
-        self.assertFalse(LargeFile.objects.filter(id=largefile.id).exists())
-
     def test_deletes_content_asynchronously(self):
         self.patch(largefile_module, "delete_large_object_content_later")
         largefile = factory.make_LargeFile()

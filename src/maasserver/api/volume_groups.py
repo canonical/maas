@@ -37,7 +37,7 @@ from maasserver.models import (
     VolumeGroup,
 )
 from maasserver.utils.converters import human_readable_bytes
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_VOLUME_GROUP_FIELDS = (

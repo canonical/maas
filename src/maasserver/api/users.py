@@ -30,8 +30,8 @@ from maasserver.api.utils import (
 )
 from maasserver.models import User
 from maasserver.utils.orm import get_one
-from piston.models import Consumer
-from piston.utils import rc
+from piston3.models import Consumer
+from piston3.utils import rc
 
 
 class UsersHandler(OperationsHandler):

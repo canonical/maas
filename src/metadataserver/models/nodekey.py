@@ -18,16 +18,31 @@ __all__ = [
 
 from django.db.models import (
     CharField,
-    ForeignKey,
     Manager,
     Model,
+    OneToOneField,
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
+from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
-from piston.models import KEY_SIZE
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.models import (
+        KEY_SIZE,
+        Token,
+    )
+else:
+    from piston.models import (
+        KEY_SIZE,
+        Token,
+    )
 
 
 class NodeKeyManager(Manager):
@@ -58,7 +73,7 @@ class NodeKeyManager(Manager):
             service.
         :type node: Node
         :return: Token for the node to use.
-        :rtype: piston.models.Token
+        :rtype: piston3.models.Token
         """
         token = create_auth_token(get_node_init_user())
         self.create(node=node, token=token, key=token.key)
@@ -79,7 +94,7 @@ class NodeKeyManager(Manager):
         :type node: Node
         :return: An OAuth token, belonging to the node-init user, but
             uniquely associated with this node.
-        :rtype: piston.models.Token
+        :rtype: piston3.models.Token
         """
         nodekey = get_one(self.filter(node=node))
         if nodekey is None:
@@ -129,9 +144,9 @@ class NodeKey(CleanSave, Model):
 
     objects = NodeKeyManager()
 
-    node = ForeignKey(
-        'maasserver.Node', null=False, editable=False, unique=True)
-    token = ForeignKey(
-        'piston.Token', null=False, editable=False, unique=True)
+    node = OneToOneField(
+        'maasserver.Node', null=False, editable=False)
+    token = OneToOneField(
+        Token, null=False, editable=False)
     key = CharField(
         max_length=KEY_SIZE, null=False, editable=False, unique=True)

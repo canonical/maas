@@ -17,12 +17,12 @@ __all__ = [
     ]
 
 from maasserver.exceptions import Unauthorized
-from oauth import oauth
-from piston.authentication import (
+from piston3.authentication import (
     OAuthAuthentication,
     send_oauth_error,
 )
-from piston.utils import rc
+from piston3.oauth import OAuthError
+from piston3.utils import rc
 
 
 class OAuthUnauthorized(Unauthorized):
@@ -62,7 +62,7 @@ class MAASAPIAuthentication(OAuthAuthentication):
         if self.is_valid_request(request):
             try:
                 consumer, token, parameters = self.validate_token(request)
-            except oauth.OAuthError as error:
+            except OAuthError as error:
                 raise OAuthUnauthorized(error)
 
             if consumer and token:

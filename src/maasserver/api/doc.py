@@ -38,10 +38,10 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
 )
-from piston.authentication import NoAuthentication
-from piston.doc import generate_doc
-from piston.handler import BaseHandler
-from piston.resource import Resource
+from piston3.authentication import NoAuthentication
+from piston3.doc import generate_doc
+from piston3.handler import BaseHandler
+from piston3.resource import Resource
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 
 

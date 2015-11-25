@@ -87,7 +87,7 @@ from maasserver.storage_layouts import (
 )
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
-from piston.utils import rc
+from piston3.utils import rc
 from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
 from provisioningserver.power.poweraction import (
     PowerActionFail,

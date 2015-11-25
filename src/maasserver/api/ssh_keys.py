@@ -28,9 +28,9 @@ from maasserver.api.support import (
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
 from maasserver.models import SSHKey
-from piston.emitters import JSONEmitter
-from piston.handler import typemapper
-from piston.utils import rc
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
 
 
 DISPLAY_SSHKEY_FIELDS = ("id", "key")
@@ -61,7 +61,7 @@ class SSHKeysHandler(OperationsHandler):
                 sshkey, typemapper, None, DISPLAY_SSHKEY_FIELDS)
             stream = emitter.render(request)
             return HttpResponse(
-                stream, mimetype='application/json; charset=utf-8',
+                stream, content_type='application/json; charset=utf-8',
                 status=httplib.CREATED)
         else:
             raise MAASAPIValidationError(form.errors)

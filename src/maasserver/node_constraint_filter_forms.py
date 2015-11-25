@@ -39,6 +39,7 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
+from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
@@ -557,9 +558,9 @@ class AcquireNodeForm(RenamableFieldsForm):
                 # Try to expand 'arch' to all available 'arch/subarch'
                 # matches.
                 return architecture_wildcards[value]
-            raise ValidationError(
-                {self.get_field_name('arch'):
-                    ['Architecture not recognised.']})
+            set_form_error(
+                self, self.get_field_name('arch'),
+                'Architecture not recognised.')
         return None
 
     def clean_tags(self):
@@ -574,8 +575,8 @@ class AcquireNodeForm(RenamableFieldsForm):
                 unknown_tags = tag_names.difference(db_tag_names)
                 error_msg = 'No such tag(s): %s.' % ', '.join(
                     "'%s'" % tag for tag in unknown_tags)
-                raise ValidationError(
-                    {self.get_field_name('tags'): [error_msg]})
+                set_form_error(self, self.get_field_name('tags'), error_msg)
+                return None
             return tag_names
         return None
 
@@ -585,8 +586,8 @@ class AcquireNodeForm(RenamableFieldsForm):
             nonexistent_names = detect_nonexistent_zone_names([value])
             if len(nonexistent_names) > 0:
                 error_msg = "No such zone: '%s'." % value
-                raise ValidationError(
-                    {self.get_field_name('zone'): [error_msg]})
+                set_form_error(self, self.get_field_name('zone'), error_msg)
+                return None
             return value
         return None
 
@@ -597,8 +598,8 @@ class AcquireNodeForm(RenamableFieldsForm):
         nonexistent_names = detect_nonexistent_zone_names(value)
         if len(nonexistent_names) > 0:
             error_msg = "No such zone(s): %s." % ', '.join(nonexistent_names)
-            raise ValidationError(
-                {self.get_field_name('not_in_zone'): [error_msg]})
+            set_form_error(self, self.get_field_name('not_in_zone'), error_msg)
+            return None
         return value
 
     def _clean_subnet_specifiers(self, specifiers):

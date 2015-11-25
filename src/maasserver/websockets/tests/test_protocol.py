@@ -22,10 +22,7 @@ from crochet import wait_for_reactor
 from django.core.exceptions import ValidationError
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import protocol as protocol_module
@@ -65,7 +62,7 @@ from twisted.internet.defer import (
 from twisted.web.server import NOT_DONE_YET
 
 
-class TestWebSocketProtocol(MAASServerTestCase):
+class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     def make_protocol(self, patch_authenticate=True, transport_uri=''):
         self.patch(protocol_module, "PostgresListener")
@@ -557,7 +554,7 @@ class TestWebSocketProtocol(MAASServerTestCase):
         protocol.user = MagicMock()
 
         error_dict = {
-            "error": "bad"
+            "error": ["bad"]
         }
         self.patch(Handler, "execute").return_value = fail(
             ValidationError(error_dict))

@@ -56,7 +56,6 @@ from maasserver.tests.models import (
     MAASIPAddressFieldModel,
     XMLFieldModel,
 )
-from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import MockCalledOnceWith
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
@@ -335,9 +334,9 @@ class TestMACAddressField(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_mac, '00:11:222:33:44:55')
 
 
-class TestJSONObjectField(TestModelMixin, MAASServerTestCase):
+class TestJSONObjectField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_stores_types(self):
         values = [
@@ -375,9 +374,9 @@ class TestJSONObjectField(TestModelMixin, MAASServerTestCase):
         self.assertRaises(TypeError, JSONFieldModel.objects.get, value__gte=3)
 
 
-class TestXMLField(TestModelMixin, MAASServerTestCase):
+class TestXMLField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_loads_string(self):
         name = factory.make_string()
@@ -426,9 +425,9 @@ class TestEditableBinaryField(MAASServerTestCase):
         self.assertTrue(EditableBinaryField().editable)
 
 
-class TestMAASIPAddressField(TestModelMixin, MAASServerTestCase):
+class TestMAASIPAddressField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_uses_ip_comparison(self):
         ip_object = MAASIPAddressFieldModel.objects.create(
@@ -438,9 +437,9 @@ class TestMAASIPAddressField(TestModelMixin, MAASServerTestCase):
         self.assertItemsEqual([ip_object], results)
 
 
-class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
+class TestLargeObjectField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_stores_data(self):
         data = factory.make_string()
@@ -550,9 +549,9 @@ class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
             AssertionError, field.to_python, factory.make_string())
 
 
-class TestCIDRField(TestModelMixin, MAASServerTestCase):
+class TestCIDRField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_stores_cidr(self):
         cidr = '192.0.2.0/24'
@@ -572,9 +571,9 @@ class TestCIDRField(TestModelMixin, MAASServerTestCase):
         self.assertEqual(normalized_cidr, reload_object(instance).cidr)
 
 
-class TestIPv4CIDRField(TestModelMixin, MAASServerTestCase):
+class TestIPv4CIDRField(MAASServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_stores_cidr(self):
         cidr = '192.0.2.0/24'

@@ -238,7 +238,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content="test content",
             status=httplib.OK,
-            mimetype=b"text/plain; charset=utf-8")
+            content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
             logger.output, Not(Contains(build_request_repr(request))))
@@ -256,7 +256,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content="test content",
             status=httplib.OK,
-            mimetype=b"text/plain; charset=utf-8")
+            content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
             logger.output, Contains(response.content))
@@ -267,7 +267,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         response = HttpResponse(
             content=sample_binary_data,
             status=httplib.OK,
-            mimetype=b"application/octet-stream")
+            content_type=b"application/octet-stream")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
             logger.output,

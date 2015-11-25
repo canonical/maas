@@ -18,9 +18,9 @@ __all__ = [
 
 
 from django.db.models import (
-    ForeignKey,
     Manager,
     Model,
+    OneToOneField,
 )
 from maasserver.models.cleansave import CleanSave
 from metadataserver import DefaultMeta
@@ -93,6 +93,6 @@ class NodeUserData(CleanSave, Model):
 
     objects = NodeUserDataManager()
 
-    node = ForeignKey(
-        'maasserver.Node', null=False, editable=False, unique=True)
+    node = OneToOneField(
+        'maasserver.Node', null=False, editable=False)
     data = BinaryField(null=False)

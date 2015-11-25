@@ -23,13 +23,10 @@ __metaclass__ = type
 __all__ = []
 
 
+from django.apps import apps
 from django.contrib import admin
-from django.db.models import (
-    get_app,
-    get_models,
-)
 
 # Register models in the admin site.  When the DEBUG setting is enabled, the
 # webapp will serve an administrator UI at /admin.
-for model in get_models(get_app('metadataserver')):
+for model in apps.get_app_config('metadataserver').models.values():
     admin.site.register(model)

@@ -88,8 +88,7 @@ class APITestCaseBase(MAASTestCase):
     @transactional
     def setUp(self):
         super(APITestCaseBase, self).setUp()
-        self.logged_in_user = factory.make_User(
-            username='test', password='test')
+        self.logged_in_user = factory.make_User()
         self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
     @transactional

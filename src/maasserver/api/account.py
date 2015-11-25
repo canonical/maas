@@ -22,7 +22,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_mandatory_param
-from piston.utils import rc
+from piston3.utils import rc
 
 
 class AccountHandler(OperationsHandler):

@@ -16,9 +16,6 @@ __all__ = [
     "RegionServiceMaker",
 ]
 
-from itertools import chain
-import sys
-
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -81,42 +78,6 @@ class RegionServiceMaker:
         else:
             django_setup()
 
-    def _checkDatabase(self):
-        # Figure out if there are migrations yet to apply.
-        try:
-            from south import migration, models
-            # Limit the applications to `maasserver` and `metadataserver`
-            # instead of asking Django for a list of running applications
-            # because during testing Django has isolation issues: it returns
-            # different lists of running applications depending on what other
-            # tests have run, even if the sets of tests requested are from the
-            # same application.
-            apps = {"maasserver", "metadataserver"}
-            migrations = list(chain.from_iterable(
-                migration.Migrations(app) for app in apps))
-            migrations_applied = list(
-                models.MigrationHistory.objects.filter(app_name__in=apps))
-            migrations_unapplied = list(
-                migration.get_unapplied_migrations(
-                    migrations, migrations_applied))
-        except SystemExit:
-            raise
-        except KeyboardInterrupt:
-            raise
-        except:
-            _, error, _ = sys.exc_info()
-            raise SystemExit(
-                "The MAAS database cannot be used. Please "
-                "investigate: %s" % unicode(error).rstrip())
-        else:
-            if len(migrations_unapplied) > 0:
-                raise SystemExit(
-                    "The MAAS database schema is not yet fully installed: "
-                    "%d migration(s) are missing." % len(migrations_unapplied))
-            else:
-                # Things look good.
-                pass
-
     def _configureReactor(self):
         # Disable all database connections in the reactor.
         from maasserver.utils.orm import disable_all_database_connections
@@ -146,7 +107,6 @@ class RegionServiceMaker:
         self._configureThreads()
         self._configureLogging()
         self._configureDjango()
-        self._checkDatabase()
         self._configureReactor()
         self._configureCrochet()
 

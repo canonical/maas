@@ -21,7 +21,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_space import SpaceForm
 from maasserver.models import Space
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_SPACE_FIELDS = (

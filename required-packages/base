@@ -21,7 +21,7 @@ python-curtin
 python-dev
 python-distro-info
 python-django
-python-django-piston
+python-django-piston3
 python-django-south
 python-djorm-ext-pgarray
 python-docutils

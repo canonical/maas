@@ -609,7 +609,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             cluster_import_running=self.clusters_syncing,
             resources=json_resources)
         json_data = json.dumps(data)
-        return HttpResponse(json_data, mimetype='application/json')
+        return HttpResponse(json_data, content_type='application/json')
 
 
 class ImageDeleteView(HelpfulDeleteView):

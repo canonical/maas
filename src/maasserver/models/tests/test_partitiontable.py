@@ -180,7 +180,7 @@ class TestPartitionTable(MAASServerTestCase):
             "table_type": [
                 "Partition table on this node's boot disk must "
                 "be using 'MBR'."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_save_force_mbr_on_boot_disk_pxe_force_gpt_on_boot_disk_uefi(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
@@ -193,7 +193,7 @@ class TestPartitionTable(MAASServerTestCase):
             "table_type": [
                 "Partition table on this node's boot disk must "
                 "be using 'GPT'."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_save_no_force_on_none_boot_disk(self):
         node = factory.make_Node(bios_boot_method="uefi")
@@ -212,7 +212,7 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEquals({
             "block_device": [
                 "Cannot create a partition table on a logical volume."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_clean_no_partition_table_on_bcache(self):
         node = factory.make_Node()
@@ -226,4 +226,4 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertEquals({
             "block_device": [
                 "Cannot create a partition table on a Bcache volume."],
-            }, error.error_dict)
+            }, error.message_dict)

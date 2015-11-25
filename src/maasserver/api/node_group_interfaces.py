@@ -31,7 +31,7 @@ from maasserver.models import (
     NodeGroupInterface,
 )
 from netaddr import IPNetwork
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (

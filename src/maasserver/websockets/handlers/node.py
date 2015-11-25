@@ -116,7 +116,7 @@ class NodeHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             Node.nodes.filter(installable=True)
-                .select_related('nodegroup', 'pxe_mac', 'owner')
+                .select_related('nodegroup', 'boot_interface', 'owner')
                 .prefetch_related(
                     'interface_set__ip_addresses__subnet__vlan__fabric')
                 .prefetch_related('interface_set__ip_addresses__subnet__space')

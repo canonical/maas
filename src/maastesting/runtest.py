@@ -70,7 +70,16 @@ class MAASRunTest(runtest.RunTest):
         except KeyboardInterrupt:
             raise
         except:
-            return self._got_user_exception(sys.exc_info())
+            # TODO blake_r: Remove once we are using python3. This is needed
+            # because Django sets __cause__ manually on the exception and it
+            # does not set __traceback__. Since the traceback2 module is being
+            # used this causes an issue. Once python3 is used it handles the
+            # __traceback__ on __cause__ automatically.
+            # See: https://github.com/testing-cabal/testtools/issues/162
+            sysinfo = sys.exc_info()
+            if hasattr(sysinfo[1], '__cause__'):
+                sysinfo[1].__cause__.__traceback__ = None
+            return self._got_user_exception(sysinfo)
 
 
 class MAASTwistedRunTest(deferredruntest.AsynchronousDeferredRunTest):

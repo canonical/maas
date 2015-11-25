@@ -23,7 +23,7 @@ from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from piston.utils import rc
+from piston3.utils import rc
 
 
 def get_content_parameter(request):

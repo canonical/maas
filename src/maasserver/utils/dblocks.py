@@ -193,13 +193,6 @@ class DatabaseLockBase(tuple):
             to_shared[self.lock], to_shared[self.unlock]))
 
 
-def in_transaction():
-    """Are we in a transaction?"""
-    return (
-        connection.in_atomic_block or
-        len(connection.transaction_state) > 0)
-
-
 class DatabaseLock(DatabaseLockBase):
     """An advisory lock obtained with ``pg_advisory_lock``.
 
@@ -259,7 +252,7 @@ class DatabaseXactLock(DatabaseLockBase):
 
     def __enter__(self):
         """Obtain lock using pg_advisory_xact_lock()."""
-        if not in_transaction():
+        if not connection.in_atomic_block:
             raise DatabaseLockAttemptOutsideTransaction(self)
         with closing(connection.cursor()) as cursor:
             query = "SELECT %s(%%s, %%s)" % self.lock

@@ -220,11 +220,11 @@ class ExceptionMiddleware:
                 # Simple validation error: return the error message.
                 return HttpResponseBadRequest(
                     unicode(''.join(exception.messages)).encode(encoding),
-                    mimetype=b"text/plain; charset=%s" % encoding)
+                    content_type=b"text/plain; charset=%s" % encoding)
         elif isinstance(exception, PermissionDenied):
             return HttpResponseForbidden(
                 content=unicode(exception).encode(encoding),
-                mimetype=b"text/plain; charset=%s" % encoding)
+                content_type=b"text/plain; charset=%s" % encoding)
         elif isinstance(exception, ExternalProcessError):
             # Catch problems interacting with processes that the
             # appserver spawns, e.g. rndc.
@@ -236,7 +236,7 @@ class ExceptionMiddleware:
             response = HttpResponse(
                 content=unicode(exception).encode(encoding),
                 status=httplib.SERVICE_UNAVAILABLE,
-                mimetype=b"text/plain; charset=%s" % encoding)
+                content_type=b"text/plain; charset=%s" % encoding)
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
             return response
@@ -247,7 +247,7 @@ class ExceptionMiddleware:
             return HttpResponse(
                 content=unicode(exception).encode(encoding),
                 status=httplib.INTERNAL_SERVER_ERROR,
-                mimetype=b"text/plain; charset=%s" % encoding)
+                content_type=b"text/plain; charset=%s" % encoding)
 
     def log_exception(self, exception):
         exc_info = sys.exc_info()
@@ -351,7 +351,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         encoding = b'utf-8'
         response = HttpResponse(
             content=error_message.encode(encoding), status=status,
-            mimetype=b"text/plain; charset=%s" % encoding)
+            content_type=b"text/plain; charset=%s" % encoding)
         if status == httplib.SERVICE_UNAVAILABLE:
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)

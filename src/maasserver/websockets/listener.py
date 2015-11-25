@@ -201,7 +201,6 @@ class PostgresListener:
         """Start the database connection."""
         self.connection = self.createConnection()
         self.connection.connect()
-        self.connection.enter_transaction_management()
         self.connection.set_autocommit(True)
 
     @synchronous
@@ -214,7 +213,6 @@ class PostgresListener:
             connection = connection_wrapper.connection
             if connection is not None and not connection.closed:
                 connection_wrapper.commit()
-                connection_wrapper.leave_transaction_management()
                 connection_wrapper.close()
 
     def tryConnection(self):

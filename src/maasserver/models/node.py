@@ -84,7 +84,6 @@ from maasserver.fields import (
     MAASIPAddressField,
     MAC,
 )
-from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.filesystem import Filesystem
@@ -113,6 +112,7 @@ from maasserver.storage_layouts import (
     StorageLayoutMissingBootDiskError,
 )
 from maasserver.utils import strip_domain
+from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -128,7 +128,7 @@ from maasserver.utils.threads import (
 )
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
-from piston.models import Token
+import petname
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -148,6 +148,15 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.models import Token
+else:
+    from piston.models import Token
 
 
 maaslog = get_maas_logger("node")
@@ -356,7 +365,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         :param user: The user whose nodes to fetch
         :type user: User_
         :param token: The OAuth token associated with the Nodes.
-        :type token: piston.models.Token.
+        :type token: piston3.models.Token.
         :param ids: Optional set of IDs to filter by. If given, nodes whose
             system_ids are not in `ids` will be ignored.
         :type param_ids: Sequence
@@ -473,6 +482,11 @@ def fqdn_is_duplicate(node, fqdn):
     return False
 
 
+def get_default_zone():
+    """Return the ID of the default zone."""
+    return Zone.objects.get_default_zone().id
+
+
 # List of statuses for which it makes sense to release a node.
 RELEASABLE_STATUSES = [
     NODE_STATUS.ALLOCATED,
@@ -537,7 +551,7 @@ class Node(CleanSave, TimestampedModel):
         validators=[validate_hostname])
 
     status = IntegerField(
-        max_length=10, choices=NODE_STATUS_CHOICES, editable=False,
+        choices=NODE_STATUS_CHOICES, editable=False,
         default=NODE_STATUS.DEFAULT)
 
     owner = ForeignKey(
@@ -575,7 +589,7 @@ class Node(CleanSave, TimestampedModel):
 
     zone = ForeignKey(
         Zone, verbose_name="Physical zone",
-        default=Zone.objects.get_default_zone, editable=True, db_index=True,
+        default=get_default_zone, editable=True, db_index=True,
         on_delete=SET_DEFAULT)
 
     # Juju expects the following standard constraints, which are stored here
@@ -1503,14 +1517,9 @@ class Node(CleanSave, TimestampedModel):
         super(Node, self).delete()
 
     def set_random_hostname(self):
-        """Set `hostname` from a shuffled list of candidate names.
-
-        See `gen_candidate_names`.
-
-        http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
-        """
-        for new_hostname in gen_candidate_names():
-            self.hostname = "%s" % new_hostname
+        """Set a random `hostname`."""
+        while True:
+            self.hostname = petname.Generate(2, "-")
             try:
                 self.save()
             except ValidationError:

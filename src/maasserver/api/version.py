@@ -17,6 +17,7 @@ __all__ = [
     ]
 
 import httplib
+import json
 
 from django.http import HttpResponse
 from maasserver.api.support import AnonymousOperationsHandler
@@ -65,7 +66,8 @@ class VersionHandler(AnonymousOperationsHandler):
 
         }
         return HttpResponse(
-            version_info, mimetype='application/json; charset=utf-8',
+            json.dumps(version_info),
+            content_type='application/json; charset=utf-8',
             status=httplib.OK)
 
     @classmethod

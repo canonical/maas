@@ -63,7 +63,7 @@ SUBNET_NAME_VALIDATOR = RegexValidator('^[.: \w/-]+$')
 
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
-    return VLAN.objects.get_default_vlan()
+    return VLAN.objects.get_default_vlan().id
 
 
 def create_cidr(network, subnet_mask=None):

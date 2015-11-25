@@ -23,6 +23,7 @@ import sys
 
 from django.db import (
     connection,
+    reset_queries,
     transaction,
 )
 from maasserver.testing.dblocks import lock_held_in_other_thread
@@ -54,14 +55,14 @@ def divide_by_zero():
 
 
 @contextmanager
-def use_debug_cursor():
-    """Set `use_debug_cursor` on Django's default connection."""
-    use_debug_cursor = connection.use_debug_cursor
-    connection.use_debug_cursor = True
+def force_debug_cursor():
+    """Set `force_debug_cursor` on Django's default connection."""
+    force_debug_cursor = connection.force_debug_cursor
+    connection.force_debug_cursor = True
     try:
         yield
     finally:
-        connection.use_debug_cursor = use_debug_cursor
+        connection.force_debug_cursor = force_debug_cursor
 
 
 def capture_queries_while_holding_lock(lock):
@@ -70,8 +71,8 @@ def capture_queries_while_holding_lock(lock):
     Return as a single string with each statement separated by new-line "--"
     new-line.
     """
-    with use_debug_cursor():
-        del connection.queries[:]
+    with force_debug_cursor():
+        reset_queries()
         with lock:
             pass  # Just being here is enough.
     return "\n--\n".join(

@@ -21,7 +21,6 @@ from metadataserver.nodeinituser import (
     get_node_init_user,
     user_name,
 )
-from testtools import ExpectedException
 
 
 class TestNodeInitUser(MAASServerTestCase):
@@ -38,5 +37,10 @@ class TestNodeInitUser(MAASServerTestCase):
 
     def test_node_init_user_has_no_profile(self):
         user = get_node_init_user()
-        with ExpectedException(UserProfile.DoesNotExist):
-            user.userprofile
+        profile = None
+        try:
+            profile = user.userprofile
+        except UserProfile.DoesNotExist:
+            # Expected.
+            pass
+        self.assertIsNone(profile)

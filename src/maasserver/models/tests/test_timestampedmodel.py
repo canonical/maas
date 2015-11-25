@@ -22,12 +22,11 @@ from random import randint
 
 from django.db import transaction
 from maasserver.models.timestampedmodel import now
-from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.tests.models import TimestampedModelTestModel
-from maastesting.djangotestcase import (
-    DjangoTransactionTestCase,
-    TestModelMixin,
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
 )
+from maasserver.tests.models import TimestampedModelTestModel
 
 
 def make_time_in_the_recent_past():
@@ -35,10 +34,10 @@ def make_time_in_the_recent_past():
     return datetime.now() - many_seconds_ago
 
 
-class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
+class TimestampedModelTest(MAASTransactionServerTestCase):
     """Testing for the class `TimestampedModel`."""
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_created_populated_when_object_saved(self):
         obj = TimestampedModelTestModel()
@@ -83,12 +82,6 @@ class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
         self.assertEquals(created, obj.created)
         self.assertEquals(created, obj.updated)
 
-
-class TimestampedModelTransactionalTest(
-        TestModelMixin, DjangoTransactionTestCase):
-
-    app = 'maasserver.tests'
-
     def test_created_bracketed_by_before_and_after_time(self):
         before = now()
         obj = TimestampedModelTestModel()
@@ -106,6 +99,14 @@ class TimestampedModelTransactionalTest(
         obj.save()
         self.assertLessEqual(old_updated, obj.updated)
 
+    def test_now_returns_transaction_time(self):
+        date_now = now()
+        # Perform a write database operation.
+        obj = TimestampedModelTestModel()
+        obj.save()
+        transaction.commit()
+        self.assertLessEqual(date_now, now())
+
 
 class UtilitiesTest(MAASServerTestCase):
 
@@ -115,14 +116,3 @@ class UtilitiesTest(MAASServerTestCase):
     def test_now_returns_same_datetime_inside_transaction(self):
         date_now = now()
         self.assertEqual(date_now, now())
-
-
-class UtilitiesTransactionalTest(DjangoTransactionTestCase):
-
-    def test_now_returns_transaction_time(self):
-        date_now = now()
-        # Perform a write database operation.
-        obj = TimestampedModelTestModel()
-        obj.save()
-        transaction.commit()
-        self.assertLessEqual(date_now, now())

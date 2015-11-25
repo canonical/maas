@@ -16,8 +16,10 @@ __all__ = []
 
 from base64 import b64encode
 
-from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.djangotestcase import TestModelMixin
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.factory import factory
 from metadataserver.fields import (
     Bin,
@@ -49,10 +51,10 @@ class TestBin(MAASServerTestCase):
             Bin(example_bytes).__emittable__())
 
 
-class TestBinaryField(TestModelMixin, MAASServerTestCase):
+class TestBinaryField(MAASTransactionServerTestCase):
     """Test BinaryField.  Uses BinaryFieldModel test model."""
 
-    app = 'metadataserver.tests'
+    apps = ['metadataserver.tests']
 
     def test_stores_and_retrieves_None(self):
         binary_item = BinaryFieldModel()

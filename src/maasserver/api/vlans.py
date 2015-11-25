@@ -23,7 +23,7 @@ from maasserver.models import (
     Fabric,
     VLAN,
 )
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_VLAN_FIELDS = (

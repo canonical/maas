@@ -371,8 +371,7 @@ class TestNode(MAASServerTestCase):
 
         hostnames = [existing_node.hostname, "new-hostname"]
         self.patch(
-            node_module, "gen_candidate_names",
-            lambda: iter(hostnames))
+            node_module.petname, "Generate").side_effect = hostnames
 
         node = factory.make_Node()
         node.set_random_hostname()
@@ -1862,7 +1861,7 @@ class TestNode(MAASServerTestCase):
         node.installable = True
         exception = self.assertRaises(ValidationError, node.full_clean)
         self.assertEqual(
-            exception.error_dict,
+            exception.message_dict,
             {'architecture':
                 ['Architecture must be defined for installable nodes.']})
 

@@ -22,9 +22,9 @@ from crochet import TimeoutError
 from django.db.models import (
     BooleanField,
     CharField,
-    ForeignKey,
     IntegerField,
     Manager,
+    OneToOneField,
 )
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.boot_images import (
@@ -37,15 +37,12 @@ from maasserver.enum import (
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
+from maasserver.fields import DomainNameField
 from maasserver.models.bootresource import BootResource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
 from maasserver.rpc import getClientFor
-from maasserver.utils.dns import validate_domain_name
-from piston.models import (
-    KEY_SIZE,
-    Token,
-)
+from maasserver.utils.django import has_builtin_migrations
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
@@ -56,7 +53,21 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromUCSM,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from south.modelsinspector import add_introspection_rules
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.models import (
+        KEY_SIZE,
+        Token,
+    )
+else:
+    from piston.models import (
+        KEY_SIZE,
+        Token,
+    )
 
 
 class NodeGroupManager(Manager):
@@ -136,31 +147,6 @@ class NodeGroupManager(Manager):
             ]
 
 
-class DomainNameField(CharField):
-    """Custom Django field that strips whitespace and trailing '.' characters
-    from DNS domain names before validating and saving to the database. Also,
-    validates that the domain name is valid according to RFCs 952 and 1123.
-    (Note that this field type should NOT be used for hostnames, since the set
-    of valid hostnames is smaller than the set of valid domain names.)
-    """
-    def __init__(self, *args, **kwargs):
-        validators = kwargs.pop('validators', [])
-        validators.append(validate_domain_name)
-        kwargs['validators'] = validators
-        super(DomainNameField, self).__init__(*args, **kwargs)
-
-    # Here we are using (abusing?) the to_pytion() function to coerce and
-    # normalize this type. Django does not have a function intended purely
-    # to normalize before saving to the database, so to_python() is the next
-    # closest alternative. For more information, see:
-    # https://docs.djangoproject.com/en/1.6/ref/forms/validation/
-    # https://code.djangoproject.com/ticket/6362
-    def to_python(self, value):
-        value = super(DomainNameField, self).to_python(value)
-        value = value.strip().rstrip('.')
-        return value
-
-
 NODEGROUP_CLUSTER_NAME_TEMPLATE = "Cluster %(uuid)s"
 
 
@@ -183,7 +169,7 @@ class NodeGroup(TimestampedModel):
         default=NODEGROUP_STATUS.DEFAULT)
 
     # Credentials for the worker to access the API with.
-    api_token = ForeignKey(Token, null=False, editable=False, unique=True)
+    api_token = OneToOneField(Token, null=False, editable=False, unique=True)
     api_key = CharField(
         max_length=KEY_SIZE, null=False, blank=False, editable=False,
         unique=True)
@@ -489,6 +475,3 @@ class NodeGroup(TimestampedModel):
             return client(
                 EnlistNodesFromMicrosoftOCS, user=user, ip=ip, port=port,
                 username=username, password=password, accept_all=accept_all)
-
-add_introspection_rules(
-    [], ["^maasserver\.models\.nodegroup\.DomainNameField"])

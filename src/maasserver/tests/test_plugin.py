@@ -14,35 +14,26 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from operator import setitem
-import random
-
 import crochet
 from django.db import connections
-from django.db.backends import BaseDatabaseWrapper
+from django.db.backends.base.base import BaseDatabaseWrapper
 from maasserver import eventloop
 from maasserver.plugin import (
     Options,
     RegionServiceMaker,
 )
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     disable_all_database_connections,
     DisabledDatabaseConnection,
     enable_all_database_connections,
 )
-from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
 from provisioningserver.utils.twisted import (
     asynchronous,
     ThreadPool,
 )
-from south import migration
 from testtools import monkey
 from testtools.matchers import IsInstance
 from twisted.application.service import MultiService
@@ -82,8 +73,6 @@ class TestRegionServiceMaker(MAASTestCase):
         self.patch_autospec(logger, "basicConfig")
         # Enable database access in the reactor just for these tests.
         asynchronous(enable_all_database_connections, 5)()
-        # _checkDatabase() is tested separately; see later.
-        self.patch_autospec(RegionServiceMaker, "_checkDatabase")
         import_websocket_handlers()
 
     def tearDown(self):
@@ -119,9 +108,6 @@ class TestRegionServiceMaker(MAASTestCase):
             "Not all services are named.")
         self.assertThat(logger.basicConfig, MockCalledOnceWith())
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
-        self.assertThat(
-            RegionServiceMaker._checkDatabase,
-            MockCalledOnceWith(service_maker))
 
     @asynchronous(timeout=5)
     def test_configures_thread_pool(self):
@@ -159,68 +145,3 @@ class TestRegionServiceMaker(MAASTestCase):
         self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(Options())
         self.assertConnectionsDisabled()
-
-
-class TestRegionServiceMakerDatabaseChecks(MAASServerTestCase):
-    """Tests for `maasserver.plugin.RegionServiceMaker._checkDatabase`."""
-
-    def setUp(self):
-        super(TestRegionServiceMakerDatabaseChecks, self).setUp()
-        import_websocket_handlers()
-
-    @asynchronous(timeout=5)
-    def test__checks_database_connectivity_early(self):
-        exception_type = factory.make_exception_type()
-        service_maker = RegionServiceMaker("Harry", "Hill")
-        _checkDatabase = self.patch_autospec(service_maker, "_checkDatabase")
-        _checkDatabase.side_effect = exception_type
-        # Disable _configureThreads() as it's too invasive right now.
-        self.patch_autospec(service_maker, "_configureThreads")
-        self.patch_autospec(eventloop.loop, "populate")
-        self.assertRaises(exception_type, service_maker.makeService, Options())
-        self.assertThat(_checkDatabase, MockCalledOnceWith())
-        self.assertThat(eventloop.loop.populate, MockNotCalled())
-
-    def test__completes_quietly_if_database_can_be_connected_to(self):
-        service_maker = RegionServiceMaker("Harry", "Hill")
-        try:
-            service_maker._checkDatabase()
-        except SystemExit as error:
-            # Django/South sometimes declares that all migrations have been
-            # applied, sometimes it declares that none have been applied, and
-            # it appears to depend on what other tests have run or are due to
-            # run. This is highly irritating. This workaround is ugly and
-            # diminishes the value of this test, but it also avoids a long and
-            # expensive diving expedition into Django's convoluted innards.
-            self.assertDocTestMatches(
-                "The MAAS database schema is not yet fully installed: "
-                "... migration(s) are missing.", unicode(error))
-        else:
-            # This is what was meant to happen.
-            pass
-
-    def test__complains_if_database_cannot_be_connected_to(self):
-        # Disable all database connections in this thread.
-        for alias in connections:
-            self.addCleanup(setitem, connections, alias, connections[alias])
-            connections[alias] = DisabledDatabaseConnection()
-
-        service_maker = RegionServiceMaker("Harry", "Hill")
-        error = self.assertRaises(SystemExit, service_maker._checkDatabase)
-        self.assertDocTestMatches(
-            "The MAAS database cannot be used. Please investigate: ...",
-            unicode(error))
-
-    def test__complains_if_not_all_migrations_have_been_applied(self):
-
-        def random_unapplied(migrations, _):
-            # Always declare that one migration has not been applied.
-            return [random.choice(migrations)]
-
-        self.patch(migration, "get_unapplied_migrations", random_unapplied)
-
-        service_maker = RegionServiceMaker("Harry", "Hill")
-        error = self.assertRaises(SystemExit, service_maker._checkDatabase)
-        self.assertEqual(
-            "The MAAS database schema is not yet fully installed: "
-            "1 migration(s) are missing.", unicode(error))

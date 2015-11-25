@@ -50,9 +50,9 @@ from maasserver.models import (
     BootResourceFile,
 )
 from maasserver.utils.orm import post_commit_do
-from piston.emitters import JSONEmitter
-from piston.handler import typemapper
-from piston.utils import rc
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
 
 
 TYPE_MAPPING = {
@@ -172,7 +172,7 @@ class BootResourcesHandler(OperationsHandler):
             ]
         stream = json_object(resource_list, request)
         return HttpResponse(
-            stream, mimetype='application/json; charset=utf-8',
+            stream, content_type='application/json; charset=utf-8',
             status=httplib.OK)
 
     @admin_method
@@ -218,7 +218,7 @@ class BootResourcesHandler(OperationsHandler):
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
-            stream, mimetype='application/json; charset=utf-8',
+            stream, content_type='application/json; charset=utf-8',
             status=httplib.CREATED)
 
     @admin_method
@@ -248,7 +248,7 @@ class BootResourceHandler(OperationsHandler):
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
-            stream, mimetype='application/json; charset=utf-8',
+            stream, content_type='application/json; charset=utf-8',
             status=httplib.OK)
 
     @admin_method

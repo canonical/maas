@@ -51,9 +51,9 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from piston.doc import HandlerDocumentation
-from piston.handler import BaseHandler
-from piston.resource import Resource
+from piston3.doc import HandlerDocumentation
+from piston3.handler import BaseHandler
+from piston3.resource import Resource
 from provisioningserver.power.schema import make_json_field
 from testtools.matchers import (
     AfterPreprocessing,

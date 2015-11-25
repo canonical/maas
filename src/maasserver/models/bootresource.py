@@ -308,7 +308,7 @@ class BootResource(CleanSave, TimestampedModel):
     objects = BootResourceManager()
 
     rtype = IntegerField(
-        max_length=10, choices=BOOT_RESOURCE_TYPE_CHOICES, editable=False)
+        choices=BOOT_RESOURCE_TYPE_CHOICES, editable=False)
 
     name = CharField(max_length=255, blank=False)
 

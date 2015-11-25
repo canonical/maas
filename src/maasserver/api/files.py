@@ -37,9 +37,9 @@ from maasserver.exceptions import (
     MAASAPINotFound,
 )
 from maasserver.models import FileStorage
-from piston.emitters import JSONEmitter
-from piston.handler import typemapper
-from piston.utils import rc
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
 
 
 def get_file_by_name(handler, request):
@@ -146,7 +146,7 @@ class FileHandler(OperationsHandler):
             return response
         stream = json_file_storage(stored_file, request)
         return HttpResponse(
-            stream, mimetype='application/json; charset=utf-8',
+            stream, content_type='application/json; charset=utf-8',
             status=httplib.OK)
 
     @operation(idempotent=False)

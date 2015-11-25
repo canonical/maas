@@ -32,23 +32,22 @@ from json import (
 )
 import re
 
+import django
+from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import connections
 from django.db.models import (
     BinaryField,
+    CharField,
     Field,
     GenericIPAddressField,
     IntegerField,
     SubfieldBase,
 )
 from django.db.models.fields.subclassing import Creator
-from django.forms import (
-    CharField,
-    ChoiceField,
-    ModelChoiceField,
-)
 from django.utils.encoding import force_text
+from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import (
     get_one,
     validate_in_transaction,
@@ -58,7 +57,12 @@ from netaddr import (
     IPNetwork,
 )
 import psycopg2.extensions
-from south.modelsinspector import add_introspection_rules
+
+
+try:
+    from south.modelsinspector import add_introspection_rules
+except ImportError:
+    add_introspection_rules = None
 
 
 MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\s*$')
@@ -99,20 +103,22 @@ def validate_mac(value):
 # them just fine.
 # See http://south.aeracode.org/docs/customfields.html#extending-introspection
 # for details.
-add_introspection_rules(
-    [], [
-        "^maasserver\.fields\.MACAddressField",
-        "^maasserver\.fields\.JSONObjectField",
-        "^maasserver\.fields\.XMLField",
-        "^maasserver\.fields\.EditableBinaryField",
-        "^maasserver\.fields\.MAASIPAddressField",
-        "^maasserver\.fields\.LargeObjectField",
-        "^maasserver\.fields\.CIDRField",
-        "^maasserver\.fields\.IPv4CIDRField",
-    ])
+if add_introspection_rules is not None:
+    add_introspection_rules(
+        [], [
+            "^maasserver\.fields\.MACAddressField",
+            "^maasserver\.fields\.JSONObjectField",
+            "^maasserver\.fields\.XMLField",
+            "^maasserver\.fields\.EditableBinaryField",
+            "^maasserver\.fields\.MAASIPAddressField",
+            "^maasserver\.fields\.LargeObjectField",
+            "^maasserver\.fields\.CIDRField",
+            "^maasserver\.fields\.IPv4CIDRField",
+            "^maasserver\.fields\.DomainNameField",
+        ])
 
 
-class NodeGroupFormField(ModelChoiceField):
+class NodeGroupFormField(forms.ModelChoiceField):
     """Form field: reference to a :class:`NodeGroup`.
 
     Node groups are identified by their subnets.  More precisely: this
@@ -200,15 +206,15 @@ class NodeGroupFormField(ModelChoiceField):
         return nodegroup
 
 
-class StrippedCharField(CharField):
+class StrippedCharField(forms.CharField):
     """A CharField that will strip surrounding whitespace before validation."""
 
     def clean(self, value):
         value = self.to_python(value).strip()
-        return super(CharField, self).clean(value)
+        return super(StrippedCharField, self).clean(value)
 
 
-class VerboseRegexField(CharField):
+class VerboseRegexField(forms.CharField):
 
     def __init__(self, regex, message, *args, **kwargs):
         """A field that validates its value with a regular expression.
@@ -434,6 +440,12 @@ class EditableBinaryField(BinaryField):
         super(EditableBinaryField, self).__init__(*args, **kwargs)
         self.editable = True
 
+    def deconstruct(self):
+        # Override deconstruct not to fail on the removal of the 'editable'
+        # field: the Django migration module assumes the field has its default
+        # value (False).
+        return Field.deconstruct(self)
+
 
 class MAASIPAddressField(GenericIPAddressField):
     """A version of GenericIPAddressField with a custom get_internal_type().
@@ -537,6 +549,15 @@ class LargeObjectField(IntegerField):
         self.block_size = kwargs.pop('block_size', 1 << 16)
         super(LargeObjectField, self).__init__(*args, **kwargs)
 
+    # In django 1.8 this is a property and is needed. To support upgrades
+    # from MAAS <2.0 we need to support running under django 1.6.
+    if django.VERSION >= (1, 7):
+        @property
+        def validators(self):
+            # No validation. IntegerField will add incorrect validation. This
+            # removes that validation.
+            return []
+
     def db_type(self, connection):
         """Returns the database column data type for LargeObjectField."""
         # oid is the column type postgres uses to reference a large object
@@ -589,6 +610,8 @@ class CIDRField(Field):
         return 'cidr'
 
     def get_prep_value(self, value):
+        if value is None or value == '':
+            return None
         return parse_cidr(value)
 
     def from_db_value(self, value, expression, connection, context):
@@ -597,6 +620,8 @@ class CIDRField(Field):
         return parse_cidr(value)
 
     def to_python(self, value):
+        if value is None or value == '':
+            return None
         if isinstance(value, IPNetwork):
             return unicode(value)
         if not value:
@@ -605,7 +630,7 @@ class CIDRField(Field):
 
     def formfield(self, **kwargs):
         defaults = {
-            'form_class': CharField,
+            'form_class': forms.CharField,
         }
         defaults.update(kwargs)
         return super(CIDRField, self).formfield(**defaults)
@@ -628,7 +653,7 @@ class IPv4CIDRField(CIDRField):
         return unicode(cidr.cidr)
 
 
-class IPListFormField(CharField):
+class IPListFormField(forms.CharField):
     """Accepts a space/comma separated list of IP addresses.
 
     This field normalizes the list to a space-separated list.
@@ -651,7 +676,7 @@ class IPListFormField(CharField):
             return ' '.join(ips)
 
 
-class CaseInsensitiveChoiceField(ChoiceField):
+class CaseInsensitiveChoiceField(forms.ChoiceField):
     """ChoiceField that allows the input to be case insensitive."""
 
     def to_python(self, value):
@@ -660,7 +685,7 @@ class CaseInsensitiveChoiceField(ChoiceField):
         return super(CaseInsensitiveChoiceField, self).to_python(value)
 
 
-class SpecifierOrModelChoiceField(ModelChoiceField):
+class SpecifierOrModelChoiceField(forms.ModelChoiceField):
     """ModelChoiceField which is also able to accept input in the format
     of a specifiers string.
     """
@@ -679,3 +704,33 @@ class SpecifierOrModelChoiceField(ModelChoiceField):
                 else:
                     return self.queryset.get(id=object_id)
             raise e
+
+
+class DomainNameField(CharField):
+    """Custom Django field that strips whitespace and trailing '.' characters
+    from DNS domain names before validating and saving to the database. Also,
+    validates that the domain name is valid according to RFCs 952 and 1123.
+    (Note that this field type should NOT be used for hostnames, since the set
+    of valid hostnames is smaller than the set of valid domain names.)
+    """
+    def __init__(self, *args, **kwargs):
+        validators = kwargs.pop('validators', [])
+        validators.append(validate_domain_name)
+        kwargs['validators'] = validators
+        super(DomainNameField, self).__init__(*args, **kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(DomainNameField, self).deconstruct()
+        del kwargs['validators']
+        return name, path, args, kwargs
+
+    # Here we are using (abusing?) the to_pytion() function to coerce and
+    # normalize this type. Django does not have a function intended purely
+    # to normalize before saving to the database, so to_python() is the next
+    # closest alternative. For more information, see:
+    # https://docs.djangoproject.com/en/1.6/ref/forms/validation/
+    # https://code.djangoproject.com/ticket/6362
+    def to_python(self, value):
+        value = super(DomainNameField, self).to_python(value)
+        value = value.strip().rstrip('.')
+        return value

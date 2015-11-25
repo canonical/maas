@@ -24,7 +24,7 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.utils.orm import get_one
-from piston.utils import rc
+from piston3.utils import rc
 
 
 class LicenseKeysHandler(OperationsHandler):

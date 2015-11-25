@@ -38,9 +38,11 @@ from maasserver.models import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.tests.models import GenericTestModel
-from maastesting.djangotestcase import TestModelMixin
 from testtools.matchers import Equals
 
 
@@ -153,14 +155,15 @@ class TestHelpers(MAASServerTestCase):
             AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
-class TestMAASModelForm(TestModelMixin, MAASServerTestCase):
+class TestMAASModelForm(MAASTransactionServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_model_class_from_UI_has_hidden_field(self):
         class TestClass(MAASModelForm):
             class Meta:
                 model = GenericTestModel
+                fields = ['field']
 
         form = TestClass(ui_submission=True)
         self.assertIn('ui_submission', form.fields)
@@ -172,6 +175,7 @@ class TestMAASModelForm(TestModelMixin, MAASServerTestCase):
         class TestClass(MAASModelForm):
             class Meta:
                 model = GenericTestModel
+                fields = ['field']
 
         form = TestClass()
         self.assertNotIn('ui_submission', form.fields)

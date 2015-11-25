@@ -231,7 +231,8 @@ lint-css:
 # all the files in cache.
 lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint-py: bin/flake8
-	@find $(sources) -name '*.py' ! -path '*/migrations/*' -print0 \
+	@find $(sources) -name '*.py' ! -path '*/migrations/*' ! \
+			-path '*/south_migrations/*' -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
 	    --config=/dev/null
 	@utilities/check-maaslog-exception
@@ -243,7 +244,7 @@ lint-doc:
 # doesn't understand Sphinx's extensions, and doesn't grok linking
 # between documents, hence complaints about broken links. However,
 # Sphinx itself warns about lint when building the docs.
-lint-rst: sources = README HACKING.txt schema/README.rst
+lint-rst: sources = README HACKING.txt
 lint-rst: bin/rst-lint
 	@find $(sources) -type f \
 	    -printf 'Linting %p...\n' \
@@ -356,16 +357,7 @@ dbharness: bin/database
 	bin/database --preserve shell
 
 syncdb: bin/maas-region-admin bin/database
-	$(dbrun) bin/maas-region-admin syncdb --noinput
-	$(dbrun) bin/maas-region-admin migrate maasserver --noinput
-	$(dbrun) bin/maas-region-admin migrate metadataserver --noinput
-
-# (Re)write the baseline schema.
-schema/baseline.sql: bin/database
-	$(dbrun) pg_dump -h $(CURDIR)/db -d maas --no-owner --no-privileges -f $@
-
-# Synchronise the database, and update the baseline schema.
-baseline-schema: syncdb schema/baseline.sql
+	$(dbrun) bin/maas-region-admin dbupgrade
 
 define phony_targets
   build

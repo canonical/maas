@@ -659,7 +659,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEquals({
             "node": ["This field cannot be blank."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_requires_mac_address(self):
         interface = PhysicalInterface(
@@ -668,7 +668,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEquals({
             "mac_address": ["This field cannot be blank."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_mac_address_must_be_unique(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -681,7 +681,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
             "mac_address": [
                 "This MAC address is already in use by %s." % (
                     interface.node.hostname)]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_cannot_have_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -690,7 +690,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=parent.node, parents=[parent])
         self.assertEquals({
             "parents": ["A physical interface cannot have parents."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_can_be_disabled(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -758,7 +758,7 @@ class VLANInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, parents=[parent1, parent2])
         self.assertEquals({
             "parents": ["VLAN interface must have exactly one parent."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_must_have_one_parent(self):
         error = self.assertRaises(
@@ -766,7 +766,7 @@ class VLANInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.VLAN)
         self.assertEquals({
             "parents": ["VLAN interface must have exactly one parent."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_parent_cannot_be_VLAN(self):
         physical = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -778,7 +778,7 @@ class VLANInterfaceTest(MAASServerTestCase):
             "parents": [
                 "VLAN interface can only be created on a physical "
                 "or bond interface."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_node_set_to_parent_node(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -875,7 +875,7 @@ class BondInterfaceTest(MAASServerTestCase):
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEquals({
             "mac_address": ["This field cannot be blank."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_parent_interfaces_must_belong_to_same_node(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -885,7 +885,7 @@ class BondInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.BOND, parents=[parent1, parent2])
         self.assertEquals({
             "parents": ["Parent interfaces do not belong to the same node."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_parent_interfaces_must_be_physical(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -895,7 +895,7 @@ class BondInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.BOND, parents=[parent1, vlan1])
         self.assertEquals({
             "parents": ["Only physical interfaces can be bonded."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_can_use_parents_mac_address(self):
         node = factory.make_Node()
@@ -929,7 +929,7 @@ class BondInterfaceTest(MAASServerTestCase):
             "mac_address": [
                 "This MAC address is already in use by %s." % (
                     other_nic.node.hostname)]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_node_is_set_to_parents_node(self):
         node = factory.make_Node()
@@ -986,7 +986,7 @@ class UnknownInterfaceTest(MAASServerTestCase):
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEquals({
             "node": ["This field must be blank."]
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_mac_address_must_be_unique(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -997,7 +997,7 @@ class UnknownInterfaceTest(MAASServerTestCase):
             "mac_address": [
                 "This MAC address is already in use by %s." % (
                     interface.node.hostname)]
-            }, error.error_dict)
+            }, error.message_dict)
 
 
 class UpdateIpAddressesTest(MAASServerTestCase):

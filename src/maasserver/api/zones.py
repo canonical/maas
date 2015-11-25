@@ -26,7 +26,7 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 from maasserver.utils.orm import get_one
-from piston.utils import rc
+from piston3.utils import rc
 
 
 class ZoneHandler(OperationsHandler):

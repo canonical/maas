@@ -56,8 +56,8 @@ from mock import (
     call,
     sentinel,
 )
-from piston.authentication import initialize_server_request
-from piston.models import Nonce
+from piston3.authentication import initialize_server_request
+from piston3.models import Nonce
 from testtools.matchers import (
     Contains,
     Equals,
@@ -415,7 +415,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             response = HttpResponse(
                 content=content,
                 status=httplib.OK,
-                mimetype=b"text/plain; charset=utf-8")
+                content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response
 
@@ -457,7 +457,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             response = HttpResponse(
                 content='',
                 status=httplib.OK,
-                mimetype=b"text/plain; charset=utf-8")
+                content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response
 

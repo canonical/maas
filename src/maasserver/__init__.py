@@ -18,7 +18,7 @@ __all__ = [
     ]
 
 import logging
-import os.path
+import os
 import sys
 
 
@@ -36,9 +36,22 @@ class DefaultMeta:
 
 
 def execute_from_command_line():
-    # On Vivid, we need to explicitly use Django 1.6.
-    if os.path.isdir("/usr/lib/django16"):
-        sys.path.insert(1, "/usr/lib/django16")
+    # When the "dbupgrade --south" command is performed we need to inject
+    # django 1.6 to be used and south as an INSTALLED_APP before
+    # django is ever imported. The dbupgrade parent command will set
+    # 'DJANGO16_SOUTH_MODULES_PATH' in the environment.
+    if 'DJANGO16_SOUTH_MODULES_PATH' in os.environ:
+        # Inject django 1.6 and south path provided by the parent process.
+        sys.path.insert(0, os.environ['DJANGO16_SOUTH_MODULES_PATH'])
+        import django
+        assert django.get_version() == "1.6.6"
+
+        # Install south.
+        from django.conf import settings
+        settings.INSTALLED_APPS += (
+            'south',
+        )
+
     # Limit concurrency in all thread-pools to ONE.
     from maasserver.utils import threads
     threads.install_default_pool(maxthreads=1)
@@ -48,6 +61,7 @@ def execute_from_command_line():
     from twisted.internet import reactor
     assert not reactor.running, "The reactor has been started too early."
     reactor.callFromThread(orm.disable_all_database_connections)
+
     # Hand over to Django.
     from django.core import management
     management.execute_from_command_line()

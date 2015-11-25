@@ -149,7 +149,7 @@ def get_queried_node(request, for_mac=None):
 
 def make_text_response(contents):
     """Create a response containing `contents` as plain text."""
-    return HttpResponse(contents, mimetype='text/plain')
+    return HttpResponse(contents, content_type='text/plain')
 
 
 def make_list_response(items):
@@ -661,7 +661,7 @@ class UserDataHandler(MetadataViewHandler):
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
             return HttpResponse(
-                user_data, mimetype='application/octet-stream')
+                user_data, content_type='application/octet-stream')
         except NodeUserData.DoesNotExist:
             logger.info(
                 "No user data registered for node named %s" % node.hostname)
@@ -677,7 +677,7 @@ class CurtinUserDataHandler(MetadataViewHandler):
         user_data = get_curtin_userdata(node)
         return HttpResponse(
             user_data,
-            mimetype='application/octet-stream')
+            content_type='application/octet-stream')
 
 
 class CommissioningScriptsHandler(MetadataViewHandler):
@@ -687,7 +687,7 @@ class CommissioningScriptsHandler(MetadataViewHandler):
         check_version(version)
         return HttpResponse(
             CommissioningScript.objects.get_archive(),
-            mimetype='application/tar')
+            content_type='application/tar')
 
 
 class EnlistMetaDataHandler(OperationsHandler):
@@ -728,7 +728,8 @@ class EnlistUserDataHandler(OperationsHandler):
         check_version(version)
         nodegroup = find_nodegroup(request)
         return HttpResponse(
-            get_enlist_userdata(nodegroup=nodegroup), mimetype="text/plain")
+            get_enlist_userdata(nodegroup=nodegroup),
+            content_type="text/plain")
 
 
 class EnlistVersionIndexHandler(OperationsHandler):
@@ -747,13 +748,13 @@ class AnonMetaDataHandler(VersionIndexHandler):
         """Render and return a preseed script for enlistment."""
         nodegroup = find_nodegroup(request)
         return HttpResponse(
-            get_enlist_preseed(nodegroup=nodegroup), mimetype="text/plain")
+            get_enlist_preseed(nodegroup=nodegroup), content_type="text/plain")
 
     @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):
         """Render and return a preseed script for the given node."""
         node = get_object_or_404(Node, system_id=system_id)
-        return HttpResponse(get_preseed(node), mimetype="text/plain")
+        return HttpResponse(get_preseed(node), content_type="text/plain")
 
     @operation(idempotent=False)
     def netboot_off(self, request, version=None, system_id=None):

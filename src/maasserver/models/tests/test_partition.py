@@ -231,7 +231,7 @@ class TestPartition(MAASServerTestCase):
             "size": [
                 "Partition cannot be saved; not enough free space "
                 "on the block device."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_validate_enough_space_for_resize_partition(self):
         partition_table = factory.make_PartitionTable()
@@ -242,7 +242,7 @@ class TestPartition(MAASServerTestCase):
             "size": [
                 "Partition %s cannot be resized to fit on the "
                 "block device; not enough free space." % partition.id],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_test_cannot_create_mbr_partition_larger_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
@@ -256,7 +256,7 @@ class TestPartition(MAASServerTestCase):
             "size": [
                 "Partition cannot be saved; size is larger than "
                 "the MBR 2TiB maximum."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_test_cannot_resize_mbr_partition_to_more_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
@@ -270,7 +270,7 @@ class TestPartition(MAASServerTestCase):
                 "Partition %s cannot be resized to fit on the "
                 "block device; size is larger than the MBR "
                 "2TiB maximum." % partition.id],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_validate_can_save_gpt_larger_than_2TiB(self):
         block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB

@@ -43,7 +43,7 @@ from maasserver.models import (
 )
 from maasserver.models.interface import Interface
 from maasserver.models.node import Device
-from piston.utils import rc
+from piston3.utils import rc
 
 # Device's fields exposed on the API.
 DISPLAYED_DEVICE_FIELDS = (

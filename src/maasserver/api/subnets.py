@@ -24,7 +24,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_subnet import SubnetForm
 from maasserver.models import Subnet
-from piston.utils import rc
+from piston3.utils import rc
 from provisioningserver.utils.network import IPRangeStatistics
 
 

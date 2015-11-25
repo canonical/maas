@@ -14,17 +14,16 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.tests.models import (
     BulkManagerParentTestModel,
     BulkManagerTestModel,
 )
-from maastesting.djangotestcase import TestModelMixin
 
 
-class BulkManagerTest(TestModelMixin, MAASServerTestCase):
+class BulkManagerTest(MAASTransactionServerTestCase):
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def test_manager_iterator_uses_cache(self):
         parents = set()

@@ -33,9 +33,9 @@ from maasserver.utils.orm import (
     is_serialization_failure,
     post_commit_hooks,
 )
-from oauth.oauth import OAuthError
-from piston.authentication import initialize_server_request
-from piston.models import Nonce
+from piston3.authentication import initialize_server_request
+from piston3.models import Nonce
+from piston3.oauth import OAuthError
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
 from twisted.python import log

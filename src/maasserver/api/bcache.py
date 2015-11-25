@@ -31,7 +31,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.utils.converters import human_readable_bytes
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_BCACHE_FIELDS = (

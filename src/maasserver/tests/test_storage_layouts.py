@@ -217,7 +217,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "boot_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_BOOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_low_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -231,7 +231,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "boot_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_BOOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_precentage_to_high_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -248,7 +248,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "boot_size": [
                 "Size is too large. Maximum size is %s." % max_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_high_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -263,7 +263,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "boot_size": [
                 "Size is too large. Maximum size is %s." % max_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_precentage_to_low_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -277,7 +277,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "root_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_ROOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_low_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -291,7 +291,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "root_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_ROOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_precentage_to_high_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -308,7 +308,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "root_size": [
                 "Size is too large. Maximum size is %s." % max_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_high_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
@@ -323,7 +323,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "root_size": [
                 "Size is too large. Maximum size is %s." % max_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_boot_and_root_to_big(self):
         node = make_Node_with_uefi_boot_method()
@@ -338,7 +338,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "__all__": [
                 "Size of the boot partition and root partition are larger "
                 "than the available space on the boot disk."],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_doesnt_error_if_boot_and_root_valid(self):
         node = make_Node_with_uefi_boot_method()
@@ -847,7 +847,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             "lv_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_ROOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_low_for_logical_volume(self):
         node = make_Node_with_uefi_boot_method()
@@ -861,7 +861,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             "lv_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_ROOT_PARTITION_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_precentage_to_high_for_logical_volume(self):
         node = make_Node_with_uefi_boot_method()
@@ -877,7 +877,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals({
             "lv_size": [
                 "Size is too large. Maximum size is %s." % root_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_high_for_logical_volume(self):
         node = make_Node_with_uefi_boot_method()
@@ -892,7 +892,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEquals({
             "lv_size": [
                 "Size is too large. Maximum size is %s." % max_size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test__creates_layout_with_defaults(self):
         node = make_Node_with_uefi_boot_method()
@@ -1262,7 +1262,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             "cache_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_BLOCK_DEVICE_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_low_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -1279,7 +1279,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             "cache_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_BLOCK_DEVICE_SIZE)],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_precentage_to_high_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -1295,7 +1295,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "cache_size": [
                 "Size is too large. Maximum size is %s." % ssd.size],
-            }, error.error_dict)
+            }, error.message_dict)
 
     def test_raises_error_when_value_to_high_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -1311,7 +1311,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         self.assertEquals({
             "cache_size": [
                 "Size is too large. Maximum size is %s." % ssd.size],
-            }, error.error_dict)
+            }, error.message_dict)
 
 
 class TestBcacheStorageLayout(MAASServerTestCase):

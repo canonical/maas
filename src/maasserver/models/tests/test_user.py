@@ -25,7 +25,7 @@ from maasserver.models.user import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from piston.models import (
+from piston3.models import (
     KEY_SIZE,
     SECRET_SIZE,
 )

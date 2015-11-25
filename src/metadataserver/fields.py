@@ -26,7 +26,12 @@ from django.db.models import (
     Field,
     SubfieldBase,
 )
-from south.modelsinspector import add_introspection_rules
+
+
+try:
+    from south.modelsinspector import add_introspection_rules
+except ImportError:
+    add_introspection_rules = None
 
 
 class Bin(bytes):
@@ -74,7 +79,8 @@ class Bin(bytes):
 # parent's constructor so South will handle it just fine.
 # See http://south.aeracode.org/docs/customfields.html#extending-introspection
 # for details.
-add_introspection_rules([], ["^metadataserver\.fields\.BinaryField"])
+if add_introspection_rules is not None:
+    add_introspection_rules([], ["^metadataserver\.fields\.BinaryField"])
 
 
 class BinaryField(Field):
@@ -122,6 +128,12 @@ class BinaryField(Field):
                 "either conversion is going the wrong way, or the value "
                 "needs to be wrapped in a Bin.")
         elif isinstance(value, unicode):
+            # Django 1.7 migration framework generates the default value based
+            # on the 'internal_type' which, in this instance, is 'TextField';
+            # Here we cope with the default empty value instead of raising
+            # an exception.
+            if value == '':
+                return ''
             # Unicode here is almost certainly a sign of a mistake.
             raise AssertionError(
                 "A unicode string is being mistaken for binary data.")

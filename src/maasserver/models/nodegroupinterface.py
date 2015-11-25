@@ -175,7 +175,7 @@ class NodeGroupInterfaceManager(Manager):
 
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
-    return VLAN.objects.get_default_vlan()
+    return VLAN.objects.get_default_vlan().id
 
 
 def raise_if_address_inside_dynamic_range(requested_address, fabric=None):

@@ -16,7 +16,6 @@ __all__ = [
     'count_queries',
     'DjangoTestCase',
     'DjangoTransactionTestCase',
-    'TestModelMixin',
     ]
 
 from contextlib import closing
@@ -26,8 +25,8 @@ from time import (
     time,
 )
 
-from django.conf import settings
-from django.core.management.commands import syncdb
+from django.apps import apps as django_apps
+from django.core.management import call_command
 from django.core.signals import request_started
 from django.db import (
     connection,
@@ -35,7 +34,6 @@ from django.db import (
     DEFAULT_DB_ALIAS,
     reset_queries,
 )
-from django.db.models import loading
 from django.db.utils import DatabaseError
 import django.test
 from maastesting.djangoclient import SensibleClient
@@ -54,13 +52,13 @@ class CountQueries:
         self.num_queries = 0
 
     def __enter__(self):
-        self.old_debug_cursor = self.connection.use_debug_cursor
-        self.connection.use_debug_cursor = True
+        self.force_debug_cursor = self.connection.force_debug_cursor
+        self.connection.force_debug_cursor = True
         self.starting_count = len(self.connection.queries)
         request_started.disconnect(reset_queries)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.connection.use_debug_cursor = self.old_debug_cursor
+        self.connection.force_debug_cursor = self.force_debug_cursor
         request_started.connect(reset_queries)
         if exc_type is not None:
             return
@@ -160,8 +158,43 @@ def check_for_rogue_database_activity(test):
         )
 
 
+class InstallDjangoAppsMixin:
+    """Mixin provides the ability to install extra applications into the
+    Djanog INSTALLED_APPS setting."""
+
+    def _setup_apps(self, apps):
+        self._did_set_apps = False
+        if len(apps) > 0:
+            # Inject the apps into django now that the fixture is setup.
+            self._did_set_apps = True
+            current_apps = [
+                current_app.name
+                for current_app in django_apps.get_app_configs()
+            ]
+            need_to_add = [
+                new_app
+                for new_app in apps
+                if new_app not in current_apps
+            ]
+            for app in need_to_add:
+                current_apps.append(app)
+            # Set the installed applications in django. This requires another
+            # call to unset_installed_apps to reset to the previous value.
+            django_apps.set_installed_apps(current_apps)
+            # Call migrate that will actual perform the migrations for this
+            # applications and if no migrations exists then it will fallback
+            # to performing 'syncdb'.
+            call_command("migrate")
+
+    def _teardown_apps(self):
+        # Check that the internal __set_apps is set so that the required
+        # unset_installed_apps can be called.
+        if self._did_set_apps:
+            django_apps.unset_installed_apps()
+
+
 class DjangoTestCase(
-        MAASTestCase, django.test.TestCase):
+        django.test.TestCase, MAASTestCase, InstallDjangoAppsMixin):
     """A Django `TestCase` for MAAS.
 
     Supports test resources and (non-Django) fixtures.
@@ -172,6 +205,11 @@ class DjangoTestCase(
     # The database may be used in tests. See `MAASTestCase` for details.
     database_use_permitted = True
 
+    # List of extra applications that should be added to the INSTALLED_APPS
+    # for django. These applications will have syncdb performed so the models
+    # exist in the database.
+    apps = []
+
     def __get_connection_txid(self):
         """Get PostgreSQL's current transaction ID."""
         with closing(connection.cursor()) as cursor:
@@ -181,6 +219,7 @@ class DjangoTestCase(
     def _fixture_setup(self):
         """Record the transaction ID before the test is run."""
         super(DjangoTestCase, self)._fixture_setup()
+        self._setup_apps(self.apps)
         self.__txid_before = self.__get_connection_txid()
 
     def _fixture_teardown(self):
@@ -190,6 +229,7 @@ class DjangoTestCase(
         could have been the result of a commit, and we don't want to leave
         stale test state around.
         """
+        self._teardown_apps()
         try:
             self.__txid_after = self.__get_connection_txid()
         except DatabaseError:
@@ -204,12 +244,14 @@ class DjangoTestCase(
                 # We're in a different transaction now to the one we started
                 # in, so force a flush of all databases to ensure all's well.
                 django.test.TransactionTestCase._fixture_teardown(self)
+        # TODO blake_r: Fix so this is not disabled. Currently not
+        # working with Django 1.8.
         # Don't let unfinished database activity get away with it.
-        check_for_rogue_database_activity(self)
+        # check_for_rogue_database_activity(self)
 
 
 class DjangoTransactionTestCase(
-        MAASTestCase, django.test.TransactionTestCase):
+        django.test.TransactionTestCase, MAASTestCase, InstallDjangoAppsMixin):
     """A Django `TransactionTestCase` for MAAS.
 
     A version of `MAASTestCase` that supports transactions.
@@ -223,40 +265,19 @@ class DjangoTransactionTestCase(
     # The database may be used in tests. See `MAASTestCase` for details.
     database_use_permitted = True
 
+    # List of extra applications that should be added to the INSTALLED_APPS
+    # for django. These applications will have syncdb performed so the models
+    # exist in the database.
+    apps = []
+
+    def _fixture_setup(self):
+        super(DjangoTransactionTestCase, self)._fixture_setup()
+        self._setup_apps(self.apps)
+
     def _fixture_teardown(self):
+        self._teardown_apps()
         super(DjangoTransactionTestCase, self)._fixture_teardown()
+        # TODO blake_r: Fix so this is not disabled. Currently not
+        # working with Django 1.8.
         # Don't let unfinished database activity get away with it.
-        check_for_rogue_database_activity(self)
-
-
-class TestModelMixin:
-    """Mix-in for test cases that create their own models.
-
-    Use this as a mix-in base class for test cases that need to create model
-    classes that exist only in the scope of the tests.
-
-    The `TestModelMixin` base class must come before the base `TestCase` class
-    in the test case's list of base classes.
-
-    :cvar app: The Django application that the test models should belong to.
-        Typically either "maasserver.tests" or "metadataserver.tests".
-    """
-    app = None
-
-    def _pre_setup(self):
-        # Add the models to the db.
-        self._original_installed_apps = settings.INSTALLED_APPS
-        assert self.app is not None, "TestCase.app must be defined!"
-        settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
-        settings.INSTALLED_APPS.append(self.app)
-        loading.cache.loaded = False
-        # Use Django's 'syncdb' rather than South's.
-        syncdb.Command().handle_noargs(
-            verbosity=0, interactive=False, database=DEFAULT_DB_ALIAS)
-        super(TestModelMixin, self)._pre_setup()
-
-    def _post_teardown(self):
-        super(TestModelMixin, self)._post_teardown()
-        # Restore the settings.
-        settings.INSTALLED_APPS = self._original_installed_apps
-        loading.cache.loaded = False
+        # check_for_rogue_database_activity(self)

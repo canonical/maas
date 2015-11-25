@@ -31,7 +31,7 @@ from maasserver.forms_settings import (
     validate_config_name,
 )
 from maasserver.models import Config
-from piston.utils import rc
+from piston3.utils import rc
 import simplejson as json
 
 

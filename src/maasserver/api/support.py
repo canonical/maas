@@ -25,14 +25,14 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from maasserver.api.doc import get_api_description_hash
 from maasserver.exceptions import MAASAPIBadRequest
-from piston.emitters import Emitter
-from piston.handler import (
+from piston3.emitters import Emitter
+from piston3.handler import (
     AnonymousBaseHandler,
     BaseHandler,
     HandlerMetaClass,
 )
-from piston.resource import Resource
-from piston.utils import (
+from piston3.resource import Resource
+from piston3.utils import (
     HttpStatusCode,
     rc,
 )
@@ -47,6 +47,16 @@ class OperationsResource(Resource):
 
     crudmap = Resource.callmap
     callmap = dict.fromkeys(crudmap, "dispatch")
+
+    @staticmethod
+    def _use_emitter(result):
+        """Override to force piston to the correct thing with Dango >=1.7."""
+        # Always return False because we don't want Pison to do the wrong
+        # thing with the content in HttpResponse objects. (Django 1.7 removed
+        # the _base_content_is_iter attribute so there is no way to identify
+        # the content inside of the response.) This means we never want Piston
+        # to use its emitter on the contents inside of an HttpResponse.
+        return False
 
     def __call__(self, request, *args, **kwargs):
         upcall = super(OperationsResource, self).__call__

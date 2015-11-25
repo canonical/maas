@@ -29,7 +29,7 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
     Unauthorized,
 )
-from piston.models import Token
+from piston3.models import Token
 
 
 def extract_bool(value):

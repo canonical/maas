@@ -32,7 +32,7 @@ from maasserver.models import (
     RAID,
 )
 from maasserver.utils.converters import human_readable_bytes
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_RAID_FIELDS = (

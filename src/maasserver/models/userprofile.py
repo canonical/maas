@@ -27,7 +27,16 @@ from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models.cleansave import CleanSave
-from piston.models import Token
+from maasserver.utils.django import has_builtin_migrations
+
+# To support upgrading from MAAS versions <2.0 the piston module was named
+# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
+# same the import names are important because it will break south migrations
+# unless piston is imported as 'piston'.
+if has_builtin_migrations():
+    from piston3.models import Token
+else:
+    from piston.models import Token
 
 
 class UserProfileManager(Manager):

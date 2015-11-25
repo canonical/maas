@@ -16,7 +16,8 @@ __metaclass__ = type
 import os
 from sys import stdout
 
-import django.template
+import django.template.base
+from django.utils.timezone import LocalTimezone
 from maas import fix_up_databases
 from maas.monkey import patch_get_script_prefix
 from maasserver.config import RegionConfiguration
@@ -28,7 +29,7 @@ from provisioningserver.logger import (
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
-django.template.add_to_builtins('django.templatetags.future')
+django.template.base.add_to_builtins('django.templatetags.future')
 
 # Enable HA which uses the new rack controller and BMC code paths. This is a
 # temporary measure to prevent conflicts during MAAS 2.0 development.
@@ -111,11 +112,8 @@ with RegionConfiguration.open() as config:
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
-# On Unix systems, a value of None will cause Django to use the same
-# timezone as the operating system.
-# If running in a Windows environment this must be set to the same as your
-# system time zone.
-TIME_ZONE = None
+# Default set to the same timezone as the system.
+TIME_ZONE = LocalTimezone().tzname(None)
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -248,6 +246,20 @@ TEMPLATE_DIRS = (
     os.path.join(os.path.dirname(__file__), "templates"),
 )
 
+SOUTH_MIGRATION_MODULES = {
+    # Migrations before MAAS 2.0 are located in south sub-directory.
+    'maasserver': 'maasserver.migrations.south.migrations',
+    'metadataserver': 'metadataserver.migrations.south',
+}
+
+MIGRATION_MODULES = {
+    # Migrations for MAAS >=2.0.
+    'auth': 'maasserver.migrations.builtin.auth',
+    'piston3': 'maasserver.migrations.builtin.piston3',
+    'maasserver': 'maasserver.migrations.builtin.maasserver',
+    'metadataserver': 'metadataserver.migrations.builtin',
+}
+
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -257,9 +269,16 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'maasserver',
     'metadataserver',
-    'piston',
-    'south',
 )
+
+if django.VERSION >= (1, 7):
+    INSTALLED_APPS += (
+        'piston3',
+    )
+else:
+    INSTALLED_APPS += (
+        'piston',
+    )
 
 if DEBUG:
     INSTALLED_APPS += (

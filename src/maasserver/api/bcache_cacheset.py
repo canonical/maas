@@ -31,7 +31,7 @@ from maasserver.models import (
     CacheSet,
     Node,
 )
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_CACHE_SET_FIELDS = (

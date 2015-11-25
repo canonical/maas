@@ -24,7 +24,7 @@ from maasserver.models.user import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from piston.models import (
+from piston3.models import (
     Consumer,
     Token,
 )

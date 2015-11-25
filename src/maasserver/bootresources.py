@@ -162,8 +162,8 @@ class ConnectionWrapper:
         if self._connection is None:
             self._connection = self._get_new_connection()
             self._connection.connect()
-            self._connection.enter_transaction_management()
             self._connection.set_autocommit(False)
+            self._connection.in_atomic_block = True
         if self._stream is None:
             self._stream = self.largeobject.open(
                 'rb', connection=self._connection)
@@ -184,8 +184,9 @@ class ConnectionWrapper:
             self._stream.close()
             self._stream = None
         if self._connection is not None:
+            self._connection.in_atomic_block = False
             self._connection.commit()
-            self._connection.leave_transaction_management()
+            self._connection.set_autocommit(True)
             self._connection.close()
             self._connection = None
 
@@ -193,7 +194,7 @@ class ConnectionWrapper:
 class SimpleStreamsHandler:
     """Simplestreams endpoint, that the clusters talk to.
 
-    This is not called from piston, as piston uses emitters which
+    This is not called from piston3, as piston uses emitters which
     breaks the ability to return streaming content.
 
     Anyone can access this endpoint. No credentials are required.

@@ -27,7 +27,7 @@ from django.db import (
     connections,
     transaction,
 )
-from django.db.backends import BaseDatabaseWrapper
+from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
@@ -788,13 +788,6 @@ class TestInTransaction(DjangoTransactionTestCase):
         with transaction.atomic():
             self.assertTrue(in_transaction())
 
-    def test__true_when_legacy_transaction_is_active(self):
-        transaction.enter_transaction_management()
-        try:
-            self.assertTrue(in_transaction())
-        finally:
-            transaction.leave_transaction_management()
-
     def test__false_when_no_transaction_is_active(self):
         self.assertFalse(in_transaction())
 
@@ -805,13 +798,6 @@ class TestValidateInTransaction(DjangoTransactionTestCase):
     def test__does_nothing_within_atomic_block(self):
         with transaction.atomic():
             validate_in_transaction(connection)
-
-    def test__does_nothing_when_legacy_transaction_is_active(self):
-        transaction.enter_transaction_management()
-        try:
-            validate_in_transaction(connection)
-        finally:
-            transaction.leave_transaction_management()
 
     def test__explodes_when_no_transaction_is_active(self):
         self.assertRaises(

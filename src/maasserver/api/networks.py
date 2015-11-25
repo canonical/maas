@@ -31,7 +31,7 @@ from maasserver.models import (
     Node,
     Subnet,
 )
-from piston.utils import rc
+from piston3.utils import rc
 
 
 def convert_to_network_name(subnet):

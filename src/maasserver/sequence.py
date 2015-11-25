@@ -18,6 +18,8 @@ __all__ = [
     ]
 
 
+from textwrap import dedent
+
 from django.db import (
     connection,
     transaction,
@@ -39,13 +41,22 @@ class Sequence:
         self.maxvalue = maxvalue
 
     def create(self):
-        """Create this sequence in the database."""
-        cursor = connection.cursor()
-        query = "CREATE SEQUENCE %s" % self.name
-        cursor.execute(
-            query + " INCREMENT BY %s MINVALUE %s MAXVALUE %s CYCLE",
-            [self.incr, self.minvalue, self.maxvalue])
-        transaction.commit_unless_managed()
+        """Create this sequence in the database if it doesn't already exist."""
+        with transaction.atomic():
+            cursor = connection.cursor()
+            query = dedent("""\
+                DO
+                $$
+                BEGIN
+                    CREATE SEQUENCE {name}
+                    INCREMENT BY %s MINVALUE %s MAXVALUE %s CYCLE;
+                EXCEPTION WHEN duplicate_table THEN
+                    -- do nothing, already exists
+                END
+                $$ LANGUAGE plpgsql;
+                """).format(name=self.name)
+            cursor.execute(
+                query, [self.incr, self.minvalue, self.maxvalue])
 
     def nextval(self):
         """Return the next value of this sequence.
@@ -60,7 +71,7 @@ class Sequence:
 
     def drop(self):
         """Drop this sequence from the database."""
-        cursor = connection.cursor()
-        cursor.execute(
-            "DROP SEQUENCE %s" % self.name)
-        transaction.commit_unless_managed()
+        with transaction.atomic():
+            cursor = connection.cursor()
+            cursor.execute(
+                "DROP SEQUENCE %s" % self.name)

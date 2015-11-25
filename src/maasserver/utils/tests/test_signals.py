@@ -15,10 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.tests.models import FieldChangeTestModel
 from maasserver.utils.signals import connect_to_field_change
-from maastesting.djangotestcase import TestModelMixin
 from maastesting.matchers import (
     IsCallable,
     MockCallsMatch,
@@ -29,10 +28,10 @@ from mock import (
 )
 
 
-class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
+class ConnectToFieldChangeTest(MAASTransactionServerTestCase):
     """Testing for the method `connect_to_field_change`."""
 
-    app = 'maasserver.tests'
+    apps = ['maasserver.tests']
 
     def connect(self, callback, fields, delete=False):
         connect, disconnect = connect_to_field_change(

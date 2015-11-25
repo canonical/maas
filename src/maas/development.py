@@ -14,14 +14,15 @@ str = None
 __metaclass__ = type
 
 import logging
+import os
 from os.path import abspath
 
+from formencode.validators import StringBool
 from maas import (
     fix_up_databases,
     import_settings,
     settings,
 )
-from maas.customise_test_db import patch_db_creation
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
@@ -65,12 +66,16 @@ DATABASES = {
     },
 }
 
+# Allow the database name to be overwritten using an environment variable.
+# This is only used for src/maastesting/tests/test_dbupgrade.py.
+if 'DEV_DB_NAME' in os.environ:
+    DATABASES['default']['NAME'] = os.environ['DEV_DB_NAME']
+
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
 MEDIA_ROOT = abspath("media/development")
 
 INSTALLED_APPS += (
-    'django.contrib.admin',
     'maastesting',
     'django_nose',
 )
@@ -92,8 +97,24 @@ PRESEED_TEMPLATE_LOCATIONS = (
     abspath("contrib/preseeds_v2"),
     )
 
-# Inject custom code for setting up the test database.
-patch_db_creation(abspath('db'), abspath('schema/baseline.sql'))
+# Prevent migrations from running in development mode. This causes django to
+# fallback to the syncdb behaviour. This is faster for development and a
+# requirement for django >=1.7.
+#
+# Each module here points to a non-existing module. This just seems wrong, but
+# this is exactly what django upstream does to test django.
+prevent_migrations = StringBool().to_python(
+    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0))
+if prevent_migrations:
+    MIGRATION_MODULES = {
+        'auth': 'maasserver.test.migrations.auth',
+        'contenttypes': 'maasserver.test.migrations.contenttypes',
+        'sessions': 'maasserver.test.migrations.sessions',
+        'sites': 'maasserver.test.migrations.sites',
+        'piston3': 'maasserver.test.migrations.piston3',
+        'maasserver': 'maasserver.test.migrations.maasserver',
+        'metadataserver': 'metadataserver.test.migrations',
+    }
 
 PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.MD5PasswordHasher',

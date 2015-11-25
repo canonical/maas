@@ -107,6 +107,7 @@ class TestDNSUtilities(MAASServerTestCase):
             )
 
     def test_next_zone_serial_returns_sequence(self):
+        zone_serial.create()
         initial = int(next_zone_serial())
         self.assertSequenceEqual(
             ['%0.10d' % i for i in range(initial + 1, initial + 11)],
@@ -353,6 +354,8 @@ class TestDNSServer(MAASServerTestCase):
 
     def setUp(self):
         super(TestDNSServer, self).setUp()
+        # Make sure the zone_serial is created.
+        zone_serial.create()
         # Allow test-local changes to configuration.
         self.useFixture(RegionConfigurationFixture())
         # Immediately make DNS changes as they're needed.

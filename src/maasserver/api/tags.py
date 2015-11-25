@@ -38,7 +38,7 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.utils.orm import get_one
-from piston.utils import rc
+from piston3.utils import rc
 
 
 class TagHandler(OperationsHandler):
@@ -109,6 +109,11 @@ class TagHandler(OperationsHandler):
 
         Returns 404 if the tag is not found.
         """
+        # Workaround an issue where piston3 will try to use the fields from
+        # this handler instead of the fields defined for the returned object.
+        # This is done because this operation actually returns a list of nodes
+        # and not a list of tags as this handler is defined to return.
+        self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         return Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, from_nodes=tag.node_set.all())

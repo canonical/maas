@@ -300,7 +300,7 @@ class WebSocketProtocol(Protocol):
             # When the error is a validation issue, send the error as a JSON
             # object. The client will use this to JSON to render the error
             # messages for the correct fields.
-            error = json.dumps(failure.value.error_dict)
+            error = json.dumps(failure.value.message_dict)
         else:
             error = failure.getErrorMessage()
         why = "Error on request (%s) %s.%s: %s" % (

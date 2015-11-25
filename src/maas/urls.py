@@ -37,16 +37,3 @@ if settings.STATIC_LOCAL_SERVE:
     )
 
     urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PATTERN)
-
-if settings.DEBUG:
-    # Enable an admin site at root "admin", where all model objects can be
-    # viewed and edited.
-    from django.contrib import admin
-    # Auto-discovery of the admin site will be enabled by default as of
-    # Django 1.7.  For older versions, automatic discovery is manual:
-    admin.autodiscover()
-
-    urlpatterns += patterns(
-        '',
-        (r'^admin/', include(admin.site.urls)),
-    )

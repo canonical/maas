@@ -27,9 +27,9 @@ from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceForm
 from maasserver.models import BootSource
-from piston.emitters import JSONEmitter
-from piston.handler import typemapper
-from piston.utils import rc
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
+from piston3.utils import rc
 
 
 DISPLAYED_BOOTSOURCE_FIELDS = (
@@ -75,7 +75,7 @@ class BootSourceHandler(OperationsHandler):
             BootSource, id=id)
         stream = json_boot_source(boot_source, request)
         return HttpResponse(
-            stream, mimetype='application/json; charset=utf-8',
+            stream, content_type='application/json; charset=utf-8',
             status=httplib.OK)
 
     def update(self, request, id):
@@ -173,7 +173,7 @@ class BootSourcesHandler(OperationsHandler):
             boot_source = form.save()
             stream = json_boot_source(boot_source, request)
             return HttpResponse(
-                stream, mimetype='application/json; charset=utf-8',
+                stream, content_type='application/json; charset=utf-8',
                 status=httplib.CREATED)
         else:
             raise MAASAPIValidationError(form.errors)

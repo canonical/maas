@@ -26,7 +26,6 @@ from socket import AF_INET
 from textwrap import dedent
 import threading
 
-from crochet import reactor
 from django.core.exceptions import ValidationError
 from django.db import connection
 from maasserver import (
@@ -85,7 +84,10 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.application import service
 from twisted.application.internet import TimerService
-from twisted.internet import defer
+from twisted.internet import (
+    defer,
+    reactor,
+)
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,

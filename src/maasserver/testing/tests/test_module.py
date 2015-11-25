@@ -24,6 +24,7 @@ from django.http import (
     HttpResponse,
     HttpResponseRedirect,
 )
+from maasserver.models.node import Node
 from maasserver.testing import (
     extract_redirect,
     NoReceivers,
@@ -34,23 +35,10 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.testing.tests.models import TestModel
-from maastesting.djangotestcase import TestModelMixin
-
-# Horrible kludge.  Works around a bug where delete() does not work on
-# test models when using nose.  Without this, running the tests in this
-# module fails at the delete() calls, saying a table node_c does not
-# exist.  (Running just the test case passes, but running the entire
-# module's tests fails even if the failing test case is the only one).
-#
-# https://github.com/jbalogh/django-nose/issues/15
-TestModel._meta.get_all_related_objects()
 
 
-class TestHelpers(TestModelMixin, MAASServerTestCase):
+class TestHelpers(MAASServerTestCase):
     """Test helper functions."""
-
-    app = 'maasserver.testing.tests'
 
     def test_extract_redirect_extracts_redirect_location(self):
         url = factory.make_string()
@@ -76,34 +64,35 @@ class TestHelpers(TestModelMixin, MAASServerTestCase):
         self.assertIn(content, unicode(e))
 
     def test_reload_object_reloads_object(self):
-        test_obj = TestModel(text="old text")
+        test_obj = factory.make_Node()
         test_obj.save()
-        TestModel.objects.filter(id=test_obj.id).update(text="new text")
-        self.assertEqual("new text", reload_object(test_obj).text)
+        Node.objects.filter(id=test_obj.id).update(hostname="newname")
+        self.assertEqual("newname", reload_object(test_obj).hostname)
 
     def test_reload_object_returns_None_for_deleted_object(self):
-        test_obj = TestModel()
+        test_obj = factory.make_Node()
         test_obj.save()
-        TestModel.objects.filter(id=test_obj.id).delete()
+        Node.objects.filter(id=test_obj.id).delete()
         self.assertIsNone(reload_object(test_obj))
 
     def test_reload_objects_reloads_objects(self):
-        texts = ['1 text', '2 text', '3 text']
-        objs = [TestModel(text=text) for text in texts]
+        hostnames = ['name1', 'name2', 'name3']
+        objs = [factory.make_Node(hostname=hostname) for hostname in hostnames]
         for obj in objs:
             obj.save()
-        texts[0] = "different text"
-        TestModel.objects.filter(id=objs[0].id).update(text=texts[0])
+        hostnames[0] = "different"
+        Node.objects.filter(id=objs[0].id).update(hostname=hostnames[0])
         self.assertItemsEqual(
-            texts, [obj.text for obj in reload_objects(TestModel, objs)])
+            hostnames,
+            [obj.hostname for obj in reload_objects(Node, objs)])
 
     def test_reload_objects_omits_deleted_objects(self):
-        objs = [TestModel() for counter in range(3)]
+        objs = [factory.make_Node() for counter in range(3)]
         for obj in objs:
             obj.save()
         dead_obj = objs.pop(0)
-        TestModel.objects.filter(id=dead_obj.id).delete()
-        self.assertItemsEqual(objs, reload_objects(TestModel, objs))
+        Node.objects.filter(id=dead_obj.id).delete()
+        self.assertItemsEqual(objs, reload_objects(Node, objs))
 
 
 class TestNoReceivers(MAASServerTestCase):

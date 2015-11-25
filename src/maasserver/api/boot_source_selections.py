@@ -26,7 +26,7 @@ from maasserver.models import (
     BootSource,
     BootSourceSelection,
 )
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (

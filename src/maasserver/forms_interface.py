@@ -193,8 +193,7 @@ class PhysicalInterfaceForm(InterfaceForm):
         if parents is None:
             return
         if len(parents) > 0:
-            msg = "A physical interface cannot have parents."
-            raise ValidationError({'parents': [msg]})
+            raise ValidationError("A physical interface cannot have parents.")
 
     def clean(self):
         cleaned_data = super(PhysicalInterfaceForm, self).clean()
@@ -286,8 +285,8 @@ class BondInterfaceForm(InterfaceForm):
         if parents is None:
             return
         if len(parents) < 1:
-            msg = "A Bond interface must have one or more parents."
-            raise ValidationError({'parents': [msg]})
+            raise ValidationError(
+                "A Bond interface must have one or more parents.")
         return parents
 
     def clean(self):

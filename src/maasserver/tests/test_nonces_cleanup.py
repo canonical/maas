@@ -36,7 +36,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from mock import call
-from piston.models import Nonce
+from piston3.models import Nonce
 from testtools.matchers import (
     ContainsAll,
     StartsWith,

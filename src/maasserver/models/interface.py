@@ -89,7 +89,7 @@ INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
 
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
-    return VLAN.objects.get_default_vlan()
+    return VLAN.objects.get_default_vlan().id
 
 
 def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
@@ -301,7 +301,7 @@ class Interface(CleanSave, TimestampedModel):
         blank=False)
 
     parents = ManyToManyField(
-        'self', blank=True, null=True, editable=True,
+        'self', blank=True, editable=True,
         through='InterfaceRelationship', symmetrical=False)
 
     vlan = ForeignKey(
@@ -309,7 +309,7 @@ class Interface(CleanSave, TimestampedModel):
         null=False, on_delete=PROTECT)
 
     ip_addresses = ManyToManyField(
-        'StaticIPAddress', editable=True, blank=True, null=True)
+        'StaticIPAddress', editable=True, blank=True)
 
     mac_address = MACAddressField(unique=False, null=True, blank=True)
 

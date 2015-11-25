@@ -541,15 +541,7 @@ def in_transaction(connection=connection):
 
     :return: bool
     """
-    return (
-        # Django's new transaction management stuff is active.
-        connection.in_atomic_block or (
-            # Django's "legacy" transaction management system is active.
-            len(connection.transaction_state) > 0 and
-            # Django is managing the transaction state.
-            connection.transaction_state[-1]
-        )
-    )
+    return connection.in_atomic_block
 
 
 def validate_in_transaction(connection):

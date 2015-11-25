@@ -997,6 +997,7 @@ class SSHKeyForm(KeyForm):
 
     class Meta:
         model = SSHKey
+        fields = ["key"]
 
 
 class SSLKeyForm(KeyForm):
@@ -1007,6 +1008,7 @@ class SSLKeyForm(KeyForm):
 
     class Meta:
         model = SSLKey
+        fields = ["key"]
 
 
 class MultipleMACAddressField(forms.MultiValueField):
@@ -1119,7 +1121,7 @@ class WithMACAddressesMixin:
                 node = iface.node
                 errors.append(self._mac_in_use_on_node_error(mac, node))
         if errors:
-            raise ValidationError({'mac_addresses': errors})
+            raise ValidationError(errors)
         return data
 
     def save(self):
@@ -1197,20 +1199,20 @@ class ProfileForm(MAASModelForm):
 class NewUserCreationForm(UserCreationForm):
     is_superuser = forms.BooleanField(
         label="MAAS administrator", required=False)
+    last_name = forms.CharField(
+        label="Full name", max_length=30, required=False)
+    email = forms.EmailField(
+        label="E-mail address", max_length=75, required=True)
 
-    def __init__(self, *args, **kwargs):
-        super(NewUserCreationForm, self).__init__(*args, **kwargs)
-        # Insert 'last_name' field at the right place (right after
-        # the 'username' field).
-        self.fields.insert(
-            1, 'last_name',
-            forms.CharField(label="Full name", max_length=30, required=False))
-        # Insert 'email' field at the right place (right after
-        # the 'last_name' field).
-        self.fields.insert(
-            2, 'email',
-            forms.EmailField(
-                label="E-mail address", max_length=75, required=True))
+    class Meta(UserCreationForm.Meta):
+        fields = (
+            'username',
+            'last_name',
+            'email',
+            'password1',
+            'password2',
+            'is_superuser',
+        )
 
     def save(self, commit=True):
         user = super(NewUserCreationForm, self).save(commit=False)
@@ -2253,8 +2255,7 @@ class TagForm(MAASModelForm):
         try:
             etree.XPath(definition)
         except etree.XPathSyntaxError as e:
-            msg = 'Invalid xpath expression: %s' % (e,)
-            raise ValidationError({'definition': [msg]})
+            raise ValidationError('Invalid xpath expression: %s' % (e,))
         return definition
 
 
@@ -3412,9 +3413,8 @@ class UpdateVirtualBlockDeviceForm(MAASModelForm):
         if not is_logical_volume and size_has_changed:
             if 'size' in self.errors:
                 del self.errors['size']
-            raise ValidationError({
-                'size': ['Size cannot be changed on this device.']
-                })
+            set_form_error(
+                self, 'size', 'Size cannot be changed on this device.')
         return cleaned_data
 
     def save(self):

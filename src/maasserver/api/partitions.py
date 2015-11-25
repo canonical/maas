@@ -39,7 +39,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
 )
-from piston.utils import rc
+from piston3.utils import rc
 
 
 DISPLAYED_PARTITION_FIELDS = (

@@ -60,7 +60,7 @@ class MAASAPIException(Exception):
         encoding = b'utf-8'
         return HttpResponse(
             status=self.api_error, content=unicode(self).encode(encoding),
-            mimetype=b"text/plain; charset=%s" % encoding)
+            content_type=b"text/plain; charset=%s" % encoding)
 
 
 class MAASAPIBadRequest(MAASAPIException):
@@ -80,19 +80,19 @@ class MAASAPIValidationError(MAASAPIBadRequest, ValidationError):
 
     def make_http_response(self):
         """Create an :class:`HttpResponse` representing this exception."""
-        mimetype = b"application/json"
+        content_type = b"application/json"
         if hasattr(self, 'error_dict'):
             messages = json.dumps(self.message_dict)
         elif len(self.messages) == 1:
             messages = self.messages[0]
-            mimetype = b"text/plain"
+            content_type = b"text/plain"
         else:
             messages = json.dumps(self.messages)
 
         encoding = b'utf-8'
         return HttpResponse(
             status=self.api_error, content=messages,
-            mimetype=b"%s; charset=%s" % (mimetype, encoding))
+            content_type=b"%s; charset=%s" % (content_type, encoding))
 
 
 class Unauthorized(MAASAPIException):

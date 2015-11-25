@@ -549,7 +549,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "size_human": human_readable_bytes(partition.size),
                 "used_for": partition.used_for,
             })
-        self.assertEquals(
+        self.assertItemsEqual(
             expected, handler.dehydrate_partitions(partition_table))
 
     def test_dehydrate_filesystem_returns_None(self):

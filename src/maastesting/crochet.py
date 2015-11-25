@@ -35,18 +35,21 @@ class EventualResultCatchingMixin:
     def setUp(self):
         super(EventualResultCatchingMixin, self).setUp()
         # Every EventualResult that crochet creates is registered into this
-        # registry. We'll check it after the test has finished.
-        registry = crochet._main._registry
-        # The registry stores EventualResults in a WeakSet, which means that
-        # unfired and unhandled results can be garbage collected before we get
-        # to see them. Here we patch in a regular set so that nothing gets
-        # garbage collected until we've been able to check the results.
-        self.addCleanup(setattr, registry, "_results", registry._results)
-        registry._results = set()
-        # While unravelling clean-ups is a good time to check the results. Any
-        # meaningful work represented by an EventualResult should have done
-        # should been done by now.
-        self.addCleanup(self.__checkResults, registry._results)
+        # registry. We'll check it after the test has finished, and only if
+        # crochet has been started.
+        if hasattr(crochet._main, "_registry"):
+            registry = crochet._main._registry
+            # The registry stores EventualResults in a WeakSet, which means
+            # that unfired and unhandled results can be garbage collected
+            # before we get to see them. Here we patch in a regular set so
+            # that nothing gets garbage collected until we've been able to
+            # check the results.
+            self.addCleanup(setattr, registry, "_results", registry._results)
+            registry._results = set()
+            # While unravelling clean-ups is a good time to check the results.
+            # Any meaningful work represented by an EventualResult should have
+            # done should been done by now.
+            self.addCleanup(self.__checkResults, registry._results)
 
     def __checkResults(self, eventual_results):
         fail_count = 0

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 
+from django.forms.utils import ErrorList
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -44,7 +45,7 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.models.node import Node
-from piston.utils import rc
+from piston3.utils import rc
 
 
 MISSING_FIELD = "This field is required."
@@ -127,7 +128,11 @@ class NodeInterfacesHandler(OperationsHandler):
             if "mac_address" in form.errors:
                 if (MISSING_FIELD in form.errors["mac_address"] and
                         BLANK_FIELD in form.errors["mac_address"]):
-                    form.errors["mac_address"].remove(BLANK_FIELD)
+                    form.errors["mac_address"] = ErrorList([
+                        error
+                        for error in form.errors["mac_address"]
+                        if error != BLANK_FIELD
+                    ])
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
