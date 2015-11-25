@@ -75,7 +75,7 @@ class TestVlansAPI(APITestCase):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("fabric")
         vid = random.randint(1, 1000)
-        mtu = random.randint(512, 1500)
+        mtu = random.randint(552, 1500)
         uri = get_vlans_uri(fabric)
         response = self.client.post(uri, {
             "name": vlan_name,
