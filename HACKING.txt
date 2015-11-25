@@ -53,17 +53,19 @@ you can disable the daemon by inserting ``exit 1`` at the top of
 ``/etc/default/bind9``. The package still needs to be installed for
 tests though.
 
-You may also need to install ``python-django-piston``, but installing
-it seems to cause import errors for ``oauth`` when running the test
-suite.
-
-All other development dependencies are pulled automatically from
+Python development dependencies are pulled automatically from
 `PyPI`_ when ``buildout`` runs. (``buildout`` will be automatically
 configured to create a cache, in order to improve build times.
 See ``utilities/configure-buildout``.)
 
+Javascript development dependencies are pulled automatically from
+`npm`_ when ``make`` runs. (``npm`` will be automatically
+configured to use a cache, in order to improve build times.)
+
 .. _PyPI:
   http://pypi.python.org/
+.. _npm:
+  https://www.npmjs.com/
 
 Optional
 ^^^^^^^^
@@ -109,17 +111,18 @@ adulterated.
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The JavaScript tests are run using Selenium_. Firefox is the default
-browser but any browser supported by Selenium can be used to run the
-tests. Note that you might need to download the appropriate driver and
-make it available in the path. You can then choose which browsers to use by
-setting the environment variable ``MAAS_TEST_BROWSERS`` to a comma-separated
-list of the names of the browsers to use. For instance, to run the tests
-with Firefox and Chrome::
+The JavaScript tests are run using Karma_. Chromium and PhantomJS are the
+default browser but any browser supported by Karma can be used to run the
+tests.::
 
-    $ export MAAS_TEST_BROWSERS="Firefox, Chrome"
+    $ ./bin/test.js
 
-.. _Selenium: http://seleniumhq.org/
+If you want to run the JavaScript tests in debug mode so you can inspect the
+code inside of a running browser you can launch Karma_ manually.::
+
+    $ ./bin/karma start src/maastesting/karma.conf.js --browsers Chrome --no-single-run
+
+.. _Karma: http://karma-runner.github.io/
 
 
 Development MAAS server setup
@@ -383,80 +386,97 @@ directory.
 Database information
 ====================
 
-MAAS uses South_ to manage changes to the database schema.
+MAAS uses Django_ to manage changes to the database schema.
 
-.. _South: http://south.aeracode.org
+.. _Django: https://www.djangoproject.com/
 
-Be sure to have a look at `South's documentation`_ before you make any change.
+Be sure to have a look at `Django's migration documentation`_ before you make
+any change.
 
-.. _South's documentation: http://south.aeracode.org/docs/
+.. _Django's documentation:
+    https://docs.djangoproject.com/en/1.8/topics/migrations/
 
 
 Changing the schema
 ^^^^^^^^^^^^^^^^^^^
 
 Once you've made a model change (i.e. a change to a file in
-``src/<application>/models/*.py``) you have to run South's `schemamigration`_
+``src/<application>/models/*.py``) you have to run Django's `makemigrations`_
 command to create a migration file that will be stored in
-``src/<application>/migrations/``.
+``src/<application>/migrations/builtin/``.
 
 Note that if you want to add a new model class you'll need to import it
 in ``src/<application>/models/__init__.py``
 
-.. _schemamigration: http://south.aeracode.org/docs/commands.html#schemamigration
+.. _makemigrations: https://docs.djangoproject.com/en/1.8/ref/django-admin/#django-admin-makemigrations
 
-Once you've changed the code, ensure the database is running and
-contains the starting schema::
+Generate the migration script with::
 
-    $ make services/database/@start
-    $ make syncdb
-
-then generate the migration script with::
-
-    $ ./bin/maas-region-admin schemamigration maasserver --auto description_of_the_change
+    $ ./bin/maas-region-admin makemigrations --name description_of_the_change maasserver
 
 This will generate a migration module named
-``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.
+``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
 Don't forget to add that file to the project with::
 
-    $ bzr add src/maasserver/migrations/<auto_number>_description_of_the_change.py
+    $ bzr add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
 
 To apply that migration, run::
 
     $ make syncdb
-
-.. Note::
-
-   In order to create or run a migration, you'll need to have the
-   database server running. To do that, either run ``make start``,
-   which will start all of the MAAS components or ``make
-   services/database/@start``, which will start only the database
-   server.
 
 
 Performing data migration
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you need to perform data migration, very much in the same way, you will need
-to run South's `datamigration`_ command. For instance, if you want to perform
+to run Django's `makemigrations`_ command. For instance, if you want to perform
 changes to the ``maasserver`` application, run::
 
-    $ ./bin/maas-region-admin datamigration maasserver description_of_the_change
+    $ ./bin/maas-region-admin makemigrations --empty --name description_of_the_change maasserver
 
-.. _datamigration: http://south.aeracode.org/docs/commands.html#datamigration
+.. _makemigrations: https://docs.djangoproject.com/en/1.8/ref/django-admin/#django-admin-makemigrations
 
 This will generate a migration module named
-``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.
-You will need to edit that file and fill the ``forwards`` and ``backwards``
-methods where data should be actually migrated. Again, don't forget to
-add that file to the project::
+``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
+You will need to edit that file and fill the ``operations`` list with the
+options that need to be performed. Again, don't forget to add that file to the
+project::
 
-    $ bzr add src/maasserver/migrations/<auto_number>_description_of_the_change.py
+    $ bzr add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
 
-Once the methods have been written, apply that migration with::
+Once the operations have been added, apply that migration with::
 
     $ make syncdb
 
+
+Migrations before MAAS 2.0
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Previous version before MAAS 2.0 used South_ to perform database migrations. To
+support upgrading from any previous version of MAAS before 2.0 the South_
+migrations are run. On upgrade of MAAS those migrations will be
+run before the new Django_ migrations are run. On a fresh installation of MAAS
+the South_ migrations will be skipped because the Django_ migrations already
+provide the entire schema in the initial migration. All of this logic is
+performed on upgrade by the `dbupgrade` command.::
+
+    $ bin/maas-region-admin dbupgrade
+
+In some testing case you might need to always run the South_ migrations before
+the Django_ migrations on a clean database. Using the `always-south` option on
+the `dbupgrade` command allows this testing scenario.::
+
+    $ bin/maas-region-admin dbupgrade --always-south
+
+.. Note::
+
+   When the South_ migrations run they are actually being ran under Django 1.6
+   and South that is provided in the MAAS source code in a tarball. Located
+   at ``src/maasserver/migrations/south/django16_south.tar.gz`` this file is
+   extracted into a temporary folder and imported by MAAS to run the South
+   migrations.
+
+.. _South: http://south.aeracode.org/
 
 Examining the database manually
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
