@@ -31,6 +31,7 @@ DISPLAYED_VLAN_FIELDS = (
     'name',
     'vid',
     'fabric',
+    'mtu',
 )
 
 
