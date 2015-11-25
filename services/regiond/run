@@ -30,5 +30,4 @@ export MAAS_DNS_DEFAULT_CONTROLS=0
 
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/twistd.region)"
-exec "${script}" --nodaemon --pidfile="" \
-    maas-regiond --introspect="unix:${here}/introspect:lockfile=0"
+exec "${script}" --nodaemon --pidfile="" maas-regiond

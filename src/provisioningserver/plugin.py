@@ -38,23 +38,8 @@ from twisted.web.server import Site
 from zope.interface import implementer
 
 
-def serverFromString(description):
-    """Lazy import from `provisioningserver.utils.introspect`."""
-    from provisioningserver.utils import introspect
-    return introspect.serverFromString(description)
-
-
 class Options(usage.Options):
     """Command line options for the provisioning server."""
-
-    optParameters = [
-        ["introspect", None, None,
-         ("Allow introspection, allowing unhindered access to the internals "
-          "of MAAS. This should probably only be used for debugging. Supply "
-          "an argument in 'endpoint' form; the document 'Getting Connected "
-          "with Endpoints' on the Twisted Wiki may help."),
-         serverFromString],
-    ]
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -167,14 +152,6 @@ class ProvisioningServiceMaker:
         service_monitor.setName("service_monitor")
         return service_monitor
 
-    def _makeIntrospectionService(self, endpoint):
-        from provisioningserver.utils import introspect
-        introspect_service = (
-            introspect.IntrospectionShellService(
-                location="cluster", endpoint=endpoint, namespace={}))
-        introspect_service.setName("introspect")
-        return introspect_service
-
     def _makeServices(self, config):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
@@ -202,9 +179,5 @@ class ProvisioningServiceMaker:
         with ClusterConfiguration.open() as config:
             for service in self._makeServices(config):
                 service.setServiceParent(services)
-
-        if options["introspect"] is not None:
-            introspect = self._makeIntrospectionService(options["introspect"])
-            introspect.setServiceParent(services)
 
         return services

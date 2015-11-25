@@ -27,23 +27,8 @@ from twisted.python.threadable import isInIOThread
 from zope.interface import implementer
 
 
-def serverFromString(description):
-    """Lazy import from `provisioningserver.utils.introspect`."""
-    from provisioningserver.utils import introspect
-    return introspect.serverFromString(description)
-
-
 class Options(usage.Options):
     """Command line options for the MAAS Region Controller."""
-
-    optParameters = [
-        ["introspect", None, None,
-         ("Allow introspection, allowing unhindered access to the internals "
-          "of MAAS. This should probably only be used for debugging. Supply "
-          "an argument in 'endpoint' form; the document 'Getting Connected "
-          "with Endpoints' on the Twisted Wiki may help."),
-         serverFromString],
-    ]
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -92,14 +77,6 @@ class RegionServiceMaker:
         import crochet
         crochet.no_setup()
 
-    def _makeIntrospectionService(self, endpoint):
-        from provisioningserver.utils import introspect
-        introspect_service = (
-            introspect.IntrospectionShellService(
-                location="region", endpoint=endpoint, namespace={}))
-        introspect_service.setName("introspect")
-        return introspect_service
-
     def makeService(self, options):
         """Construct the MAAS Region service."""
         register_sigusr2_thread_dump_handler()
@@ -113,12 +90,6 @@ class RegionServiceMaker:
         # Populate the region's event-loop with services.
         from maasserver import eventloop
         eventloop.loop.populate()
-
-        if options["introspect"] is not None:
-            # Start an introspection (manhole-like) service. Attach it to the
-            # eventloop's services so that it shares their lifecycle.
-            introspect = self._makeIntrospectionService(options["introspect"])
-            introspect.setServiceParent(eventloop.loop.services)
 
         # Return the eventloop's services to twistd, which will then be
         # responsible for starting them all.

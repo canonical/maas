@@ -355,50 +355,6 @@ up, but with regiond in the foreground::
 Apparently Django needs a lot of debugging ;)
 
 
-Introspecting regiond and clusterd
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-By default, the ``regiond``, ``regiond2``, and ``clusterd`` services
-(when run from the tree) start an introspection service. You can connect
-to these from the terminal to get a REPL-like environment *inside* the
-running daemons.
-
-There's a convenient script to help with this:
-
-.. code-block:: console
-
-  $ utilities/introspect --help
-  usage: introspect [-h] service
-
-  Connect to a regiond's or clusterd's introspection service.
-
-  positional arguments:
-    service     The name of a MAAS service to introspect.
-                Choose from: clusterd, regiond, regiond2
-
-  optional arguments:
-    -h, --help  show this help message and exit
-
-.. code-block:: console
-
-  $ utilities/introspect regiond
-
-  .------------------------------------------------------
-  |
-  |  Welcome to MAAS's Introspection Shell.
-  |
-  |  This is the REGION.
-  |
-  |  >>>
-  |
-  |  ...
-
-Bear in mind that commands are evaluated **in the reactor thread**. If
-you execute a blocking call, Twisted's reactor will *freeze* until that
-call returns. You won't even be able to interact via the introspection
-service because that relies upon the reactor!
-
-
 Adding new dependencies
 =======================
 

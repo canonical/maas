@@ -30,5 +30,4 @@ until bin/maas-provision check-for-shared-secret; do sleep 2; done
 script="$(readlink -f bin/twistd.cluster)"
 
 exec $(command -v authbind && echo --deep) \
-    "${script}" --nodaemon --pidfile="" maas-clusterd \
-    --introspect="unix:${here}/introspect:lockfile=0"
+    "${script}" --nodaemon --pidfile="" maas-clusterd
