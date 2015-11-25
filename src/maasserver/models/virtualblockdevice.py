@@ -149,6 +149,12 @@ class VirtualBlockDevice(BlockDevice):
             elif fs.cache_set is not None:
                 # A block device/partition can only have one cache_set
                 fs_group = fs.cache_set.filesystemgroup_set.first()
+                # bcache devices only show up in cache_set.filesystemgroup_set,
+                # not in fs.filesystem_group. However if only a cache_set has
+                # been created and not a bcache device
+                # cache_set.filesystemgroup_set will be empty.
+                if fs_group is None:
+                    return False
             else:
                 return False
             for virtual_device in fs_group.virtual_devices.all():

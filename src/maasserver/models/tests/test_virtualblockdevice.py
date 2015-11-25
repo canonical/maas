@@ -20,6 +20,7 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -173,3 +174,19 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         virtualblockdevice = node.virtualblockdevice_set.first()
         self.assertEqual(
             len(fs_group_disks), len(virtualblockdevice.get_parents()))
+
+    def test_get_parents_handles_cache_set(self):
+        # Regression test for lp1519397
+        node = factory.make_Node(with_boot_disk=False)
+        volume_group = factory.make_VolumeGroup(node=node)
+        name = factory.make_name()
+        vguuid = "%s" % uuid4()
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
+        logical_volume = volume_group.create_logical_volume(
+            name=name, uuid=vguuid, size=size)
+        logical_volume = reload_object(logical_volume)
+        sdb = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_CacheSet(block_device=sdb, node=node)
+        self.assertItemsEqual(
+            [fs.block_device_id for fs in volume_group.filesystems.all()],
+            [parent.id for parent in logical_volume.get_parents()])
