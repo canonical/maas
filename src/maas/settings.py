@@ -17,7 +17,6 @@ import os
 from sys import stdout
 
 import django.template.base
-from django.utils.timezone import LocalTimezone
 from maas import fix_up_databases
 from maas.monkey import patch_get_script_prefix
 from maasserver.config import RegionConfiguration
@@ -26,6 +25,35 @@ from provisioningserver.logger import (
     DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_LEVEL,
 )
+
+
+def _read_timezone(tzfilename='/etc/timezone'):
+    """Read a file whose contents is a timezone configuration, and return
+    its contents (disregarding whitespace).
+    """
+    if os.path.isfile(tzfilename):
+        try:
+            with open(tzfilename, 'rb') as tzfile:
+                return tzfile.read().strip()
+        except IOError:
+            pass
+    return None
+
+
+def _get_local_timezone(tzfilename='/etc/timezone'):
+    """Try to determine the local timezone, in the format of a zoneinfo
+    file which must exist in /usr/share/zoneinfo. If a local time zone cannot
+    be found, returns 'UTC'.
+    """
+    tz = _read_timezone(tzfilename=tzfilename)
+    zoneinfo = os.path.join('usr', 'share', 'zoneinfo')
+    # If we grabbed a string from /etc/timezone, ensure it exists in the
+    # zoneinfo database before trusting it.
+    if tz is not None and os.path.isfile(os.path.join(zoneinfo, tz)):
+        return tz
+    else:
+        # If this fails, just use 'UTC', which should always exist.
+        return 'UTC'
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
@@ -113,7 +141,7 @@ with RegionConfiguration.open() as config:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # Default set to the same timezone as the system.
-TIME_ZONE = LocalTimezone().tzname(None)
+TIME_ZONE = _get_local_timezone()
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
