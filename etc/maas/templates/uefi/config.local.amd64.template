@@ -3,6 +3,11 @@ set timeout=0
 
 menuentry 'Local' {
     echo 'Booting local disk...'
+    {{if kernel_params.osystem == "windows"}}
+    search --set=root --file /efi/Microsoft/Boot/bootmgfw.efi
+    chainloader /efi/Microsoft/Boot/bootmgfw.efi
+    {{else}}
     search --set=root --file /efi/ubuntu/shimx64.efi
     chainloader /efi/ubuntu/shimx64.efi
+    {{endif}}
 }

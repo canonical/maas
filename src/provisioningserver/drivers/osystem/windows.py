@@ -31,11 +31,13 @@ WINDOWS_CHOICES = {
     'win2012r2': 'Windows "Server 2012 R2"',
     'win2012hv': 'Windows "Hyper-V Server 2012"',
     'win2012hvr2': 'Windows "Hyper-V Server 2012 R2"',
+    'win2016': 'Windows "Server 2016"',
+    'win2016nano': 'Windows "Nano Server 2016"',
 }
 
 WINDOWS_DEFAULT = 'win2012hvr2'
 
-REQUIRE_LICENSE_KEY = ['win2012', 'win2012r2']
+REQUIRE_LICENSE_KEY = ['win2012', 'win2012r2', 'win2016']
 
 
 class WindowsOS(OperatingSystem):
