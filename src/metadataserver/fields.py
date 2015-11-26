@@ -26,12 +26,7 @@ from django.db.models import (
     Field,
     SubfieldBase,
 )
-
-
-try:
-    from south.modelsinspector import add_introspection_rules
-except ImportError:
-    add_introspection_rules = None
+from maasserver.utils.django import has_builtin_migrations
 
 
 class Bin(bytes):
@@ -79,7 +74,8 @@ class Bin(bytes):
 # parent's constructor so South will handle it just fine.
 # See http://south.aeracode.org/docs/customfields.html#extending-introspection
 # for details.
-if add_introspection_rules is not None:
+if not has_builtin_migrations():
+    from south.modelsinspector import add_introspection_rules
     add_introspection_rules([], ["^metadataserver\.fields\.BinaryField"])
 
 

@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 
-import logging
 import os
 from os.path import abspath
 
@@ -51,9 +50,6 @@ DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
-
-# Silent South during tests.
-logging.getLogger('south').setLevel(logging.WARNING)
 
 DATABASES = {
     'default': {

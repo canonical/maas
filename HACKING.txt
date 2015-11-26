@@ -393,7 +393,7 @@ MAAS uses Django_ to manage changes to the database schema.
 Be sure to have a look at `Django's migration documentation`_ before you make
 any change.
 
-.. _Django's documentation:
+.. _Django's migration documentation:
     https://docs.djangoproject.com/en/1.8/topics/migrations/
 
 
@@ -433,8 +433,6 @@ to run Django's `makemigrations`_ command. For instance, if you want to perform
 changes to the ``maasserver`` application, run::
 
     $ ./bin/maas-region-admin makemigrations --empty --name description_of_the_change maasserver
-
-.. _makemigrations: https://docs.djangoproject.com/en/1.8/ref/django-admin/#django-admin-makemigrations
 
 This will generate a migration module named
 ``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.

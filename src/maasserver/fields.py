@@ -47,6 +47,7 @@ from django.db.models import (
 )
 from django.db.models.fields.subclassing import Creator
 from django.utils.encoding import force_text
+from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import (
     get_one,
@@ -57,12 +58,6 @@ from netaddr import (
     IPNetwork,
 )
 import psycopg2.extensions
-
-
-try:
-    from south.modelsinspector import add_introspection_rules
-except ImportError:
-    add_introspection_rules = None
 
 
 MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\s*$')
@@ -103,7 +98,8 @@ def validate_mac(value):
 # them just fine.
 # See http://south.aeracode.org/docs/customfields.html#extending-introspection
 # for details.
-if add_introspection_rules is not None:
+if not has_builtin_migrations():
+    from south.modelsinspector import add_introspection_rules
     add_introspection_rules(
         [], [
             "^maasserver\.fields\.MACAddressField",

@@ -139,7 +139,7 @@ class LocalConfigCommand(BaseCommand):
     """
 
     can_import_settings = False
-    requires_model_validation = False
+    requires_system_checks = False
     leave_locale_alone = True
 
 

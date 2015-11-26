@@ -323,6 +323,17 @@ if DEBUG:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'suppress_deprecated': {
+            '()': 'maas.SuppressDeprecated',
+        },
+    },
     'formatters': {
         'simple': {
             'format': DEFAULT_LOG_FORMAT,
@@ -330,9 +341,15 @@ LOGGING = {
         },
     },
     'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['require_debug_true', 'suppress_deprecated'],
+            'class': 'logging.StreamHandler',
+        },
         'stdout': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['suppress_deprecated'],
             'stream': stdout,
         },
     },
