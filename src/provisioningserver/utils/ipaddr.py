@@ -281,11 +281,8 @@ def get_interface_type(
             return 'ethernet.bond'
         if os.path.isfile('%s/%s' % (proc_net_vlan, ifname)):
             return 'ethernet.vlan'
-        module_name_link = os.path.join(sys_path, 'device', 'driver', 'module')
-        if not os.path.islink(module_name_link):
-            return 'ethernet'
-        module_name = os.readlink(module_name_link).split('/')[-1]
-        if module_name:
+        device_path = os.path.join(sys_path, 'device')
+        if os.path.islink(device_path):
             device_80211 = os.path.join(sys_path, 'device', 'ieee80211')
             if os.path.isdir(device_80211):
                 return 'ethernet.wireless'

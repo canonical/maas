@@ -349,13 +349,9 @@ class TestGetInterfaceType(MAASTestCase):
                 f.write(b"%s\n" % ' '.join(bonded_interfaces).encode('utf-8'))
                 f.close()
         if is_physical or is_wireless:
-            os.mkdir(os.path.join(ifdir, 'device'))
-            os.mkdir(os.path.join(ifdir, 'device', 'driver'))
-            # Note: the symlink here doesn't actually need to resolve
-            # to a real file.
-            os.symlink(
-                os.path.join('..', 'driver_module_name'),
-                os.path.join(ifdir, 'device', 'driver', 'module'))
+            device_real = os.path.join(ifdir, 'device.real')
+            os.mkdir(device_real)
+            os.symlink(device_real, os.path.join(ifdir, 'device'))
         if is_wireless:
             os.mkdir(os.path.join(ifdir, 'device', 'ieee80211'))
 
@@ -480,6 +476,10 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
 
     def test__filters_based_on_name_by_default(self):
         input_networks = [
+            {"interface": "eno1"},
+            {"interface": "ens3"},
+            {"interface": "enp0s25"},
+            {"interface": "enx78e7d1ea46da"},
             {"interface": "em0"},
             {"interface": "eth0"},
             {"interface": "vlan0"},
@@ -490,6 +490,10 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
         ]
         actual_networks = filter_and_annotate_networks(input_networks)
         expected_networks = [
+            {"interface": "eno1"},
+            {"interface": "ens3"},
+            {"interface": "enp0s25"},
+            {"interface": "enx78e7d1ea46da"},
             {"interface": "em0"},
             {"interface": "eth0"},
             {"interface": "vlan0"},
@@ -499,6 +503,10 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
 
     def test__filters_and_annotates_based_on_json_data_if_available(self):
         input_networks = [
+            {"interface": "eno1"},
+            {"interface": "ens3"},
+            {"interface": "enp0s25"},
+            {"interface": "enx78e7d1ea46da"},
             {"interface": "em0"},
             {"interface": "eth0"},
             {"interface": "vlan0"},
@@ -521,7 +529,7 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
                     "bridged_interfaces": ["avian0"]},
             "br3": {"type": "ethernet.bridge"},
             "wlan0": {"type": "ethernet.bond",
-                      "bonded_interfaces": ["em0", "eth0"]}
+                      "bonded_interfaces": ["eno1", "eth0"]}
         }
         actual_networks = filter_and_annotate_networks(
             input_networks, json.dumps(input_json))
@@ -533,12 +541,16 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
              "bridged_interfaces": "avian0"},
             {"interface": "br3", 'type': "ethernet.bridge"},
             {"interface": "wlan0", 'type': "ethernet.bond",
-             "bonded_interfaces": "em0 eth0"},
+             "bonded_interfaces": "eno1 eth0"},
         ]
         self.assertThat(actual_networks, Equals(expected_networks))
 
     def test__falls_back_to_names_if_no_interfaces_found(self):
         input_networks = [
+            {"interface": "eno1"},
+            {"interface": "ens3"},
+            {"interface": "enp0s25"},
+            {"interface": "enx78e7d1ea46da"},
             {"interface": "em0"},
             {"interface": "eth0"},
             {"interface": "vlan0"},
@@ -552,6 +564,10 @@ class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
         actual_networks = filter_and_annotate_networks(
             input_networks, json.dumps(input_json))
         expected_networks = [
+            {"interface": "eno1"},
+            {"interface": "ens3"},
+            {"interface": "enp0s25"},
+            {"interface": "enx78e7d1ea46da"},
             {"interface": "em0"},
             {"interface": "eth0"},
             {"interface": "vlan0"},

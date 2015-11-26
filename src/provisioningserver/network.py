@@ -163,6 +163,7 @@ def _filter_managed_networks_by_ifname(networks):
         for network in networks
         if 'interface' in network and
            (network['interface'].startswith('eth') or
+            network['interface'].startswith('en') or
             network['interface'].startswith('em') or
             network['interface'].startswith('vlan') or
             network['interface'].startswith('bond'))
