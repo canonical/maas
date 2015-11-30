@@ -29,6 +29,7 @@ import os.path
 import re
 import sys
 
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
@@ -36,6 +37,7 @@ from provisioningserver.utils.shell import call_and_check
 import tempita
 
 
+maaslog = get_maas_logger("dns")
 NAMED_CONF_OPTIONS = 'named.conf.options'
 MAAS_NAMED_CONF_NAME = 'named.conf.maas'
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = 'named.conf.options.inside.maas'
@@ -319,7 +321,16 @@ class DNSConfig:
 
     @classmethod
     def get_include_snippet(cls):
-        target_path = compose_config_path(cls.target_file_name)
-        assert '"' not in target_path, (
-            "DNS config path contains quote: %s." % target_path)
-        return 'include "%s";\n' % target_path
+        snippet = ""
+        if isinstance(cls.target_file_name, list):
+            target_file_names = cls.target_file_name
+        else:
+            target_file_names = [cls.target_file_name]
+        for target_file_name in target_file_names:
+            target_path = compose_config_path(target_file_name)
+            if '"' in target_path:
+                maaslog.error(
+                    "DNS config path contains quote: %s." % target_path)
+            else:
+                snippet += 'include "%s";\n' % target_path
+        return snippet

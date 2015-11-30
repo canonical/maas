@@ -15,7 +15,7 @@ __metaclass__ = type
 __all__ = [
     "bind_reconfigure",
     "bind_reload",
-    "bind_reload_zone",
+    "bind_reload_zones",
     "bind_write_configuration",
     "bind_write_options",
     "bind_write_zones",
@@ -87,21 +87,26 @@ def bind_reload_with_retries(attempts=10, interval=2):
             sleep(interval)
 
 
-def bind_reload_zone(zone_name):
+def bind_reload_zones(zone_list):
     """Ask BIND to reload the zone file for the given zone.
 
-    :param zone_name: The name of the zone to reload.
+    :param zone_list: A list of zone names to reload, or a single name as a
+        string.
     :return: True if success, False otherwise.
     """
-    try:
-        execute_rndc_command(("reload", zone_name))
-        return True
-    except CalledProcessError as exc:
-        maaslog.error(
-            "Reloading BIND zone %r failed (is it running?): %s",
-            zone_name,
-            exc)
-        return False
+    ret = True
+    if not isinstance(zone_list, list):
+        zone_list = [zone_list]
+    for name in zone_list:
+        try:
+            execute_rndc_command(("reload", name))
+        except CalledProcessError as exc:
+            maaslog.error(
+                "Reloading BIND zone %r failed (is it running?): %s",
+                name,
+                exc)
+            ret = False
+    return ret
 
 
 def bind_write_configuration(zones, trusted_networks):

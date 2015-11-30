@@ -144,11 +144,11 @@ class TestReloadWithRetries(MAASTestCase):
 
 
 class TestReloadZone(MAASTestCase):
-    """Tests for :py:func:`actions.bind_reload_zone`."""
+    """Tests for :py:func:`actions.bind_reload_zones`."""
 
     def test__executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
-        self.assertTrue(actions.bind_reload_zone(sentinel.zone))
+        self.assertTrue(actions.bind_reload_zones(sentinel.zone))
         self.assertThat(
             actions.execute_rndc_command,
             MockCalledOnceWith(("reload", sentinel.zone)))
@@ -157,7 +157,7 @@ class TestReloadZone(MAASTestCase):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
-            self.assertFalse(actions.bind_reload_zone(sentinel.zone))
+            self.assertFalse(actions.bind_reload_zones(sentinel.zone))
         self.assertDocTestMatches(
             "Reloading BIND zone ... failed (is it running?): "
             "Command ... returned non-zero exit status ...",
@@ -166,7 +166,7 @@ class TestReloadZone(MAASTestCase):
     def test__false_on_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
-        self.assertFalse(actions.bind_reload_zone(sentinel.zone))
+        self.assertFalse(actions.bind_reload_zones(sentinel.zone))
 
 
 class TestConfiguration(PservTestCase):

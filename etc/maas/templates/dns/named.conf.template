@@ -2,10 +2,12 @@ include "{{named_rndc_conf_path}}";
 
 # Zone declarations.
 {{for zone in zones}}
-zone "{{zone.zone_name}}" {
+{{for zoneinfo in zone.zone_info}}
+zone "{{zoneinfo.zone_name}}" {
     type master;
-    file "{{zone.target_path}}";
+    file "{{zoneinfo.target_path}}";
 };
+{{endfor}}
 {{endfor}}
 
 # Access control for recursive queries.  See named.conf.options.inside.maas

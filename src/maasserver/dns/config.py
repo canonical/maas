@@ -50,7 +50,7 @@ from provisioningserver.dns.actions import (
     bind_reconfigure,
     bind_reload,
     bind_reload_with_retries,
-    bind_reload_zone,
+    bind_reload_zones,
     bind_write_configuration,
     bind_write_options,
     bind_write_zones,
@@ -144,9 +144,10 @@ def dns_update_zones_now(clusters):
 
     serial = next_zone_serial()
     for zone in ZoneGenerator(clusters, serial):
-        maaslog.info("Generating new DNS zone file for %s", zone.zone_name)
+        names = [zi.zone_name for zi in zone.zone_info]
+        maaslog.info("Generating new DNS zone file for %s", " ".join(names))
         bind_write_zones([zone])
-        bind_reload_zone(zone.zone_name)
+        bind_reload_zones(names)
 
 
 def dns_update_zones(clusters):
