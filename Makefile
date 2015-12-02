@@ -509,8 +509,8 @@ services/regiond2/@deps: bin/maas-region-admin
 # this.
 
 # Old names.
-PACKAGING := $(abspath ../packaging.trunk)
-PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
+PACKAGING := $(abspath ../packaging-1.9)
+PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging-1.9
 
 packaging-tree = $(PACKAGING)
 packaging-branch = $(PACKAGING_BRANCH)
