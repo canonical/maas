@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
 from maasserver.forms_subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.models.space import Space
@@ -277,3 +279,29 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 gateway_ip=None, dns_servers=[]))
+
+    def test__clean_dns_servers_accepts_comma_separated_list(self):
+        subnet = factory.make_Subnet()
+        dns_servers = [factory.make_ip_address()
+                       for _ in range(random.randint(2, 10))]
+        form = SubnetForm(instance=subnet, data={
+            "dns_servers": ','.join(dns_servers)
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        subnet = reload_object(subnet)
+        self.assertEquals(dns_servers,
+                          subnet.dns_servers)
+
+    def test__clean_dns_servers_accepts_space_separated_list(self):
+        subnet = factory.make_Subnet()
+        dns_servers = [factory.make_ip_address()
+                       for _ in range(random.randint(2, 10))]
+        form = SubnetForm(instance=subnet, data={
+            "dns_servers": " ".join(dns_servers)
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        subnet = reload_object(subnet)
+        self.assertEquals(dns_servers,
+                          subnet.dns_servers)
