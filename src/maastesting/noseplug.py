@@ -30,7 +30,21 @@ class Crochet(Plugin):
     """Start the Twisted reactor via Crochet."""
 
     name = "crochet"
+    option_no_setup = "%s_no_setup" % name
     log = logging.getLogger('nose.plugins.%s' % name)
+
+    def options(self, parser, env):
+        """Add options to Nose's parser.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        super(Crochet, self).options(parser, env)
+        parser.add_option(
+            "--%s-no-setup" % self.name, dest=self.option_no_setup,
+            action="store_true", default=False, help=(
+                "Initialize the crochet library with no side effects."
+            ),
+        )
 
     def configure(self, options, conf):
         """Configure, based on the parsed options.
@@ -40,7 +54,11 @@ class Crochet(Plugin):
         super(Crochet, self).configure(options, conf)
         if self.enabled:
             import crochet
-            crochet.setup()
+
+            if getattr(options, self.option_no_setup):
+                crochet.no_setup()
+            else:
+                crochet.setup()
 
     def help(self):
         """Used in the --help text.

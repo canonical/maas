@@ -782,17 +782,27 @@ class ThreadPool(threadpool.ThreadPool, object):
         super(ThreadPool, self).__init__(minthreads, maxthreads, name)
         self.context = context
 
-    def _worker(self):
-        ct = self.currentThread()
-        try:
-            # Make the context active throughout the worker's lifetime.
-            # XXX: What if self.context is None?
-            with self.context():
-                return super(ThreadPool, self)._worker()
-        finally:
-            # Belt-n-braces, in case the context blows up.
-            if ct in self.threads:
-                self.threads.remove(ct)
+    def threadFactory(self, target, name):
+        """Spawn a thread for use as a worker.
+
+        :param target: A no-argument callable; the worker function.
+        :param name: The name of the thread.
+        """
+        def worker(target):
+            ct = self.currentThread()
+            try:
+                # Make the context active throughout the worker's lifetime.
+                # XXX: What if self.context is None?
+                with self.context():
+                    return target()
+            finally:
+                # Belt-n-braces, in case the context blows up. This works
+                # around https://twistedmatrix.com/trac/ticket/8114 too.
+                if ct in self.threads:
+                    self.threads.remove(ct)
+
+        return super(ThreadPool, self).threadFactory(
+            name=name, target=worker, args=(target, ))
 
 
 class ThreadPoolLimiter:

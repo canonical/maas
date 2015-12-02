@@ -54,12 +54,17 @@ class TestCrochet(MAASTestCase):
         parser = OptionParser()
         crochet.options(parser=parser, env={})
         self.assertThat(
-            parser.option_list[-1:],
+            parser.option_list[-2:],
             MatchesListwise([
                 # The --with-crochet option.
                 MatchesStructure.byEquality(
                     action="store_true", default=None,
                     dest="enable_plugin_crochet",
+                ),
+                # The --crochet-no-setup option.
+                MatchesStructure.byEquality(
+                    action="store_true", default=False,
+                    dest="crochet_no_setup",
                 ),
             ]))
 
