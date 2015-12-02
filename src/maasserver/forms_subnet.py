@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 from django import forms
+from maasserver.fields import IPListFormField
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric
 from maasserver.models.space import Space
@@ -59,6 +60,7 @@ class SubnetForm(MAASModelForm):
     def clean(self):
         cleaned_data = super(SubnetForm, self).clean()
         cleaned_data = self._clean_name(cleaned_data)
+        cleaned_data = self._clean_dns_servers(cleaned_data)
         if self.instance.id is None:
             # We only allow the helpers when creating. When updating we require
             # the VLAN specifically. This is because we cannot make a correct
@@ -123,4 +125,16 @@ class SubnetForm(MAASModelForm):
         space = cleaned_data.get("space", None)
         if space is None:
             cleaned_data["space"] = Space.objects.get_default_space()
+        return cleaned_data
+
+    def _clean_dns_servers(self, cleaned_data):
+        dns_servers = cleaned_data.get("dns_servers", None)
+        if dns_servers is None:
+            return cleaned_data
+        clean_dns_servers = []
+        for dns_server in dns_servers:
+            ip_list_form = IPListFormField()
+            ip_list_cleaned = ip_list_form.clean(dns_server)
+            clean_dns_servers += ip_list_cleaned.split(" ")
+        cleaned_data["dns_servers"] = clean_dns_servers
         return cleaned_data
