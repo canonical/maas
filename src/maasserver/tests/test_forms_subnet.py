@@ -252,6 +252,19 @@ class TestSubnetForm(MAASServerTestCase):
             subnet, MatchesStructure.byEquality(
                 name=new_cidr, cidr=new_cidr, gateway_ip=new_gateway_ip))
 
+    def test__updates_subnet_name_doesnt_remove_dns_server(self):
+        # Regression test for lp:1521833
+        dns_servers = [factory.make_ip_address()
+                       for _ in range(random.randint(2, 10))]
+        subnet = factory.make_Subnet(dns_servers=dns_servers)
+        form = SubnetForm(instance=subnet, data={
+            "name": factory.make_name("subnet")
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        subnet = reload_object(subnet)
+        self.assertEquals(dns_servers, subnet.dns_servers)
+
     def test__doesnt_overwrite_other_fields(self):
         new_name = factory.make_name("subnet")
         subnet = factory.make_Subnet()
