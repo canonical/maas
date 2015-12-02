@@ -1,6 +1,9 @@
 from django.db import models
 from maasserver.enum import NODE_STATUS
-from maasserver.models.node import Node
+from maasserver.models.migrations.create_default_storage_layout import (
+    clear_full_storage_configuration,
+    create_lvm_layout,
+)
 from south.db import db
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
@@ -20,19 +23,41 @@ IGNORE_STATUS = [
 class Migration(DataMigration):
 
     def forwards(self, orm):
-        # We don't use orm here because we want the current Node model to
-        # include all of the storage methods we require. This will break
-        # if the node these methods get removed from the Node, so we assert
-        # that they at least exists.
-        assert hasattr(Node, "_clear_full_storage_configuration")
-        assert hasattr(Node, "set_default_storage_layout")
-        for node in Node.objects.filter(installable=True):
+        PartitionTable = orm['maasserver.PartitionTable']
+        Partition = orm['maasserver.Partition']
+        Filesystem = orm['maasserver.Filesystem']
+        FilesystemGroup = orm['maasserver.FilesystemGroup']
+        PhysicalBlockDevice = orm['maasserver.PhysicalBlockDevice']
+        VirtualBlockDevice = orm['maasserver.VirtualBlockDevice']
+        for node in orm['maasserver.Node'].objects.filter(installable=True):
             if (node.status in IGNORE_STATUS and
                     node.blockdevice_set.count() == 0):
                 # Node needs to be the correct status and have storage devices.
                 continue
-            node._clear_full_storage_configuration()
-            node.set_default_storage_layout()
+
+            # Clear the current storage configration just to be sure.
+            clear_full_storage_configuration(
+                node,
+                PhysicalBlockDevice=PhysicalBlockDevice,
+                VirtualBlockDevice=VirtualBlockDevice,
+                PartitionTable=PartitionTable,
+                Filesystem=Filesystem,
+                FilesystemGroup=FilesystemGroup)
+
+            # Create the LVM layout on the boot disk.
+            boot_device = node.boot_disk
+            if boot_device is None:
+                boot_device = PhysicalBlockDevice.objects.filter(
+                    node=node).order_by('id').first()
+            if boot_device is not None:
+                create_lvm_layout(
+                    node,
+                    boot_device,
+                    PartitionTable=PartitionTable,
+                    Partition=Partition,
+                    Filesystem=Filesystem,
+                    FilesystemGroup=FilesystemGroup,
+                    VirtualBlockDevice=VirtualBlockDevice)
 
     def backwards(self, orm):
         # No need to go backward.
