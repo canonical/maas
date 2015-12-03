@@ -166,7 +166,7 @@ class StaticIPAddressManager(Manager):
             dynamic_range_low, dynamic_range_high,
             alloc_type=IPADDRESS_TYPE.AUTO, user=None,
             requested_address=None, hostname=None, subnet=None,
-            exclude_addresses=[]):
+            exclude_addresses=[], in_use_ipset=set()):
         """Return a new StaticIPAddress.
 
         :param network: The network the address should be allocated in.
@@ -226,7 +226,8 @@ class StaticIPAddressManager(Manager):
                 requested_address = self._async_find_free_ip(
                     static_range_low, static_range_high, static_range,
                     alloc_type, user,
-                    exclude_addresses=exclude_addresses).wait(30)
+                    exclude_addresses=exclude_addresses,
+                    in_use_ipset=in_use_ipset).wait(30)
                 try:
                     return self._attempt_allocation(
                         requested_address, alloc_type, user,
@@ -272,7 +273,7 @@ class StaticIPAddressManager(Manager):
 
     def _find_free_ip(
             self, range_low, range_high, static_range, alloc_type,
-            user, exclude_addresses):
+            user, exclude_addresses, in_use_ipset=set()):
         """Helper function that finds a free IP address using a lock."""
         # The set of _allocated_ addresses in the range is going to be
         # smaller or at least no bigger than the set of addresses in the
@@ -297,7 +298,8 @@ class StaticIPAddressManager(Manager):
             })
         # Now find the first free address in the range.
         for requested_address in static_range:
-            if requested_address not in existing:
+            if (requested_address not in existing and
+                    requested_address not in in_use_ipset):
                 return requested_address
         else:
             raise StaticIPAddressExhaustion(
@@ -840,4 +842,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             else:
                 # (2) and (3): the Subnet has changed (could be to None)
                 subnet = Subnet.objects.get_best_subnet_for_ip(ipaddr)
+                # We must save here, otherwise it's possible that we can't
+                # traverse the interface_set many-to-many.
+                self.save()
                 self._set_subnet(subnet, interfaces=self.interface_set.all())

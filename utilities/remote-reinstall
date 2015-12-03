@@ -1,0 +1,70 @@
+#!/bin/bash
+cd $(dirname $0)
+cd ..
+
+get_ip() {
+    ping -c 1 "$1" | head -1 | tr '(' ')' | cut -d')' -f 2
+}
+
+trim () {
+    read -rd '' $1 <<<"${!1}"
+}
+
+die () {
+    echo "$@"
+    exit 1
+}
+
+if [ "$1" == "" ]; then
+    die "You must supply a hostname."
+fi
+
+hostname="$1"
+shift
+
+remote_basedir=/usr/lib/python2.7/dist-packages
+directories="maascli maasserver provisioningserver metadataserver"
+rsync_options=rlptv
+ssh_run="ssh -oBatchMode=yes -l root $hostname"
+
+echo "Checking $hostname..."
+maas_version=$($ssh_run "dpkg -s maas-region-controller-min | grep ^Version") \
+    || die "Cannot SSH to root@$hostname."
+ip_address=$(get_ip $hostname)
+maas_version=$(echo $maas_version | cut -d':' -f 2)
+trim maas_version
+trim hostname
+trim ip_address
+echo ""
+echo "Current MAAS version is: $maas_version"
+echo ""
+echo "WARNING: This will LIVE UPDATE the MAAS server at:"
+if [ $hostname == $ip_address ]; then
+    echo "    $hostname"
+else
+    echo "    $hostname ($ip_address)"
+fi
+echo ""
+echo "This is a DESTRUCTIVE script that will OVERWRITE files installed by the"
+echo "MAAS packages, and DELETE any extra files found on the server."
+echo ""
+echo "Destination directory:"
+echo "    $remote_basedir"
+echo ""
+echo "The following directories (under src/ in this sandbox) will be copied:"
+echo "    $directories"
+echo ""
+echo "Press <enter> to continue, ^C to cancel."
+read
+
+echo "Synchronizing files..."
+for dir in $directories; do
+    remote_dir=${remote_basedir}/${dir}
+    rsync -${rsync_options} --delete-after --exclude 'tests/' src/${dir}/ \
+        root@${hostname}:${remote_dir} \
+        && echo "Success." || die "Syncrhonization failed."
+    $ssh_run "python -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
+done
+$ssh_run service maas-regiond restart
+$ssh_run service apache2 restart
+$ssh_run service maas-clusterd restart

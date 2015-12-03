@@ -31,6 +31,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
+    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
@@ -80,6 +81,7 @@ from testtools.matchers import (
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
+    Not,
 )
 
 
@@ -2224,9 +2226,93 @@ class TestClaimAutoIPs(MAASServerTestCase):
         self.assertEquals(subnet, observed[0].subnet)
         self.assertTrue(
             IPAddress(observed[0].ip) in (
-                IPRange(ngi.static_ip_range_low, ngi.static_ip_range_low)),
-            "Assigned IP address should be inside the static range "
-            "on the cluster.")
+                IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)),
+            "Assigned IP address %s should be inside the static range "
+            "on the cluster (%s - %s)." % (
+                observed[0].ip, ngi.static_ip_range_low,
+                ngi.static_ip_range_high))
+
+    def test__claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
+        from maasserver.dns import config
+        self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(config, "dns_update_zones")
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            subnet=subnet)
+        # Make it a really small range, just to be safe.
+        ngi.static_ip_range_high = unicode(
+            IPAddress(ngi.static_ip_range_low) + 1)
+        ngi.save()
+        ngi.subnet.gateway_ip = ngi.static_ip_range_low
+        ngi.subnet.dns_servers = []
+        ngi.subnet.save()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        observed = interface.claim_auto_ips()
+        self.assertEquals(
+            1, len(observed),
+            "Should have 1 AUTO IP addresses with an IP address assigned.")
+        self.assertEquals(subnet, observed[0].subnet)
+        self.assertTrue(
+            IPAddress(observed[0].ip) in (
+                IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)),
+            "Assigned IP address %s should be inside the static range "
+            "on the cluster (%s - %s)." % (
+                observed[0].ip, ngi.static_ip_range_low,
+                ngi.static_ip_range_high))
+        self.assertThat(
+            IPAddress(observed[0].ip), Not(Equals(IPAddress(
+                ngi.subnet.gateway_ip))))
+
+    def test__claim_fails_if_subnet_missing(self):
+        from maasserver.dns import config
+        self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(config, "dns_update_zones")
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            subnet=subnet)
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        ip.subnet = None
+        ip.save()
+        maaslog = self.patch_autospec(interface_module, "maaslog")
+        with ExpectedException(StaticIPAddressUnavailable):
+            interface.claim_auto_ips()
+        self.expectThat(maaslog.error, MockCalledOnceWith(
+            "Could not find subnet for interface %s." %
+            interface.get_log_string()))
+
+    def test__claim_fails_if_no_static_range(self):
+        from maasserver.dns import config
+        self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(config, "dns_update_zones")
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            subnet=subnet)
+        ngi.static_ip_range_low = ""
+        ngi.static_ip_range_high = ""
+        ngi.save()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        maaslog = self.patch_autospec(interface_module, "maaslog")
+        with ExpectedException(StaticIPAddressUnavailable):
+            interface.claim_auto_ips()
+        self.expectThat(maaslog.error, MockCalledOnceWith(
+            "Found matching NodeGroupInterface, but no static range has "
+            "been defined for %s. (did you mean to configure DHCP?) " %
+            interface.get_log_string()))
 
     def test__calls_update_host_maps(self):
         from maasserver.dns import config
@@ -2518,7 +2604,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
             StaticIPAddressOutOfRange, interface.claim_static_ips, ip_v6)
         self.assertEquals(
             "requested_address '%s' is not in a managed subnet for "
-            "this interface '%s'" % (ip_v6, interface.name),
+            "interface '%s'." % (ip_v6, interface.name),
             error.message)
 
     def test__with_address_calls_link_subnet_with_ip_address(self):
@@ -2610,3 +2696,27 @@ class TestClaimStaticIPs(MAASServerTestCase):
         self.patch_autospec(iface, "link_subnet")
         claimed_ips = iface.claim_static_ips()
         self.assertThat(claimed_ips, HasLength(1))
+
+    def test__claim_static_fails_if_parent_subnet_cannot_be_found(self):
+        from maasserver.dns import config
+        self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(config, "dns_update_zones")
+        subnet = factory.make_Subnet()
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            subnet=subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, unmanaged=True, status=NODE_STATUS.READY)
+        # Simulate an unmanaged network without association to a subnet.
+        # (this could happen after a migration)
+        StaticIPAddress.objects.all().delete()
+        interface = node.get_boot_interface()
+        maaslog = self.patch_autospec(interface_module, "maaslog")
+        with ExpectedException(StaticIPAddressExhaustion):
+            interface.claim_static_ips()
+        self.expectThat(maaslog.warning, MockCalledOnceWith(
+            "%s: Attempted to claim a static IP address, but no associated "
+            "subnet could be found. (Recommission node '%s' in order for "
+            "MAAS to discover the subnet.)" %
+            (interface.get_log_string(), node.hostname)))

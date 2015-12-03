@@ -389,11 +389,18 @@ class Subnet(CleanSave, TimestampedModel):
 
     def get_managed_cluster_interface(self):
         """Return the cluster interface that manages this subnet."""
+        # Prefer enabled, non-UNMANAGED networks.
         interfaces = self.nodegroupinterface_set.filter(
             nodegroup__status=NODEGROUP_STATUS.ENABLED)
         interfaces = interfaces.exclude(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        return interfaces.first()
+        ngi = interfaces.first()
+        if ngi is None:
+            # Circular imports
+            from maasserver.models import NodeGroupInterface
+            ngi = NodeGroupInterface.objects.get_by_managed_range_for_subnet(
+                self)
+        return ngi
 
     def clean(self, *args, **kwargs):
         self.validate_gateway_ip()

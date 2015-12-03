@@ -2530,7 +2530,9 @@ class Node(CleanSave, TimestampedModel):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
         event = EVENT_TYPES.REQUEST_NODE_START
-        # if status is ALLOCATED, this start is actually for a deployment
+        # If status is ALLOCATED, this start is actually for a deployment.
+        # (Note: this is true even when nodes are being deployed from READY
+        # state. See node_action.py; the node is acquired and then started.)
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
         self._register_request_event(
@@ -2575,6 +2577,8 @@ class Node(CleanSave, TimestampedModel):
 
         if self.status == NODE_STATUS.ALLOCATED:
             # Claim AUTO IP addresses for the node if it's ALLOCATED.
+            # The current state being ALLOCATED is our indication that the node
+            # is being deployed for the first time.
             self.claim_auto_ips()
             transition_monitor = (
                 TransitionMonitor.fromNode(self)

@@ -217,6 +217,41 @@ class TestFindingByAddressForStaticAllocation(MAASServerTestCase):
         self.assertEqual(if2, get_by_address(address))
 
 
+class TestGetManagedRangeForSubnet(MAASServerTestCase):
+
+    def test__finds_interface_using_static_range(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.2.0/24'))
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip='192.168.0.1', subnet_mask='', ip_range_low='',
+            ip_range_high='', static_ip_range_low='192.168.1.10',
+            static_ip_range_high='192.168.1.20')
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.3.0/24'))
+        subnet = factory.make_Subnet(cidr='192.168.1.0/24')
+        self.assertEqual(
+            ngi, NodeGroupInterface.objects.get_by_managed_range_for_subnet(
+                subnet))
+
+    def test__finds_interface_using_dynamic_range(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.2.0/24'))
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip='192.168.0.1', subnet_mask='', static_ip_range_low='',
+            static_ip_range_high='', ip_range_low='192.168.1.10',
+            ip_range_high='192.168.1.20')
+        factory.make_NodeGroupInterface(nodegroup, network=IPNetwork(
+            '192.168.3.0/24'))
+        subnet = factory.make_Subnet(cidr=IPNetwork('192.168.1.0/24'))
+        result = NodeGroupInterface.objects.get_by_managed_range_for_subnet(
+            subnet)
+        self.assertEqual(ngi, result)
+
+
 class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_network(self):

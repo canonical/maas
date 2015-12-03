@@ -52,6 +52,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
+    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
@@ -349,6 +350,13 @@ class Interface(CleanSave, TimestampedModel):
 
     def get_node(self):
         return self.node
+
+    def get_log_string(self):
+        hostname = "<unknown-node>"
+        node = self.get_node()
+        if node is not None:
+            hostname = node.hostname
+        return "%s on %s" % (self.get_name(), hostname)
 
     def get_name(self):
         return self.name
@@ -879,6 +887,10 @@ class Interface(CleanSave, TimestampedModel):
         be identified then its just set to DHCP.
         """
         found_subnet = None
+        # XXX mpontillo 2015-11-29: since we tend to dump a large number of
+        # subnets into the default VLAN, this assumption might be incorrect in
+        # many cases, leading to interfaces being configured as AUTO when
+        # they should be configured as DHCP.
         for subnet in self.vlan.subnet_set.all():
             ngi = subnet.get_managed_cluster_interface()
             if ngi is not None:
@@ -1109,44 +1121,92 @@ class Interface(CleanSave, TimestampedModel):
                     auto_ip, exclude_addresses)
                 if ngi is not None:
                     affected_nodegroups.add(ngi.nodegroup)
-                assigned_addresses.append(assigned_ip)
-                exclude_addresses.add(unicode(assigned_ip.ip))
+                if assigned_ip is not None:
+                    assigned_addresses.append(assigned_ip)
+                    exclude_addresses.add(unicode(assigned_ip.ip))
         self._update_dns_zones(affected_nodegroups)
         return assigned_addresses
 
     def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
-        """Claim an IP address for the `auto_ip`."""
+        """Claim an IP address for the `auto_ip`.
+
+        :returns:NodeGroupInterface, new_ip_address
+        """
         # Check if already has a hostmap allocated for this MAC address.
         subnet = auto_ip.subnet
-        ngi = subnet.get_managed_cluster_interface()
-        if ngi is not None:
-            has_allocations = self._has_static_allocation_on_cluster(
-                ngi.nodegroup, get_subnet_family(subnet))
-        else:
-            has_allocations = False
+        if subnet is None:
+            maaslog.error(
+                "Could not find subnet for interface %s." %
+                (self.get_log_string()))
+            raise StaticIPAddressUnavailable(
+                "Automatic IP address cannot be configured on interface %s "
+                "without an associated subnet." % self.get_name())
 
-        # Create a new AUTO IP.
+        ngi = subnet.get_managed_cluster_interface()
+        if ngi is None:
+            # Couldn't find a managed cluster interface for this node. So look
+            # for any interface (must be an UNMANAGED interface, since any
+            # managed NodeGroupInterface MUST have a Subnet link) whose
+            # static or dynamic range is within the given subnet.
+            ngi = NodeGroupInterface.objects.get_by_managed_range_for_subnet(
+                subnet)
+
+        has_existing_mapping = False
+        has_static_range = False
+        has_dynamic_range = False
+
         if ngi is not None:
+            has_existing_mapping = self._has_static_allocation_on_cluster(
+                ngi.nodegroup, get_subnet_family(subnet))
+            has_static_range = ngi.has_static_ip_range()
+            has_dynamic_range = ngi.has_dynamic_ip_range()
+
+        if not has_static_range and has_dynamic_range:
+            # This means we found a matching NodeGroupInterface, but only its
+            # dynamic range is defined. Since a dynamic range is defined, that
+            # means this subnet is NOT managed by MAAS (or it's misconfigured),
+            # so we cannot just hand out a random IP address and risk a
+            # duplicate IP address.
+            maaslog.error(
+                "Found matching NodeGroupInterface, but no static range has "
+                "been defined for %s. (did you mean to configure DHCP?) " %
+                (self.get_log_string()))
+            raise StaticIPAddressUnavailable(
+                "Cluster interface for %s only has a dynamic range. Configure "
+                "a static range, or reconfigure the interface." %
+                (self.get_name()))
+
+        if has_static_range:
+            # Allocate a new AUTO address from the static range.
             network = ngi.network
             static_ip_range_low = ngi.static_ip_range_low
             static_ip_range_high = ngi.static_ip_range_high
         else:
+            # We either found a NodeGroupInterface with no static or dynamic
+            # range, or we have a Subnet not associated with a
+            # NodeGroupInterface. This implies that it's okay to assign any
+            # unused IP address on the subnet.
             network = subnet.get_ipnetwork()
             static_ip_range_low, static_ip_range_high = (
                 get_first_and_last_usable_host_in_network(network))
+        in_use_ipset = subnet.get_ipranges_in_use()
         new_ip = StaticIPAddress.objects.allocate_new(
             network, static_ip_range_low, static_ip_range_high,
             None, None, alloc_type=IPADDRESS_TYPE.AUTO,
-            subnet=subnet, exclude_addresses=exclude_addresses)
+            subnet=subnet, exclude_addresses=exclude_addresses,
+            in_use_ipset=in_use_ipset)
         self.ip_addresses.add(new_ip)
+        maaslog.info("Allocated automatic%s IP address %s for %s." % (
+            " static" if has_static_range else "", new_ip.ip,
+            self.get_log_string()))
 
-        # Update the hostmap for the new IP address if needed.
-        if ngi is not None and not has_allocations:
+        if ngi is not None and not has_existing_mapping:
+            # Update DHCP (if needed).
             self._update_host_maps(ngi.nodegroup, new_ip)
 
-        # Made it this far then the AUTO IP address has been assigned and the
-        # hostmap has been updated if needed. We can now remove the original
-        # empty AUTO IP address.
+        # If we made it this far, then the AUTO IP address has been assigned
+        # and the hostmap has been updated if needed. We can now remove the
+        # original empty AUTO IP address.
         auto_ip.delete()
         return ngi, new_ip
 
@@ -1257,6 +1317,23 @@ class Interface(CleanSave, TimestampedModel):
                 if ngi is not None and ngi.subnet is not None:
                     discovered_subnets.append(ngi.subnet)
 
+        if len(discovered_subnets) == 0:
+            node = self.node
+            if parent is not None:
+                node = parent
+            if node is None:
+                hostname = "<unknown>"
+            else:
+                hostname = "'%s'" % node.hostname
+            log_string = (
+                "%s: Attempted to claim a static IP address, but no "
+                "associated subnet could be found. (Recommission node %s "
+                "in order for MAAS to discover the subnet.)" %
+                (self.get_log_string(), hostname)
+            )
+            maaslog.warning(log_string)
+            raise StaticIPAddressExhaustion(log_string)
+
         if requested_address is None:
             # No requested address so claim a STATIC IP on all DISCOVERED
             # subnets for this interface.
@@ -1271,8 +1348,8 @@ class Interface(CleanSave, TimestampedModel):
             # No valid subnets could be used to claim a STATIC IP address.
             if not any(static_ips):
                 maaslog.error(
-                    "Tried to allocate an IP to interface <%s>, but its "
-                    "cluster interface is not known.", unicode(self))
+                    "Attempted sticky IP allocation failed for %s: could not "
+                    "find a cluster interface.", self.get_log_string())
                 return []
             else:
                 return static_ips
@@ -1294,7 +1371,8 @@ class Interface(CleanSave, TimestampedModel):
             else:
                 raise StaticIPAddressOutOfRange(
                     "requested_address '%s' is not in a managed subnet for "
-                    "this interface '%s'" % (requested_address, self.name))
+                    "interface '%s'." % (
+                        requested_address, self.get_name()))
 
     def _get_parent_node(self):
         """Return the parent node for this interface, if it exists (and this

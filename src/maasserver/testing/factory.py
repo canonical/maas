@@ -565,7 +565,7 @@ class Factory(maastesting.factory.Factory):
     def make_Node_with_Interface_on_Subnet(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             interface_count=1, nodegroup=None, vlan=None, subnet=None,
-            cidr=None, fabric=None, ifname=None, **kwargs):
+            cidr=None, fabric=None, ifname=None, unmanaged=False, **kwargs):
         """Create a Node that has a Interface which is on a Subnet that has a
         NodeGroupInterface.
 
@@ -592,7 +592,7 @@ class Factory(maastesting.factory.Factory):
         ngis = subnet.nodegroupinterface_set.filter(nodegroup=nodegroup)
         ngis = ngis.exclude(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         ngi = ngis.first()
-        if ngi is None:
+        if ngi is None and not unmanaged:
             self.make_NodeGroupInterface(
                 nodegroup, vlan=vlan, management=management, subnet=subnet)
         boot_interface = self.make_Interface(
@@ -765,8 +765,18 @@ class Factory(maastesting.factory.Factory):
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, enabled=True, fabric=None):
-        if name is None and iftype != INTERFACE_TYPE.VLAN:
-            name = self.make_name('name')
+        if name is None:
+            if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
+                name = self.make_name('eth')
+            elif iftype == INTERFACE_TYPE.ALIAS:
+                name = self.make_name('eth', sep=':')
+            elif iftype == INTERFACE_TYPE.BOND:
+                name = self.make_name('bond')
+            elif iftype == INTERFACE_TYPE.UNKNOWN:
+                name = self.make_name('eth')
+            elif iftype == INTERFACE_TYPE.VLAN:
+                # This will be determined by the VLAN's VID.
+                name = None
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
         if vlan is None:

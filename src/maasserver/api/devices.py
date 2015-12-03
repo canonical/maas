@@ -29,6 +29,7 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
+    StaticIPAddressExhaustion,
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
@@ -169,7 +170,7 @@ class DeviceHandler(OperationsHandler):
         Returns 400 if the mac_address is not found on the device.
         Returns 503 if there are not enough IPs left on the cluster interface
         to which the mac_address is linked.
-        Returns 503 if the requested_address falls in a dynamic range.
+        Returns 503 if the interface does not have an associated subnet.
         Returns 503 if the requested_address falls in a dynamic range.
         Returns 503 if the requested_address is already allocated.
         """
@@ -192,8 +193,7 @@ class DeviceHandler(OperationsHandler):
                         "mac_address %s not found on the device" % raw_mac)
             requested_address = request.POST.get('requested_address', None)
             if requested_address is None:
-                sticky_ips = interface.claim_static_ips(
-                    requested_address=requested_address)
+                sticky_ips = interface.claim_static_ips()
             else:
                 subnet = Subnet.objects.get_best_subnet_for_ip(
                     requested_address)
@@ -203,9 +203,16 @@ class DeviceHandler(OperationsHandler):
                         ip_address=requested_address),
                 ]
 
-            maaslog.info(
-                "%s: Sticky IP address(es) allocated: %s", device.hostname,
-                ', '.join(allocation.ip for allocation in sticky_ips))
+            if len(sticky_ips) == 0:
+                raise StaticIPAddressExhaustion(
+                    "%s: An IP address could not be claimed at this time. "
+                    "Check your subnet ranges and utilization and try again." %
+                    device.hostname)
+            else:
+                maaslog.info(
+                    "%s: Sticky IP address(es) allocated: %s", device.hostname,
+                    ', '.join(allocation.ip for allocation in sticky_ips))
+
             return device
 
     @operation(idempotent=False)
@@ -272,7 +279,10 @@ class DevicesHandler(OperationsHandler):
         form = DeviceWithMACsForm(data=request.data, request=request)
         if form.is_valid():
             device = form.save()
-            maaslog.info("%s: Added new device", device.hostname)
+            parent = device.parent
+            maaslog.info(
+                "%s: Added new device%s", device.hostname,
+                "" if not parent else " (parent: %s)" % parent.hostname)
             return device
         else:
             raise MAASAPIValidationError(form.errors)

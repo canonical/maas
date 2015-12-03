@@ -24,8 +24,12 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
+    Device,
+    Interface,
     interface as interface_module,
     Node,
     NodeGroup,
@@ -37,6 +41,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from mock import patch
 from testtools.matchers import (
     HasLength,
     Not,
@@ -285,8 +290,12 @@ class TestDeviceAPI(APITestCase):
 class TestClaimStickyIpAddressAPI(APITestCase):
     """Tests for /api/1.0/devices/?op=claim_sticky_ip_address."""
 
-    def test__claims_ip_address_from_cluster_interface(self):
-        parent = factory.make_Node_with_Interface_on_Subnet()
+    def test__claims_ip_address_from_cluster_interface_static_range(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            ng, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        parent = factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=ng, subnet=ngi.subnet)
         device = factory.make_Node(
             installable=False, parent=parent, interface=True,
             disable_ipv4=False, owner=self.logged_in_user)
@@ -296,6 +305,78 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_device = json.loads(response.content)
+        [returned_ip] = parsed_device["ip_addresses"]
+        static_ip = StaticIPAddress.objects.filter(ip=returned_ip).first()
+        self.assertIsNotNone(static_ip)
+        self.assertEquals(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
+
+    def test__claims_ip_address_from_unmanaged_cluster_interface(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            ng, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        parent = factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=ng, subnet=ngi.subnet)
+        device = factory.make_Node(
+            installable=False, parent=parent, interface=True,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch_autospec(interface_module, "update_host_maps")
+        response = self.client.post(
+            get_device_uri(device), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        [returned_ip] = parsed_device["ip_addresses"]
+        static_ip = StaticIPAddress.objects.filter(ip=returned_ip).first()
+        self.assertIsNotNone(static_ip)
+        self.assertEquals(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
+
+    def test__claims_ip_address_from_detached_cluster_interface(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            ng, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        subnet = ngi.subnet
+        ngi.subnet = None
+        ngi.save()
+        parent = factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=ng, subnet=subnet, unmanaged=True)
+        device = factory.make_Node(
+            installable=False, parent=parent, interface=True,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch_autospec(interface_module, "update_host_maps")
+        response = self.client.post(
+            get_device_uri(device), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        [returned_ip] = parsed_device["ip_addresses"]
+        static_ip = StaticIPAddress.objects.filter(ip=returned_ip).first()
+        self.assertIsNotNone(static_ip)
+        self.assertEquals(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
+
+    def test__claims_ip_address_after_devices_new(self):
+        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        ngi = factory.make_NodeGroupInterface(
+            ng, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        parent = factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=ng, subnet=ngi.subnet)
+        # Run 'devices new', as a sanity check to ensure the object is created
+        # the same way as it is when juju does it.
+        self.client.post(
+            reverse('devices_handler'),
+            {
+                'op': 'new',
+                'hostname': "lxc-1",
+                'mac_addresses': "01:02:03:04:05:06",
+                'parent': parent.system_id,
+            })
+        # Silence 'update_host_maps'.
+        device = Device.objects.first()
+        self.patch_autospec(interface_module, "update_host_maps")
+        response = self.client.post(
+            get_device_uri(device), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        # import pdb; pdb.set_trace()
         [returned_ip] = parsed_device["ip_addresses"]
         static_ip = StaticIPAddress.objects.filter(ip=returned_ip).first()
         self.assertIsNotNone(static_ip)
@@ -332,6 +413,39 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             (given_ip.ip, requested_address, IPADDRESS_TYPE.STICKY),
             (returned_ip, returned_ip, given_ip.alloc_type)
         )
+
+    def test_503_if_no_subnet_found(self):
+        device = factory.make_Node(
+            installable=False, interface=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch_autospec(interface_module, "update_host_maps")
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'claim_sticky_ip_address',
+            })
+        self.assertEqual(
+            httplib.SERVICE_UNAVAILABLE, response.status_code,
+            response.content)
+
+    @patch.object(Interface, 'claim_static_ips')
+    def test_503_if_no_ip_found(self, claim_static_ips):
+        claim_static_ips.side_effect = [list()]
+
+        device = factory.make_Node(
+            installable=False, interface=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch_autospec(interface_module, "update_host_maps")
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'claim_sticky_ip_address',
+            })
+        self.assertEqual(
+            httplib.SERVICE_UNAVAILABLE, response.status_code,
+            response.content)
 
     def test_creates_ip_for_specific_mac(self):
         requested_address = factory.make_ip_address()

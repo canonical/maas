@@ -172,6 +172,40 @@ class NodeGroupInterfaceManager(Manager):
         else:
             return None
 
+    find_by_managed_range_for_subnet_query = dedent("""\
+    SELECT ngi.*
+        FROM
+            maasserver_subnet AS subnet,
+            maasserver_nodegroupinterface AS ngi,
+            maasserver_nodegroup AS ng
+        WHERE
+            ngi.nodegroup_id = ng.id AND
+            ng.status = 1 AND /* NodeGroup must be ENABLED */
+            ((inet(ngi.ip_range_low) << network(subnet.cidr) AND
+            inet(ngi.ip_range_high) << network(subnet.cidr))
+            OR (inet(ngi.static_ip_range_low) << network(subnet.cidr) AND
+            inet(ngi.static_ip_range_high) << network(subnet.cidr)))
+            AND subnet.id = %s
+        /* Prefer static ranges, since that's how we'll allocate addresses. */
+        ORDER BY ngi.static_ip_range_low DESC NULLS LAST, ngi.id
+    """)
+
+    def get_by_managed_range_for_subnet(self, subnet):
+        """Return the first interface that could contain `address` in its
+        dynamic or static range. (Prefer interfaces static ranges.)
+        """
+        # Circular imports
+        from maasserver.models import Subnet
+        assert isinstance(subnet, Subnet), (
+            "%r is not a Subnet" % (subnet,))
+        interfaces = self.raw(
+            self.find_by_managed_range_for_subnet_query + " LIMIT 1",
+            [subnet.id])
+        for interface in interfaces:
+            return interface  # This is stable because the query is ordered.
+        else:
+            return None
+
 
 def get_default_vlan():
     from maasserver.models.vlan import VLAN
@@ -437,7 +471,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             exclude = []
         self.check_for_network_interface_clashes(exclude)
 
-    def has_dyanamic_ip_range(self):
+    def has_dynamic_ip_range(self):
         """Returns `True` if this `NodeGroupInterface` has a dynamic IP
         range specified."""
         return self.ip_range_low and self.ip_range_high
@@ -445,7 +479,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def get_dynamic_ip_range(self):
         """Returns a `MAASIPRange` for this `NodeGroupInterface`, if a dynamic
         range is specified. Otherwise, returns `None`."""
-        if self.has_dyanamic_ip_range():
+        if self.has_dynamic_ip_range():
             return make_iprange(
                 self.ip_range_low, self.ip_range_high,
                 purpose='dynamic-range')
@@ -645,7 +679,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         assert isinstance(ipnetwork, IPNetwork)
 
         ranges = set()
-        if self.has_dyanamic_ip_range():
+        if self.has_dynamic_ip_range():
             dynamic_range = self.get_dynamic_ip_range()
             if dynamic_range in ipnetwork:
                 ranges.add(dynamic_range)
