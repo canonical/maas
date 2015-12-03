@@ -59,6 +59,10 @@ class SubnetForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super(SubnetForm, self).clean()
+        # The djorm_pgarray.fields.ArrayField form has a bug which leaves out
+        # the first entry.
+        if 'dns_servers' in self.data and self.data['dns_servers'] != '':
+            cleaned_data['dns_servers'] = self.data.getlist('dns_servers')
         cleaned_data = self._clean_name(cleaned_data)
         cleaned_data = self._clean_dns_servers(cleaned_data)
         if self.instance.id is None:
